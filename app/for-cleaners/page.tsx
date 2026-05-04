@@ -8,12 +8,12 @@ type FieldOption = {
 };
 
 const categories: FieldOption[] = [
-  { label: "Cleaner", value: "cleaner" },
+  { label: "Domestic cleaning", value: "domestic-cleaning" },
   { label: "End of tenancy cleaning", value: "end-of-tenancy-cleaning" },
-  { label: "Man with van / removals", value: "man-with-van" },
-  { label: "Plumber", value: "plumber" },
-  { label: "Handyman", value: "handyman" },
-  { label: "Electrician", value: "electrician" },
+  { label: "Deep cleaning", value: "deep-cleaning" },
+  { label: "Move-in cleaning", value: "move-in-cleaning" },
+  { label: "One-off cleaning", value: "one-off-cleaning" },
+  { label: "After builders cleaning", value: "after-builders-cleaning" },
 ];
 
 const areas = ["Ilford", "Barking", "East Ham", "Stratford", "Walthamstow", "Leyton", "Romford", "Dagenham"];
@@ -21,33 +21,13 @@ const areas = ["Ilford", "Barking", "East Ham", "Stratford", "Walthamstow", "Ley
 const testBusinesses = [
   {
     businessName: "Barking Cleaners",
-    category: "cleaner",
+    category: "domestic-cleaning",
     whatsapp: "07123 456789",
     startingPrice: "45",
     availability: "same-day",
     profileSlug: "barking-cleaners",
-    description: "Local cleaning team covering Barking, Ilford and East Ham. Available for regular cleans and short notice jobs.",
+    description: "Local cleaning team covering Barking, Ilford and East Ham. Available for regular cleaning, deep cleans and short notice jobs.",
     areas: ["Barking", "Ilford", "East Ham"],
-  },
-  {
-    businessName: "East London Van Man",
-    category: "man-with-van",
-    whatsapp: "07444 222111",
-    startingPrice: "65",
-    availability: "next-day",
-    profileSlug: "east-london-van-man",
-    description: "Man with van service for small moves, collections and deliveries across East London.",
-    areas: ["Ilford", "Stratford", "Walthamstow"],
-  },
-  {
-    businessName: "Rapid Plumbers East",
-    category: "plumber",
-    whatsapp: "07999 123456",
-    startingPrice: "80",
-    availability: "flexible",
-    profileSlug: "rapid-plumbers-east",
-    description: "Plumbing repairs, leaks, callouts and small installations across East London.",
-    areas: ["Barking", "Dagenham", "Romford"],
   },
   {
     businessName: "Ilford End Of Tenancy Clean",
@@ -58,6 +38,26 @@ const testBusinesses = [
     profileSlug: "ilford-end-of-tenancy-clean",
     description: "End of tenancy cleaning for flats and houses. Covering Ilford, Leyton and Stratford.",
     areas: ["Ilford", "Leyton", "Stratford"],
+  },
+  {
+    businessName: "East Ham Deep Cleaners",
+    category: "deep-cleaning",
+    whatsapp: "07444 222111",
+    startingPrice: "90",
+    availability: "next-day",
+    profileSlug: "east-ham-deep-cleaners",
+    description: "Deep cleaning and one-off cleaning for homes, flats and rental properties across East Ham and nearby areas.",
+    areas: ["East Ham", "Plaistow", "Barking"],
+  },
+  {
+    businessName: "Stratford Move Out Cleaning",
+    category: "move-in-cleaning",
+    whatsapp: "07999 123456",
+    startingPrice: "110",
+    availability: "flexible",
+    profileSlug: "stratford-move-out-cleaning",
+    description: "Move-in and move-out cleaning for flats and apartments around Stratford, Leyton and Walthamstow.",
+    areas: ["Stratford", "Leyton", "Walthamstow"],
   },
 ];
 
@@ -94,7 +94,7 @@ function Header() {
           href="#signup"
           className="hidden h-[46px] items-center justify-center rounded-[11px] bg-[#071638] px-5 text-[15px] font-extrabold text-white shadow-[0_12px_24px_rgba(7,22,56,0.16)] transition hover:-translate-y-0.5 sm:flex"
         >
-          Create free profile
+          Create cleaner profile
         </a>
         <a href="#signup" aria-label="Create free profile" className="grid h-[42px] w-[42px] place-items-center rounded-[12px] bg-[#071638] text-[22px] leading-none text-white sm:hidden">
           →
@@ -214,18 +214,18 @@ function SignupForm() {
     <form id="signup" action={createBusiness} className="scroll-mt-[96px] rounded-[26px] border border-[#dcebe1] bg-white p-5 shadow-[0_26px_80px_rgba(7,22,56,0.11)] sm:p-7">
       <div className="flex items-start justify-between gap-4 border-b border-[#edf0f5] pb-5">
         <div>
-          <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[#08783f]">Free business profile</p>
-          <h2 className="mt-2 text-[28px] font-extrabold leading-[1.05] tracking-[-0.03em] text-[#071638] sm:text-[34px]">Join Quickola in under 60 seconds.</h2>
+          <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[#08783f]">Free cleaner profile</p>
+          <h2 className="mt-2 text-[28px] font-extrabold leading-[1.05] tracking-[-0.03em] text-[#071638] sm:text-[34px]">Join Quickola as a cleaner in under 60 seconds.</h2>
         </div>
         <span className="hidden rounded-full bg-[#f1faf3] px-4 py-2 text-[13px] font-extrabold text-[#08783f] ring-1 ring-[#d8eddd] sm:inline-flex">No contracts</span>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <Field label="Business name">
+        <Field label="Cleaning business name">
           <Input name="businessName" placeholder="e.g. Barking Cleaners" defaultValue={testBusiness.businessName} required />
         </Field>
 
-        <Field label="Service category">
+        <Field label="Cleaning service">
           <div className="relative">
             <Select name="category" defaultValue={testBusiness.category}>
               <option value="" disabled>Choose category</option>
@@ -285,13 +285,13 @@ function SignupForm() {
           name="description"
           maxLength={180}
           defaultValue={testBusiness.description}
-          placeholder="Tell customers what you do, where you work and when you are usually available."
+          placeholder="Tell customers what cleaning you do, which areas you cover and when you are usually available."
           className="h-[104px] w-full resize-none rounded-[12px] border border-[#dfe5ee] bg-white px-4 py-3 text-[15px] font-semibold text-[#071638] outline-none transition placeholder:text-[#8b94a7] focus:border-[#98d7ad] focus:ring-4 focus:ring-[#e8f7ed]"
         />
       </label>
 
       <button type="submit" className="mt-6 flex h-[58px] w-full items-center justify-center gap-4 rounded-[13px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[18px] font-extrabold text-white shadow-[0_16px_34px_rgba(0,104,47,0.24)] transition hover:-translate-y-0.5">
-        Create free business profile
+        Create free cleaner profile
         <span className="text-[28px] leading-none">→</span>
       </button>
 
@@ -311,12 +311,12 @@ function ProfilePreview() {
       <div className="absolute -bottom-6 -left-6 h-[140px] w-[140px] rounded-full bg-[#edf3ff] blur-sm" />
       <div className="relative overflow-hidden rounded-[30px] border border-[#dfe5ee] bg-white shadow-[0_28px_80px_rgba(7,22,56,0.16)]">
         <div className="bg-[#071638] p-6 text-white">
-          <p className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-white/60">Example profile</p>
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-white/60">Example cleaner profile</p>
           <div className="mt-5 flex items-center gap-4">
             <span className="grid h-[62px] w-[62px] place-items-center rounded-[18px] bg-white text-[28px]">🧼</span>
             <div>
               <h3 className="text-[24px] font-extrabold leading-none tracking-[-0.025em]">East London Cleaners</h3>
-              <p className="mt-2 text-[14px] font-semibold text-white/70">Cleaner · Ilford, Barking, East Ham</p>
+              <p className="mt-2 text-[14px] font-semibold text-white/70">Domestic cleaning · Ilford, Barking, East Ham</p>
             </div>
           </div>
         </div>
@@ -344,7 +344,7 @@ function ProfilePreview() {
             </div>
           </div>
 
-          <button className="mt-5 h-[50px] w-full rounded-[13px] bg-[#08783f] text-[16px] font-extrabold text-white">Request this business</button>
+          <button className="mt-5 h-[50px] w-full rounded-[13px] bg-[#08783f] text-[16px] font-extrabold text-white">Request this cleaner</button>
         </div>
       </div>
     </div>
@@ -361,7 +361,7 @@ function HowStep({ number, title, text }: { number: string; title: string; text:
   );
 }
 
-export default function ForBusinessesPage() {
+export default function ForCleanersPage() {
   return (
     <main className="min-h-screen bg-[#fbfcfd] text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif]">
       <Header />
@@ -374,15 +374,15 @@ export default function ForBusinessesPage() {
           <div className="flex flex-col justify-center">
             <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-4 py-2 text-[12px] font-extrabold uppercase tracking-[0.07em] text-[#08783f] shadow-[0_10px_24px_rgba(7,22,56,0.06)] ring-1 ring-[#d8eddd]">
               <ShieldIcon />
-              Free business signup
+              Free cleaner signup
             </div>
 
             <h1 className="mt-6 max-w-[680px] text-[46px] font-extrabold leading-[0.98] tracking-[-0.04em] text-[#071638] sm:text-[62px] lg:text-[72px]">
-              Get local customer requests without paying to rank.
+              Get local cleaning requests without paying to rank.
             </h1>
 
             <p className="mt-6 max-w-[600px] text-[18px] font-semibold leading-[1.55] text-[#44506a] sm:text-[20px]">
-              Create a free Quickola profile so people nearby can see your service, area, starting price and availability before they contact you.
+              Create a free Quickola cleaner profile so nearby customers can see your cleaning service, areas covered, starting price and availability before they contact you.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -410,16 +410,16 @@ export default function ForBusinessesPage() {
         <ProfilePreview />
 
         <div className="flex flex-col justify-center">
-          <p className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#08783f]">Why businesses join</p>
-          <h2 className="mt-3 text-[36px] font-extrabold leading-[1.05] tracking-[-0.035em] text-[#071638] sm:text-[48px]">A profile built for real local jobs.</h2>
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#08783f]">Why cleaners join</p>
+          <h2 className="mt-3 text-[36px] font-extrabold leading-[1.05] tracking-[-0.035em] text-[#071638] sm:text-[48px]">A profile built for real local cleaning jobs.</h2>
           <p className="mt-4 max-w-[620px] text-[17px] font-semibold leading-[1.55] text-[#44506a]">
-            Customers do not want a directory. They want to know who is available, what the fair price looks like and who they can contact quickly.
+            Customers do not want a messy directory. They want to know which cleaner is available, what a fair price looks like and who they can contact quickly.
           </p>
 
           <div className="mt-7 grid gap-4 sm:grid-cols-3">
-            <BenefitCard icon={<PriceIcon />} title="Show clear prices" text="Add a starting price so customers understand your range before messaging." />
-            <BenefitCard icon={<RequestIcon />} title="Get matched requests" text="Receive local requests for the services and areas you actually cover." />
-            <BenefitCard icon={<ShieldIcon />} title="Fair ranking" text="Ranking is not sold to the highest bidder. Clear profiles win trust." />
+            <BenefitCard icon={<PriceIcon />} title="Show clear cleaning prices" text="Add a starting price so customers understand your cleaning range before messaging." />
+            <BenefitCard icon={<RequestIcon />} title="Get matched cleaning requests" text="Receive local cleaning requests for the areas and job types you actually cover." />
+            <BenefitCard icon={<ShieldIcon />} title="Fair ranking" text="Cleaner ranking is not sold to the highest bidder. Clear profiles win trust." />
           </div>
         </div>
       </section>
@@ -432,8 +432,8 @@ export default function ForBusinessesPage() {
           </div>
 
           <div className="mt-7 grid gap-4 md:grid-cols-3">
-            <HowStep number="1" title="Create your free profile" text="Add your business name, service, area, WhatsApp, price and availability." />
-            <HowStep number="2" title="We match relevant requests" text="Customers searching in your area can be matched to businesses that fit the job." />
+            <HowStep number="1" title="Create your free cleaner profile" text="Add your cleaning business name, service, area, WhatsApp, price and availability." />
+            <HowStep number="2" title="We match relevant cleaning requests" text="Customers searching in your area can be matched to cleaners that fit the job." />
             <HowStep number="3" title="You choose what to accept" text="Start free, keep control and only respond to jobs that make sense for you." />
           </div>
         </div>
@@ -443,16 +443,16 @@ export default function ForBusinessesPage() {
         <div className="mx-auto flex max-w-[1320px] flex-col items-center justify-between gap-6 rounded-[28px] bg-[#071638] p-6 text-center text-white shadow-[0_26px_80px_rgba(7,22,56,0.18)] sm:p-8 lg:flex-row lg:text-left">
           <div>
             <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-white/60">Ready when you are</p>
-            <h2 className="mt-3 text-[34px] font-extrabold leading-[1.05] tracking-[-0.035em] sm:text-[46px]">Create your Quickola business profile.</h2>
+            <h2 className="mt-3 text-[34px] font-extrabold leading-[1.05] tracking-[-0.035em] sm:text-[46px]">Create your Quickola cleaner profile.</h2>
             <p className="mt-3 max-w-[620px] text-[16px] font-semibold leading-[1.5] text-white/72">Start free. No monthly fee. No paid ranking. No long contract.</p>
           </div>
           <a href="#signup" className="inline-flex h-[58px] shrink-0 items-center justify-center gap-4 rounded-[13px] bg-white px-7 text-[18px] font-extrabold text-[#071638] transition hover:-translate-y-0.5">
-            Join free
+            Join as a cleaner
             <span className="text-[28px] leading-none text-[#08783f]">→</span>
           </a>
         </div>
       </section>
-            <Footer />
+      <Footer />
     </main>
   );
 }

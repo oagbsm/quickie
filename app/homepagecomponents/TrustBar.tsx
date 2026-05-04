@@ -1,22 +1,22 @@
 const trustItems = [
   {
     title: "No paid ranking",
-    text: "We don’t take money to list or rank businesses.",
+    text: "Cleaners can’t pay to appear first or buy fake top spots.",
     icon: "shield",
   },
   {
     title: "Fair price ranges",
-    text: "Get an idea of the fair price before you book.",
+    text: "See what cleaning should usually cost in your area first.",
     icon: "tag",
   },
   {
-    title: "Real local providers",
-    text: "Verified local businesses in your area.",
+    title: "Checked local cleaners",
+    text: "We focus on local cleaners with clear pricing and availability.",
     icon: "people",
   },
   {
-    title: "Reviews from customers",
-    text: "Honest reviews from real people like you.",
+    title: "No quote chasing",
+    text: "Submit once and let Quickola help find a suitable match.",
     icon: "star",
   },
 ];
@@ -87,13 +87,13 @@ function TrustIcon({ type }: { type: string }) {
 
 export default function TrustBar() {
   return (
-    <section className="relative z-20 -mt-[38px] bg-white px-5 pb-4 sm:px-8 lg:px-[60px]">
-      <div className="mx-auto max-w-[1220px] overflow-hidden rounded-[22px] border border-[#dfe5ee] bg-white shadow-[0_24px_70px_rgba(7,22,56,0.12)]">
+    <section id="trust" className="relative z-20 -mt-[38px] bg-white px-5 pb-4 sm:px-8 lg:px-[60px]">
+      <div className="mx-auto max-w-[1220px] overflow-hidden rounded-[24px] border border-[#dfe5ee] bg-white shadow-[0_24px_70px_rgba(7,22,56,0.12)]">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4">
           {trustItems.map((item, index) => (
             <div
               key={item.title}
-              className={`group flex min-h-[126px] items-center gap-[18px] bg-white px-6 py-6 transition hover:bg-[#f8fbf9] lg:px-7 ${
+              className={`group flex min-h-[138px] items-center gap-[18px] bg-white px-6 py-6 transition hover:bg-[#f8fbf9] lg:px-7 ${
                 index > 0 ? "lg:border-l lg:border-[#dfe5ee]" : ""
               } ${index > 1 ? "sm:border-t sm:border-[#dfe5ee] lg:border-t-0" : ""}`}
             >
@@ -102,10 +102,10 @@ export default function TrustBar() {
               </div>
 
               <div>
-                <h3 className="text-[18px] font-bold leading-[1.15] tracking-[-0.01em] text-[#071638]">
+                <h3 className="text-[18px] font-extrabold leading-[1.15] tracking-[-0.008em] text-[#071638]">
                   {item.title}
                 </h3>
-                <p className="mt-2 max-w-[225px] text-[14.5px] font-medium leading-[1.45] tracking-[0em] text-[#44506a]">
+                <p className="mt-2 max-w-[240px] text-[14.5px] font-semibold leading-[1.45] tracking-[0em] text-[#44506a]">
                   {item.text}
                 </p>
               </div>

@@ -1,4 +1,3 @@
-import { createRequest } from "../actions";
 import Footer from "../components/Footer";
 
 export const dynamic = "force-dynamic";
@@ -8,57 +7,13 @@ type ResultsPageProps = {
   searchParams?: Promise<{
     service?: string;
     area?: string;
-    saved?: string;
+    cleaning_type?: string;
+    property_type?: string;
+    bedrooms?: string;
+    time_needed?: string;
+    email?: string;
+    phone?: string;
   }>;
-};
-
-type PriceRange = {
-  low: number;
-  high: number;
-  note: string;
-};
-
-const fairPrices: Record<string, PriceRange> = {
-  cleaner: {
-    low: 45,
-    high: 90,
-    note: "For a standard local clean. Size, condition and urgency can change the final price.",
-  },
-  "end-of-tenancy-clean": {
-    low: 120,
-    high: 240,
-    note: "For flats and small houses. Appliances, carpets and condition can change the final price.",
-  },
-  "end-of-tenancy-cleaning": {
-    low: 120,
-    high: 240,
-    note: "For flats and small houses. Appliances, carpets and condition can change the final price.",
-  },
-  "man-with-van": {
-    low: 55,
-    high: 140,
-    note: "For local moves. Distance, stairs, loading time and item count can change the final price.",
-  },
-  "furniture-removal": {
-    low: 55,
-    high: 150,
-    note: "For local furniture removals. Item size, stairs and distance can change the final price.",
-  },
-  "plumber-emergency": {
-    low: 80,
-    high: 180,
-    note: "For callouts. Timing, parts and job complexity can change the final price.",
-  },
-  plumber: {
-    low: 70,
-    high: 160,
-    note: "For common plumbing jobs. Parts, timing and complexity can change the final price.",
-  },
-  "small-move": {
-    low: 70,
-    high: 170,
-    note: "For small local moves. Distance, stairs, loading time and items can change the final price.",
-  },
 };
 
 function formatParam(value: string | undefined, fallback: string) {
@@ -66,6 +21,7 @@ function formatParam(value: string | undefined, fallback: string) {
 
   return value
     .replace(/-/g, " ")
+    .replace(/_/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -82,17 +38,26 @@ function slugify(value: string | undefined, fallback: string) {
 function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-[#e4e8ef] bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex min-h-[64px] w-full max-w-[1080px] items-center justify-between px-4 sm:min-h-[70px] sm:px-6 lg:px-8">
-        <a href="/" className="flex min-w-0 items-center gap-3">
-          <img src="/quickola/logo-mark.png" alt="Quickola" className="h-9 w-9 shrink-0 rounded-full object-contain" />
-          <span className="text-[24px] font-extrabold leading-none tracking-[-0.04em] text-[#071638] sm:text-[29px]">
+      <div className="mx-auto flex min-h-[62px] w-full max-w-[1160px] items-center justify-between px-4 sm:min-h-[68px] sm:px-6 lg:px-8">
+        <a href="/" className="flex min-w-0 items-center gap-[11px]" aria-label="Quickola homepage">
+          <img
+            src="/quickola/logo-mark.png"
+            alt="Quickola"
+            className="h-[38px] w-[38px] shrink-0 object-contain sm:h-[42px] sm:w-[42px]"
+          />
+          <span className="text-[23px] font-semibold leading-none tracking-[0.005em] text-[#071638] sm:text-[28px]">
             Quickola
           </span>
         </a>
 
+        <div className="hidden items-center gap-2 text-[13px] font-semibold text-[#071638] sm:flex">
+          <span className="text-[#08783f]">▣</span>
+          Secure & private
+        </div>
+
         <a
           href="/"
-          className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-[#dfe5ee] bg-white px-4 text-[14px] font-extrabold text-[#071638] shadow-[0_8px_18px_rgba(7,22,56,0.04)] transition hover:-translate-y-0.5 hover:border-[#b7c2d2]"
+          className="inline-flex h-9 shrink-0 items-center justify-center rounded-[10px] border border-[#dfe5ee] bg-white px-3 text-[13px] font-semibold text-[#071638] shadow-[0_5px_12px_rgba(7,22,56,0.03)] transition hover:-translate-y-0.5 hover:border-[#b7c2d2] sm:h-10 sm:px-4 sm:text-[14px]"
         >
           New search
         </a>
@@ -101,160 +66,236 @@ function Header() {
   );
 }
 
-function CheckIcon() {
+function CheckIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2.6]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className={`${className} fill-none stroke-current stroke-[2.5]`} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="m6.5 12.3 3.4 3.5 7.6-8" />
     </svg>
   );
 }
 
-function PriceHero({ service, area, price }: { service: string; area: string; price: PriceRange }) {
+function ShieldIcon() {
   return (
-    <section className="overflow-hidden rounded-[24px] border border-[#dcebe1] bg-white shadow-[0_18px_44px_rgba(7,22,56,0.07)]">
-      <div className="grid gap-0 lg:grid-cols-[1fr_360px]">
-        <div className="relative p-5 sm:p-6 lg:p-7">
-          <div className="absolute -right-20 -top-24 h-56 w-56 rounded-full bg-[#e8f7ed]" />
-          <div className="relative z-10">
-            <p className="inline-flex items-center gap-2 rounded-full bg-[#f0faf3] px-4 py-2 text-[12px] font-extrabold uppercase tracking-[0.06em] text-[#08783f] ring-1 ring-[#d8eddd]">
-              <span className="grid h-5 w-5 place-items-center rounded-full bg-[#08783f] text-white">
-                <CheckIcon />
-              </span>
-              Fair price checked
-            </p>
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3.5 5.5 6v5.2c0 4 2.6 7.5 6.5 9.1 3.9-1.6 6.5-5.1 6.5-9.1V6L12 3.5Z" />
+      <path d="m8.8 12 2 2 4.3-4.6" />
+    </svg>
+  );
+}
 
-            <h1 className="mt-4 max-w-[650px] text-[38px] font-extrabold leading-[0.98] tracking-[-0.035em] text-[#071638] sm:text-[54px] lg:text-[60px]">
-              £{price.low}–£{price.high}
-            </h1>
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6 fill-none stroke-current stroke-[2]" strokeLinecap="round" aria-hidden="true">
+      <circle cx="10.8" cy="10.8" r="6.6" />
+      <path d="m16 16 4.2 4.2" />
+    </svg>
+  );
+}
 
-            <p className="mt-3 max-w-[620px] text-[18px] font-bold leading-[1.28] tracking-[-0.01em] text-[#071638] sm:text-[22px]">
-              Fair range for {service} in <span className="text-[#08783f]">{area}</span>
-            </p>
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4" y="6" width="16" height="12" rx="2" />
+      <path d="m5 8 7 5 7-5" />
+    </svg>
+  );
+}
 
-            <p className="mt-3 max-w-[590px] text-[15px] font-semibold leading-[1.55] text-[#556177] sm:text-[16px]">
-              {price.note}
-            </p>
-          </div>
+function HomeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3.5 11.5 12 4l8.5 7.5" />
+      <path d="M6 10.5V20h12v-9.5" />
+      <path d="M10 20v-5h4v5" />
+    </svg>
+  );
+}
+
+function BuildingIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 21V4h12v17" />
+      <path d="M4 21h16" />
+      <path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1" />
+    </svg>
+  );
+}
+
+function BedIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 11V6" />
+      <path d="M20 14v-2a3 3 0 0 0-3-3H9v5" />
+      <path d="M4 14h16" />
+      <path d="M4 18v-4" />
+      <path d="M20 18v-4" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 3v3M17 3v3M4.5 9h15" />
+      <rect x="4.5" y="5.5" width="15" height="15" rx="2.2" />
+    </svg>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 21s6-5.7 6-11a6 6 0 1 0-12 0c0 5.3 6 11 6 11Z" />
+      <circle cx="12" cy="10" r="2.4" />
+    </svg>
+  );
+}
+
+function Hero({ area }: { area: string }) {
+  return (
+    <section className="relative overflow-hidden rounded-[24px] bg-[linear-gradient(135deg,#f7fcf8_0%,#ffffff_58%,#eef9f1_100%)] px-5 py-5 shadow-[0_14px_42px_rgba(7,22,56,0.045)] ring-1 ring-[#dfeee4] sm:px-7 sm:py-6 lg:px-8 lg:py-7">
+      <div className="pointer-events-none absolute -left-24 top-10 h-64 w-64 rounded-full bg-[#dff4e6] opacity-60 blur-[2px]" />
+      <div className="pointer-events-none absolute -right-28 top-4 h-64 w-64 rounded-full bg-[#e6f7ec] opacity-70" />
+
+      <div className="relative z-10 max-w-[660px]">
+        <div className="grid h-12 w-12 place-items-center rounded-full bg-[#08783f] text-white shadow-[0_12px_26px_rgba(8,120,63,0.2)] ring-[7px] ring-[#e5f6ea] sm:h-14 sm:w-14">
+          <CheckIcon className="h-7 w-7 sm:h-8 sm:w-8" />
         </div>
 
-        <div className="border-t border-[#e8edf3] bg-[#fbfcfd] p-5 sm:p-6 lg:border-l lg:border-t-0">
-          <p className="text-[13px] font-extrabold uppercase tracking-[0.07em] text-[#657089]">Your search</p>
-          <div className="mt-4 space-y-3">
-            <div className="rounded-[16px] bg-white p-4 ring-1 ring-[#edf0f5]">
-              <p className="text-[12px] font-bold text-[#657089]">Service</p>
-              <p className="mt-1 text-[16px] font-extrabold text-[#071638]">{service}</p>
-            </div>
-            <div className="rounded-[16px] bg-white p-4 ring-1 ring-[#edf0f5]">
-              <p className="text-[12px] font-bold text-[#657089]">Area</p>
-              <p className="mt-1 text-[16px] font-extrabold text-[#071638]">{area}</p>
-            </div>
-          </div>
-          <a
-            href={`/check-price?service=${slugify(service, "cleaner")}&area=${slugify(area, "ilford")}`}
-            className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl border border-[#cfd6e2] bg-white px-4 text-[14px] font-extrabold text-[#071638] transition hover:-translate-y-0.5"
-          >
-            Adjust search
-          </a>
+        <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[#08783f]">Request received</p>
+        <h1 className="mt-2 max-w-[760px] text-[30px] font-semibold leading-[1.04] tracking-[-0.028em] text-[#071638] sm:text-[40px] lg:text-[44px]">
+          Request received — we’re finding your cleaner <span className="text-[#08783f]">now.</span>
+        </h1>
+        <p className="mt-3 max-w-[720px] text-[14px] font-medium leading-[1.5] text-[#172545] sm:text-[16px]">
+          We’re checking suitable local cleaners in {area}. Your best match will be sent by email shortly.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-2 rounded-[12px] bg-[#eff9f2] px-3 py-2 text-[13px] font-semibold text-[#08783f] ring-1 ring-[#d7ecdD]">
+            <span>●</span>
+            Status: checking local cleaners
+          </span>
+          <span className="hidden items-center gap-2 rounded-[12px] bg-white/78 px-3 py-2 text-[13px] font-medium text-[#44506a] ring-1 ring-[#dfeee4] sm:inline-flex">
+            Price checked first. Smart move.
+          </span>
         </div>
       </div>
     </section>
   );
 }
 
-function MatchForm({ serviceSlug, areaSlug, service, area }: { serviceSlug: string; areaSlug: string; service: string; area: string }) {
+function FairPriceCard({ service, area }: { service: string; area: string }) {
   return (
-    <section id="match-form" className="rounded-[24px] border border-[#cfe8d6] bg-[linear-gradient(180deg,#f7fcf8_0%,#ffffff_42%)] p-4 shadow-[0_20px_48px_rgba(8,120,63,0.10)] sm:p-6 lg:p-7">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
-        <div>
-          <p className="inline-flex rounded-full bg-white px-4 py-2 text-[12px] font-bold uppercase tracking-[0.14em] text-[#08783f] ring-1 ring-[#d8eddd]">
-            Free match check
-          </p>
-          <h2 className="mt-4 max-w-[690px] text-[33px] font-semibold leading-[1.03] tracking-[-0.01em] text-[#071638] sm:text-[46px]">
-            Want Quickola to find the best local match?
-          </h2>
-          <p className="mt-4 max-w-[620px] text-[18px] font-medium leading-[1.55] tracking-[0.005em] text-[#44506a]">
-            Leave your email and we’ll check approved providers for {service} in {area}. No login. No public provider list. No paid ranking.
-          </p>
+    <section className="overflow-hidden rounded-[22px] bg-[radial-gradient(circle_at_85%_15%,rgba(255,255,255,0.13),transparent_28%),linear-gradient(135deg,#08783f_0%,#064f35_48%,#071638_100%)] p-5 text-white shadow-[0_16px_42px_rgba(7,22,56,0.12)] lg:p-5">
+      <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/76">Your fair price</p>
+      <div className="mt-3 flex flex-wrap items-end gap-3">
+        <span className="text-[40px] font-semibold leading-none tracking-[-0.045em] sm:text-[48px]">£18 – £25</span>
+        <span className="pb-2 text-[23px] font-semibold">/hr</span>
+      </div>
+      <p className="mt-3 text-[15px] font-medium text-white/84">
+        Typical range for {service} in <span className="font-semibold text-white">{area}</span>
+      </p>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            {[
-              ["Email first", "No account needed"],
-              ["Filtered supply", "Approved providers only"],
-              ["Fast update", "Phone is optional"],
-            ].map(([title, text]) => (
-              <div key={title} className="rounded-[16px] border border-[#e2efe5] bg-white p-4 shadow-[0_8px_20px_rgba(7,22,56,0.035)]">
-                <p className="text-[15px] font-semibold tracking-[0.005em] text-[#071638]">{title}</p>
-                <p className="mt-1 text-[13px] font-medium leading-[1.45] tracking-[0.01em] text-[#657089]">{text}</p>
-              </div>
-            ))}
+      <div className="mt-4 grid grid-cols-3 gap-0 border-t border-white/14 pt-3 text-center">
+        {[
+          ["Fair price", "guide", <ShieldIcon key="a" />],
+          ["Manual", "review", <CheckIcon key="b" />],
+          ["Private", "request", <HomeIcon key="c" />],
+        ].map(([top, bottom, icon]) => (
+          <div key={String(top)} className="px-2">
+            <div className="mx-auto hidden h-9 w-9 place-items-center rounded-full bg-white/12 text-white sm:grid">{icon}</div>
+            <p className="mt-3 text-[13px] font-semibold leading-[1.25] text-white/92">{top}</p>
+            <p className="text-[13px] font-medium leading-[1.25] text-white/70">{bottom}</p>
           </div>
-        </div>
-
-        <form action={createRequest} className="rounded-[22px] border border-[#cfe8d6] bg-white p-4 shadow-[0_18px_40px_rgba(7,22,56,0.08)] sm:p-5">
-          <input type="hidden" name="service" value={serviceSlug} />
-          <input type="hidden" name="area" value={areaSlug} />
-          <input type="hidden" name="time_needed" value="flexible" />
-
-          <label className="block">
-            <span className="mb-2 block text-[14px] font-semibold tracking-[0.02em] text-[#44506a]">Email</span>
-            <input
-              name="email"
-              type="email"
-              placeholder="you@email.com"
-              required
-              className="h-13 w-full rounded-[14px] border border-[#cfdad7] bg-[#fbfffc] px-4 text-[16px] font-medium tracking-[0.01em] text-[#071638] outline-none placeholder:text-[#8b94a7] focus:border-[#08783f] focus:bg-white focus:ring-4 focus:ring-[#08783f]/10"
-            />
-          </label>
-
-          <label className="mt-4 block">
-            <span className="mb-2 block text-[14px] font-semibold tracking-[0.02em] text-[#44506a]">Phone optional</span>
-            <input
-              name="phone"
-              placeholder="07..."
-              className="h-13 w-full rounded-[14px] border border-[#cfdad7] bg-[#fbfffc] px-4 text-[16px] font-medium tracking-[0.01em] text-[#071638] outline-none placeholder:text-[#8b94a7] focus:border-[#08783f] focus:bg-white focus:ring-4 focus:ring-[#08783f]/10"
-            />
-          </label>
-
-          <button type="submit" className="mt-5 h-[54px] w-full rounded-[14px] bg-[#071638] px-5 text-[16px] font-semibold tracking-[0.02em] text-white shadow-[0_14px_28px_rgba(7,22,56,0.16)] transition hover:-translate-y-0.5">
-            Find my best match
-          </button>
-
-          <p className="mt-3 text-center text-[13px] font-medium leading-[1.45] tracking-[0.005em] text-[#657089]">
-            We only use this for this request.
-          </p>
-        </form>
+        ))}
       </div>
     </section>
   );
 }
 
-function ConfirmationCard({ service, area }: { service: string; area: string }) {
-  return (
-    <section className="rounded-[26px] border border-[#d8eddd] bg-[#f6fcf8] p-5 shadow-[0_18px_50px_rgba(7,22,56,0.06)] sm:p-6 lg:p-7">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="max-w-[760px]">
-          <p className="inline-flex rounded-full bg-white px-4 py-2 text-[12px] font-extrabold uppercase tracking-[0.07em] text-[#08783f] ring-1 ring-[#d8eddd]">
-            Request received
-          </p>
-          <h2 className="mt-4 text-[31px] font-semibold leading-[1.04] tracking-[-0.01em] text-[#071638] sm:text-[43px]">
-            We’ll email you the best local match.
-          </h2>
-          <p className="mt-3 max-w-[650px] text-[16px] font-semibold leading-[1.55] text-[#44506a]">
-            We’ll check approved local providers for {service} in {area}, compare them against the fair price range, and send you the strongest option by email.
-          </p>
-        </div>
+function SummaryCard({ service, area, cleaningType, propertyType, bedrooms, timeNeeded }: {
+  service: string;
+  area: string;
+  cleaningType: string;
+  propertyType: string;
+  bedrooms: string;
+  timeNeeded: string;
+}) {
+  const rows = [
+    ["Service", cleaningType || service, <HomeIcon key="service" />],
+    ["Property type", propertyType, <BuildingIcon key="property" />],
+    ["Bedrooms", bedrooms, <BedIcon key="bedrooms" />],
+    ["Time needed", timeNeeded, <CalendarIcon key="time" />],
+    ["Area", area, <PinIcon key="area" />],
+  ];
 
-        <div className="grid gap-3 sm:grid-cols-3 lg:w-[420px] lg:grid-cols-1">
-          {[
-            ["1", "Check area coverage"],
-            ["2", "Compare fair price"],
-            ["3", "Email best option"],
-          ].map(([number, text]) => (
-            <div key={text} className="flex items-center gap-3 rounded-[16px] bg-white p-4 ring-1 ring-[#d8eddd]">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#08783f] text-[13px] font-black text-white">{number}</span>
-              <p className="text-[14px] font-extrabold text-[#071638]">{text}</p>
+  return (
+    <section className="rounded-[22px] border border-[#e1e6ee] bg-white p-4 shadow-[0_14px_38px_rgba(7,22,56,0.045)] sm:p-5">
+      <div className="flex items-center justify-between gap-4 border-b border-[#edf0f5] pb-4">
+        <h2 className="text-[14px] font-semibold uppercase tracking-[0.08em] text-[#071638]">Your request summary</h2>
+        <a href={`/check-price?service=${slugify(service, "cleaning")}&area=${slugify(area, "ilford")}`} className="text-[14px] font-semibold text-[#08783f] hover:underline">
+          Edit
+        </a>
+      </div>
+
+      <div className="mt-1 divide-y divide-[#edf0f5]">
+        {rows.map(([label, value, icon]) => (
+          <div key={String(label)} className="grid grid-cols-[24px_1fr_auto] items-center gap-3 py-2.5">
+            <span className="text-[#08783f]">{icon}</span>
+            <span className="text-[14px] font-semibold text-[#071638]">{label}</span>
+            <span className="text-right text-[14px] font-medium text-[#44506a]">{value}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Timeline() {
+  const steps = [
+    ["1", "Checking local cleaners", "We’re finding available and suitable cleaners near you.", <SearchIcon key="search" />],
+    ["2", "Sending your best match", "We’ll email your best match and price update.", <MailIcon key="mail" />],
+    ["3", "You choose", "Review the details and book with no obligation.", <CheckIcon key="check" />],
+  ];
+
+  return (
+    <section className="rounded-[22px] border border-[#e1e6ee] bg-white p-4 shadow-[0_14px_38px_rgba(7,22,56,0.045)] sm:p-5">
+      <h2 className="text-[22px] font-semibold tracking-[-0.02em] text-[#071638]">What happens next?</h2>
+      <div className="mt-5 grid gap-4 lg:grid-cols-3 lg:gap-0">
+        {steps.map(([number, title, text, icon], index) => (
+          <div key={String(title)} className="relative flex gap-4 lg:block lg:px-6 lg:text-center">
+            {index < 2 ? <div className="absolute left-[22px] top-12 h-[calc(100%-20px)] w-px bg-[#dfe5ee] lg:left-auto lg:right-0 lg:top-[32px] lg:h-px lg:w-full" /> : null}
+            <div className="relative z-10 grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#f0faf3] text-[#08783f] ring-1 ring-[#d8eddd] lg:mx-auto lg:h-16 lg:w-16">
+              {icon}
             </div>
-          ))}
+            <div className="min-w-0">
+              <span className="inline-grid h-7 w-7 place-items-center rounded-full bg-[#08783f] text-[13px] font-semibold text-white lg:absolute lg:left-5 lg:top-5">{number}</span>
+              <p className="mt-1 text-[16px] font-semibold text-[#071638] lg:mt-5">{title}</p>
+              <p className="mt-1 text-[14px] font-medium leading-[1.5] text-[#657089]">{text}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SafetyCard({ email, phone }: { email: string; phone: string }) {
+  return (
+    <section className="rounded-[22px] border border-[#d8eddd] bg-[linear-gradient(135deg,#f1faf4_0%,#ffffff_100%)] p-4 shadow-[0_12px_34px_rgba(7,22,56,0.035)] sm:p-5">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex gap-4">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#08783f] text-white ring-[7px] ring-[#e1f3e7]"><ShieldIcon /></span>
+          <div>
+            <h2 className="text-[19px] font-semibold tracking-[-0.015em] text-[#071638]">Your details are private.</h2>
+            <p className="mt-2 max-w-[560px] text-[15px] font-medium leading-[1.55] text-[#44506a]">
+              We never share your information publicly or with anyone you haven’t chosen.
+            </p>
+          </div>
+        </div>
+        <div className="rounded-[18px] bg-white/70 p-4 ring-1 ring-[#d8eddd]">
+          <p className="text-[13px] font-semibold text-[#657089]">We’ll contact you on</p>
+          <p className="mt-1 text-[14px] font-semibold text-[#071638]">{email || "your email"}</p>
+          {phone ? <p className="mt-1 text-[14px] font-medium text-[#44506a]">{phone}</p> : null}
         </div>
       </div>
     </section>
@@ -263,58 +304,76 @@ function ConfirmationCard({ service, area }: { service: string; area: string }) 
 
 function BottomActions() {
   return (
-    <div className="flex flex-col gap-3 rounded-[20px] border border-[#e1e6ee] bg-white p-4 shadow-[0_10px_24px_rgba(7,22,56,0.04)] sm:flex-row sm:items-center sm:justify-between sm:p-5">
-      <div>
-        <h2 className="text-[18px] font-extrabold text-[#071638]">Check another price?</h2>
-        <p className="mt-1 text-[14px] font-semibold text-[#556177]">Start again with a different service or area.</p>
-      </div>
+    <section className="rounded-[22px] border border-[#d8eddd] bg-[linear-gradient(135deg,#f7fcf8_0%,#ffffff_100%)] p-5 text-center shadow-[0_12px_34px_rgba(7,22,56,0.035)] sm:p-6">
+      <div className="mx-auto hidden h-12 w-12 place-items-center rounded-full bg-[#e3f5e9] text-[#08783f] sm:grid"><span className="text-[22px]">♥</span></div>
+      <h2 className="mx-auto max-w-[520px] text-[23px] font-semibold leading-[1.15] tracking-[-0.02em] text-[#071638] sm:mt-4">
+        You’re one step closer to a cleaner home.
+      </h2>
+      <p className="mt-2 text-[15px] font-medium text-[#657089]">We’ll do the hard work. You enjoy the result.</p>
       <a
         href="/"
-        className="inline-flex h-[48px] items-center justify-center rounded-[12px] bg-[#071638] px-5 text-[15px] font-extrabold text-white transition hover:-translate-y-0.5"
+        className="mx-auto mt-6 flex h-[50px] max-w-[420px] items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[15px] font-semibold text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5"
       >
-        New search
+        Check another price
       </a>
-    </div>
+      <a href="/" className="mt-4 inline-flex text-[14px] font-medium text-[#08783f] underline underline-offset-4">
+        Back to home
+      </a>
+    </section>
   );
 }
 
 export default async function ResultsPage({ searchParams }: ResultsPageProps) {
   const params = await searchParams;
-  const serviceSlug = slugify(params?.service, "cleaner");
+  const serviceSlug = slugify(params?.service, "cleaning");
   const areaSlug = slugify(params?.area, "ilford");
-  const service = formatParam(serviceSlug, "Cleaner");
+  const service = formatParam(serviceSlug, "Cleaning");
   const area = formatParam(areaSlug, "Ilford");
-  const isSaved = params?.saved === "true";
-  const price = fairPrices[serviceSlug] || {
-    low: 60,
-    high: 160,
-    note: "Final price depends on the exact job, timing, location and provider availability.",
-  };
+  const cleaningType = formatParam(params?.cleaning_type, service === "Cleaning" ? "Regular cleaning" : service);
+  const propertyType = formatParam(params?.property_type, "Flat / Apartment");
+  const bedrooms = formatParam(params?.bedrooms, "2 Bedrooms");
+  const timeNeeded = formatParam(params?.time_needed, "This week");
+  const email = params?.email || "";
+  const phone = params?.phone || "";
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#fbfcfd] text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif]">
       <Header />
 
-      <section className="mx-auto w-full max-w-[1080px] px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pb-14 lg:pt-6">
-        <a href={`/check-price?service=${serviceSlug}&area=${areaSlug}`} className="inline-flex items-center gap-3 text-[14px] font-bold text-[#071638] transition hover:text-[#08783f]">
+      <section className="mx-auto w-full max-w-[1160px] px-4 pb-10 pt-3 sm:px-6 lg:px-8 lg:pb-14 lg:pt-5">
+        <a href={`/check-price?service=${serviceSlug}&area=${areaSlug}`} className="inline-flex items-center gap-3 text-[14px] font-medium text-[#071638] transition hover:text-[#08783f]">
           <span className="text-[#08783f]">←</span>
           Back
         </a>
 
-        <div className="mt-3 space-y-4 sm:mt-4 sm:space-y-5">
-          <PriceHero service={service} area={area} price={price} />
-          {isSaved ? (
-            <ConfirmationCard service={service} area={area} />
-          ) : (
-            <MatchForm serviceSlug={serviceSlug} areaSlug={areaSlug} service={service} area={area} />
-          )}
+        <div className="mt-3 space-y-3 sm:mt-4 sm:space-y-4">
+          <Hero area={area} />
+
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)]">
+            <FairPriceCard service={cleaningType} area={area} />
+            <SummaryCard
+              service={service}
+              area={area}
+              cleaningType={cleaningType}
+              propertyType={propertyType}
+              bedrooms={bedrooms}
+              timeNeeded={timeNeeded}
+            />
+          </div>
+
+          <Timeline />
+          <SafetyCard email={email} phone={phone} />
           <BottomActions />
         </div>
 
-        <p className="mx-auto mt-7 max-w-[760px] text-center text-[13px] font-semibold leading-[1.5] text-[#657089]">
-          This is an estimated fair range, not a final quote. Final price can change based on timing, job condition, travel, parts and provider availability.
-        </p>
+        <div className="mt-5 grid gap-3 rounded-[18px] border border-[#e1e6ee] bg-white p-4 text-[13px] font-medium text-[#657089] shadow-[0_8px_22px_rgba(7,22,56,0.03)] sm:grid-cols-4">
+          <p><span className="font-semibold text-[#08783f]">⌂</span> Fair price guide</p>
+          <p><span className="font-semibold text-[#08783f]">☆</span> Manual cleaner checks</p>
+          <p><span className="font-semibold text-[#08783f]">▣</span> Private request</p>
+          <p><span className="font-semibold text-[#08783f]">♡</span> No public posting</p>
+        </div>
       </section>
+
       <Footer />
     </main>
   );
