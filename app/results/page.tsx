@@ -153,33 +153,48 @@ function PinIcon() {
 
 function Hero({ area }: { area: string }) {
   return (
-    <section className="relative overflow-hidden rounded-[24px] bg-[linear-gradient(135deg,#f7fcf8_0%,#ffffff_58%,#eef9f1_100%)] px-5 py-5 shadow-[0_14px_42px_rgba(7,22,56,0.045)] ring-1 ring-[#dfeee4] sm:px-7 sm:py-6 lg:px-8 lg:py-7">
-      <div className="pointer-events-none absolute -left-24 top-10 h-64 w-64 rounded-full bg-[#dff4e6] opacity-60 blur-[2px]" />
-      <div className="pointer-events-none absolute -right-28 top-4 h-64 w-64 rounded-full bg-[#e6f7ec] opacity-70" />
+    <section className="group relative overflow-hidden rounded-[24px] bg-[linear-gradient(135deg,#f7fcf8_0%,#ffffff_58%,#eef9f1_100%)] p-[1px] shadow-[0_14px_42px_rgba(7,22,56,0.045)]">
+      <div className="pointer-events-none absolute inset-0 rounded-[24px] bg-[conic-gradient(from_90deg_at_50%_50%,rgba(8,120,63,0)_0deg,rgba(8,120,63,0)_250deg,rgba(8,120,63,0.44)_292deg,rgba(174,242,193,0.9)_310deg,rgba(8,120,63,0.44)_328deg,rgba(8,120,63,0)_360deg)] opacity-70 motion-safe:animate-[quickolaOrbit_9s_linear_infinite]" />
+      <div className="relative overflow-hidden rounded-[23px] bg-[linear-gradient(135deg,#f7fcf8_0%,#ffffff_58%,#eef9f1_100%)] px-5 py-5 ring-1 ring-[#dfeee4] sm:px-7 sm:py-6 lg:px-8 lg:py-7">
+        <div className="pointer-events-none absolute -left-24 top-10 h-64 w-64 rounded-full bg-[#dff4e6] opacity-60 blur-[2px]" />
+        <div className="pointer-events-none absolute -right-28 top-4 h-64 w-64 rounded-full bg-[#e6f7ec] opacity-70" />
 
-      <div className="relative z-10 max-w-[660px]">
-        <div className="grid h-12 w-12 place-items-center rounded-full bg-[#08783f] text-white shadow-[0_12px_26px_rgba(8,120,63,0.2)] ring-[7px] ring-[#e5f6ea] sm:h-14 sm:w-14">
-          <CheckIcon className="h-7 w-7 sm:h-8 sm:w-8" />
-        </div>
+        <div className="relative z-10 max-w-[660px]">
+          <div className="grid h-12 w-12 place-items-center rounded-full bg-[#08783f] text-white shadow-[0_12px_26px_rgba(8,120,63,0.2)] ring-[7px] ring-[#e5f6ea] sm:h-14 sm:w-14">
+            <CheckIcon className="h-7 w-7 sm:h-8 sm:w-8" />
+          </div>
 
-        <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[#08783f]">Request received</p>
-        <h1 className="mt-2 max-w-[760px] text-[30px] font-semibold leading-[1.04] tracking-[-0.028em] text-[#071638] sm:text-[40px] lg:text-[44px]">
-          Request received — we’re finding your cleaner <span className="text-[#08783f]">now.</span>
-        </h1>
-        <p className="mt-3 max-w-[720px] text-[14px] font-medium leading-[1.5] text-[#172545] sm:text-[16px]">
-          We’re checking suitable local cleaners in {area}. Your best match will be sent by email shortly.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-2 rounded-[12px] bg-[#eff9f2] px-3 py-2 text-[13px] font-semibold text-[#08783f] ring-1 ring-[#d7ecdD]">
-            <span>●</span>
-            Status: checking local cleaners
-          </span>
-          <span className="hidden items-center gap-2 rounded-[12px] bg-white/78 px-3 py-2 text-[13px] font-medium text-[#44506a] ring-1 ring-[#dfeee4] sm:inline-flex">
-            Price checked first. Smart move.
-          </span>
+          <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[#08783f]">Request received</p>
+          <h1 className="mt-2 max-w-[760px] text-[30px] font-semibold leading-[1.04] tracking-[-0.028em] text-[#071638] sm:text-[40px] lg:text-[44px]">
+            Request received — we’re finding your cleaner <span className="text-[#08783f]">now.</span>
+          </h1>
+          <p className="mt-3 max-w-[720px] text-[14px] font-medium leading-[1.5] text-[#172545] sm:text-[16px]">
+            We’re checking suitable local cleaners in {area}. Your best match will be sent by email shortly.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-2 rounded-[12px] bg-[#eff9f2] px-3 py-2 text-[13px] font-semibold text-[#08783f] ring-1 ring-[#d7ecdD]">
+              <span>●</span>
+              Status: checking local cleaners
+            </span>
+            <span className="hidden items-center gap-2 rounded-[12px] bg-white/78 px-3 py-2 text-[13px] font-medium text-[#44506a] ring-1 ring-[#dfeee4] sm:inline-flex">
+              Price checked first. Smart move.
+            </span>
+          </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function HeroGlowStyles() {
+  return (
+    <style>{`
+      @keyframes quickolaOrbit {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    `}</style>
   );
 }
 
@@ -338,6 +353,7 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#fbfcfd] text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif]">
+      <HeroGlowStyles />
       <Header />
 
       <section className="mx-auto w-full max-w-[1160px] px-4 pb-10 pt-3 sm:px-6 lg:px-8 lg:pb-14 lg:pt-5">

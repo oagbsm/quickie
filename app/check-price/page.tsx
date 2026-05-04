@@ -274,14 +274,7 @@ function PriceCard() {
 function LeftPanel({ service, area }: { service: string; area: string }) {
   return (
     <section className="rounded-[22px] border border-[#e1e6ee] bg-white p-3 shadow-[0_16px_50px_rgba(7,22,56,0.06)] sm:p-6 lg:p-7">
-      <div className="hidden flex-wrap items-center gap-2 border-b border-[#edf0f5] pb-4 sm:flex">
-        <span className="inline-flex items-center gap-2 rounded-full bg-[#f0faf3] px-4 py-2 text-[13px] font-semibold text-[#08783f] ring-1 ring-[#d8eddd]">
-          <ShieldIcon /> Quick · Fair · No obligation
-        </span>
-        <span className="inline-flex items-center gap-2 rounded-full bg-[#fbfcfd] px-4 py-2 text-[13px] font-semibold text-[#44506a] ring-1 ring-[#e1e6ee]">
-          Same area · Same service · Fair guide
-        </span>
-      </div>
+ 
 
       <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#08783f] sm:mt-5 sm:text-[12px]">Instant price range</p>
       <h1 className="mt-2 max-w-[650px] text-[30px] font-bold leading-[1.05] tracking-[-0.04em] text-[#071638] sm:mt-3 sm:text-[46px] lg:text-[54px]">
