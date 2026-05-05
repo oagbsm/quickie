@@ -6,20 +6,23 @@ import { useRouter } from "next/navigation";
 const asset = (path: string) => `/quickola/${path}`;
 
 const popularSearches = [
-  { label: "Cleaner in Ilford", icon: "✣", service: "cleaning", area: "ilford" },
-  { label: "End of tenancy clean", icon: "⌂", service: "end-of-tenancy-clean", area: "barking" },
+  { label: "Regular cleaning", icon: "✣", service: "regular-cleaning", area: "ilford" },
+  { label: "End of tenancy clean", icon: "⌂", service: "end-of-tenancy-cleaning", area: "barking" },
   { label: "Deep cleaning", icon: "◈", service: "deep-cleaning", area: "east-ham" },
   { label: "Cleaner in Stratford", icon: "▱", service: "cleaning", area: "stratford" },
 ];
 
 const serviceSuggestions = [
   "Cleaning",
-  "End of tenancy clean",
-  "Deep cleaning",
-  "Regular house cleaning",
-  "Move-in cleaning",
-  "One-off cleaning",
-  "After builders cleaning",
+  "Regular Cleaning",
+  "One-off Cleaning",
+  "Deep Cleaning",
+  "End of Tenancy Cleaning",
+  "Move-out Cleaning",
+  "After Builders Cleaning",
+  "Carpet Cleaning",
+  "Oven Cleaning",
+  "Airbnb Cleaning",
 ];
 
 const eastLondonAreas = [
