@@ -6,26 +6,36 @@ import { useRouter } from "next/navigation";
 const asset = (path: string) => `/quickola/${path}`;
 
 const popularSearches = [
-  { label: "Regular cleaning", icon: "✣", service: "regular-cleaning", area: "ilford" },
-  { label: "End of tenancy clean", icon: "⌂", service: "end-of-tenancy-cleaning", area: "barking" },
-  { label: "Deep cleaning", icon: "◈", service: "deep-cleaning", area: "east-ham" },
-  { label: "Cleaner in Stratford", icon: "▱", service: "cleaning", area: "stratford" },
+  { label: "Cleaning", icon: "✣", service: "cleaning", area: "london" },
+  { label: "Man and van", icon: "▱", service: "man-and-van", area: "london" },
+  { label: "Plumber", icon: "◈", service: "plumber", area: "london" },
+  { label: "End of tenancy", icon: "⌂", service: "end-of-tenancy-cleaning", area: "london" },
 ];
 
 const serviceSuggestions = [
   "Cleaning",
-  "Regular Cleaning",
-  "One-off Cleaning",
-  "Deep Cleaning",
   "End of Tenancy Cleaning",
-  "Move-out Cleaning",
-  "After Builders Cleaning",
+  "Man and Van",
+  "Removals",
+  "Plumber",
+  "Electrician",
+  "Locksmith",
+  "Handyman",
+  "Gardener",
+  "Pest Control",
+  "Painter / Decorator",
   "Carpet Cleaning",
   "Oven Cleaning",
-  "Airbnb Cleaning",
+  "Waste Removal",
+  "Appliance Repair",
 ];
 
-const eastLondonAreas = [
+const londonAreas = [
+  "East London",
+  "West London",
+  "North London",
+  "South London",
+  "Central London",
   "Ilford",
   "Barking",
   "East Ham",
@@ -54,6 +64,24 @@ const eastLondonAreas = [
   "Gants Hill",
   "Manor Park",
   "Upton Park",
+  "Ealing",
+  "Acton",
+  "Chiswick",
+  "Hammersmith",
+  "Fulham",
+  "Chelsea",
+  "Kensington",
+  "Notting Hill",
+  "Hounslow",
+  "Richmond",
+  "Camden",
+  "Islington",
+  "Enfield",
+  "Croydon",
+  "Bromley",
+  "Lewisham",
+  "Clapham",
+  "Brixton",
 ];
 
 function StarTiny() {
@@ -63,6 +91,7 @@ function StarTiny() {
       className="h-[15px] w-[15px] fill-none stroke-[#08783f] stroke-[2.4]"
       strokeLinecap="round"
       strokeLinejoin="round"
+      aria-hidden="true"
     >
       <path d="m12 3 2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2L12 3Z" />
     </svg>
@@ -75,6 +104,7 @@ function SearchIcon() {
       viewBox="0 0 24 24"
       className="h-5 w-5 fill-none stroke-[#071638] stroke-[2.2]"
       strokeLinecap="round"
+      aria-hidden="true"
     >
       <circle cx="10.8" cy="10.8" r="6.7" />
       <path d="m16 16 4.2 4.2" />
@@ -89,6 +119,7 @@ function PinIcon() {
       className="h-5 w-5 fill-none stroke-[#071638] stroke-[2.2]"
       strokeLinecap="round"
       strokeLinejoin="round"
+      aria-hidden="true"
     >
       <path d="M12 21s6-5.7 6-11a6 6 0 1 0-12 0c0 5.3 6 11 6 11Z" />
       <circle cx="12" cy="10" r="2.4" />
@@ -102,6 +133,7 @@ function TargetIcon() {
       viewBox="0 0 24 24"
       className="h-5 w-5 fill-none stroke-[#071638] stroke-[2]"
       strokeLinecap="round"
+      aria-hidden="true"
     >
       <circle cx="12" cy="12" r="7" />
       <circle cx="12" cy="12" r="2" />
@@ -137,8 +169,8 @@ function SuggestionMenu({
   if (items.length === 0) return null;
 
   return (
-    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-[14px] border border-[#dfe5ee] bg-white shadow-[0_12px_28px_rgba(7,22,56,0.13)]">
-      <div className="max-h-[218px] overflow-y-auto p-1.5">
+    <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 overflow-hidden rounded-[18px] border border-[#dfe5ee] bg-white shadow-[0_18px_40px_rgba(7,22,56,0.16)]">
+      <div className="max-h-[238px] overflow-y-auto p-2">
         {items.map((item) => (
           <button
             key={item}
@@ -147,7 +179,7 @@ function SuggestionMenu({
               event.preventDefault();
               onPick(item);
             }}
-            className="flex w-full items-center justify-between rounded-[10px] px-3 py-2 text-left text-[14px] font-extrabold text-[#071638] hover:bg-[#f1faf3] hover:text-[#08783f]"
+            className="flex h-11 w-full items-center justify-between rounded-[12px] px-3.5 text-left text-[14px] font-extrabold text-[#071638] transition hover:bg-[#f1faf3] hover:text-[#08783f]"
           >
             <span>{item}</span>
             <span className="text-[15px] text-[#08783f]">→</span>
@@ -160,8 +192,8 @@ function SuggestionMenu({
 
 export default function Hero() {
   const router = useRouter();
-  const [service, setService] = useState("Cleaning");
-  const [area, setArea] = useState("");
+  const [service, setService] = useState("");
+  const [area, setArea] = useState("London");
   const [activeField, setActiveField] = useState<"service" | "area" | null>(null);
   const [errors, setErrors] = useState<{ service?: string; area?: string }>({});
   const deferredService = useDeferredValue(service);
@@ -169,14 +201,18 @@ export default function Hero() {
 
   const filteredServices = useMemo(() => {
     const query = deferredService.trim().toLowerCase();
+    if (!query) return serviceSuggestions.slice(0, 7);
+
     return serviceSuggestions
       .filter((item) => item.toLowerCase().includes(query))
-      .slice(0, 6);
+      .slice(0, 7);
   }, [deferredService]);
 
   const filteredAreas = useMemo(() => {
     const query = deferredArea.trim().toLowerCase();
-    return eastLondonAreas
+    if (!query) return londonAreas.slice(0, 7);
+
+    return londonAreas
       .filter((item) => item.toLowerCase().includes(query))
       .slice(0, 7);
   }, [deferredArea]);
@@ -189,19 +225,19 @@ export default function Hero() {
     const trimmedArea = area.trim();
 
     const validService = findExactOption(trimmedService, serviceSuggestions);
-    const validArea = findExactOption(trimmedArea, eastLondonAreas);
+    const validArea = findExactOption(trimmedArea, londonAreas);
 
     if (!trimmedService || !trimmedArea || !validService || !validArea) {
       setErrors({
         service: !trimmedService
-          ? "Choose a cleaning service first."
+          ? "Choose a service first."
           : !validService
-            ? "Select a cleaning service from the list."
+            ? "Select a service from the list."
             : undefined,
         area: !trimmedArea
-          ? "Choose an East London area."
+          ? "Choose a London area."
           : !validArea
-            ? "Select an East London area from the list."
+            ? "Select a London area from the list."
             : undefined,
       });
       setActiveField(!trimmedService || !validService ? "service" : "area");
@@ -233,39 +269,29 @@ export default function Hero() {
         <div className="relative z-10 mx-auto max-w-[1366px] px-5 pb-[42px] pt-[42px] sm:px-8 sm:pb-[64px] sm:pt-[64px] lg:px-[74px] lg:pb-[92px] lg:pt-[82px]">
           <div className="relative inline-flex max-w-full items-center gap-[8px] rounded-full bg-white/92 px-[15px] py-[8px] text-[10px] font-extrabold uppercase tracking-[0.07em] text-[#071638] shadow-[0_10px_28px_rgba(15,23,42,0.1)] ring-1 ring-white/85 sm:text-[11px] lg:text-[12px]">
             <StarTiny />
-            No paid ranking. Fair prices first.
+            Fair local service prices first.
           </div>
 
           <h1 className="relative mt-[24px] max-w-[780px] text-[43px] font-extrabold leading-[1.02] tracking-[-0.03em] text-[#071638] drop-shadow-[0_1px_0_rgba(255,255,255,0.55)] sm:mt-[28px] sm:text-[59px] lg:mt-[34px] lg:text-[68px]">
             Know the <span className="text-[#08783f]">fair price</span>
             <br />
-            for cleaning.
+            before you book.
           </h1>
 
           <div className="relative mt-[21px] max-w-[650px]">
             <p className="max-w-[560px] text-[16px] font-bold leading-[1.55] tracking-[0.002em] text-[#172545] drop-shadow-[0_1px_0_rgba(255,255,255,0.45)] sm:max-w-none sm:text-[19px] lg:text-[20px]">
-              Check local cleaning prices, then request a checked cleaner near you.
+              Check local prices for cleaners, plumbers, removals, locksmiths and more.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[14px] font-extrabold text-[#071638] sm:mt-5 sm:gap-x-6 sm:text-[15px]">
-              <span className="inline-flex items-center gap-2">
-                <span className="grid h-5 w-5 place-items-center rounded-full border border-[#08783f] text-[12px] text-[#08783f]">
-                  ✓
+              {["Prices first", "15 service categories", "No booking pressure"].map((item) => (
+                <span key={item} className="inline-flex items-center gap-2">
+                  <span className="grid h-5 w-5 place-items-center rounded-full border border-[#08783f] text-[12px] text-[#08783f]">
+                    ✓
+                  </span>
+                  {item}
                 </span>
-                See prices first
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span className="grid h-5 w-5 place-items-center rounded-full border border-[#08783f] text-[12px] text-[#08783f]">
-                  ✓
-                </span>
-                No paid ranking
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span className="grid h-5 w-5 place-items-center rounded-full border border-[#08783f] text-[12px] text-[#08783f]">
-                  ✓
-                </span>
-                No quote spam
-              </span>
+              ))}
             </div>
           </div>
 
@@ -273,13 +299,13 @@ export default function Hero() {
             onSubmit={handleSubmit}
             className="relative mt-[26px] w-full max-w-[1128px] rounded-[24px] border border-white/80 bg-white/96 p-4 shadow-[0_26px_70px_rgba(7,22,56,0.18)] backdrop-blur-md sm:mt-[30px] sm:p-[20px] lg:mt-[36px] lg:p-[24px]"
           >
-            <div className="grid gap-4 lg:grid-cols-[390px_365px_250px] lg:items-end lg:gap-[28px]">
+            <div className="grid gap-4 lg:grid-cols-[400px_365px_250px] lg:items-end lg:gap-[24px]">
               <label className="relative block">
                 <span className="mb-[12px] block text-[14px] font-bold tracking-[-0.005em] text-[#071638] lg:text-[15px]">
-                  Cleaning type
+                  What do you need?
                 </span>
                 <div
-                  className={`relative flex h-[50px] items-center gap-[12px] rounded-[13px] border bg-white px-[15px] focus-within:ring-4 lg:h-[55px] lg:px-[16px] ${
+                  className={`relative flex h-[54px] items-center gap-[12px] rounded-[15px] border bg-white px-[15px] focus-within:ring-4 lg:h-[58px] lg:px-[16px] ${
                     errors.service
                       ? "border-[#d93025] focus-within:border-[#d93025] focus-within:ring-[#d93025]/10"
                       : "border-[#dfe5ee] focus-within:border-[#08783f] focus-within:ring-[#08783f]/10"
@@ -298,12 +324,12 @@ export default function Hero() {
                       setActiveField(null);
                       const validService = findExactOption(service, serviceSuggestions);
                       if (service.trim() && !validService) {
-                        setErrors((current) => ({ ...current, service: "Select a cleaning service from the list." }));
+                        setErrors((current) => ({ ...current, service: "Select a service from the list." }));
                       }
                     }}
                     autoComplete="off"
                     className="min-w-0 flex-1 bg-transparent text-[16px] font-semibold tracking-[-0.005em] text-[#071638] outline-none placeholder:text-[#8b94a7]"
-                    placeholder="Cleaning"
+                    placeholder="Cleaner, plumber, man and van..."
                   />
                   <span className="text-xl text-[#071638]">⌄</span>
                 </div>
@@ -327,7 +353,7 @@ export default function Hero() {
                   Your area
                 </span>
                 <div
-                  className={`relative flex h-[50px] items-center gap-[12px] rounded-[13px] border bg-white px-[15px] focus-within:ring-4 lg:h-[55px] lg:px-[16px] ${
+                  className={`relative flex h-[54px] items-center gap-[12px] rounded-[15px] border bg-white px-[15px] focus-within:ring-4 lg:h-[58px] lg:px-[16px] ${
                     errors.area
                       ? "border-[#d93025] focus-within:border-[#d93025] focus-within:ring-[#d93025]/10"
                       : "border-[#dfe5ee] focus-within:border-[#08783f] focus-within:ring-[#08783f]/10"
@@ -344,14 +370,14 @@ export default function Hero() {
                     onFocus={() => setActiveField("area")}
                     onBlur={() => {
                       setActiveField(null);
-                      const validArea = findExactOption(area, eastLondonAreas);
+                      const validArea = findExactOption(area, londonAreas);
                       if (area.trim() && !validArea) {
-                        setErrors((current) => ({ ...current, area: "Select an East London area from the list." }));
+                        setErrors((current) => ({ ...current, area: "Select a London area from the list." }));
                       }
                     }}
                     autoComplete="off"
                     className="min-w-0 flex-1 bg-transparent text-[16px] font-semibold tracking-[-0.005em] text-[#071638] outline-none placeholder:text-[#8b94a7]"
-                    placeholder="e.g. Ilford, E7"
+                    placeholder="e.g. London, Ilford, E7"
                   />
                   <TargetIcon />
                 </div>
@@ -372,7 +398,7 @@ export default function Hero() {
 
               <button
                 type="submit"
-                className="flex h-[52px] items-center justify-center gap-[16px] rounded-[13px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-[22px] text-[18px] font-bold tracking-[0.002em] text-white shadow-[0_14px_30px_rgba(0,104,47,0.25)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(0,104,47,0.3)] lg:h-[60px] lg:gap-[18px] lg:text-[19px]"
+                className="flex h-[54px] items-center justify-center gap-[16px] rounded-[15px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-[22px] text-[18px] font-bold tracking-[0.002em] text-white shadow-[0_14px_30px_rgba(0,104,47,0.25)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(0,104,47,0.3)] lg:h-[58px] lg:gap-[18px] lg:text-[19px]"
               >
                 See price range
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-white text-[20px] leading-none text-[#08783f] lg:h-8 lg:w-8 lg:text-[22px]">
@@ -384,7 +410,7 @@ export default function Hero() {
 
           <p className="mt-4 flex items-center gap-2 pl-0 text-[14px] font-bold text-white/92 sm:pl-[12px] lg:pl-[24px]">
             <span className="text-[15px]">▣</span>
-            No signup needed. Takes 10 seconds.
+            No signup needed. See the fair range first.
           </p>
 
           <div className="mt-[24px] max-w-[1080px] pl-0 sm:pl-[12px] lg:mt-[30px] lg:pl-[24px]">

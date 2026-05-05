@@ -1,29 +1,33 @@
 
 
 function StepIcon({ type }: { type: string }) {
-  if (type === "search") {
+  if (type === "price") {
     return (
       <svg
         viewBox="0 0 64 64"
-        className="h-[44px] w-[44px] fill-none stroke-[#071638] stroke-[4]"
+        className="h-[42px] w-[42px] fill-none stroke-[#071638] stroke-[4]"
         strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
       >
-        <circle cx="28" cy="28" r="17" />
-        <path d="m41 41 15 15" />
+        <path d="M18 19h28M18 32h22M18 45h17" />
+        <path d="M45 36c5 0 8 3 8 7s-3 7-8 7h-8V36h8Z" fill="#f0faf3" />
+        <path d="M39 30v26" />
       </svg>
     );
   }
 
-  if (type === "clipboard") {
+  if (type === "match") {
     return (
       <svg
         viewBox="0 0 64 64"
-        className="h-[44px] w-[44px] fill-none stroke-[#071638] stroke-[3.5]"
+        className="h-[42px] w-[42px] fill-none stroke-[#071638] stroke-[3.6]"
         strokeLinecap="round"
         strokeLinejoin="round"
+        aria-hidden="true"
       >
-        <path d="M22 10h20l3 8h8v39H11V18h8l3-8Z" fill="#fff" />
-        <path d="M23 29h18M23 40h18M18 29l2 2 4-5M18 40l2 2 4-5" />
+        <path d="M15 18h34M15 32h34M15 46h34" />
+        <path d="M23 18a5 5 0 1 0 0 .1M41 32a5 5 0 1 0 0 .1M29 46a5 5 0 1 0 0 .1" fill="#fff" />
       </svg>
     );
   }
@@ -31,88 +35,87 @@ function StepIcon({ type }: { type: string }) {
   return (
     <svg
       viewBox="0 0 64 64"
-      className="h-[44px] w-[44px] fill-none stroke-[#071638] stroke-[3.5]"
+      className="h-[42px] w-[42px] fill-none stroke-[#071638] stroke-[3.6]"
       strokeLinecap="round"
       strokeLinejoin="round"
+      aria-hidden="true"
     >
-      <path d="M14 8h32l5 6v42H14V8Z" fill="#fff" />
-      <path d="M23 24h16M23 34h12M23 44h10" />
-      <path d="m39 43 12-12 5 5-12 12-7 2 2-7Z" fill="#fff4b8" />
+      <path d="M16 17h32v30H16V17Z" fill="#fff" />
+      <path d="m21 31 7 7 15-17" />
+      <path d="M13 51h38" />
     </svg>
   );
 }
 
 function HowStep({
   number,
-  color,
   title,
   text,
   icon,
 }: {
   number: string;
-  color: string;
   title: string;
   text: string;
   icon: string;
 }) {
-  const titleColor =
-    number === "1"
-      ? "text-[#08783f]"
-      : number === "2"
-        ? "text-[#5b2bbd]"
-        : "text-[#0e65c7]";
-
-  const circleBg = number === "2" ? "bg-[#f1eafe]" : "bg-[#edf7ef]";
-
   return (
-    <div className="relative text-center before:absolute before:left-[-28%] before:top-[40px] before:hidden before:h-0 before:w-[60%] before:border-t before:border-dashed before:border-[#aeb6c6] md:before:block first:before:hidden">
-      <span
-        className={`absolute left-[24%] top-[2px] z-10 grid h-[30px] w-[30px] place-items-center rounded-full ${color} text-[16px] font-black text-white`}
-      >
-        {number}
-      </span>
-      <div className={`mx-auto grid h-[66px] w-[66px] place-items-center rounded-full ${circleBg}`}>
-        <StepIcon type={icon} />
+    <div className="relative rounded-[22px] border border-[#dfe8ef] bg-white p-5 text-left shadow-[0_12px_30px_rgba(7,22,56,0.045)] md:text-center">
+      <div className="flex items-start gap-4 md:block">
+        <div className="relative shrink-0 md:mx-auto">
+          <span className="absolute -right-2 -top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-[#08783f] text-[14px] font-black text-white shadow-[0_8px_18px_rgba(8,120,63,0.22)]">
+            {number}
+          </span>
+          <div className="grid h-[70px] w-[70px] place-items-center rounded-[22px] bg-[#f0faf3] ring-1 ring-[#d8eddd]">
+            <StepIcon type={icon} />
+          </div>
+        </div>
+
+        <div className="min-w-0 md:mt-4">
+          <h3 className="text-[19px] font-black leading-[1.08] tracking-[-0.035em] text-[#071638] md:text-[20px]">
+            {title}
+          </h3>
+          <p className="mt-2 text-[14px] font-semibold leading-[1.5] text-[#556177] md:mx-auto md:max-w-[230px]">
+            {text}
+          </p>
+        </div>
       </div>
-      <h3 className={`mt-[13px] text-[15px] font-black leading-none tracking-[-0.03em] ${titleColor}`}>
-        {title}
-      </h3>
-      <p className="mx-auto mt-[7px] max-w-[190px] text-[12px] font-semibold leading-[1.4] text-[#172545]">
-        {text}
-      </p>
     </div>
   );
 }
 
 export default function HowItWorks() {
   return (
-    <section id="how" className="px-[44px] py-[18px]">
-      <h2 className="text-center text-[27px] font-black leading-none tracking-[-0.05em] text-[#071638]">
-        How Quickola works
-      </h2>
+    <section id="how" className="bg-[#f7f9fb] px-5 py-12 sm:px-8 lg:px-[60px] lg:py-14">
+      <div className="mx-auto max-w-[1120px]">
+        <div className="mx-auto max-w-[680px] text-center">
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#08783f]">
+            How it works
+          </p>
+          <h2 className="mt-3 text-[34px] font-extrabold leading-[1.05] tracking-[-0.04em] text-[#071638] sm:text-[44px]">
+            Check the price first. Book only if it makes sense.
+          </h2>
+        </div>
 
-      <div className="mx-auto mt-[15px] grid max-w-[920px] gap-[18px] md:grid-cols-3">
-        <HowStep
-          number="1"
-          color="bg-[#07813c]"
-          title="Tell us what you need"
-          text="Quick and easy. Takes less than a minute."
-          icon="form"
-        />
-        <HowStep
-          number="2"
-          color="bg-[#5b2bbd]"
-          title="We check local options"
-          text="We compare prices, availability and reviews."
-          icon="search"
-        />
-        <HowStep
-          number="3"
-          color="bg-[#0e65c7]"
-          title="You get the best options"
-          text="Choose what works best for you."
-          icon="clipboard"
-        />
+        <div className="mx-auto mt-8 grid max-w-[980px] gap-4 md:grid-cols-3">
+          <HowStep
+            number="1"
+            title="Choose a service"
+            text="Pick what you need and enter your London area."
+            icon="form"
+          />
+          <HowStep
+            number="2"
+            title="See the fair range"
+            text="Quickola shows what the job should usually cost."
+            icon="price"
+          />
+          <HowStep
+            number="3"
+            title="Request a match"
+            text="Continue only if you want help finding a local provider."
+            icon="match"
+          />
+        </div>
       </div>
     </section>
   );

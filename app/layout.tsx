@@ -11,41 +11,41 @@ const nunito = Nunito_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.quickola.co.uk"),
   title: {
-    default: "Quickola | Check Fair Cleaning Prices Before You Book",
+    default: "Quickola | Check Fair Local Service Prices Before You Book",
     template: "%s",
   },
   description:
-    "Check fair cleaning prices before you book. See local price ranges for regular, deep and end of tenancy cleaning, then request a cleaner only if useful.",
+    "Check fair local service prices before you book. Compare guide prices for cleaning, removals, plumbers, locksmiths and more, then request a match only if useful.",
   applicationName: "Quickola",
   authors: [{ name: "Quickola" }],
   creator: "Quickola",
   publisher: "Quickola",
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: "/quickola/logo-mark.png",
+    apple: "/quickola/logo-mark.png",
   },
   openGraph: {
     type: "website",
     url: "https://www.quickola.co.uk",
     siteName: "Quickola",
-    title: "Quickola | Check Fair Cleaning Prices Before You Book",
+    title: "Quickola | Check Fair Local Service Prices Before You Book",
     description:
-      "Check fair cleaning prices before you book. See local ranges and request a cleaner only if useful.",
+      "Check fair local service prices before you book. Compare cleaning, removals, plumbers, locksmiths and more.",
     images: [
       {
-        url: "/logo.png",
+        url: "/quickola/logo-mark.png",
         width: 1200,
         height: 630,
-        alt: "Quickola cleaning price guide",
+        alt: "Quickola local service price guide",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Quickola | Check Fair Cleaning Prices Before You Book",
+    title: "Quickola | Check Fair Local Service Prices Before You Book",
     description:
-      "Check fair cleaning prices before you book. See local ranges and request a cleaner only if useful.",
-    images: ["/logo.png"],
+      "Check fair local service prices before you book. Compare cleaning, removals, plumbers, locksmiths and more.",
+    images: ["/quickola/logo-mark.png"],
   },
   robots: {
     index: true,

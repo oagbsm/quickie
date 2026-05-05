@@ -17,35 +17,35 @@ export default function BusinessCTA() {
 
           <div>
             <h2 className="text-[26px] font-bold leading-none tracking-[-0.015em] text-[#071638] sm:text-[28px]">
-              Are you a cleaner?
+              Are you a local service provider?
             </h2>
 
             <p className="mt-2 text-[15px] font-semibold tracking-[0em] text-[#172545] sm:text-[16px]">
-              Join Quickola for free and receive local cleaning requests when customers need help.
+              Join Quickola for free and receive local job requests when customers check prices in your area.
             </p>
 
             <div className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[12px] font-extrabold text-[#172545] sm:justify-start lg:gap-x-8 lg:text-[13px]">
-              <Tick>Free cleaner profile</Tick>
+              <Tick>Free provider profile</Tick>
               <Tick>No contracts</Tick>
-              <Tick>No monthly fees</Tick>
-              <Tick>Local cleaning requests</Tick>
+              <Tick>No win, no fee</Tick>
+              <Tick>Local service requests</Tick>
             </div>
           </div>
         </div>
 
         <div className="w-full text-center lg:w-auto">
           <a
-            href="/for-cleaners"
+            href="/for-providers"
             className="inline-flex h-[48px] w-full max-w-[260px] items-center justify-center gap-[22px] rounded-[10px] bg-[#061536] px-[22px] text-[16px] font-black tracking-[-0.03em] text-white shadow-[0_14px_28px_rgba(6,21,54,0.18)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(6,21,54,0.22)] lg:h-[52px] lg:w-auto lg:min-w-[210px]"
           >
-            Join as a cleaner
+            Join as a provider
             <span className="grid h-8 w-8 place-items-center rounded-full bg-[#9adc36] text-[22px] leading-none text-[#061536]">
               →
             </span>
           </a>
 
           <p className="mt-2 text-[12px] font-bold text-[#172545] sm:text-[13px]">
-            Free to join while we launch.
+            Free to join. Pay only after completed jobs.
           </p>
         </div>
       </div>

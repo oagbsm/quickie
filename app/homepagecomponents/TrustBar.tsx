@@ -1,29 +1,29 @@
 const trustItems = [
   {
-    title: "No paid ranking",
-    text: "Cleaners can’t pay to appear first or buy fake top spots.",
-    icon: "shield",
-  },
-  {
-    title: "Fair price ranges",
-    text: "See what cleaning should usually cost in your area first.",
+    title: "Price-first",
+    text: "Check the fair local range before you decide what to do next.",
     icon: "tag",
   },
   {
-    title: "Checked local cleaners",
-    text: "We focus on local cleaners with clear pricing and availability.",
-    icon: "people",
+    title: "15 service categories",
+    text: "Cleaners, plumbers, removals, locksmiths, gardeners and more.",
+    icon: "grid",
   },
   {
-    title: "No quote chasing",
-    text: "Submit once and let Quickola help find a suitable match.",
+    title: "No booking pressure",
+    text: "See the guide price first. Request a match only if useful.",
+    icon: "shield",
+  },
+  {
+    title: "Local request matching",
+    text: "Submit once and Quickola can help find a suitable local provider.",
     icon: "star",
   },
 ];
 
 function TrustIcon({ type }: { type: string }) {
   const base =
-    "h-[42px] w-[42px] shrink-0 fill-none stroke-[#08783f] stroke-[2.1]";
+    "h-[34px] w-[34px] shrink-0 fill-none stroke-[#08783f] stroke-[2.2]";
 
   if (type === "tag") {
     return (
@@ -40,7 +40,7 @@ function TrustIcon({ type }: { type: string }) {
     );
   }
 
-  if (type === "people") {
+  if (type === "grid") {
     return (
       <svg
         viewBox="0 0 24 24"
@@ -49,10 +49,7 @@ function TrustIcon({ type }: { type: string }) {
         strokeLinejoin="round"
         aria-hidden="true"
       >
-        <path d="M16.5 19.2v-1.3a3.5 3.5 0 0 0-3.5-3.5h-2a3.5 3.5 0 0 0-3.5 3.5v1.3" />
-        <path d="M8.8 8.6a3.2 3.2 0 1 0 6.4 0 3.2 3.2 0 0 0-6.4 0Z" />
-        <path d="M18 19.2v-1.1a3.2 3.2 0 0 0-2.3-3" />
-        <path d="M16.5 6.3a2.7 2.7 0 0 1 0 5.2" />
+        <path d="M4.5 4.5h6v6h-6zM13.5 4.5h6v6h-6zM4.5 13.5h6v6h-6zM13.5 13.5h6v6h-6z" />
       </svg>
     );
   }
@@ -87,25 +84,25 @@ function TrustIcon({ type }: { type: string }) {
 
 export default function TrustBar() {
   return (
-    <section id="trust" className="relative z-20 -mt-[38px] bg-white px-5 pb-4 sm:px-8 lg:px-[60px]">
-      <div className="mx-auto max-w-[1220px] overflow-hidden rounded-[24px] border border-[#dfe5ee] bg-white shadow-[0_24px_70px_rgba(7,22,56,0.12)]">
+    <section id="trust" className="relative z-20 -mt-[34px] bg-white px-5 pb-5 sm:px-8 lg:px-[60px]">
+      <div className="mx-auto max-w-[1220px] overflow-hidden rounded-[24px] border border-[#dfe5ee] bg-white shadow-[0_22px_60px_rgba(7,22,56,0.10)]">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4">
           {trustItems.map((item, index) => (
             <div
               key={item.title}
-              className={`group flex min-h-[138px] items-center gap-[18px] bg-white px-6 py-6 transition hover:bg-[#f8fbf9] lg:px-7 ${
+              className={`group flex min-h-[124px] items-center gap-4 bg-white px-5 py-5 transition hover:bg-[#f8fbf9] lg:px-6 ${
                 index > 0 ? "lg:border-l lg:border-[#dfe5ee]" : ""
               } ${index > 1 ? "sm:border-t sm:border-[#dfe5ee] lg:border-t-0" : ""}`}
             >
-              <div className="grid h-[58px] w-[58px] shrink-0 place-items-center rounded-[18px] bg-[#f1faf3] ring-1 ring-[#d8eddd] transition group-hover:scale-[1.03]">
+              <div className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[17px] bg-[#f1faf3] ring-1 ring-[#d8eddd] transition group-hover:scale-[1.03]">
                 <TrustIcon type={item.icon} />
               </div>
 
               <div>
-                <h3 className="text-[18px] font-extrabold leading-[1.15] tracking-[-0.008em] text-[#071638]">
+                <h3 className="text-[17px] font-extrabold leading-[1.12] tracking-[-0.015em] text-[#071638]">
                   {item.title}
                 </h3>
-                <p className="mt-2 max-w-[240px] text-[14.5px] font-semibold leading-[1.45] tracking-[0em] text-[#44506a]">
+                <p className="mt-1.5 max-w-[240px] text-[13.5px] font-semibold leading-[1.42] text-[#44506a]">
                   {item.text}
                 </p>
               </div>

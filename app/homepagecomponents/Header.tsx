@@ -3,7 +3,7 @@
 const asset = (path: string) => `/quickola/${path}`;
 
 function scrollToPriceForm() {
-  const form = document.getElementById("price-check-form");
+  const form = document.getElementById("price-check-form") ?? document.getElementById("hero-price-form");
   const input = document.getElementById("service-input") as HTMLInputElement | null;
 
   form?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -23,7 +23,7 @@ export default function Header() {
             alt="Quickola"
             className="h-[48px] w-[48px] object-contain"
           />
-          <span className="text-[31px] font-bold leading-none tracking-[0.035em] text-[#071638]">
+          <span className="text-[30px] font-extrabold leading-none tracking-[-0.035em] text-[#071638]">
             Quickola
           </span>
         </a>
@@ -32,23 +32,31 @@ export default function Header() {
           <a className="transition hover:text-[#08783f]" href="#how">
             How it works
           </a>
-          <a className="transition hover:text-[#08783f]" href="/cleaning-london">
-            Cleaning prices
-          </a>
+          <button type="button" onClick={scrollToPriceForm} className="transition hover:text-[#08783f]">
+            Services
+          </button>
           <a className="transition hover:text-[#08783f]" href="#trust">
-            Why Quickola
+            Why price-first
           </a>
         </nav>
 
         <button
           type="button"
           onClick={scrollToPriceForm}
-          className="hidden h-[47px] items-center gap-[13px] rounded-[11px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-[20px] text-[15px] font-bold tracking-[0.01em] text-white shadow-[0_10px_22px_rgba(0,104,47,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(0,104,47,0.28)] sm:flex"
+          className="hidden h-[47px] items-center gap-[13px] rounded-[12px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-[20px] text-[15px] font-extrabold tracking-[-0.005em] text-white shadow-[0_10px_22px_rgba(0,104,47,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(0,104,47,0.28)] sm:flex"
         >
-          Check fair price
+          Check price
           <span className="grid h-[27px] w-[27px] place-items-center rounded-full bg-white text-[19px] leading-none text-[#08783f]">
             →
           </span>
+        </button>
+        <button
+          type="button"
+          onClick={scrollToPriceForm}
+          className="grid h-11 w-11 place-items-center rounded-[12px] border border-[#dfe5ee] bg-white text-[#071638] shadow-[0_8px_18px_rgba(7,22,56,0.06)] sm:hidden"
+          aria-label="Check fair price"
+        >
+          <span className="text-[23px] leading-none text-[#08783f]">→</span>
         </button>
       </div>
     </header>
