@@ -19,12 +19,40 @@ type ResultsPageProps = {
 function formatParam(value: string | undefined, fallback: string) {
   if (!value) return fallback;
 
-  return value
+  const cleaned = value
     .replace(/-/g, " ")
     .replace(/_/g, " ")
     .replace(/\s+/g, " ")
     .trim()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    .toLowerCase();
+
+  const labels: Record<string, string> = {
+    asap: "As soon as possible",
+    today: "Today",
+    tomorrow: "Tomorrow",
+    "this week": "This week",
+    flexible: "Flexible",
+    cleaning: "Cleaning",
+    "regular clean": "Regular cleaning",
+    "regular cleaning": "Regular cleaning",
+    "deep clean": "Deep clean",
+    "deep cleaning": "Deep cleaning",
+    "end of tenancy": "End of tenancy",
+    "end of tenancy clean": "End of tenancy clean",
+    "flat apartment": "Flat / apartment",
+    "flat / apartment": "Flat / apartment",
+    house: "House",
+    studio: "Studio",
+    "room shared": "Room / shared home",
+    "1 bedroom": "1 bedroom",
+    "2 bedrooms": "2 bedrooms",
+    "3 bedrooms": "3 bedrooms",
+    "4 plus bedrooms": "4+ bedrooms",
+  };
+
+  if (labels[cleaned]) return labels[cleaned];
+
+  return cleaned.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function slugify(value: string | undefined, fallback: string) {
@@ -49,12 +77,7 @@ function Header() {
             Quickola
           </span>
         </a>
-
-        <div className="hidden items-center gap-2 text-[13px] font-semibold text-[#071638] sm:flex">
-          <span className="text-[#08783f]">▣</span>
-          Secure & private
-        </div>
-
+        {/* Secure & private block removed */}
         <a
           href="/"
           className="inline-flex h-9 shrink-0 items-center justify-center rounded-[10px] border border-[#dfe5ee] bg-white px-3 text-[13px] font-semibold text-[#071638] shadow-[0_5px_12px_rgba(7,22,56,0.03)] transition hover:-translate-y-0.5 hover:border-[#b7c2d2] sm:h-10 sm:px-4 sm:text-[14px]"
@@ -169,15 +192,12 @@ function Hero({ area }: { area: string }) {
             Request received — we’re finding your cleaner <span className="text-[#08783f]">now.</span>
           </h1>
           <p className="mt-3 max-w-[720px] text-[14px] font-medium leading-[1.5] text-[#172545] sm:text-[16px]">
-            We’re checking suitable local cleaners in {area}. Your best match will be sent by email shortly.
+            We’re checking suitable cleaners in {area} and will email your best match shortly.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="inline-flex items-center gap-2 rounded-[12px] bg-[#eff9f2] px-3 py-2 text-[13px] font-semibold text-[#08783f] ring-1 ring-[#d7ecdD]">
               <span>●</span>
               Status: checking local cleaners
-            </span>
-            <span className="hidden items-center gap-2 rounded-[12px] bg-white/78 px-3 py-2 text-[13px] font-medium text-[#44506a] ring-1 ring-[#dfeee4] sm:inline-flex">
-              Price checked first. Smart move.
             </span>
           </div>
         </div>
@@ -210,19 +230,9 @@ function FairPriceCard({ service, area }: { service: string; area: string }) {
         Typical range for {service} in <span className="font-semibold text-white">{area}</span>
       </p>
 
-      <div className="mt-4 grid grid-cols-3 gap-0 border-t border-white/14 pt-3 text-center">
-        {[
-          ["Fair price", "guide", <ShieldIcon key="a" />],
-          ["Manual", "review", <CheckIcon key="b" />],
-          ["Private", "request", <HomeIcon key="c" />],
-        ].map(([top, bottom, icon]) => (
-          <div key={String(top)} className="px-2">
-            <div className="mx-auto hidden h-9 w-9 place-items-center rounded-full bg-white/12 text-white sm:grid">{icon}</div>
-            <p className="mt-3 text-[13px] font-semibold leading-[1.25] text-white/92">{top}</p>
-            <p className="text-[13px] font-medium leading-[1.25] text-white/70">{bottom}</p>
-          </div>
-        ))}
-      </div>
+      <p className="mt-4 border-t border-white/14 pt-3 text-[13px] font-medium leading-[1.6] text-white/76">
+        Fair price guide · Manual review · Private request
+      </p>
     </section>
   );
 }
@@ -247,7 +257,7 @@ function SummaryCard({ service, area, cleaningType, propertyType, bedrooms, time
     <section className="rounded-[22px] border border-[#e1e6ee] bg-white p-4 shadow-[0_14px_38px_rgba(7,22,56,0.045)] sm:p-5">
       <div className="flex items-center justify-between gap-4 border-b border-[#edf0f5] pb-4">
         <h2 className="text-[14px] font-semibold uppercase tracking-[0.08em] text-[#071638]">Your request summary</h2>
-        <a href={`/check-price?service=${slugify(service, "cleaning")}&area=${slugify(area, "ilford")}`} className="text-[14px] font-semibold text-[#08783f] hover:underline">
+        <a href={`/check-price?service=${slugify(service, "cleaning")}&area=${slugify(area, "ilford")}`} className="text-[13px] font-medium text-[#08783f]/80 hover:text-[#08783f] hover:underline">
           Edit
         </a>
       </div>
@@ -274,7 +284,10 @@ function Timeline() {
 
   return (
     <section className="rounded-[22px] border border-[#e1e6ee] bg-white p-4 shadow-[0_14px_38px_rgba(7,22,56,0.045)] sm:p-5">
-      <h2 className="text-[22px] font-semibold tracking-[-0.02em] text-[#071638]">What happens next?</h2>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <h2 className="text-[22px] font-semibold tracking-[-0.02em] text-[#071638]">What happens next?</h2>
+        <p className="text-[13px] font-medium text-[#657089]">No payment taken. You choose whether to book.</p>
+      </div>
       <div className="mt-5 grid gap-4 lg:grid-cols-3 lg:gap-0">
         {steps.map(([number, title, text, icon], index) => (
           <div key={String(title)} className="relative flex gap-4 lg:block lg:px-6 lg:text-center">
@@ -382,12 +395,7 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
           <BottomActions />
         </div>
 
-        <div className="mt-5 grid gap-3 rounded-[18px] border border-[#e1e6ee] bg-white p-4 text-[13px] font-medium text-[#657089] shadow-[0_8px_22px_rgba(7,22,56,0.03)] sm:grid-cols-4">
-          <p><span className="font-semibold text-[#08783f]">⌂</span> Fair price guide</p>
-          <p><span className="font-semibold text-[#08783f]">☆</span> Manual cleaner checks</p>
-          <p><span className="font-semibold text-[#08783f]">▣</span> Private request</p>
-          <p><span className="font-semibold text-[#08783f]">♡</span> No public posting</p>
-        </div>
+        {/* Trust strip removed */}
       </section>
 
       <Footer />

@@ -285,7 +285,7 @@ function LeftPanel({ service, area }: { service: string; area: string }) {
         See the fair price first, then request a checked local cleaner if you want help booking.
       </p>
 
-      <div className="mt-3 inline-flex items-center gap-2 rounded-[12px] bg-[#eaf8ef] px-3 py-2 text-[12px] font-semibold text-[#08783f] ring-1 ring-[#d8eddd] sm:mt-4 sm:rounded-[14px] sm:px-4 sm:py-2.5 sm:text-[13px]">
+      <div className="mt-3 inline-flex items-center gap-2 rounded-[12px] bg-[#eaf8ef] px-3 py-2 text-[12px] font-semibold text-[#08783f] ring-1 ring-[#d8eddd] sm:mt-4 sm:rounded-[14px] sm:px-4 sm:py-2.5 sm:text-[13px] lg:hidden">
         <ShieldIcon /> No paid ranking · No quote spam
       </div>
 

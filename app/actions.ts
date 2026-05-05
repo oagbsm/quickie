@@ -113,7 +113,7 @@ export async function updateBusinessStatus(formData: FormData) {
     throw new Error(`Could not update business: ${error.message}`);
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/qk-ops-7f3a");
 }
 
 export async function updateRequestStatus(formData: FormData) {
@@ -190,7 +190,7 @@ export async function updateRequestStatus(formData: FormData) {
     }
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/qk-ops-7f3a");
 }
 
 export async function matchRequestToBusiness(formData: FormData) {
@@ -214,7 +214,7 @@ export async function matchRequestToBusiness(formData: FormData) {
     throw new Error(`Could not match request: ${error.message}`);
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/qk-ops-7f3a");
 }
 
 export async function deleteRequest(formData: FormData) {
@@ -231,7 +231,7 @@ export async function deleteRequest(formData: FormData) {
     throw new Error(`Could not delete request: ${error.message}`);
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/qk-ops-7f3a");
 }
 
 export async function deleteBusiness(formData: FormData) {
@@ -248,7 +248,7 @@ export async function deleteBusiness(formData: FormData) {
     throw new Error(`Could not delete business: ${error.message}`);
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/qk-ops-7f3a");
 }
 
 export async function updateAdminNotes(formData: FormData) {
@@ -276,7 +276,7 @@ export async function updateAdminNotes(formData: FormData) {
     throw new Error(`Could not update notes: ${error.message}`);
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/qk-ops-7f3a");
 }
 
 export async function createAdminRequest(formData: FormData) {
@@ -305,5 +305,5 @@ export async function createAdminRequest(formData: FormData) {
     throw new Error(`Could not create request: ${error.message}`);
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/qk-ops-7f3a");
 }
