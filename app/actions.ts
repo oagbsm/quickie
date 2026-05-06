@@ -2,15 +2,76 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { Resend } from "resend";
 import { supabase } from "@/lib/supabase";
 
 function clean(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+async function sendAdminRequestAlert({
+  service,
+  area,
+  postcode,
+  timeNeeded,
+  email,
+  phone,
+  details,
+}: {
+  service: string;
+  area: string;
+  postcode?: string;
+  timeNeeded: string;
+  email: string;
+  phone?: string | null;
+  details: string;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL;
+  const fromEmail = process.env.FROM_EMAIL || "Quickola <onboarding@resend.dev>";
+
+  if (!apiKey || !adminEmail) {
+    console.warn("Admin request alert skipped: missing RESEND_API_KEY or ADMIN_ALERT_EMAIL.");
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+
+  try {
+    const displayService = service.replace(/-/g, " ");
+    const displayArea = area.replace(/-/g, " ");
+
+    await resend.emails.send({
+      from: fromEmail,
+      to: adminEmail,
+      subject: `New Quickola request: ${displayService} in ${displayArea}`,
+      text: `
+New Quickola request
+
+Service: ${displayService}
+Location: ${displayArea}
+Postcode: ${postcode || "Not provided"}
+Needed: ${timeNeeded.replace(/-/g, " ")}
+
+Customer email: ${email}
+Phone: ${phone || "Not provided"}
+
+Details:
+${details || "No details"}
+
+Open admin:
+${process.env.NEXT_PUBLIC_SITE_URL || "https://quickola.com"}/qk-ops-7f3a
+      `.trim(),
+    });
+  } catch (error) {
+    console.error("Failed to send admin request alert:", error);
+  }
+}
+
 export async function createRequest(formData: FormData) {
   const service = clean(formData.get("service")) || "cleaner";
   const area = clean(formData.get("area")) || "ilford";
+  const postcode = clean(formData.get("postcode")).toUpperCase();
   const details = clean(formData.get("details"));
   const phone = clean(formData.get("phone"));
   const email = clean(formData.get("email"));
@@ -19,6 +80,7 @@ export async function createRequest(formData: FormData) {
   const requestPayload = {
     service,
     area,
+    postcode: postcode || null,
     details,
     phone,
     email,
@@ -40,7 +102,7 @@ export async function createRequest(formData: FormData) {
     throw new Error(`Could not save request: ${error.message}`);
   }
   redirect(
-    `/results?service=${encodeURIComponent(service)}&area=${encodeURIComponent(area)}&phone=${encodeURIComponent(phone)}&saved=true`
+    `/results?service=${encodeURIComponent(service)}&area=${encodeURIComponent(area)}&postcode=${encodeURIComponent(postcode)}&phone=${encodeURIComponent(phone)}&saved=true`
   );
 }
 
@@ -282,6 +344,7 @@ export async function updateAdminNotes(formData: FormData) {
 export async function createAdminRequest(formData: FormData) {
   const service = clean(formData.get("service"));
   const area = clean(formData.get("area"));
+  const postcode = clean(formData.get("postcode")).toUpperCase();
   const details = clean(formData.get("details"));
   const phone = clean(formData.get("phone"));
   const timeNeeded = clean(formData.get("time_needed")) || "today";
@@ -293,6 +356,7 @@ export async function createAdminRequest(formData: FormData) {
   const { error } = await supabase.from("requests").insert({
     service,
     area,
+    postcode: postcode || null,
     details,
     phone,
     time_needed: timeNeeded,
@@ -306,4 +370,86 @@ export async function createAdminRequest(formData: FormData) {
   }
 
   revalidatePath("/qk-ops-7f3a");
+}
+
+export async function saveCheckPriceRequest(formData: FormData) {
+  const service = clean(formData.get("service")) || "cleaning";
+  const area = clean(formData.get("area")) || "london";
+  const postcode = clean(formData.get("postcode")).toUpperCase();
+  const jobType = clean(formData.get("job_type"));
+  const jobDetail = clean(formData.get("job_detail"));
+  const timeNeeded = clean(formData.get("time_needed")) || "this-week";
+  const email = clean(formData.get("email"));
+  const phone = clean(formData.get("phone"));
+  const phoneLooksValid = !phone || /^07[0-9]{9}$/.test(phone);
+
+  if (!phoneLooksValid) {
+    throw new Error("Please enter an 11-digit UK mobile number starting with 07, or leave it blank.");
+  }
+
+  const source = clean(formData.get("source")) || "check-price";
+
+  if (!email) {
+    throw new Error("Email is required.");
+  }
+
+  const details = [
+    jobType ? `Job type: ${jobType}` : "",
+    jobDetail ? `Job detail: ${jobDetail}` : "",
+    postcode ? `Postcode: ${postcode}` : "",
+    timeNeeded ? `Time needed: ${timeNeeded}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const requestPayload = {
+    service,
+    area,
+    postcode: postcode || null,
+    details,
+    phone: phone || null,
+    email,
+    time_needed: timeNeeded,
+    status: "new",
+    source,
+  };
+
+  let { error } = await supabase.from("requests").insert(requestPayload);
+
+  if (error && error.message.toLowerCase().includes("email")) {
+    const { email: _email, ...requestPayloadWithoutEmail } = requestPayload;
+    const retry = await supabase.from("requests").insert(requestPayloadWithoutEmail);
+    error = retry.error;
+  }
+
+  if (error) {
+    console.error("Failed to save check-price request:", error);
+    throw new Error(`Could not save request: ${error.message}`);
+  }
+
+  await sendAdminRequestAlert({
+    service,
+    area,
+    postcode,
+    timeNeeded,
+    email,
+    phone,
+    details,
+  });
+
+  const params = new URLSearchParams({
+    service,
+    area,
+    postcode,
+    job_type: jobType,
+    job_detail: jobDetail,
+    time_needed: timeNeeded,
+    email,
+  });
+
+  if (phone) {
+    params.set("phone", phone);
+  }
+
+  redirect(`/results?${params.toString()}`);
 }

@@ -1,5 +1,6 @@
-import Link from "next/link";
+ import Link from "next/link";
 import Footer from "../components/Footer";
+import { saveCheckPriceRequest } from "../actions";
 
 type CheckPricePageProps = {
   searchParams?: Promise<{
@@ -526,6 +527,15 @@ function PhoneIcon() {
   );
 }
 
+function LocationIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 21s6-5.2 6-11a6 6 0 0 0-12 0c0 5.8 6 11 6 11Z" />
+      <circle cx="12" cy="10" r="2.2" />
+    </svg>
+  );
+}
+
 function SelectField({
   label,
   name,
@@ -566,6 +576,11 @@ function TextInput({
   icon,
   type = "text",
   required,
+  pattern,
+  inputMode,
+  title,
+  minLength,
+  maxLength,
 }: {
   label: string;
   name: string;
@@ -573,6 +588,11 @@ function TextInput({
   icon: React.ReactNode;
   type?: string;
   required?: boolean;
+  pattern?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  title?: string;
+  minLength?: number;
+  maxLength?: number;
 }) {
   return (
     <label className="block">
@@ -584,6 +604,11 @@ function TextInput({
           type={type}
           placeholder={placeholder}
           required={required}
+          pattern={pattern}
+          inputMode={inputMode}
+          title={title}
+          minLength={minLength}
+          maxLength={maxLength}
           className="min-w-0 flex-1 bg-transparent text-[14px] font-bold text-[#071638] outline-none placeholder:text-[#8b94a7]"
         />
       </div>
@@ -673,7 +698,7 @@ function DetailsForm({ config, areaSlug, area }: { config: ServiceConfig; areaSl
         <p className="mt-1 text-[13px] font-semibold text-[#657089]">Takes around 30 seconds</p>
       </div>
 
-      <form action="/results" method="GET" className="mt-5 space-y-3">
+      <form action={saveCheckPriceRequest} className="mt-5 space-y-3">
         <input type="hidden" name="service" value={config.slug} />
         <input type="hidden" name="area" value={areaSlug} />
         <input type="hidden" name="source" value="check-price" />
@@ -681,11 +706,47 @@ function DetailsForm({ config, areaSlug, area }: { config: ServiceConfig; areaSl
         <SelectField label="What job do you need?" name="job_type" options={config.jobOptions} icon={<BriefcaseIcon />} />
         <SelectField label={config.detailLabel} name="job_detail" options={config.detailOptions} icon={<TagIcon />} />
         <SelectField label="When do you need it?" name="time_needed" options={urgencyOptions} icon={<CalendarIcon />} />
-        <TextInput label="Your email" name="email" type="email" placeholder="you@example.com" icon={<MailIcon />} required />
-        <p className="-mt-2 text-[12px] font-bold text-[#08783f]">We’ll send your best next step here.</p>
-        <TextInput label="Phone (optional)" name="phone" type="tel" placeholder="07xxx xxxxxx" icon={<PhoneIcon />} />
-        <p className="-mt-2 text-[12px] font-bold text-[#08783f]">Useful if the job is urgent.</p>
 
+        <TextInput
+          label="Postcode (optional)"
+          name="postcode"
+          type="text"
+          placeholder="e.g. IG1"
+          icon={<LocationIcon />}
+          maxLength={10}
+          title="Enter a UK postcode or leave this blank."
+        />
+        <p className="-mt-2 text-[12px] font-bold text-[#08783f]">
+          Optional — helps us find closer providers.
+        </p>
+
+        <TextInput
+          label="Your email"
+          name="email"
+          type="email"
+          placeholder="you@example.com"
+          icon={<MailIcon />}
+          required
+        />
+        <p className="-mt-2 text-[12px] font-bold text-[#08783f]">
+          We’ll send your fair price and best next step here.
+        </p>
+
+        <TextInput
+          label="Phone / WhatsApp (optional)"
+          name="phone"
+          type="tel"
+          placeholder="07xxx xxxxxx"
+          icon={<PhoneIcon />}
+          pattern="07[0-9]{9}"
+          inputMode="numeric"
+          title="Enter an 11-digit UK mobile number starting with 07."
+          minLength={11}
+          maxLength={11}
+        />
+        <p className="-mt-2 text-[12px] font-bold text-[#08783f]">
+          Optional — UK mobile only, 11 digits starting with 07.
+        </p>
         <button
           type="submit"
           className="flex h-[52px] w-full items-center justify-center gap-3 rounded-[13px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[16px] font-black text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5"

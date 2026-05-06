@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation";
 const asset = (path: string) => `/quickola/${path}`;
 
 const popularSearches = [
-  { label: "Cleaning", icon: "✣", service: "cleaning", area: "london" },
-  { label: "Man and van", icon: "▱", service: "man-and-van", area: "london" },
-  { label: "Plumber", icon: "◈", service: "plumber", area: "london" },
-  { label: "End of tenancy", icon: "⌂", service: "end-of-tenancy-cleaning", area: "london" },
+{ label: "Cleaning", icon: "✣", service: "cleaning", area: "east-london" },
+{ label: "Man and van", icon: "▱", service: "man-and-van", area: "east-london" },
+{ label: "Plumber", icon: "◈", service: "plumber", area: "east-london" },
+{ label: "End of tenancy", icon: "⌂", service: "end-of-tenancy-cleaning", area: "east-london" },
 ];
 
 const serviceSuggestions = [
@@ -193,7 +193,7 @@ function SuggestionMenu({
 export default function Hero() {
   const router = useRouter();
   const [service, setService] = useState("");
-  const [area, setArea] = useState("London");
+  const [area, setArea] = useState("");
   const [activeField, setActiveField] = useState<"service" | "area" | null>(null);
   const [errors, setErrors] = useState<{ service?: string; area?: string }>({});
   const deferredService = useDeferredValue(service);
@@ -377,7 +377,7 @@ export default function Hero() {
                     }}
                     autoComplete="off"
                     className="min-w-0 flex-1 bg-transparent text-[16px] font-semibold tracking-[-0.005em] text-[#071638] outline-none placeholder:text-[#8b94a7]"
-                    placeholder="e.g. London, Ilford, E7"
+                    placeholder="e.g. Fulham, Ilford"
                   />
                   <TargetIcon />
                 </div>
