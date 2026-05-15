@@ -9,7 +9,9 @@ export default function Home() {
     <main className="min-h-screen bg-white text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif]">
       <Header />
       <Hero />
-      <TrustBar />
+      <div className="hidden sm:block">
+        <TrustBar />
+      </div>
       <BusinessCTA />
       <Footer />
     </main>

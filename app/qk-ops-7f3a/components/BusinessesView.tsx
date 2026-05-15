@@ -1,8 +1,20 @@
-import type { BusinessRow } from "../types";
+import type { BusinessRow, RequestRow } from "../types";
 import { formatLabel, getBusinessStatusTone, shortDate } from "../lib/admin-utils";
 import StatusBadge from "./StatusBadge";
 
 type BusinessAction = (formData: FormData) => Promise<void>;
+
+function getProviderJobStats(business: BusinessRow, requests: RequestRow[]) {
+  const matchedRequests = requests.filter((request) => request.matched_business_id === business.id);
+  const completedRequests = matchedRequests.filter(
+    (request) => request.status === "done" || request.status === "completed"
+  );
+
+  return {
+    matched: matchedRequests.length,
+    completed: completedRequests.length,
+  };
+}
 
 function AreasList({ areas }: { areas: string[] | null }) {
   const cleanAreas = (areas || []).filter(Boolean);
@@ -87,15 +99,19 @@ function ProviderActions({
 
 function ProviderMobileCard({
   business,
+  requests,
   approveBusiness,
   rejectBusiness,
   deleteBusiness,
 }: {
   business: BusinessRow;
+  requests: RequestRow[];
   approveBusiness?: BusinessAction;
   rejectBusiness?: BusinessAction;
   deleteBusiness?: BusinessAction;
 }) {
+  const stats = getProviderJobStats(business, requests);
+
   return (
     <article className="rounded-[18px] border border-[#dfe5ee] bg-white p-4 shadow-[0_10px_24px_rgba(7,22,56,0.035)]">
       <div className="flex items-start justify-between gap-4">
@@ -112,6 +128,7 @@ function ProviderMobileCard({
         <p><span className="font-black text-[#071638]">WhatsApp:</span> {business.whatsapp || "Not set"}</p>
         <p><span className="font-black text-[#071638]">Price:</span> {business.starting_price ? `£${business.starting_price}` : "Not set"}</p>
         <p><span className="font-black text-[#071638]">Availability:</span> {business.availability || "Not set"}</p>
+        <p><span className="font-black text-[#071638]">Matched/completed:</span> {stats.matched}/{stats.completed}</p>
         <div><span className="font-black text-[#071638]">Areas:</span><div className="mt-1"><AreasList areas={business.areas} /></div></div>
         {business.description ? (
           <p className="line-clamp-2"><span className="font-black text-[#071638]">Description:</span> {business.description}</p>
@@ -132,11 +149,13 @@ function ProviderMobileCard({
 
 export default function BusinessesView({
   businesses,
+  requests,
   approveBusiness,
   rejectBusiness,
   deleteBusiness,
 }: {
   businesses: BusinessRow[];
+  requests: RequestRow[];
   approveBusiness?: BusinessAction;
   rejectBusiness?: BusinessAction;
   deleteBusiness?: BusinessAction;
@@ -180,13 +199,16 @@ export default function BusinessesView({
               <th className="px-4 py-3">WhatsApp</th>
               <th className="px-4 py-3">Price</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Jobs</th>
+              <th className="px-4 py-3">M/C</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-[#edf0f5]">
-            {businesses.map((business) => (
+            {businesses.map((business) => {
+              const stats = getProviderJobStats(business, requests);
+
+              return (
               <tr key={business.id} className="transition hover:bg-[#fbfcfd]">
                 <td className="px-4 py-3 align-middle">
                   <div className="min-w-0">
@@ -220,8 +242,9 @@ export default function BusinessesView({
                   <StatusBadge value={business.status} tone={getBusinessStatusTone(business.status)} />
                 </td>
 
-                <td className="px-4 py-3 align-middle font-black text-[#071638]">
-                  {business.completed_jobs ?? 0}
+                <td className="px-4 py-3 align-middle">
+                  <div className="text-[13px] font-black text-[#071638]">{stats.matched}/{stats.completed}</div>
+                  <div className="mt-1 text-[10px] font-black uppercase tracking-[0.06em] text-[#9aa4b5]">matched/done</div>
                 </td>
 
                 <td className="px-4 py-3 align-middle text-right">
@@ -233,7 +256,8 @@ export default function BusinessesView({
                   />
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -243,6 +267,7 @@ export default function BusinessesView({
           <ProviderMobileCard
             key={business.id}
             business={business}
+            requests={requests}
             approveBusiness={approveBusiness}
             rejectBusiness={rejectBusiness}
             deleteBusiness={deleteBusiness}

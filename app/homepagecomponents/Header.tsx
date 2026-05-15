@@ -13,17 +13,32 @@ function scrollToPriceForm() {
   }, 450);
 }
 
+function BellIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-[19px] w-[19px] fill-none stroke-[#071638] stroke-[2.1]"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+      <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+    </svg>
+  );
+}
+
 export default function Header() {
   return (
-    <header className="sticky top-0 z-50 h-[72px] border-b border-[#dfe5ee] bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex h-full max-w-[1366px] items-center justify-between px-5 sm:px-8 lg:px-[48px]">
-        <a href="/" className="flex items-center gap-[13px]" aria-label="Quickola homepage">
+    <header className="absolute left-0 top-0 z-50 w-full bg-transparent">
+      <div className="mx-auto flex h-[78px] max-w-[1366px] items-center justify-between px-[20px] pt-[8px] sm:px-8 lg:h-[92px] lg:px-[48px] lg:pt-0">
+        <a href="/" className="flex items-center gap-[8px] lg:gap-[13px]" aria-label="Quickola homepage">
           <img
             src={asset("logo-mark.png")}
             alt="Quickola"
-            className="h-[48px] w-[48px] object-contain"
+            className="h-[31px] w-[31px] object-contain lg:h-[48px] lg:w-[48px]"
           />
-          <span className="text-[30px] font-extrabold leading-none tracking-[-0.035em] text-[#071638]">
+          <span className="text-[22px] font-black leading-none tracking-[-0.04em] text-[#071638] lg:text-[30px] lg:font-extrabold lg:tracking-[-0.035em]">
             Quickola
           </span>
         </a>
@@ -50,13 +65,15 @@ export default function Header() {
             →
           </span>
         </button>
+
         <button
           type="button"
           onClick={scrollToPriceForm}
-          className="grid h-11 w-11 place-items-center rounded-[12px] border border-[#dfe5ee] bg-white text-[#071638] shadow-[0_8px_18px_rgba(7,22,56,0.06)] sm:hidden"
+          className="relative grid h-[31px] w-[31px] place-items-center rounded-full bg-white text-[#071638] shadow-[0_5px_14px_rgba(7,22,56,0.08)] ring-1 ring-[#e5eaf1] sm:hidden"
           aria-label="Check fair price"
         >
-          <span className="text-[23px] leading-none text-[#08783f]">→</span>
+          <BellIcon />
+          <span className="absolute right-[3px] top-[3px] h-[7px] w-[7px] rounded-full bg-[#ef233c] ring-[2px] ring-white" />
         </button>
       </div>
     </header>

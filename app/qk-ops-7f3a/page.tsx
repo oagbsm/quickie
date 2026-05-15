@@ -238,6 +238,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
                 <BusinessesView
                   businesses={filteredBusinesses}
+                  requests={requests}
                   approveBusiness={approveProvider}
                   rejectBusiness={rejectProvider}
                   deleteBusiness={deleteProvider}

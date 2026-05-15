@@ -1,4 +1,4 @@
- import Link from "next/link";
+import Link from "next/link";
 import Footer from "../components/Footer";
 import { saveCheckPriceRequest } from "../actions";
 
@@ -6,6 +6,7 @@ type CheckPricePageProps = {
   searchParams?: Promise<{
     service?: string;
     area?: string;
+    postcode?: string;
   }>;
 };
 
@@ -414,10 +415,10 @@ const serviceConfigs: Record<string, ServiceConfig> = {
 };
 
 const popularSearches = [
-  { label: "Cleaning in London", service: "cleaning", area: "london" },
-  { label: "Man and van London", service: "man-and-van", area: "london" },
-  { label: "Plumber in London", service: "plumber", area: "london" },
-  { label: "Locksmith in London", service: "locksmith", area: "london" },
+  { label: "Cleaning near E17", service: "cleaning", postcode: "E17 6AA" },
+  { label: "Man and van near NW4", service: "man-and-van", postcode: "NW4 4BT" },
+  { label: "Plumber near HA8", service: "plumber", postcode: "HA8 6HU" },
+  { label: "Locksmith near IG1", service: "locksmith", postcode: "IG1 1AA" },
 ];
 
 function formatParam(value: string | undefined, fallback: string) {
@@ -430,6 +431,19 @@ function formatParam(value: string | undefined, fallback: string) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function formatPostcodeParam(value: string | undefined) {
+  if (!value) return "your postcode";
+
+  const clean = value
+    .replace(/-/g, " ")
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+
+  if (!clean) return "your postcode";
+  return clean;
+}
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -641,12 +655,12 @@ function PriceCard({ config }: { config: ServiceConfig }) {
   );
 }
 
-function LeftPanel({ config, area }: { config: ServiceConfig; area: string }) {
+function LeftPanel({ config, postcode }: { config: ServiceConfig; postcode: string }) {
   return (
     <section className="rounded-[24px] border border-[#e1e6ee] bg-white p-4 shadow-[0_16px_50px_rgba(7,22,56,0.06)] sm:p-6 lg:p-7">
       <p className="text-[11px] font-black uppercase tracking-[0.1em] text-[#08783f] sm:text-[12px]">Instant price range</p>
       <h1 className="mt-2 max-w-[650px] text-[32px] font-black leading-[1.04] tracking-[-0.055em] text-[#071638] sm:mt-3 sm:text-[48px] lg:text-[56px]">
-        {config.headline} in <span className="text-[#08783f]">{area}</span>
+        {config.headline} near <span className="text-[#08783f]">{postcode}</span>
       </h1>
 
       <p className="mt-3 max-w-[620px] text-[14px] font-semibold leading-[1.55] text-[#172545] sm:mt-4 sm:text-[17px] sm:leading-[1.6]">
@@ -677,7 +691,13 @@ function LeftPanel({ config, area }: { config: ServiceConfig; area: string }) {
   );
 }
 
-function DetailsForm({ config, areaSlug, area }: { config: ServiceConfig; areaSlug: string; area: string }) {
+function DetailsForm({
+  config,
+  postcode,
+}: {
+  config: ServiceConfig;
+  postcode: string;
+}) {
   return (
     <aside id="match-form" className="scroll-mt-[86px] rounded-[24px] border border-[#e1e6ee] bg-white p-4 shadow-[0_16px_50px_rgba(7,22,56,0.06)] sm:p-5 lg:sticky lg:top-[84px]">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -700,25 +720,22 @@ function DetailsForm({ config, areaSlug, area }: { config: ServiceConfig; areaSl
 
       <form action={saveCheckPriceRequest} className="mt-5 space-y-3">
         <input type="hidden" name="service" value={config.slug} />
-        <input type="hidden" name="area" value={areaSlug} />
+        <input type="hidden" name="postcode" value={postcode} />
         <input type="hidden" name="source" value="check-price" />
 
         <SelectField label="What job do you need?" name="job_type" options={config.jobOptions} icon={<BriefcaseIcon />} />
         <SelectField label={config.detailLabel} name="job_detail" options={config.detailOptions} icon={<TagIcon />} />
         <SelectField label="When do you need it?" name="time_needed" options={urgencyOptions} icon={<CalendarIcon />} />
 
-        <TextInput
-          label="Postcode (optional)"
-          name="postcode"
-          type="text"
-          placeholder="e.g. IG1"
-          icon={<LocationIcon />}
-          maxLength={10}
-          title="Enter a UK postcode or leave this blank."
-        />
-        <p className="-mt-2 text-[12px] font-bold text-[#08783f]">
-          Optional — helps us find closer providers.
-        </p>
+        <div className="rounded-[14px] border border-[#dfe5ee] bg-[#fbfcfd] px-4 py-3">
+          <div className="flex items-center gap-3 text-[#071638]">
+            <LocationIcon />
+            <div>
+              <p className="text-[12px] font-black uppercase tracking-[0.08em] text-[#657089]">Postcode</p>
+              <p className="text-[15px] font-black text-[#071638]">{postcode}</p>
+            </div>
+          </div>
+        </div>
 
         <TextInput
           label="Your email"
@@ -763,7 +780,9 @@ function DetailsForm({ config, areaSlug, area }: { config: ServiceConfig; areaSl
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#08783f] text-white"><ShieldIcon /></span>
           <div>
             <p className="text-[17px] font-black text-[#071638]">Price first, match second</p>
-            <p className="mt-1 text-[14px] font-semibold leading-[1.5] text-[#44506a]">We use your details only to help with this {config.label.toLowerCase()} request in {area}.</p>
+            <p className="mt-1 text-[14px] font-semibold leading-[1.5] text-[#44506a]">
+              We use your details only to help with this {config.label.toLowerCase()} request near {postcode}.
+            </p>
           </div>
         </div>
       </div>
@@ -798,12 +817,12 @@ function PopularSearches() {
   return (
     <div className="mx-auto mt-5 max-w-[1220px] rounded-[20px] border border-[#e1e6ee] bg-white p-4 shadow-[0_10px_28px_rgba(7,22,56,0.04)]">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <h2 className="shrink-0 text-[16px] font-black text-[#071638]">Popular London searches</h2>
+        <h2 className="shrink-0 text-[16px] font-black text-[#071638]">Popular postcode searches</h2>
         <div className="flex flex-wrap gap-2">
           {popularSearches.map((item) => (
             <Link
               key={item.label}
-              href={`/check-price?service=${item.service}&area=${item.area}`}
+              href={`/check-price?service=${item.service}&postcode=${encodeURIComponent(item.postcode)}`}
               className="inline-flex h-10 min-w-0 items-center rounded-full border border-[#e1e6ee] bg-white px-4 text-[13px] font-bold text-[#071638] transition hover:-translate-y-0.5 hover:border-[#b7c2d2]"
             >
               {item.label}
@@ -819,26 +838,27 @@ export default async function CheckPricePage({ searchParams }: CheckPricePagePro
   const params = await searchParams;
   const rawServiceSlug = params?.service ? slugify(params.service) : "cleaning";
   const config = getServiceConfig(rawServiceSlug);
-  const area = formatParam(params?.area, "London");
-  const areaSlug = slugify(area);
+  const postcode = formatPostcodeParam(params?.postcode);
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f4f8fb] text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif]">
+    <main className="min-h-screen overflow-x-hidden bg-white text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] sm:bg-[#f4f8fb]">
       <Header />
 
-      <section className="mx-auto w-full max-w-[1280px] px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
-        <Link href="/" className="inline-flex items-center gap-2 text-[13px] font-bold text-[#071638] transition hover:text-[#08783f] sm:gap-3 sm:text-[14px]">
-          <span className="text-[#08783f]">←</span>
-          Back to home
+      <section className="mx-auto w-full max-w-[1280px] px-4 pb-5 pt-5 sm:px-6 sm:py-4 lg:px-8 lg:py-5">
+        <Link href="/" className="inline-flex items-center gap-2 text-[13px] font-black text-[#071638] transition hover:text-[#08783f] sm:gap-3 sm:text-[14px]">
+          <span className="text-[#071638]">←</span>
+          Back
         </Link>
 
-        <div className="mt-3 grid gap-4 lg:mt-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(370px,0.95fr)] lg:items-start">
-          <LeftPanel config={config} area={area} />
-          <DetailsForm config={config} areaSlug={areaSlug} area={area} />
+        <div className="mt-4 grid gap-4 lg:mt-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(370px,0.95fr)] lg:items-start">
+          <LeftPanel config={config} postcode={postcode} />
+          <DetailsForm config={config} postcode={postcode} />
         </div>
 
-        <WhatHappensNext />
-        <PopularSearches />
+        <div className="hidden sm:block">
+          <WhatHappensNext />
+          <PopularSearches />
+        </div>
       </section>
 
       <Footer />

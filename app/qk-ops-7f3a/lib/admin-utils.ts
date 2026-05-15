@@ -189,10 +189,17 @@ export function requestMatchesFilters(
   const service = cleanText(filters.service);
   const area = cleanText(filters.area);
 
+  const requestStatus = cleanText(request.status);
+  const statusMatches =
+    !status ||
+    requestStatus === status ||
+    (status === "completed" && requestStatus === "done") ||
+    (status === "done" && requestStatus === "completed");
+
   if (!requestMatchesQuery(request, filters.query || "")) return false;
-  if (status && request.status !== status) return false;
+  if (!statusMatches) return false;
   if (service && request.service !== service) return false;
-  if (area && request.area !== area) return false;
+  if (area && request.area !== area && request.postcode !== area) return false;
 
   return true;
 }

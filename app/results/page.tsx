@@ -7,6 +7,7 @@ type ResultsPageProps = {
   searchParams?: Promise<{
     service?: string;
     area?: string;
+    postcode?: string;
     job_type?: string;
     job_detail?: string;
     time_needed?: string;
@@ -150,6 +151,20 @@ function formatParam(value: string | undefined, fallback: string) {
   return cleaned.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function formatPostcodeParam(value: string | undefined) {
+  if (!value) return "London";
+
+  const clean = value
+    .replace(/-/g, " ")
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+
+  if (!clean) return "London";
+  return clean;
+}
+
 function slugify(value: string | undefined, fallback: string) {
   return (value || fallback)
     .toLowerCase()
@@ -250,7 +265,7 @@ function PinIcon() {
   );
 }
 
-function Hero({ area, service }: { area: string; service: string }) {
+function Hero({ postcode, service }: { postcode: string; service: string }) {
   return (
     <section className="group relative overflow-hidden rounded-[24px] bg-[linear-gradient(135deg,#f7fcf8_0%,#ffffff_58%,#eef9f1_100%)] p-[1px] shadow-[0_14px_42px_rgba(7,22,56,0.045)]">
       <div className="pointer-events-none absolute inset-0 rounded-[24px] bg-[conic-gradient(from_90deg_at_50%_50%,rgba(8,120,63,0)_0deg,rgba(8,120,63,0)_250deg,rgba(8,120,63,0.44)_292deg,rgba(174,242,193,0.9)_310deg,rgba(8,120,63,0.44)_328deg,rgba(8,120,63,0)_360deg)] opacity-70 motion-safe:animate-[quickolaOrbit_9s_linear_infinite]" />
@@ -265,7 +280,7 @@ function Hero({ area, service }: { area: string; service: string }) {
 
           <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[#08783f]">Request received</p>
           <h1 className="mt-2 max-w-[760px] text-[30px] font-black leading-[1.04] tracking-[-0.04em] text-[#071638] sm:text-[40px] lg:text-[44px]">
-            Request received — we’re checking {service.toLowerCase()} options in <span className="text-[#08783f]">{area}.</span>
+            Request received — we’re checking {service.toLowerCase()} options near <span className="text-[#08783f]">{postcode}.</span>
           </h1>
           <p className="mt-3 max-w-[720px] text-[14px] font-semibold leading-[1.5] text-[#172545] sm:text-[16px]">
             We’ll use your request to check the best next step and email you shortly. No booking pressure.
@@ -294,7 +309,7 @@ function HeroGlowStyles() {
   );
 }
 
-function FairPriceCard({ config, area }: { config: PriceConfig; area: string }) {
+function FairPriceCard({ config, postcode }: { config: PriceConfig; postcode: string }) {
   return (
     <section className="overflow-hidden rounded-[22px] bg-[radial-gradient(circle_at_85%_15%,rgba(255,255,255,0.13),transparent_28%),linear-gradient(135deg,#08783f_0%,#064f35_48%,#071638_100%)] p-5 text-white shadow-[0_16px_42px_rgba(7,22,56,0.12)] lg:p-5">
       <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-white/76">Your fair price guide</p>
@@ -303,7 +318,7 @@ function FairPriceCard({ config, area }: { config: PriceConfig; area: string }) 
         {config.suffix ? <span className="pb-2 text-[22px] font-bold">{config.suffix}</span> : null}
       </div>
       <p className="mt-3 text-[15px] font-semibold text-white/84">
-        Typical range for {config.label.toLowerCase()} in <span className="font-black text-white">{area}</span>
+        Typical range for {config.label.toLowerCase()} near <span className="font-black text-white">{postcode}</span>
       </p>
 
       <p className="mt-4 border-t border-white/14 pt-3 text-[13px] font-medium leading-[1.6] text-white/78">
@@ -313,9 +328,9 @@ function FairPriceCard({ config, area }: { config: PriceConfig; area: string }) 
   );
 }
 
-function SummaryCard({ service, area, jobType, jobDetail, timeNeeded }: {
+function SummaryCard({ service, postcode, jobType, jobDetail, timeNeeded }: {
   service: string;
-  area: string;
+  postcode: string;
   jobType: string;
   jobDetail: string;
   timeNeeded: string;
@@ -325,14 +340,14 @@ function SummaryCard({ service, area, jobType, jobDetail, timeNeeded }: {
     ["Job type", jobType, <SearchIcon key="job" />],
     ["Job detail", jobDetail, <ShieldIcon key="detail" />],
     ["Time needed", timeNeeded, <CalendarIcon key="time" />],
-    ["Area", area, <PinIcon key="area" />],
+    ["Postcode", postcode, <PinIcon key="postcode" />],
   ];
 
   return (
     <section className="rounded-[22px] border border-[#e1e6ee] bg-white p-4 shadow-[0_14px_38px_rgba(7,22,56,0.045)] sm:p-5">
       <div className="flex items-center justify-between gap-4 border-b border-[#edf0f5] pb-4">
         <h2 className="text-[14px] font-bold uppercase tracking-[0.08em] text-[#071638]">Your request summary</h2>
-        <a href={`/check-price?service=${slugify(service, "cleaning")}&area=${slugify(area, "london")}`} className="text-[13px] font-bold text-[#08783f]/80 hover:text-[#08783f] hover:underline">
+        <a href={`/check-price?service=${slugify(service, "cleaning")}&postcode=${encodeURIComponent(postcode)}`} className="text-[13px] font-bold text-[#08783f]/80 hover:text-[#08783f] hover:underline">
           Edit
         </a>
       </div>
@@ -411,7 +426,7 @@ function BottomActions() {
       <h2 className="mx-auto max-w-[560px] text-[23px] font-black leading-[1.15] tracking-[-0.035em] text-[#071638]">
         We’ll check the best next step for this request.
       </h2>
-      <p className="mt-2 text-[15px] font-semibold text-[#657089]">You can also check another service or area.</p>
+      <p className="mt-2 text-[15px] font-semibold text-[#657089]">You can also check another service or postcode.</p>
       <a
         href="/"
         className="mx-auto mt-6 flex h-[50px] max-w-[420px] items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[15px] font-black text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5"
@@ -428,10 +443,9 @@ function BottomActions() {
 export default async function ResultsPage({ searchParams }: ResultsPageProps) {
   const params = await searchParams;
   const serviceSlug = slugify(params?.service, "cleaning");
-  const areaSlug = slugify(params?.area, "london");
+  const postcode = formatPostcodeParam(params?.postcode || params?.area);
   const config = getPriceConfig(serviceSlug);
   const service = config.label;
-  const area = formatParam(areaSlug, "London");
   const jobType = formatParam(params?.job_type, service);
   const jobDetail = formatParam(params?.job_detail, "Not sure");
   const timeNeeded = formatParam(params?.time_needed, "This week");
@@ -444,19 +458,19 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
       <Header />
 
       <section className="mx-auto w-full max-w-[1160px] px-4 pb-10 pt-3 sm:px-6 lg:px-8 lg:pb-14 lg:pt-5">
-        <a href={`/check-price?service=${serviceSlug}&area=${areaSlug}`} className="inline-flex items-center gap-3 text-[14px] font-bold text-[#071638] transition hover:text-[#08783f]">
+        <a href={`/check-price?service=${serviceSlug}&postcode=${encodeURIComponent(postcode)}`} className="inline-flex items-center gap-3 text-[14px] font-bold text-[#071638] transition hover:text-[#08783f]">
           <span className="text-[#08783f]">←</span>
           Back
         </a>
 
         <div className="mt-3 space-y-3 sm:mt-4 sm:space-y-4">
-          <Hero area={area} service={service} />
+          <Hero postcode={postcode} service={service} />
 
           <div className="grid gap-3 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)]">
-            <FairPriceCard config={config} area={area} />
+            <FairPriceCard config={config} postcode={postcode} />
             <SummaryCard
               service={service}
-              area={area}
+              postcode={postcode}
               jobType={jobType}
               jobDetail={jobDetail}
               timeNeeded={timeNeeded}

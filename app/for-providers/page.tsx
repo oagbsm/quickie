@@ -25,54 +25,52 @@ const categories: FieldOption[] = [
   { label: "Waste removal", value: "waste-removal" },
 ];
 
-const areas = ["Ilford", "Barking", "East Ham", "Stratford", "Leyton", "Walthamstow", "Romford", "Dagenham", "Forest Gate", "Wanstead"];
-
-const testBusinesses = [
-  {
-    businessName: "East London Van Man",
-    category: "man-and-van",
-    whatsapp: "07123 456789",
-    startingPrice: "65",
-    availability: "same-day",
-    profileSlug: "east-london-van-man",
-    description: "Man and van service for small moves, collections and deliveries across East London.",
-    areas: ["Ilford", "Barking", "Stratford"],
-  },
-  {
-    businessName: "Ilford Emergency Plumber",
-    category: "plumber",
-    whatsapp: "07333 888999",
-    startingPrice: "80",
-    availability: "same-day",
-    profileSlug: "ilford-emergency-plumber",
-    description: "Local plumber covering leaks, repairs and urgent callouts across Ilford, Barking and East Ham.",
-    areas: ["Ilford", "Barking", "East Ham"],
-  },
-  {
-    businessName: "Stratford Locksmiths",
-    category: "locksmith",
-    whatsapp: "07444 222111",
-    startingPrice: "70",
-    availability: "same-day",
-    profileSlug: "stratford-locksmiths",
-    description: "Locksmith for lockouts, lock changes and urgent home access across Stratford and nearby areas.",
-    areas: ["Stratford", "Leyton", "Forest Gate"],
-  },
-  {
-    businessName: "Barking End Of Tenancy Clean",
-    category: "end-of-tenancy-cleaning",
-    whatsapp: "07999 123456",
-    startingPrice: "120",
-    availability: "next-day",
-    profileSlug: "barking-end-of-tenancy-clean",
-    description: "End of tenancy and deep cleaning for flats and houses across Barking, Ilford and Dagenham.",
-    areas: ["Barking", "Ilford", "Dagenham"],
-  },
+const areas = [
+  "East London",
+  "North London",
+  "South London",
+  "West London",
+  "Central London",
+  "Ilford",
+  "Barking",
+  "East Ham",
+  "Stratford",
+  "Leyton",
+  "Walthamstow",
+  "Romford",
+  "Dagenham",
+  "Forest Gate",
+  "Wanstead",
+  "Hackney",
+  "Tower Hamlets",
+  "Newham",
+  "Greenwich",
+  "Woolwich",
+  "Lewisham",
+  "Croydon",
+  "Brixton",
+  "Clapham",
+  "Tooting",
+  "Wimbledon",
+  "Kingston",
+  "Richmond",
+  "Hounslow",
+  "Ealing",
+  "Acton",
+  "Wembley",
+  "Harrow",
+  "Barnet",
+  "Enfield",
+  "Tottenham",
+  "Camden",
+  "Islington",
+  "Westminster",
+  "Kensington",
+  "Chelsea",
+  "Hammersmith",
+  "Fulham",
 ];
 
-function getRandomTestBusiness() {
-  return testBusinesses[Math.floor(Math.random() * testBusinesses.length)];
-}
 
 function Logo() {
   return (
@@ -218,7 +216,6 @@ function AreaChip({ area, defaultChecked = false }: { area: string; defaultCheck
 }
 
 function SignupForm() {
-  const testBusiness = getRandomTestBusiness();
   return (
     <form id="signup" action={createBusiness} className="scroll-mt-[96px] rounded-[26px] border border-[#dcebe1] bg-white p-5 shadow-[0_26px_80px_rgba(7,22,56,0.11)] sm:p-7">
       <div className="flex items-start justify-between gap-4 border-b border-[#edf0f5] pb-5">
@@ -231,12 +228,12 @@ function SignupForm() {
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field label="Business name">
-          <Input name="businessName" placeholder="e.g. East London Van Man" defaultValue={testBusiness.businessName} required />
+          <Input name="businessName" placeholder="e.g. East London Van Man" required />
         </Field>
 
         <Field label="Service you offer">
           <div className="relative">
-            <Select name="category" defaultValue={testBusiness.category}>
+            <Select name="category">
               <option value="" disabled>Choose category</option>
               {categories.map((category) => (
                 <option key={category.value} value={category.value}>{category.label}</option>
@@ -249,14 +246,14 @@ function SignupForm() {
         <Field label="WhatsApp number">
           <div className="flex h-[52px] overflow-hidden rounded-[12px] border border-[#dfe5ee] bg-white focus-within:border-[#98d7ad] focus-within:ring-4 focus-within:ring-[#e8f7ed]">
             <div className="grid w-[58px] place-items-center border-r border-[#dfe5ee] text-[#08783f]"><PhoneIcon /></div>
-            <input name="whatsapp" inputMode="tel" placeholder="07123 456789" defaultValue={testBusiness.whatsapp} required className="min-w-0 flex-1 px-4 text-[15px] font-semibold text-[#071638] outline-none placeholder:text-[#8b94a7]" />
+            <input name="whatsapp" inputMode="tel" placeholder="07123 456789" required className="min-w-0 flex-1 px-4 text-[15px] font-semibold text-[#071638] outline-none placeholder:text-[#8b94a7]" />
           </div>
         </Field>
 
-        <Field label="Starting price from">
+        <Field label="Starting price from (optional)">
           <div className="flex h-[52px] overflow-hidden rounded-[12px] border border-[#dfe5ee] bg-white focus-within:border-[#98d7ad] focus-within:ring-4 focus-within:ring-[#e8f7ed]">
             <div className="grid w-[48px] place-items-center border-r border-[#dfe5ee] text-[17px] font-extrabold text-[#071638]">£</div>
-            <input name="startingPrice" inputMode="decimal" placeholder="e.g. 45" defaultValue={testBusiness.startingPrice} className="min-w-0 flex-1 px-4 text-[15px] font-semibold text-[#071638] outline-none placeholder:text-[#8b94a7]" />
+            <input name="startingPrice" inputMode="decimal" placeholder="e.g. 65" className="min-w-0 flex-1 px-4 text-[15px] font-semibold text-[#071638] outline-none placeholder:text-[#8b94a7]" />
           </div>
         </Field>
       </div>
@@ -264,14 +261,14 @@ function SignupForm() {
       <div className="mt-5">
         <p className="mb-3 text-[14px] font-extrabold text-[#071638]">Areas you cover</p>
         <div className="flex flex-wrap gap-2">
-          {areas.map((area) => <AreaChip key={area} area={area} defaultChecked={testBusiness.areas.includes(area)} />)}
+          {areas.map((area) => <AreaChip key={area} area={area} />)}
         </div>
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <Field label="Availability">
           <div className="relative">
-            <Select name="availability" defaultValue={testBusiness.availability}>
+            <Select name="availability">
               <option value="" disabled>Choose availability</option>
               <option value="same-day">Same day jobs</option>
               <option value="next-day">Next day jobs</option>
@@ -284,7 +281,7 @@ function SignupForm() {
         </Field>
 
         <Field label="Profile link name">
-          <Input name="profileSlug" placeholder="e.g. barking-cleaners" defaultValue={testBusiness.profileSlug} />
+          <Input name="profileSlug" placeholder="e.g. east-london-van-man" />
         </Field>
       </div>
 
@@ -293,7 +290,6 @@ function SignupForm() {
         <textarea
           name="description"
           maxLength={180}
-          defaultValue={testBusiness.description}
           placeholder="Tell customers what service you offer, which areas you cover and when you are usually available."
           className="h-[104px] w-full resize-none rounded-[12px] border border-[#dfe5ee] bg-white px-4 py-3 text-[15px] font-semibold text-[#071638] outline-none transition placeholder:text-[#8b94a7] focus:border-[#98d7ad] focus:ring-4 focus:ring-[#e8f7ed]"
         />
@@ -305,7 +301,7 @@ function SignupForm() {
       </button>
 
       <div className="mt-5 grid gap-3 text-[13px] font-bold text-[#44506a] sm:grid-cols-3">
-        <span className="flex items-center gap-2"><span className="text-[#08783f]"><TickIcon /></span>No setup fee</span>
+        <span className="flex items-center gap-2"><span className="text-[#08783f]"><TickIcon /></span>Manual approval</span>
         <span className="flex items-center gap-2"><span className="text-[#08783f]"><TickIcon /></span>No monthly fee</span>
         <span className="flex items-center gap-2"><span className="text-[#08783f]"><TickIcon /></span>No paid ranking</span>
       </div>
@@ -322,10 +318,10 @@ function ProfilePreview() {
         <div className="bg-[#071638] p-6 text-white">
           <p className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-white/60">Example provider profile</p>
           <div className="mt-5 flex items-center gap-4">
-            <span className="grid h-[62px] w-[62px] place-items-center rounded-[18px] bg-white text-[28px]">🧼</span>
+            <span className="grid h-[62px] w-[62px] place-items-center rounded-[18px] bg-white text-[28px]">⚡</span>
             <div>
-              <h3 className="text-[24px] font-extrabold leading-none tracking-[-0.025em]">East London Van Man</h3>
-              <p className="mt-2 text-[14px] font-semibold text-white/70">Man and van · Ilford, Barking, Stratford</p>
+              <h3 className="text-[24px] font-extrabold leading-none tracking-[-0.025em]">Local Service Provider</h3>
+              <p className="mt-2 text-[14px] font-semibold text-white/70">Man and van · Cleaning · Plumbing</p>
             </div>
           </div>
         </div>
@@ -334,7 +330,7 @@ function ProfilePreview() {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-[16px] bg-[#f6fcf8] p-4 ring-1 ring-[#d8eddd]">
               <p className="text-[12px] font-bold text-[#657089]">From</p>
-              <p className="mt-1 text-[24px] font-extrabold text-[#08783f]">£45</p>
+              <p className="mt-1 text-[24px] font-extrabold text-[#08783f]">£65</p>
             </div>
             <div className="rounded-[16px] bg-[#fbfcfd] p-4 ring-1 ring-[#e1e6ee]">
               <p className="text-[12px] font-bold text-[#657089]">Availability</p>
@@ -398,6 +394,7 @@ export default function ForProvidersPage() {
               <ProofPill>No monthly fee</ProofPill>
               <ProofPill>No paid ranking</ProofPill>
               <ProofPill>No long contract</ProofPill>
+              <ProofPill>Relevant local requests</ProofPill>
             </div>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
