@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import {
+  addProvider,
   deleteBusiness,
   deleteRequest,
   matchRequestToBusiness,
@@ -242,6 +243,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   approveBusiness={approveProvider}
                   rejectBusiness={rejectProvider}
                   deleteBusiness={deleteProvider}
+                  addProvider={addProvider}
                 />
               </>
             )}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import Footer from "../components/Footer";
 import { saveCheckPriceRequest } from "../actions";
 
@@ -35,7 +36,63 @@ const urgencyOptions = [
   { label: "This week", value: "this-week" },
   { label: "Flexible", value: "flexible" },
 ];
+const supportedPostcodeAreas = [
+  "BR",
+  "CR",
+  "DA",
+  "E",
+  "EC",
+  "EN",
+  "HA",
+  "IG",
+  "KT",
+  "N",
+  "NW",
+  "RM",
+  "SE",
+  "SL",
+  "SM",
+  "SW",
+  "TW",
+  "UB",
+  "W",
+  "WC",
+  "WD",
+];
 
+const serviceAliases: Record<string, string> = {
+  plumbing: "plumber",
+  electrical: "electrician",
+};
+
+function normalisePostcode(value: string) {
+  return value.toUpperCase().replace(/\s+/g, "").trim();
+}
+
+function formatPostcode(value: string) {
+  const clean = normalisePostcode(value);
+  if (clean.length <= 3) return clean;
+  return `${clean.slice(0, -3)} ${clean.slice(-3)}`;
+}
+
+function formatPostcodeParam(value: string | undefined) {
+  return formatPostcode(value || "");
+}
+
+function isValidUkPostcode(value: string) {
+  return /^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/.test(value.trim().toUpperCase());
+}
+
+function getPostcodeArea(value: string) {
+  const clean = normalisePostcode(value);
+  const match = clean.match(/^[A-Z]+/);
+  return match ? match[0] : null;
+}
+
+function isSupportedPostcode(value: string) {
+  const area = getPostcodeArea(value);
+  return area ? supportedPostcodeAreas.includes(area) : false;
+}
 const serviceConfigs: Record<string, ServiceConfig> = {
   cleaning: {
     label: "Cleaning",
@@ -418,6 +475,7 @@ const popularSearches = [
   { label: "Cleaning near E17", service: "cleaning", postcode: "E17 6AA" },
   { label: "Man and van near NW4", service: "man-and-van", postcode: "NW4 4BT" },
   { label: "Plumber near HA8", service: "plumber", postcode: "HA8 6HU" },
+  { label: "Cleaner near SL2", service: "cleaning", postcode: "SL2 5RX" },
   { label: "Locksmith near IG1", service: "locksmith", postcode: "IG1 1AA" },
 ];
 
@@ -431,19 +489,7 @@ function formatParam(value: string | undefined, fallback: string) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function formatPostcodeParam(value: string | undefined) {
-  if (!value) return "your postcode";
 
-  const clean = value
-    .replace(/-/g, " ")
-    .replace(/_/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toUpperCase();
-
-  if (!clean) return "your postcode";
-  return clean;
-}
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -452,8 +498,13 @@ function slugify(value: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-function getServiceConfig(serviceSlug: string): ServiceConfig {
-  return serviceConfigs[serviceSlug] ?? serviceConfigs.cleaning;
+function getCanonicalServiceSlug(value: string | undefined) {
+  const slug = slugify(value || "");
+  return serviceAliases[slug] ?? slug;
+}
+
+function getServiceConfig(serviceSlug: string): ServiceConfig | null {
+  return serviceConfigs[serviceSlug] ?? null;
 }
 
 function Logo() {
@@ -634,12 +685,12 @@ function PriceCard({ config }: { config: ServiceConfig }) {
   return (
     <div className="overflow-hidden rounded-[22px] bg-[#071638] text-white shadow-[0_18px_46px_rgba(7,22,56,0.16)]">
       <div className="px-4 py-4 text-center sm:px-7 sm:py-5">
-        <p className="text-[13px] font-bold text-white/82 sm:text-[15px]">{config.guideLabel}</p>
+        <p className="text-[13px] font-bold text-white/82 sm:text-[15px]">Your local guide range</p>
         <div className="mt-2 flex flex-wrap items-end justify-center gap-2 sm:mt-3">
           <span className="text-[34px] font-black tracking-[-0.045em] sm:text-[46px]">{config.priceItems[0]?.from}</span>
           <span className="pb-1.5 text-[18px] font-bold text-white/80 sm:pb-2 sm:text-[22px]">from</span>
         </div>
-        <p className="mt-1 text-[12px] font-medium text-white/68 sm:mt-2 sm:text-[15px]">Guide range before final job details.</p>
+        <p className="mt-1 text-[12px] font-medium text-white/68 sm:mt-2 sm:text-[15px]">Based on common job types and guide pricing.</p>
       </div>
 
       <div className="grid grid-cols-3 border-t border-white/12">
@@ -664,18 +715,27 @@ function LeftPanel({ config, postcode }: { config: ServiceConfig; postcode: stri
       </h1>
 
       <p className="mt-3 max-w-[620px] text-[14px] font-semibold leading-[1.55] text-[#172545] sm:mt-4 sm:text-[17px] sm:leading-[1.6]">
-        {config.shortLine} See the guide range first, then request a match only if useful.
+        {config.shortLine} See the guide range first, then decide if you want help finding someone suitable.
       </p>
 
       <div className="mt-4 sm:mt-5">
         <PriceCard config={config} />
       </div>
 
+      <div className="mt-4 rounded-[18px] border border-[#dcebe1] bg-[#f7fcf8] px-4 py-3">
+        <p className="text-[14px] font-black leading-[1.35] text-[#071638]">
+          Want someone near {postcode} who fits this fair range?
+        </p>
+        <p className="mt-1 text-[13px] font-semibold leading-[1.45] text-[#44506a]">
+          Quickola can help you request one local match. No booking is made.
+        </p>
+      </div>
+
       <Link
         href="#match-form"
         className="mt-4 flex h-[48px] w-full items-center justify-center gap-3 rounded-[13px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[15px] font-black text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5 sm:hidden"
       >
-        Request a match
+        Find my fair-price match
         <span className="text-[24px] leading-none">→</span>
       </Link>
 
@@ -713,15 +773,24 @@ function DetailsForm({
 
       <div className="text-center">
         <h2 className="text-[25px] font-black leading-[1.08] tracking-[-0.04em] text-[#071638]">
-          Request your <span className="text-[#08783f]">local match</span>
+          Find someone who fits this <span className="text-[#08783f]">fair range</span>
         </h2>
-        <p className="mt-1 text-[13px] font-semibold text-[#657089]">Takes around 30 seconds</p>
+        <p className="mt-1 text-[13px] font-semibold text-[#657089]">3 quick details. No booking. No payment.</p>
       </div>
 
       <form action={saveCheckPriceRequest} className="mt-5 space-y-3">
         <input type="hidden" name="service" value={config.slug} />
         <input type="hidden" name="postcode" value={postcode} />
         <input type="hidden" name="source" value="check-price" />
+
+        <div className="rounded-[16px] border border-[#dcebe1] bg-[#f7fcf8] px-4 py-3">
+          <p className="text-[13px] font-black leading-[1.35] text-[#071638]">
+            Your price range is ready. Now we can check who fits this job near {postcode}.
+          </p>
+          <p className="mt-1 text-[12px] font-semibold leading-[1.45] text-[#44506a]">
+            We don’t sell your details to a list of providers. You choose what happens next.
+          </p>
+        </div>
 
         <SelectField label="What job do you need?" name="job_type" options={config.jobOptions} icon={<BriefcaseIcon />} />
         <SelectField label={config.detailLabel} name="job_detail" options={config.detailOptions} icon={<TagIcon />} />
@@ -731,14 +800,14 @@ function DetailsForm({
           <div className="flex items-center gap-3 text-[#071638]">
             <LocationIcon />
             <div>
-              <p className="text-[12px] font-black uppercase tracking-[0.08em] text-[#657089]">Postcode</p>
+              <p className="text-[12px] font-black uppercase tracking-[0.08em] text-[#657089]">Confirmed area</p>
               <p className="text-[15px] font-black text-[#071638]">{postcode}</p>
             </div>
           </div>
         </div>
 
         <TextInput
-          label="Your email"
+          label="Where should we send your match?"
           name="email"
           type="email"
           placeholder="you@example.com"
@@ -746,11 +815,11 @@ function DetailsForm({
           required
         />
         <p className="-mt-2 text-[12px] font-bold text-[#08783f]">
-          We’ll send your fair price and best next step here.
+          No signup. No spam. We only use this for your match update.
         </p>
 
         <TextInput
-          label="Phone / WhatsApp (optional)"
+          label="WhatsApp updates (optional)"
           name="phone"
           type="tel"
           placeholder="07xxx xxxxxx"
@@ -762,26 +831,26 @@ function DetailsForm({
           maxLength={11}
         />
         <p className="-mt-2 text-[12px] font-bold text-[#08783f]">
-          Optional — UK mobile only, 11 digits starting with 07.
+          Leave blank if you only want email. UK mobile only, starts with 07.
         </p>
         <button
           type="submit"
           className="flex h-[52px] w-full items-center justify-center gap-3 rounded-[13px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[16px] font-black text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5"
         >
-          Request my match
+          Find my fair-price match
           <span className="text-[28px] leading-none">→</span>
         </button>
 
-        <p className="text-center text-[12px] font-semibold text-[#657089]">No signup. No booking pressure. Your request stays private.</p>
+        <p className="text-center text-[12px] font-semibold text-[#657089]">No booking is made. No payment required. You choose what happens next.</p>
       </form>
 
       <div className="mt-4 rounded-[18px] border border-[#dcebe1] bg-[#f7fcf8] p-4">
         <div className="flex gap-4">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#08783f] text-white"><ShieldIcon /></span>
           <div>
-            <p className="text-[17px] font-black text-[#071638]">Price first, match second</p>
+            <p className="text-[17px] font-black text-[#071638]">Price first. You stay in control.</p>
             <p className="mt-1 text-[14px] font-semibold leading-[1.5] text-[#44506a]">
-              We use your details only to help with this {config.label.toLowerCase()} request near {postcode}.
+              Matched by area, job fit and clear pricing — not paid ranking.
             </p>
           </div>
         </div>
@@ -833,12 +902,15 @@ function PopularSearches() {
     </div>
   );
 }
-
 export default async function CheckPricePage({ searchParams }: CheckPricePageProps) {
   const params = await searchParams;
-  const rawServiceSlug = params?.service ? slugify(params.service) : "cleaning";
-  const config = getServiceConfig(rawServiceSlug);
-  const postcode = formatPostcodeParam(params?.postcode);
+  const serviceSlug = getCanonicalServiceSlug(params?.service);
+  const config = getServiceConfig(serviceSlug);
+  const postcode = formatPostcode(params?.postcode || "");
+
+  if (!config || !postcode || !isValidUkPostcode(postcode) || !isSupportedPostcode(postcode)) {
+    redirect("/");
+  }
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-white text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] sm:bg-[#f4f8fb]">

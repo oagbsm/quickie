@@ -1,7 +1,8 @@
 import BusinessCTA from "./homepagecomponents/BusinessCTA";
+import Categories from "./homepagecomponents/Categories";
 import Header from "./homepagecomponents/Header";
 import Hero from "./homepagecomponents/Hero";
-import TrustBar from "./homepagecomponents/TrustBar";
+import HowItWorks from "./homepagecomponents/HowItWorks";
 import Footer from "./components/Footer";
 
 export default function Home() {
@@ -9,9 +10,8 @@ export default function Home() {
     <main className="min-h-screen bg-white text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif]">
       <Header />
       <Hero />
-      <div className="hidden sm:block">
-        <TrustBar />
-      </div>
+      <Categories />
+      <HowItWorks />
       <BusinessCTA />
       <Footer />
     </main>

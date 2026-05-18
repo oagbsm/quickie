@@ -21,8 +21,12 @@ export const metadata: Metadata = {
   creator: "Quickola",
   publisher: "Quickola",
   icons: {
-    icon: "/quickola/logo-mark.png",
-    apple: "/quickola/logo-mark.png",
+    icon: [
+      { url: "/quickola/favicon.png", type: "image/png", sizes: "32x32" },
+      { url: "/quickola/logo-mark.png", type: "image/png" },
+    ],
+    shortcut: "/quickola/favicon.png",
+    apple: { url: "/quickola/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
   },
   openGraph: {
     type: "website",
@@ -61,6 +65,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={nunito.variable}>
       <head>
+        <link rel="icon" href="/quickola/favicon.png" type="image/png" sizes="32x32" />
+        <link rel="shortcut icon" href="/quickola/favicon.png" />
+        <link rel="apple-touch-icon" href="/quickola/apple-touch-icon.png" sizes="180x180" />
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5953875387948501"

@@ -1,158 +1,101 @@
-const categories = [
+const trustItems = [
   {
-    title: "Cleaning",
-    text: "Home cleaning, regular cleans and one-off help.",
-    icon: "✣",
-    service: "cleaning",
-    area: "london",
+    icon: "data",
+    title: "Real data",
+    text: "from real jobs",
   },
   {
-    title: "End of tenancy",
-    text: "Move-out cleans, deposit cleans and deep property cleans.",
-    icon: "⌂",
-    service: "end-of-tenancy-cleaning",
-    area: "london",
+    icon: "ranking",
+    title: "No hidden",
+    text: "ranking",
   },
   {
-    title: "Man and van",
-    text: "Small moves, collections, deliveries and urgent van jobs.",
-    icon: "▱",
-    service: "man-and-van",
-    area: "london",
+    icon: "shield",
+    title: "Built to protect",
+    text: "you from overpaying",
   },
   {
-    title: "Removals",
-    text: "Flat moves, house moves and larger moving jobs.",
-    icon: "⇄",
-    service: "removals",
-    area: "london",
+    icon: "clock",
+    title: "We respect",
+    text: "your time",
   },
   {
-    title: "Plumber",
-    text: "Leaks, repairs, callouts and common plumbing jobs.",
-    icon: "◈",
-    service: "plumber",
-    area: "london",
-  },
-  {
-    title: "Electrician",
-    text: "Faults, sockets, lighting and electrical callouts.",
-    icon: "⚡",
-    service: "electrician",
-    area: "london",
-  },
-  {
-    title: "Locksmith",
-    text: "Lockouts, lock changes and urgent lock help.",
-    icon: "◇",
-    service: "locksmith",
-    area: "london",
-  },
-  {
-    title: "Handyman",
-    text: "Small repairs, odd jobs and flat pack assembly.",
-    icon: "✦",
-    service: "handyman",
-    area: "london",
-  },
-  {
-    title: "Gardener",
-    text: "Garden maintenance, hedge trimming and clearances.",
-    icon: "☘",
-    service: "gardener",
-    area: "london",
-  },
-  {
-    title: "Pest control",
-    text: "Mice, insects, wasps and common pest treatments.",
-    icon: "◎",
-    service: "pest-control",
-    area: "london",
-  },
-  {
-    title: "Painter",
-    text: "Room painting, decorating and property refreshes.",
-    icon: "▰",
-    service: "painter-decorator",
-    area: "london",
-  },
-  {
-    title: "Carpet cleaning",
-    text: "Room carpets, rugs, upholstery and stain cleaning.",
-    icon: "▥",
-    service: "carpet-cleaning",
-    area: "london",
-  },
-  {
-    title: "Oven cleaning",
-    text: "Single ovens, double ovens, hobs and extractors.",
-    icon: "□",
-    service: "oven-cleaning",
-    area: "london",
-  },
-  {
-    title: "Waste removal",
-    text: "Rubbish removal, junk clearance and small loads.",
-    icon: "▤",
-    service: "waste-removal",
-    area: "london",
-  },
-  {
-    title: "Appliance repair",
-    text: "Washing machines, fridges, dishwashers and callouts.",
-    icon: "◌",
-    service: "appliance-repair",
-    area: "london",
+    icon: "lock",
+    title: "You stay in",
+    text: "control",
   },
 ];
 
+function TrustIcon({ type }: { type: string }) {
+  const className = "h-[23px] w-[23px] fill-none stroke-current stroke-[2]";
+
+  if (type === "data") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="4" y="6" width="16" height="13" rx="2" />
+        <path d="M8 10h8" />
+        <path d="M8 14h3" />
+        <path d="M15 3v5" />
+        <path d="M9 3v5" />
+      </svg>
+    );
+  }
+
+  if (type === "ranking") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 4c3 2 5 5 5 8.3A5 5 0 0 1 7 12.3C7 9 9 6 12 4Z" />
+        <path d="M9.5 14.5h5" />
+        <path d="M12 8v8" />
+      </svg>
+    );
+  }
+
+  if (type === "shield") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 3 19 6v5c0 4.7-2.8 8.2-7 10-4.2-1.8-7-5.3-7-10V6l7-3Z" />
+        <path d="m9 12 2 2 4-5" />
+      </svg>
+    );
+  }
+
+  if (type === "clock") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" className={className} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 10V8a5 5 0 0 1 10 0v2" />
+      <rect x="5" y="10" width="14" height="10" rx="2" />
+      <path d="M12 14v2" />
+    </svg>
+  );
+}
+
 export default function Categories() {
   return (
-    <section className="relative z-10 bg-white px-5 pb-10 pt-8 sm:px-8 lg:px-[60px] lg:pb-12 lg:pt-10">
-      <div className="mx-auto max-w-[1220px]">
-        <div className="mx-auto max-w-[720px] text-center">
-          <p className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#08783f]">
-            Popular local services
-          </p>
-
-          <h2 className="mt-3 text-[34px] font-extrabold leading-[1.05] tracking-[-0.035em] text-[#071638] sm:text-[44px]">
-            Check the fair price before you book
-          </h2>
-
-          <p className="mx-auto mt-4 max-w-[580px] text-[16px] font-semibold leading-[1.55] text-[#44506a] sm:text-[17px]">
-            Choose a service, enter your area, and see what a fair local price should usually look like.
-          </p>
-        </div>
-
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {categories.map((category) => (
-            <a
-              href={`/check-price?service=${category.service}&area=${category.area}`}
-              key={category.title}
-              className="group relative flex min-h-[170px] flex-col rounded-[20px] border border-[#dfe5ee] bg-white p-5 shadow-[0_12px_30px_rgba(7,22,56,0.045)] transition duration-200 hover:-translate-y-1 hover:border-[#08783f]/35 hover:shadow-[0_20px_45px_rgba(7,22,56,0.085)]"
+    <section className="bg-white px-5 pb-8 pt-5 sm:px-8 lg:px-10 lg:pb-8 lg:pt-4">
+      <div className="mx-auto max-w-[1320px]">
+        <div className="grid grid-cols-2 overflow-hidden rounded-[16px] border border-[#e4e9ef] bg-white shadow-[0_10px_26px_rgba(7,22,56,0.035)] sm:grid-cols-5 lg:border-0 lg:shadow-none">
+          {trustItems.map((item) => (
+            <div
+              key={item.title}
+              className="flex min-h-[92px] flex-col items-center justify-center border-[#e4e9ef] px-3 py-4 text-center text-[#079448] odd:border-r sm:border-r sm:last:border-r-0 lg:min-h-[106px]"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="grid h-12 w-12 place-items-center rounded-[16px] bg-[#f0faf3] text-[22px] font-black text-[#08783f] ring-1 ring-[#d8eddd]">
-                  {category.icon}
-                </div>
-
-                <span className="grid h-9 w-9 place-items-center rounded-full bg-[#071638] text-[19px] leading-none text-white shadow-[0_10px_20px_rgba(7,22,56,0.14)] transition group-hover:translate-x-1 group-hover:bg-[#08783f]">
-                  →
-                </span>
-              </div>
-
-              <h3 className="mt-5 text-[20px] font-extrabold leading-[1.05] tracking-[-0.025em] text-[#071638]">
-                {category.title}
-              </h3>
-
-              <p className="mt-2 text-[13px] font-semibold leading-[1.45] text-[#556177]">
-                {category.text}
+              <TrustIcon type={item.icon} />
+              <p className="mt-2 text-[12px] font-black leading-[1.2] tracking-[-0.02em] text-[#071638] sm:text-[13px]">
+                {item.title}
               </p>
-
-              <p className="mt-auto pt-5 text-[13px] font-extrabold text-[#08783f]">
-                Check price
+              <p className="mt-0.5 text-[11px] font-bold leading-[1.25] tracking-[-0.015em] text-[#071638] sm:text-[12px]">
+                {item.text}
               </p>
-            </a>
+            </div>
           ))}
         </div>
       </div>

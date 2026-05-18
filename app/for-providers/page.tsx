@@ -8,15 +8,13 @@ type FieldOption = {
 };
 
 const categories: FieldOption[] = [
-  { label: "End of tenancy cleaning", value: "end-of-tenancy-cleaning" },
-  { label: "Regular cleaning", value: "regular-cleaning" },
-  { label: "Deep cleaning", value: "deep-cleaning" },
-  { label: "Man and van", value: "man-and-van" },
-  { label: "Removals", value: "removals" },
+  { label: "Cleaning", value: "cleaning" },
   { label: "Plumber", value: "plumber" },
   { label: "Electrician", value: "electrician" },
   { label: "Locksmith", value: "locksmith" },
+  { label: "Removals", value: "removals" },
   { label: "Handyman", value: "handyman" },
+  { label: "Man and van", value: "man-and-van" },
   { label: "Gardener", value: "gardener" },
   { label: "Pest control", value: "pest-control" },
   { label: "Painter / decorator", value: "painter-decorator" },
@@ -26,49 +24,37 @@ const categories: FieldOption[] = [
 ];
 
 const areas = [
-  "East London",
-  "North London",
-  "South London",
-  "West London",
-  "Central London",
-  "Ilford",
-  "Barking",
-  "East Ham",
-  "Stratford",
-  "Leyton",
-  "Walthamstow",
-  "Romford",
-  "Dagenham",
-  "Forest Gate",
-  "Wanstead",
-  "Hackney",
-  "Tower Hamlets",
-  "Newham",
-  "Greenwich",
-  "Woolwich",
-  "Lewisham",
-  "Croydon",
-  "Brixton",
-  "Clapham",
-  "Tooting",
-  "Wimbledon",
-  "Kingston",
-  "Richmond",
-  "Hounslow",
-  "Ealing",
-  "Acton",
-  "Wembley",
-  "Harrow",
-  "Barnet",
-  "Enfield",
-  "Tottenham",
-  "Camden",
-  "Islington",
-  "Westminster",
-  "Kensington",
-  "Chelsea",
-  "Hammersmith",
-  "Fulham",
+  "HA8",
+  "SL2",
+  "SL1",
+  "E17",
+  "E12",
+  "E6",
+  "E7",
+  "E10",
+  "E15",
+  "IG1",
+  "IG2",
+  "IG3",
+  "IG11",
+  "RM1",
+  "RM6",
+  "NW4",
+  "NW10",
+  "N15",
+  "N17",
+  "EN1",
+  "CR0",
+  "SW2",
+  "SW4",
+  "SW17",
+  "KT1",
+  "TW3",
+  "W5",
+  "UB1",
+  "UB3",
+  "SE18",
+  "SE13",
 ];
 
 
@@ -207,8 +193,14 @@ function Select({ children, name, defaultValue = "" }: { children: React.ReactNo
 function AreaChip({ area, defaultChecked = false }: { area: string; defaultChecked?: boolean }) {
   return (
     <label className="cursor-pointer">
-      <input type="checkbox" name="areas" value={area.toLowerCase().replace(/\s+/g, "-")} defaultChecked={defaultChecked} className="peer sr-only" />
-      <span className="inline-flex h-[40px] items-center rounded-full border border-[#dfe5ee] bg-white px-4 text-[13px] font-extrabold text-[#071638] transition peer-checked:border-[#98d7ad] peer-checked:bg-[#f1faf3] peer-checked:text-[#08783f]">
+      <input
+        type="checkbox"
+        name="areas"
+        value={area.toUpperCase()}
+        defaultChecked={defaultChecked}
+        className="peer sr-only"
+      />
+      <span className="inline-flex h-[38px] items-center rounded-full border border-[#e6ebf2] bg-[#f8fafc] px-3.5 text-[12px] font-extrabold text-[#7a8496] opacity-70 transition peer-checked:border-[#08783f] peer-checked:bg-[#08783f] peer-checked:text-white peer-checked:opacity-100 peer-checked:shadow-[0_8px_18px_rgba(8,120,63,0.18)]">
         {area}
       </span>
     </label>
@@ -259,10 +251,32 @@ function SignupForm() {
       </div>
 
       <div className="mt-5">
-        <p className="mb-3 text-[14px] font-extrabold text-[#071638]">Areas you cover</p>
-        <div className="flex flex-wrap gap-2">
-          {areas.map((area) => <AreaChip key={area} area={area} />)}
-        </div>
+        <p className="mb-1 text-[14px] font-extrabold text-[#071638]">Postcode areas you cover</p>
+        <p className="mb-3 text-[12px] font-bold leading-[1.4] text-[#657089]">
+          Select common postcode prefixes below, or type any extra areas you cover. Use outward postcode prefixes, not full postcodes. Example: HA8 matches HA8 6HU.
+        </p>
+        <details className="rounded-[16px] border border-[#dfe5ee] bg-[#fbfcfd] p-3">
+          <summary className="cursor-pointer list-none text-[13px] font-extrabold text-[#08783f] [&::-webkit-details-marker]:hidden">
+            Choose from common postcode areas
+          </summary>
+          <div className="mt-3 flex max-h-[190px] flex-wrap gap-2 overflow-y-auto pr-1">
+            {areas.map((area) => <AreaChip key={area} area={area} />)}
+          </div>
+          <p className="mt-3 text-[11px] font-bold text-[#9aa4b5]">
+            Selected areas turn green. Use the box below if your area is missing.
+          </p>
+        </details>
+        <label className="mt-4 block">
+          <span className="mb-2 block text-[13px] font-extrabold text-[#071638]">Add other postcode areas</span>
+          <input
+            name="areasCustom"
+            placeholder="e.g. HA1, HA2, SL3, UB6, NW9"
+            className="h-[48px] w-full rounded-[12px] border border-[#dfe5ee] bg-white px-4 text-[14px] font-semibold uppercase text-[#071638] outline-none transition placeholder:normal-case placeholder:text-[#8b94a7] focus:border-[#98d7ad] focus:ring-4 focus:ring-[#e8f7ed]"
+          />
+          <span className="mt-2 block text-[11px] font-bold leading-[1.4] text-[#9aa4b5]">
+            Separate each area with a comma. Do not enter full customer postcodes here.
+          </span>
+        </label>
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -321,7 +335,7 @@ function ProfilePreview() {
             <span className="grid h-[62px] w-[62px] place-items-center rounded-[18px] bg-white text-[28px]">⚡</span>
             <div>
               <h3 className="text-[24px] font-extrabold leading-none tracking-[-0.025em]">Local Service Provider</h3>
-              <p className="mt-2 text-[14px] font-semibold text-white/70">Man and van · Cleaning · Plumbing</p>
+              <p className="mt-2 text-[14px] font-semibold text-white/70">Cleaning · Plumbing · Handyman</p>
             </div>
           </div>
         </div>
@@ -344,7 +358,7 @@ function ProfilePreview() {
               <span className="text-[14px] font-extrabold text-[#08783f]">No paid boost</span>
             </div>
             <div className="flex items-center justify-between rounded-[14px] border border-[#edf0f5] px-4 py-3">
-              <span className="text-[14px] font-bold text-[#44506a]">Customer contact</span>
+              <span className="text-[14px] font-bold text-[#44506a]">Provider alerts</span>
               <span className="text-[14px] font-extrabold text-[#071638]">WhatsApp</span>
             </div>
           </div>
@@ -387,7 +401,7 @@ export default function ForProvidersPage() {
             </h1>
 
             <p className="mt-6 max-w-[600px] text-[18px] font-semibold leading-[1.55] text-[#44506a] sm:text-[20px]">
-              Create a free Quickola provider profile so nearby customers can see your service, areas covered, starting price and availability before they contact you.
+              Create a free Quickola provider profile so we can send you relevant local requests by WhatsApp when customers check prices in the postcode areas you cover.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -438,9 +452,9 @@ export default function ForProvidersPage() {
           </div>
 
           <div className="mt-7 grid gap-4 md:grid-cols-3">
-            <HowStep number="1" title="Create your free provider profile" text="Add your business name, service, area, WhatsApp, price and availability." />
-            <HowStep number="2" title="We match relevant local requests" text="Customers searching in your area can be matched to providers that fit the job." />
-            <HowStep number="3" title="You choose what to accept" text="Start free, keep control and only respond to jobs that make sense for you." />
+            <HowStep number="1" title="Create your free provider profile" text="Add your business name, service, WhatsApp, starting price and postcode areas such as HA8 or SL2." />
+            <HowStep number="2" title="We send matching local requests" text="If a customer request matches your service and postcode prefix, Quickola can send you an anonymous WhatsApp alert." />
+            <HowStep number="3" title="You reply with rough price and availability" text="Customer details stay hidden until Quickola filters the options and the customer chooses to continue." />
           </div>
         </div>
       </section>

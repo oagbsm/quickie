@@ -98,6 +98,25 @@ function normaliseAreaValue(value: string | null | undefined) {
     .replace(/\s+/g, " ");
 }
 
+function getPostcodePrefix(value: string | null | undefined) {
+  const raw = String(value || "").trim().toUpperCase();
+  if (!raw) return "";
+
+  const compact = raw.replace(/\s+/g, "");
+
+  // Full UK postcode like HA8 6HU / HA86HU -> outward prefix HA8.
+  if (/^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/.test(raw)) {
+    return compact.slice(0, -3).toLowerCase();
+  }
+
+  // Already a postcode prefix like HA8 / SL2 / E17.
+  if (/^[A-Z]{1,2}\d[A-Z\d]?$/.test(compact)) {
+    return compact.toLowerCase();
+  }
+
+  return "";
+}
+
 function providerMatchesRequest(request: RequestRow, business: BusinessRow) {
   const isApproved = business.status?.toLowerCase() === "approved";
   if (!isApproved) return false;
@@ -109,12 +128,17 @@ function providerMatchesRequest(request: RequestRow, business: BusinessRow) {
   if (!serviceMatches) return false;
 
   const requestArea = normaliseAreaValue(request.area);
+  const requestPostcodePrefix = getPostcodePrefix(request.postcode);
+  const requestAreaPrefix = getPostcodePrefix(request.area);
   const businessAreas = (business.areas || []).map(normaliseAreaValue);
+  const businessPostcodePrefixes = (business.areas || []).map(getPostcodePrefix).filter(Boolean);
   const londonAreaSet = londonAreas.map(normaliseAreaValue);
   const londonZones = ["london", "east london", "west london", "north london", "south london", "central london"];
 
   const areaMatches =
     businessAreas.includes(requestArea) ||
+    (requestPostcodePrefix && businessPostcodePrefixes.includes(requestPostcodePrefix)) ||
+    (requestAreaPrefix && businessPostcodePrefixes.includes(requestAreaPrefix)) ||
     businessAreas.some((area) => londonZones.includes(area)) ||
     (londonZones.includes(requestArea) && businessAreas.some((area) => londonAreaSet.includes(area)));
 

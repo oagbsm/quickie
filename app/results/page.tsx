@@ -49,12 +49,12 @@ const priceConfigs: Record<string, PriceConfig> = {
   plumber: {
     label: "Plumber",
     from: "£80 – £160",
-    note: "Typical callout range before parts, labour, urgency and access are confirmed.",
+    note: "Typical callout range before parts, urgency, access and repair details are confirmed.",
   },
   electrician: {
     label: "Electrician",
     from: "£80 – £150",
-    note: "Typical callout range before parts, labour, urgency and fault details are confirmed.",
+    note: "Typical callout range before parts, urgency, access and fault details are confirmed.",
   },
   locksmith: {
     label: "Locksmith",
@@ -267,30 +267,32 @@ function PinIcon() {
 
 function Hero({ postcode, service }: { postcode: string; service: string }) {
   return (
-    <section className="group relative overflow-hidden rounded-[24px] bg-[linear-gradient(135deg,#f7fcf8_0%,#ffffff_58%,#eef9f1_100%)] p-[1px] shadow-[0_14px_42px_rgba(7,22,56,0.045)]">
-      <div className="pointer-events-none absolute inset-0 rounded-[24px] bg-[conic-gradient(from_90deg_at_50%_50%,rgba(8,120,63,0)_0deg,rgba(8,120,63,0)_250deg,rgba(8,120,63,0.44)_292deg,rgba(174,242,193,0.9)_310deg,rgba(8,120,63,0.44)_328deg,rgba(8,120,63,0)_360deg)] opacity-70 motion-safe:animate-[quickolaOrbit_9s_linear_infinite]" />
-      <div className="relative overflow-hidden rounded-[23px] bg-[linear-gradient(135deg,#f7fcf8_0%,#ffffff_58%,#eef9f1_100%)] px-5 py-5 ring-1 ring-[#dfeee4] sm:px-7 sm:py-6 lg:px-8 lg:py-7">
-        <div className="pointer-events-none absolute -left-24 top-10 h-64 w-64 rounded-full bg-[#dff4e6] opacity-60 blur-[2px]" />
-        <div className="pointer-events-none absolute -right-28 top-4 h-64 w-64 rounded-full bg-[#e6f7ec] opacity-70" />
+    <section className="group relative overflow-hidden rounded-[22px] border border-[#dcebe1] bg-[linear-gradient(135deg,#f8fcf9_0%,#ffffff_62%,#eef9f1_100%)] shadow-[0_12px_34px_rgba(7,22,56,0.045)]">
+      <div className="pointer-events-none absolute -left-20 top-10 h-48 w-48 rounded-full bg-[#dff4e6] opacity-55 blur-[2px]" />
+      <div className="pointer-events-none absolute -right-28 top-2 h-56 w-56 rounded-full bg-[#e6f7ec] opacity-65" />
 
-        <div className="relative z-10 max-w-[700px]">
-          <div className="grid h-12 w-12 place-items-center rounded-full bg-[#08783f] text-white shadow-[0_12px_26px_rgba(8,120,63,0.2)] ring-[7px] ring-[#e5f6ea] sm:h-14 sm:w-14">
-            <CheckIcon className="h-7 w-7 sm:h-8 sm:w-8" />
-          </div>
+      <div className="relative z-10 px-4 py-4 sm:px-7 sm:py-6 lg:px-8 lg:py-7">
+        <div className="grid h-11 w-11 place-items-center rounded-full bg-[#08783f] text-white shadow-[0_10px_22px_rgba(8,120,63,0.18)] ring-[6px] ring-[#e5f6ea] sm:h-14 sm:w-14">
+          <CheckIcon className="h-6 w-6 sm:h-8 sm:w-8" />
+        </div>
 
-          <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[#08783f]">Request received</p>
-          <h1 className="mt-2 max-w-[760px] text-[30px] font-black leading-[1.04] tracking-[-0.04em] text-[#071638] sm:text-[40px] lg:text-[44px]">
-            Request received — we’re checking {service.toLowerCase()} options near <span className="text-[#08783f]">{postcode}.</span>
-          </h1>
-          <p className="mt-3 max-w-[720px] text-[14px] font-semibold leading-[1.5] text-[#172545] sm:text-[16px]">
-            We’ll use your request to check the best next step and email you shortly. No booking pressure.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-2 rounded-[12px] bg-[#eff9f2] px-3 py-2 text-[13px] font-bold text-[#08783f] ring-1 ring-[#d7ecdd]">
-              <span>●</span>
-              Status: checking local providers
-            </span>
-          </div>
+        <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-[#08783f] sm:text-[11px]">Request received</p>
+        <h1 className="mt-2 max-w-[760px] text-[30px] font-black leading-[1.02] tracking-[-0.045em] text-[#071638] sm:text-[40px] lg:text-[44px]">
+          We’re checking {service.toLowerCase()} options near <span className="text-[#08783f]">{postcode}.</span>
+        </h1>
+        <p className="mt-3 max-w-[720px] text-[14px] font-semibold leading-[1.45] text-[#172545] sm:text-[16px]">
+          We’ll email your best next step shortly. No booking is made, no payment is required, and you choose whether to continue.
+        </p>
+
+        <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
+          <span className="inline-flex items-center gap-2 rounded-[12px] bg-[#eff9f2] px-3 py-2 text-[13px] font-bold text-[#08783f] ring-1 ring-[#d7ecdd]">
+            <span className="h-2 w-2 rounded-full bg-[#08783f]" />
+            Status: checking local providers
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-[12px] bg-white/82 px-3 py-2 text-[13px] font-bold text-[#44506a] ring-1 ring-[#dfe8e4]">
+            <ShieldIcon />
+            We don’t sell your details to a provider list
+          </span>
         </div>
       </div>
     </section>
@@ -312,13 +314,13 @@ function HeroGlowStyles() {
 function FairPriceCard({ config, postcode }: { config: PriceConfig; postcode: string }) {
   return (
     <section className="overflow-hidden rounded-[22px] bg-[radial-gradient(circle_at_85%_15%,rgba(255,255,255,0.13),transparent_28%),linear-gradient(135deg,#08783f_0%,#064f35_48%,#071638_100%)] p-5 text-white shadow-[0_16px_42px_rgba(7,22,56,0.12)] lg:p-5">
-      <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-white/76">Your fair price guide</p>
+      <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-white/76">Your local fair price guide</p>
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <span className="text-[40px] font-black leading-none tracking-[-0.055em] sm:text-[48px]">{config.from}</span>
         {config.suffix ? <span className="pb-2 text-[22px] font-bold">{config.suffix}</span> : null}
       </div>
       <p className="mt-3 text-[15px] font-semibold text-white/84">
-        Typical range for {config.label.toLowerCase()} near <span className="font-black text-white">{postcode}</span>
+        Typical guide range for {config.label.toLowerCase()} near <span className="font-black text-white">{postcode}</span>
       </p>
 
       <p className="mt-4 border-t border-white/14 pt-3 text-[13px] font-medium leading-[1.6] text-white/78">
@@ -346,8 +348,13 @@ function SummaryCard({ service, postcode, jobType, jobDetail, timeNeeded }: {
   return (
     <section className="rounded-[22px] border border-[#e1e6ee] bg-white p-4 shadow-[0_14px_38px_rgba(7,22,56,0.045)] sm:p-5">
       <div className="flex items-center justify-between gap-4 border-b border-[#edf0f5] pb-4">
-        <h2 className="text-[14px] font-bold uppercase tracking-[0.08em] text-[#071638]">Your request summary</h2>
-        <a href={`/check-price?service=${slugify(service, "cleaning")}&postcode=${encodeURIComponent(postcode)}`} className="text-[13px] font-bold text-[#08783f]/80 hover:text-[#08783f] hover:underline">
+        <div>
+          <h2 className="text-[14px] font-bold uppercase tracking-[0.08em] text-[#071638]">Your request</h2>
+          <p className="mt-1 text-[13px] font-semibold text-[#657089] sm:hidden">
+            {service} · {jobType} · {postcode}
+          </p>
+        </div>
+        <a href={`/check-price?service=${slugify(service, "cleaning")}&postcode=${encodeURIComponent(postcode)}`} className="inline-flex h-8 items-center justify-center rounded-full border border-[#d8eddd] bg-[#f7fcf8] px-3 text-[13px] font-bold text-[#08783f] transition hover:-translate-y-0.5 hover:border-[#08783f]/40">
           Edit
         </a>
       </div>
@@ -368,15 +375,15 @@ function SummaryCard({ service, postcode, jobType, jobDetail, timeNeeded }: {
 function Timeline() {
   const steps = [
     ["1", "Checking local providers", "We’re reviewing suitable options for your request.", <SearchIcon key="search" />],
-    ["2", "Sending your best next step", "We’ll email your match or price update.", <MailIcon key="mail" />],
-    ["3", "You choose", "Review the details and continue only if useful.", <CheckIcon key="check" />],
+    ["2", "Emailing your match update", "We’ll send the best next step clearly, not a spam list.", <MailIcon key="mail" />],
+    ["3", "You stay in control", "Review the details and continue only if useful.", <CheckIcon key="check" />],
   ];
 
   return (
     <section className="rounded-[22px] border border-[#e1e6ee] bg-white p-4 shadow-[0_14px_38px_rgba(7,22,56,0.045)] sm:p-5">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <h2 className="text-[22px] font-black tracking-[-0.03em] text-[#071638]">What happens next?</h2>
-        <p className="text-[13px] font-semibold text-[#657089]">No payment taken. You choose whether to continue.</p>
+        <p className="text-[13px] font-semibold text-[#657089]">No payment taken. No booking made. You choose whether to continue.</p>
       </div>
       <div className="mt-5 grid gap-4 lg:grid-cols-3 lg:gap-0">
         {steps.map(([number, title, text, icon], index) => (
@@ -406,12 +413,12 @@ function SafetyCard({ email, phone }: { email: string; phone: string }) {
           <div>
             <h2 className="text-[19px] font-black tracking-[-0.02em] text-[#071638]">Your details are private.</h2>
             <p className="mt-2 max-w-[560px] text-[15px] font-semibold leading-[1.55] text-[#44506a]">
-              We never share your information publicly or post your request as a public listing.
+              We never share your information publicly, post your request as a listing, or sell your details to a provider list.
             </p>
           </div>
         </div>
         <div className="rounded-[18px] bg-white/70 p-4 ring-1 ring-[#d8eddd]">
-          <p className="text-[13px] font-bold text-[#657089]">We’ll contact you on</p>
+          <p className="text-[13px] font-bold text-[#657089]">Your update will be sent to</p>
           <p className="mt-1 text-[14px] font-black text-[#071638]">{email || "your email"}</p>
           {phone ? <p className="mt-1 text-[14px] font-semibold text-[#44506a]">{phone}</p> : null}
         </div>
@@ -424,9 +431,9 @@ function BottomActions() {
   return (
     <section className="rounded-[22px] border border-[#d8eddd] bg-[linear-gradient(135deg,#f7fcf8_0%,#ffffff_100%)] p-5 text-center shadow-[0_12px_34px_rgba(7,22,56,0.035)] sm:p-6">
       <h2 className="mx-auto max-w-[560px] text-[23px] font-black leading-[1.15] tracking-[-0.035em] text-[#071638]">
-        We’ll check the best next step for this request.
+        Your request is in motion.
       </h2>
-      <p className="mt-2 text-[15px] font-semibold text-[#657089]">You can also check another service or postcode.</p>
+      <p className="mt-2 text-[15px] font-semibold text-[#657089]">We’ll email the best next step. You can also check another price.</p>
       <a
         href="/"
         className="mx-auto mt-6 flex h-[50px] max-w-[420px] items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[15px] font-black text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5"
@@ -468,6 +475,9 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
 
           <div className="grid gap-3 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)]">
             <FairPriceCard config={config} postcode={postcode} />
+            <div className="lg:hidden">
+              <Timeline />
+            </div>
             <SummaryCard
               service={service}
               postcode={postcode}
@@ -477,7 +487,9 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
             />
           </div>
 
-          <Timeline />
+          <div className="hidden lg:block">
+            <Timeline />
+          </div>
           <SafetyCard email={email} phone={phone} />
           <BottomActions />
         </div>

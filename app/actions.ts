@@ -296,6 +296,7 @@ export async function deleteRequest(formData: FormData) {
   revalidatePath("/qk-ops-7f3a");
 }
 
+
 export async function deleteBusiness(formData: FormData) {
   const id = clean(formData.get("id"));
 
@@ -303,11 +304,66 @@ export async function deleteBusiness(formData: FormData) {
     throw new Error("Missing business id.");
   }
 
-  const { error } = await supabase.from("businesses").delete().eq("id", id);
+  const { error } = await supabase
+    .from("businesses")
+    .update({
+      active: false,
+      status: "archived",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
 
   if (error) {
-    console.error("Failed to delete business:", error);
-    throw new Error(`Could not delete business: ${error.message}`);
+    console.error("Failed to archive business:", error);
+    throw new Error(`Could not archive business: ${error.message}`);
+  }
+
+  revalidatePath("/qk-ops-7f3a");
+}
+
+export async function addProvider(formData: FormData) {
+  const businessName = clean(formData.get("business_name"));
+  const category = clean(formData.get("category"));
+  const whatsapp = clean(formData.get("whatsapp"));
+  const startingPriceRaw = clean(formData.get("starting_price"));
+  const areasRaw = clean(formData.get("areas"));
+  const availability = clean(formData.get("availability"));
+  const description = clean(formData.get("description"));
+
+  if (!businessName || !category || !whatsapp) {
+    throw new Error("Business name, service and WhatsApp are required.");
+  }
+
+  const areas = areasRaw
+    ? areasRaw
+        .split(",")
+        .map((area) => area.trim().toUpperCase())
+        .filter(Boolean)
+    : [];
+
+  const parsedStartingPrice = startingPriceRaw ? Number(startingPriceRaw) : null;
+
+  const { error } = await supabase.from("businesses").insert({
+    business_name: businessName,
+    category,
+    whatsapp,
+    starting_price: Number.isFinite(parsedStartingPrice) ? parsedStartingPrice : null,
+    areas,
+    availability: availability || null,
+    description: description || null,
+    status: "approved",
+    source: "manual",
+    approved_at: new Date().toISOString(),
+    active: true,
+    trust_score: 60,
+    verification_status: "manually_checked",
+    verification_notes: "Added manually from admin provider form.",
+    accepts_whatsapp_alerts: true,
+  });
+
+  if (error) {
+    console.error("Failed to add provider:", error);
+    throw new Error(`Could not add provider: ${error.message}`);
   }
 
   revalidatePath("/qk-ops-7f3a");
