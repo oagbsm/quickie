@@ -11,9 +11,8 @@ export default function Home() {
       <Header />
       <Hero />
       <Categories />
-      <HowItWorks />
+      {/* <HowItWorks /> */}
       <BusinessCTA />
-      <Footer />
     </main>
   );
 }

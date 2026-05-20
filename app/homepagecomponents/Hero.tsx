@@ -1,40 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const services = [
-  { label: "Plumbing", value: "plumbing", icon: "plumbing" },
-  { label: "Cleaning", value: "cleaning", icon: "cleaning" },
-  { label: "Electrical", value: "electrician", icon: "bolt" },
-  { label: "Locksmith", value: "locksmith", icon: "key" },
-  { label: "Removals", value: "removals", icon: "van" },
-  { label: "Handyman", value: "handyman", icon: "tool" },
+  { label: "Man and Van", value: "man-and-van", icon: "van", description: "Small moves, pickups and furniture delivery" },
+  { label: "Removals", value: "removals", icon: "van", description: "Flat moves, house moves and larger removals" },
+  { label: "Plumbing", value: "plumbing", icon: "plumbing", description: "Leaks, taps, toilets and local call-outs" },
+  { label: "Emergency Plumber", value: "emergency-plumber", icon: "plumbing", description: "Urgent leaks, blockages and out-of-hours help" },
+  { label: "Electricians", value: "electrician", icon: "bolt", description: "Faults, sockets, lighting and safety checks" },
+  { label: "Boiler Repair", value: "boiler-repair", icon: "flame", description: "Heating issues, boiler faults and diagnostics" },
+  { label: "Locksmith", value: "locksmith", icon: "key", description: "Lockouts, lock changes and key problems" },
+  { label: "Cleaning", value: "cleaning", icon: "cleaning", description: "Home cleaning, regular cleans and one-off jobs" },
+  { label: "End of Tenancy Cleaning", value: "end-of-tenancy-cleaning", icon: "cleaning", description: "Move-out cleaning for flats and houses" },
+  { label: "Deep Cleaning", value: "deep-cleaning", icon: "cleaning", description: "Heavy cleans, kitchens, bathrooms and full homes" },
+  { label: "Carpet Cleaning", value: "carpet-cleaning", icon: "cleaning", description: "Rooms, stains, rugs and upholstery checks" },
+  { label: "Oven Cleaning", value: "oven-cleaning", icon: "cleaning", description: "Single ovens, double ovens and extractor cleans" },
+  { label: "Gardener", value: "gardener", icon: "leaf", description: "Grass cutting, tidy-ups and garden maintenance" },
+  { label: "Handyman", value: "handyman", icon: "tool", description: "Small repairs, mounting, assembly and fixes" },
+  { label: "Painter & Decorator", value: "painter-decorator", icon: "tool", description: "Rooms, touch-ups, walls and decorating jobs" },
+  { label: "Pest Control", value: "pest-control", icon: "shield", description: "Mice, insects, wasps and treatment checks" },
+  { label: "Waste Removal", value: "waste-removal", icon: "van", description: "Bulky waste, garden waste and clearances" },
+  { label: "Appliance Repair", value: "appliance-repair", icon: "tool", description: "Washing machines, ovens and appliance faults" },
+  { label: "Roof Repair", value: "roof-repair", icon: "tool", description: "Leaks, tiles, guttering and roof checks" },
+  { label: "MOT & Car Repairs", value: "mot-car-repairs", icon: "car", description: "MOT checks, diagnostics and garage repairs" },
 ];
 
-const supportedPostcodeAreas = [
-  "BR",
-  "CR",
-  "DA",
-  "E",
-  "EC",
-  "EN",
-  "HA",
-  "IG",
-  "KT",
-  "N",
-  "NW",
-  "RM",
-  "SE",
-  "SL",
-  "SM",
-  "SW",
-  "TW",
-  "UB",
-  "W",
-  "WC",
-  "WD",
-];
+const supportedSloughDistricts = ["SL1", "SL2", "SL3"];
 
 function normalisePostcode(value: string) {
   return value.toUpperCase().replace(/\s+/g, "").trim();
@@ -50,19 +42,30 @@ function isValidUkPostcode(value: string) {
   return /^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/.test(value.trim().toUpperCase());
 }
 
-function getPostcodeArea(value: string) {
+function getPostcodeDistrict(value: string) {
   const clean = normalisePostcode(value);
-  const match = clean.match(/^[A-Z]+/);
-  return match ? match[0] : null;
+  const match = clean.match(/^(SL[123])/);
+  return match ? match[1] : null;
 }
 
-function isSupportedPostcode(value: string) {
-  const area = getPostcodeArea(value);
-  return area ? supportedPostcodeAreas.includes(area) : false;
+function isSupportedSloughPostcode(value: string) {
+  const clean = normalisePostcode(value);
+  return /^SL[123][A-Z]?\d[A-Z]{2}$/.test(clean);
 }
 
-function Icon({ type, className = "h-[22px] w-[22px]" }: { type: string; className?: string }) {
-  const base = `${className} fill-none stroke-current stroke-[2.15]`;
+function Icon({ type, className = "h-5 w-5" }: { type: string; className?: string }) {
+  const base = `${className} fill-none stroke-current stroke-[2]`;
+
+  if (type === "van") {
+    return (
+      <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 7h11v9H3z" />
+        <path d="M14 10h3.5l2.5 3v3h-6" />
+        <circle cx="6.5" cy="18" r="2" />
+        <circle cx="17.5" cy="18" r="2" />
+      </svg>
+    );
+  }
 
   if (type === "plumbing") {
     return (
@@ -75,6 +78,17 @@ function Icon({ type, className = "h-[22px] w-[22px]" }: { type: string; classNa
     );
   }
 
+  if (type === "car") {
+    return (
+      <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M5 12 7 7h10l2 5" />
+        <path d="M5 12h14v5H5z" />
+        <circle cx="8" cy="17" r="1.6" />
+        <circle cx="16" cy="17" r="1.6" />
+      </svg>
+    );
+  }
+
   if (type === "cleaning") {
     return (
       <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -82,6 +96,14 @@ function Icon({ type, className = "h-[22px] w-[22px]" }: { type: string; classNa
         <path d="M4 20h8" />
         <path d="m12 6-7 7 6 6 7-7" />
         <path d="M7 16l-3 4" />
+      </svg>
+    );
+  }
+
+  if (type === "flame") {
+    return (
+      <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 22c4 0 7-2.8 7-6.8 0-3.2-2-5.5-4.2-7.6-.8 2.3-2.2 3.5-3.8 4.4.4-3.3-.8-6.2-3.1-8C7.4 7.8 5 10 5 15.2 5 19.2 8 22 12 22Z" />
       </svg>
     );
   }
@@ -105,32 +127,11 @@ function Icon({ type, className = "h-[22px] w-[22px]" }: { type: string; classNa
     );
   }
 
-  if (type === "van") {
+  if (type === "leaf") {
     return (
       <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M3 7h11v9H3z" />
-        <path d="M14 10h3.5l2.5 3v3h-6" />
-        <circle cx="6.5" cy="18" r="2" />
-        <circle cx="17.5" cy="18" r="2" />
-      </svg>
-    );
-  }
-
-  if (type === "target") {
-    return (
-      <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="7" />
-        <circle cx="12" cy="12" r="2" />
-        <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" />
-      </svg>
-    );
-  }
-
-  if (type === "shield") {
-    return (
-      <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M12 3 19 6v5c0 4.7-2.8 8.2-7 10-4.2-1.8-7-5.3-7-10V6l7-3Z" />
-        <path d="m9 12 2 2 4-5" />
+        <path d="M20 4c-7.5 0-13 4.8-13 11a5 5 0 0 0 5 5c6.2 0 8-8.2 8-16Z" />
+        <path d="M4 20c3.5-5.5 8-8.5 14-10" />
       </svg>
     );
   }
@@ -144,192 +145,231 @@ function Icon({ type, className = "h-[22px] w-[22px]" }: { type: string; classNa
     );
   }
 
+  if (type === "pin") {
+    return (
+      <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 21s7-4.8 7-11a7 7 0 1 0-14 0c0 6.2 7 11 7 11Z" />
+        <circle cx="12" cy="10" r="2.3" />
+      </svg>
+    );
+  }
+
+  if (type === "shield") {
+    return (
+      <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 3 19 6v5c0 4.7-2.8 8.2-7 10-4.2-1.8-7-5.3-7-10V6l7-3Z" />
+        <path d="m9 12 2 2 4-5" />
+      </svg>
+    );
+  }
+
+  if (type === "refresh") {
+    return (
+      <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M20 11a8 8 0 0 0-14.4-4.8L4 8" />
+        <path d="M4 4v4h4" />
+        <path d="M4 13a8 8 0 0 0 14.4 4.8L20 16" />
+        <path d="M20 20v-4h-4" />
+      </svg>
+    );
+  }
+
+  if (type === "chart") {
+    return (
+      <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 19V5" />
+        <path d="M4 19h16" />
+        <path d="M8 16v-5" />
+        <path d="M12 16V8" />
+        <path d="M16 16v-8" />
+      </svg>
+    );
+  }
+
   return null;
 }
 
 export default function Hero() {
   const router = useRouter();
-  const [service, setService] = useState("cleaning");
+
+  const [service, setService] = useState("man-and-van");
+  const [serviceSearch, setServiceSearch] = useState("Man and Van");
+  const [serviceOpen, setServiceOpen] = useState(false);
+
   const [postcode, setPostcode] = useState("");
-  const [postcodeError, setPostcodeError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const selectedService = useMemo(
+    () => services.find((item) => item.value === service) ?? services[0],
+    [service]
+  );
+
+  const filteredServices = useMemo(() => {
+    const query = serviceSearch.trim().toLowerCase();
+    if (!query) return services;
+
+    return services.filter((item) => item.label.toLowerCase().includes(query));
+  }, [serviceSearch]);
+
+  const hasSelectedValidService = selectedService.label === serviceSearch;
+
+  function chooseService(item: (typeof services)[number], promptPostcode = false) {
+    setService(item.value);
+    setServiceSearch(item.label);
+    setServiceOpen(false);
+
+    if (!promptPostcode) {
+      setError(null);
+      return;
+    }
+
+    setError("Now enter your Slough postcode to see the fair price.");
+
+    window.setTimeout(() => {
+      const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+      const formId = isDesktop ? "desktop-price-check-form" : "mobile-price-check-form";
+      const inputId = isDesktop ? "desktop-postcode-input" : "mobile-postcode-input";
+
+      document.getElementById(formId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById(inputId)?.focus();
+    }, 80);
+  }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const formattedPostcode = formatPostcode(postcode);
 
+    if (!hasSelectedValidService) {
+      setError("Choose a service from the dropdown.");
+      return;
+    }
+
     if (!formattedPostcode) {
-      setPostcodeError("Enter your postcode.");
+      setError("Enter your Slough postcode.");
       return;
     }
 
     if (!isValidUkPostcode(formattedPostcode)) {
-      setPostcodeError("Enter a valid UK postcode.");
+      setError("Enter a valid Slough postcode, for example SL1 1AA.");
       return;
     }
 
-    if (!isSupportedPostcode(formattedPostcode)) {
-      setPostcodeError("We only support London, Slough and nearby postcodes right now.");
+    if (!isSupportedSloughPostcode(formattedPostcode)) {
+      setError("QuickOla only supports Slough postcodes right now. Use an SL1, SL2 or SL3 postcode.");
       return;
     }
 
-    setPostcodeError(null);
+    setError(null);
     setPostcode(formattedPostcode);
+
     router.push(`/check-price?service=${service}&postcode=${encodeURIComponent(formattedPostcode)}`);
   }
 
   return (
-    <section className="relative isolate overflow-hidden bg-white pt-[72px] lg:pt-[82px]">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_17%_15%,rgba(7,148,72,0.16),transparent_28%),radial-gradient(circle_at_82%_9%,rgba(7,148,72,0.08),transparent_24%),linear-gradient(180deg,#ffffff_0%,#f5fbf7_52%,#ffffff_100%)]" />
-      <div className="absolute left-[-90px] top-[86px] -z-10 h-[230px] w-[230px] rounded-full bg-[#dff5e7] blur-[56px]" />
-      <div className="absolute right-[-120px] top-[170px] -z-10 h-[260px] w-[260px] rounded-full bg-[#edf8ef] blur-[60px]" />
+    <section className="relative isolate overflow-hidden bg-[#f8fbff] pt-[72px] lg:pt-[84px]">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_16%_18%,rgba(0,98,255,0.08),transparent_28%),radial-gradient(circle_at_86%_14%,rgba(7,148,72,0.08),transparent_25%),linear-gradient(180deg,#ffffff_0%,#f7fbff_58%,#ffffff_100%)]" />
 
-      <div className="mx-auto grid max-w-[1320px] items-start gap-2 px-4 pb-3 pt-3 sm:px-8 lg:grid-cols-[minmax(0,0.96fr)_minmax(560px,0.84fr)] lg:gap-8 lg:px-10 lg:pb-6 lg:pt-[31px]">
-        <div className="lg:pt-[42px]">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#cfeadb] bg-white/90 px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.11em] text-[#079448] shadow-[0_10px_22px_rgba(7,22,56,0.06)] backdrop-blur sm:text-[11px]">
-            <span className="h-2 w-2 rounded-full bg-[#079448]" />
-            Fair before hire.
-          </div>
-
-          <h1 className="mt-3 max-w-[650px] text-[31px] font-extrabold leading-[1.03] tracking-[-0.058em] text-[#071638] sm:mt-4 sm:text-[55px] lg:text-[68px]">
-            See what local people <span className="text-[#079448]">actually pay</span> before hiring.
-          </h1>
-
-          <p className="mt-3 max-w-[540px] text-[13.5px] font-medium leading-[1.38] tracking-[-0.015em] text-[#2f3b52] sm:mt-4 sm:text-[19px] sm:leading-[1.38] lg:text-[20px]">
-            Real prices from real jobs in your area. Most homeowners <span className="font-black">overpay</span> without realising.
-          </p>
-
-          <div className="mt-4 grid grid-cols-4 overflow-hidden rounded-[16px] border border-[#dfe8e4] bg-white/70 shadow-[0_10px_24px_rgba(7,22,56,0.04)] backdrop-blur sm:mt-6 sm:max-w-[620px] lg:mt-10 lg:border-0 lg:bg-transparent lg:shadow-none lg:backdrop-blur-0">
-            {[
-              ["shield", "Real data", "from real jobs"],
-              ["plumbing", "No paid", "ranking"],
-              ["target", "10 sec", "price check"],
-              ["lock", "No signup", "no spam"],
-            ].map(([icon, value, label]) => (
-              <div key={value} className="border-r border-[#e1e8ee] px-2 py-2 last:border-r-0 sm:px-3 sm:py-3 lg:border-r lg:py-0 lg:first:pl-0 lg:last:pr-0">
-                <div className="hidden text-[#071638] sm:mb-1.5 sm:flex sm:h-[32px]">
-                  {icon === "lock" ? (
-                    <span className="text-[20px] leading-none sm:text-[25px]">▢</span>
-                  ) : (
-                    <Icon type={icon} className="h-[20px] w-[20px] sm:h-[26px] sm:w-[26px]" />
-                  )}
-                </div>
-                <p className="text-[10.5px] font-extrabold leading-[1.1] tracking-[-0.025em] text-[#071638] sm:text-[16px]">{value}</p>
-                <p className="mt-0.5 whitespace-pre-line text-[9px] font-medium leading-[1.15] tracking-[-0.01em] text-[#40506a] sm:mt-1 sm:text-[12px] sm:leading-[1.25]">{label}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 hidden overflow-hidden rounded-[16px] bg-[#06182d] px-5 py-4 text-white shadow-[0_16px_34px_rgba(7,22,56,0.16)] lg:block lg:max-w-[640px]">
-            <div className="flex items-center justify-between gap-5">
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#18b857]">
-                  <span className="h-2 w-2 rounded-full bg-[#18b857]" />
-                  Recent market update
-                </p>
-                <p className="mt-2 text-[20px] font-extrabold leading-[1.25] tracking-[-0.03em]">
-                  Cleaning guide prices are up 8% in London this month
-                </p>
-                <p className="mt-1.5 text-[13px] font-medium leading-[1.45] text-white/68">
-                  Fair ranges help you avoid booking blind.
-                </p>
-              </div>
-
-              <div className="w-[230px] shrink-0">
-                <div className="mb-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.08em] text-white/45">
-                  <span>30 days</span>
-                  <span className="rounded-full bg-[#079448] px-2.5 py-1 text-[12px] font-extrabold tracking-normal text-white">+8%</span>
-                </div>
-                <svg viewBox="0 0 230 72" className="h-[62px] w-full fill-none" aria-hidden="true">
-                  <path d="M0 58H230M0 38H230M0 18H230" className="stroke-white/10 stroke-[1]" />
-                  <path
-                    d="M4 57 C24 56 33 55 48 56 C65 57 76 52 91 50 C108 48 119 49 134 43 C148 37 156 40 170 34 C185 28 191 31 204 23 C215 16 221 18 226 12"
-                    className="stroke-[#0bbf4d] stroke-[3]"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <circle cx="226" cy="12" r="4" className="fill-[#0bbf4d]" />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="relative mx-auto w-full max-w-[600px] lg:mx-0 lg:justify-self-end">
-          <div className="pointer-events-none absolute -inset-3 -z-10 rounded-[28px] bg-[radial-gradient(circle_at_50%_20%,rgba(7,148,72,0.18),transparent_58%)] blur-[10px]" />
-          <form
-            id="hero-price-form"
-            onSubmit={handleSubmit}
-            className="relative rounded-[22px] border border-[#dbe8e1] bg-white p-3.5 shadow-[0_22px_50px_rgba(7,22,56,0.11)] backdrop-blur sm:p-5 lg:p-6"
-          >
-            <div className="mb-3 flex items-start justify-between gap-3 sm:mb-4 sm:gap-4">
-              <div>
-                <h2 className="text-[20px] font-extrabold leading-[1.05] tracking-[-0.045em] text-[#071638] sm:text-[25px]">
-                  Check fair prices in your area
-                </h2>
-                <p className="mt-1 text-[12px] font-medium leading-[1.35] tracking-[-0.01em] text-[#42516a] sm:mt-1.5 sm:text-[14px]">
-                  Real-time data. Real local jobs. Real fair prices.
-                </p>
-              </div>
-              <div className="mt-1 hidden shrink-0 items-center gap-2 rounded-full bg-[#f4fbf6] px-2.5 py-1 text-[10px] font-black text-[#071638] sm:flex">
-                <span className="h-2 w-2 rounded-full bg-[#079448]" />
-                Live data
-              </div>
+      <div className="mx-auto max-w-[1440px] px-4 pb-9 pt-4 sm:px-6 lg:px-10 lg:pb-12 lg:pt-8">
+        <div className="grid items-center gap-6 rounded-[26px] border border-[#e6edf7] bg-white/82 p-4 shadow-[0_24px_70px_rgba(7,22,56,0.08)] backdrop-blur lg:grid-cols-[minmax(0,0.95fr)_minmax(430px,0.74fr)] lg:gap-8 lg:p-7 xl:grid-cols-[minmax(0,0.9fr)_minmax(500px,0.78fr)]">
+          <div className="pb-1 pt-1 lg:py-10">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#edf8f1] px-3.5 py-1.5 text-[11px] font-extrabold tracking-[-0.01em] text-[#07833f] sm:text-[12px]">
+              <Icon type="pin" className="h-3.5 w-3.5 stroke-[2.4]" />
+              #1 Local Price Discovery Platform in Slough
             </div>
 
-            <div className="mb-2 flex items-center gap-2 text-[12px] font-extrabold tracking-[-0.01em] text-[#071638] sm:mb-3 sm:text-[13px]">
-              <span className="grid h-[21px] w-[21px] place-items-center rounded-full bg-[#079448] text-[12px] font-bold text-white shadow-[0_5px_12px_rgba(7,148,72,0.22)]">1</span>
-              Choose a service
+            <h1 className="mt-5 max-w-[670px] text-[42px] font-black leading-[0.98] tracking-[-0.065em] text-[#071638] sm:text-[58px] lg:mt-7 lg:text-[76px] xl:text-[82px]">
+              Know the Fair Price{" "}
+              <span className="relative inline-block text-[#079448]">
+                Before
+                <span className="absolute -bottom-1 left-0 h-[5px] w-[72%] rounded-full bg-[#0b63ff] sm:h-[6px]" />
+              </span>{" "}
+              You Pay
+            </h1>
+
+            <p className="mt-5 max-w-[590px] text-[16px] font-medium leading-[1.55] tracking-[-0.02em] text-[#273651] sm:text-[19px] lg:text-[21px]">
+              Compare real local service prices in Slough before you book, call or pay — from man and van to MOTs,
+              plumbers and cleaners.
+            </p>
+
+            <div className="mt-5 flex max-w-[560px] items-start gap-3 text-[#071638]">
+              <Icon type="pin" className="mt-0.5 h-6 w-6 shrink-0 text-[#079448]" />
+              <p className="text-[16px] font-black leading-[1.25] tracking-[-0.02em] sm:text-[18px]">
+                Built for Slough, Wexham, Langley, Cippenham and nearby areas.
+              </p>
             </div>
 
-            <div className="rounded-[18px] bg-[#f6fbf7] p-2 ring-1 ring-[#dceee3] sm:p-2.5">
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-3">
-                {services.map((item) => {
-                  const selected = service === item.value && item.label !== "More";
+            {/* Mobile form */}
+            <form
+              id="mobile-price-check-form"
+              onSubmit={handleSubmit}
+              className="mt-7 max-w-[520px] rounded-[22px] border border-[#e1e9f5] bg-white p-3 shadow-[0_16px_35px_rgba(7,22,56,0.07)] lg:hidden"
+            >
+              <div className="relative block rounded-[16px] border border-[#e2e9f3] bg-white px-4 py-3">
+                <span className="text-[12px] font-extrabold text-[#071638]">Choose a service</span>
 
-                  return (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={() => setService(item.value)}
-                      className={`relative h-[58px] rounded-[14px] border bg-white px-2 text-center transition hover:-translate-y-0.5 sm:h-[78px] ${
-                        selected
-                          ? "border-[#079448] bg-white shadow-[0_10px_22px_rgba(7,148,72,0.13)]"
-                          : "border-[#dfe5ee] shadow-[0_5px_12px_rgba(7,22,56,0.035)]"
-                      }`}
-                    >
-                      {selected ? (
-                        <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-[#079448] text-[11px] font-bold text-white shadow-[0_5px_12px_rgba(7,148,72,0.26)] sm:-right-2 sm:-top-2 sm:h-6 sm:w-6 sm:text-[12px]">✓</span>
-                      ) : null}
-                      <span className="mx-auto grid h-[20px] place-items-center text-[#071638] sm:h-[28px]">
-                        <Icon type={item.icon} className="h-[17px] w-[17px] stroke-[1.9] sm:h-[22px] sm:w-[22px]" />
-                      </span>
-                      <span className="mt-0.5 block text-[9.5px] font-extrabold tracking-[-0.015em] text-[#071638] sm:mt-1.5 sm:text-[11px]">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                <div className="mt-2 flex items-center gap-3">
+                  <Icon type={selectedService.icon} className="h-5 w-5 text-[#0b63ff]" />
 
-            <div className="mt-2.5 space-y-2 lg:mt-6 lg:space-y-3">
-              <label className="relative block">
-                <span className="mb-1.5 flex items-center gap-2 text-[12px] font-extrabold tracking-[-0.01em] text-[#071638] sm:mb-2 sm:text-[13px]">
-                  <span className="grid h-[21px] w-[21px] place-items-center rounded-full bg-[#079448] text-[12px] font-bold text-white shadow-[0_5px_12px_rgba(7,148,72,0.22)]">2</span>
-                  Enter your postcode
-                </span>
-                <div
-                  className={`relative flex h-[43px] items-center gap-3 rounded-[14px] border bg-white px-4 text-[#071638] focus-within:ring-4 sm:h-[49px] ${
-                    postcodeError
-                      ? "border-[#d93025] focus-within:border-[#d93025] focus-within:ring-[#d93025]/10"
-                      : "border-[#dfe5ee] focus-within:border-[#079448] focus-within:ring-[#079448]/10"
-                  }`}
-                >
                   <input
+                    value={serviceSearch}
+                    onChange={(event) => {
+                      setServiceSearch(event.target.value);
+                      setServiceOpen(true);
+                      setError(null);
+                    }}
+                    onFocus={() => setServiceOpen(true)}
+                    className="min-w-0 flex-1 bg-transparent text-[15px] font-extrabold text-[#071638] outline-none placeholder:text-[#8b94a7]"
+                    placeholder="Type a service e.g. plumber"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setServiceOpen((value) => !value)}
+                    className="text-[18px] font-black text-[#071638]"
+                    aria-label="Open service list"
+                  >
+                    ⌄
+                  </button>
+                </div>
+
+                {serviceOpen ? (
+                  <div className="absolute left-0 right-0 top-[86px] z-30 max-h-[260px] overflow-y-auto rounded-[16px] border border-[#dfe7f2] bg-white p-2 shadow-[0_18px_40px_rgba(7,22,56,0.16)]">
+                    {filteredServices.length ? (
+                      filteredServices.map((item) => (
+                        <button
+                          key={item.value}
+                          type="button"
+                          onClick={() => chooseService(item)}
+                          className="flex w-full items-center gap-3 rounded-[12px] px-3 py-3 text-left hover:bg-[#f3f7ff]"
+                        >
+                          <Icon type={item.icon} className="h-5 w-5 text-[#075cff]" />
+                          <span className="text-[14px] font-black text-[#071638]">{item.label}</span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-3 text-[13px] font-bold text-[#d93025]">
+                        Choose a service from the dropdown.
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+
+              <label
+                className={`mt-3 block rounded-[16px] border bg-white px-4 py-3 ${
+                  error && error.toLowerCase().includes("postcode") ? "border-[#d93025]" : "border-[#e2e9f3]"
+                }`}
+              >
+                <span className="text-[12px] font-extrabold text-[#071638]">Postcode</span>
+                <div className="mt-2 flex items-center gap-3">
+                  <input
+                    id="mobile-postcode-input"
                     value={postcode}
                     onChange={(event) => {
                       const nextValue = event.target.value.toUpperCase().replace(/[^A-Z0-9\s]/g, "");
                       setPostcode(nextValue);
-                      if (postcodeError) setPostcodeError(null);
+                      setError(null);
                     }}
                     onBlur={() => {
                       if (postcode.trim()) setPostcode(formatPostcode(postcode));
@@ -337,86 +377,355 @@ export default function Hero() {
                     autoComplete="postal-code"
                     inputMode="text"
                     maxLength={8}
-                    className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold uppercase tracking-[-0.015em] text-[#071638] outline-none placeholder:normal-case placeholder:text-[#8b94a7]"
-                    placeholder="Enter your postcode"
+                    className="min-w-0 flex-1 bg-transparent text-[16px] font-black uppercase tracking-[-0.01em] text-[#071638] outline-none placeholder:normal-case placeholder:text-[#9aa6b8]"
+                    placeholder="Enter Slough postcode e.g. SL1 1AA"
                   />
-                  <Icon type="target" className="h-[19px] w-[19px]" />
+                  <Icon type="pin" className="h-5 w-5 text-[#071638]" />
                 </div>
-                {postcodeError ? <p className="mt-2 text-[13px] font-bold text-[#d93025]">{postcodeError}</p> : null}
               </label>
 
-              <div className="hidden items-center justify-between gap-3 text-[11px] font-semibold text-[#071638] sm:flex sm:text-[12px]">
-                <span>▣ We’ll show prices in your area</span>
-                <span>⏱ Takes less than 10 seconds</span>
-              </div>
+              {error ? <p className="mt-2 px-1 text-[12px] font-bold text-[#d93025]">{error}</p> : null}
 
               <button
                 type="submit"
-                className="flex h-[45px] w-full items-center justify-center gap-4 rounded-[14px] bg-[#079448] px-5 text-[16px] font-extrabold tracking-[-0.02em] text-white shadow-[0_16px_28px_rgba(7,148,72,0.28)] transition hover:-translate-y-0.5 hover:bg-[#087f40] sm:h-[50px] sm:text-[19px]"
+                className="mt-3 flex h-[52px] w-full items-center justify-center gap-3 rounded-[14px] bg-[#075cff] text-[16px] font-black text-white shadow-[0_16px_30px_rgba(0,92,255,0.25)]"
               >
-                Reveal local prices
+                See fair Slough price
                 <span className="text-[24px] leading-none">→</span>
               </button>
+            </form>
+
+            <div className="mt-5 grid max-w-[520px] grid-cols-2 gap-2 rounded-[16px] bg-[#effaf3] px-3 py-3 text-center sm:grid-cols-4 lg:hidden">
+              <div className="text-[11px] font-extrabold text-[#071638]">
+                <span className="text-[#079448]">✓</span> Free
+              </div>
+              <div className="text-[11px] font-extrabold text-[#071638]">
+                <span className="text-[#079448]">✓</span> No spam calls
+              </div>
+              <div className="text-[11px] font-extrabold text-[#071638]">
+                <span className="text-[#079448]">✓</span> No payment today
+              </div>
+              <div className="text-[11px] font-extrabold text-[#071638]">
+                <span className="text-[#079448]">✓</span> No paid ranking
+              </div>
             </div>
 
-            <div className="mt-2 flex items-center justify-center gap-2 text-[10.5px] font-medium text-[#536078] sm:mt-3 sm:text-[13px]">
-              <Icon type="shield" className="h-[13px] w-[13px] stroke-[1.9]" />
-              No signup. No spam. You’re in control.
-            </div>
-          </form>
+            <div className="mt-5 max-w-[520px] rounded-[22px] border border-[#dbe8ff] bg-[#f8fbff] p-4 shadow-[0_14px_30px_rgba(7,22,56,0.055)] lg:hidden">
+              <div className="flex items-center gap-4">
+                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#e7efff] text-[#075cff]">
+                  <Icon type="van" className="h-7 w-7" />
+                </span>
 
-          <div className="mt-2.5 rounded-[13px] border border-[#e3ebe5] bg-white/82 p-3 shadow-[0_8px_18px_rgba(7,22,56,0.045)] backdrop-blur sm:mt-3 sm:p-4">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-[11px] font-black uppercase tracking-[0.08em] text-[#079448]">Live example for cleaning</p>
-              <p className="rounded-full bg-[#f4fbf6] px-2 py-1 text-[10px] font-black text-[#071638]">Updated 2 min ago ●</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-black tracking-[-0.02em] text-[#071638]">
+                    Example fair Slough price
+                  </p>
+
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[12px] font-bold text-[#273651]">Man and Van</p>
+                      <p className="mt-1 text-[24px] font-black tracking-[-0.05em] text-[#075cff]">
+                        £40 – £70<span className="text-[13px]">/hr</span>
+                      </p>
+                      <p className="mt-1 text-[11px] font-semibold text-[#52627a]">Typical fair range</p>
+                    </div>
+
+                    <div className="border-l border-[#dbe6f7] pl-3">
+                      <p className="text-[12px] font-bold text-[#273651]">Check before paying</p>
+                      <p className="mt-1 text-[24px] font-black tracking-[-0.05em] text-[#e11925]">
+                        £100+<span className="text-[13px]">/hr</span>
+                      </p>
+                      <p className="mt-1 text-[11px] font-semibold text-[#52627a]">May include hidden extras</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <p className="mt-4 text-center text-[12px] font-semibold text-[#40506a]">
+                No spam. No pressure. Just fair local price guidance.
+              </p>
             </div>
-            <p className="text-[15px] font-black text-[#071638]">Wembley, HA9</p>
-            <div className="mt-3 grid grid-cols-4 divide-x divide-[#e5ebef] text-center">
+
+            {/* Desktop buttons */}
+            <form id="desktop-price-check-form" onSubmit={handleSubmit} className="mt-8 hidden items-stretch gap-4 lg:flex">
+              <button
+                type="submit"
+                className="flex h-[64px] items-center justify-center gap-4 rounded-[17px] bg-[#075cff] px-10 text-[18px] font-black text-white shadow-[0_18px_34px_rgba(0,92,255,0.24)] transition hover:-translate-y-0.5 hover:bg-[#034ee2]"
+              >
+                See fair Slough price
+                <span className="text-[26px] leading-none">→</span>
+              </button>
+
+              <a
+                href="#popular-services"
+                className="flex h-[64px] items-center justify-center gap-3 rounded-[17px] border border-[#dce5f2] bg-white px-8 text-[17px] font-black text-[#071638] shadow-[0_10px_22px_rgba(7,22,56,0.04)] transition hover:-translate-y-0.5"
+              >
+                See Local Deals
+                <span className="rounded-full border border-[#cfd8e7] px-1.5 py-0.5 text-[13px]">◇</span>
+              </a>
+            </form>
+
+            <div className="mt-8 hidden grid-cols-3 gap-8 lg:grid lg:max-w-[650px]">
               {[
-                ["Avg price", "£80–140", "Most common paid"],
-                ["Low", "£60", "10% paid less"],
-                ["High", "£210", "10% paid more"],
-                ["Overpay risk", "£70+", "If you don’t check"],
-              ].map(([label, value, sub]) => (
-                <div key={label} className="px-1 first:pl-0 last:pr-0 sm:px-2">
-                  <p className="text-[10px] font-semibold text-[#334059] sm:text-[12px]">{label}</p>
-                  <p className="mt-1 text-[16px] font-black tracking-[-0.04em] text-[#071638] sm:text-[22px]">{value}</p>
-                  <p className="mt-0.5 hidden text-[11px] font-semibold text-[#334059] sm:block">{sub}</p>
+                ["chart", "100% local data", "Based on real local jobs"],
+                ["refresh", "Updated regularly", "Prices change. We keep it accurate"],
+                ["shield", "No paid ranking", "Fair guidance first"],
+              ].map(([icon, title, subtitle]) => (
+                <div key={title} className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-full border border-[#dbe6f4] bg-white text-[#075cff] shadow-[0_8px_18px_rgba(7,22,56,0.05)]">
+                    <Icon type={icon} className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-[13px] font-black leading-[1.1] text-[#071638]">{title}</p>
+                    <p className="mt-1 text-[12px] font-semibold leading-[1.2] text-[#40506a]">{subtitle}</p>
+                  </div>
                 </div>
               ))}
             </div>
-            <div className="mt-3 hidden rounded-[9px] bg-[#edf7f0] px-3 py-2 text-[12px] font-semibold text-[#071638] sm:block">
-              ⓘ Prices update constantly as new jobs are completed in your area.
-            </div>
           </div>
 
-          <div className="mt-3 overflow-hidden rounded-[14px] bg-[#06182d] px-4 py-3.5 text-white shadow-[0_14px_30px_rgba(7,22,56,0.16)] lg:hidden">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.1em] text-[#18b857]">
-                  <span className="h-2 w-2 rounded-full bg-[#18b857]" />
-                  Recent market update
-                </p>
-                <p className="mt-1.5 text-[16px] font-extrabold leading-[1.22] tracking-[-0.025em]">
-                  Cleaning guide prices are up 8% in London
-                </p>
-                <p className="mt-1 text-[12px] font-medium leading-[1.35] text-white/66">
-                  Fair ranges help you avoid booking blind.
+          {/* Desktop card */}
+          <div className="hidden lg:block">
+            <div className="relative rounded-[28px] border border-[#e1e9f5] bg-white p-5 shadow-[0_28px_65px_rgba(7,22,56,0.11)]">
+              <div className="absolute -right-28 top-5 -z-10 h-[430px] w-[430px] rounded-[26px] bg-[linear-gradient(135deg,#eef6ff,#f5fff7)] opacity-80" />
+
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-[24px] font-black tracking-[-0.04em] text-[#071638]">Your Price Check</h2>
+                  <p className="mt-1 text-[13px] font-semibold text-[#52627a]">Quick local price guidance</p>
+                </div>
+                <span className="rounded-full bg-[#eaf8ef] px-3 py-1 text-[11px] font-black text-[#079448]">
+                  Slough only
+                </span>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="relative block">
+                  <span className="mb-1.5 block text-[12px] font-extrabold text-[#52627a]">Service</span>
+
+                  <div className="flex h-[54px] items-center gap-3 rounded-[14px] border border-[#dfe7f2] bg-white px-4">
+                    <Icon type={selectedService.icon} className="h-5 w-5 text-[#071638]" />
+
+                    <input
+                      value={serviceSearch}
+                      onChange={(event) => {
+                        setServiceSearch(event.target.value);
+                        setServiceOpen(true);
+                        setError(null);
+                      }}
+                      onFocus={() => setServiceOpen(true)}
+                      className="min-w-0 flex-1 bg-transparent text-[15px] font-black text-[#071638] outline-none placeholder:text-[#8b94a7]"
+                      placeholder="Type a service e.g. plumber"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setServiceOpen((value) => !value)}
+                      className="text-[18px] font-black text-[#071638]"
+                      aria-label="Open service list"
+                    >
+                      ⌄
+                    </button>
+                  </div>
+
+                  {serviceOpen ? (
+                    <div className="absolute left-0 right-0 top-[76px] z-30 max-h-[280px] overflow-y-auto rounded-[16px] border border-[#dfe7f2] bg-white p-2 shadow-[0_18px_40px_rgba(7,22,56,0.16)]">
+                      {filteredServices.length ? (
+                        filteredServices.map((item) => (
+                          <button
+                            key={item.value}
+                            type="button"
+                            onClick={() => chooseService(item)}
+                            className="flex w-full items-center gap-3 rounded-[12px] px-3 py-3 text-left hover:bg-[#f3f7ff]"
+                          >
+                            <Icon type={item.icon} className="h-5 w-5 text-[#075cff]" />
+                            <span className="text-[14px] font-black text-[#071638]">{item.label}</span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-3 py-3 text-[13px] font-bold text-[#d93025]">
+                          Choose a service from the dropdown.
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+
+                <label className="block">
+                  <span className="mb-1.5 block text-[12px] font-extrabold text-[#52627a]">Postcode</span>
+                  <div
+                    className={`flex h-[54px] items-center gap-3 rounded-[14px] border bg-white px-4 ${
+                      error && error.toLowerCase().includes("postcode") ? "border-[#d93025]" : "border-[#dfe7f2]"
+                    }`}
+                  >
+                    <Icon type="pin" className="h-5 w-5 text-[#071638]" />
+                    <input
+                      id="desktop-postcode-input"
+                      value={postcode}
+                      onChange={(event) => {
+                        const nextValue = event.target.value.toUpperCase().replace(/[^A-Z0-9\s]/g, "");
+                        setPostcode(nextValue);
+                        setError(null);
+                      }}
+                      onBlur={() => {
+                        if (postcode.trim()) setPostcode(formatPostcode(postcode));
+                      }}
+                      autoComplete="postal-code"
+                      inputMode="text"
+                      maxLength={8}
+                      className="min-w-0 flex-1 bg-transparent text-[16px] font-black uppercase text-[#071638] outline-none placeholder:normal-case placeholder:text-[#9aa6b8]"
+                      placeholder="Enter Slough postcode e.g. SL1 1AA"
+                    />
+                  </div>
+                </label>
+
+                {error ? <p className="text-[12px] font-bold text-[#d93025]">{error}</p> : null}
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="rounded-[16px] border border-[#dfe7f2] bg-white p-4">
+                    <p className="text-[12px] font-bold text-[#52627a]">Average Local Price</p>
+                    <p className="mt-2 text-[38px] font-black tracking-[-0.06em] text-[#071638]">£54</p>
+                    <p className="mt-1 text-[12px] font-semibold text-[#52627a]">Typical range: £45 – £65</p>
+                  </div>
+
+                  <div className="rounded-[16px] border border-[#dff0e5] bg-[#eefaf3] p-4">
+                    <p className="text-[12px] font-bold text-[#07833f]">Cheapest Nearby</p>
+                    <p className="mt-2 text-[38px] font-black tracking-[-0.06em] text-[#079448]">£38</p>
+                    <p className="mt-1 text-[12px] font-semibold text-[#37543f]">Slough area</p>
+                  </div>
+                </div>
+
+                <div className="rounded-[16px] bg-[#fff0f1] p-4">
+                  <p className="text-[13px] font-black text-[#c31623]">Avoid overpaying by</p>
+                  <div className="mt-2 flex items-end justify-between gap-5">
+                    <div>
+                      <p className="text-[38px] font-black tracking-[-0.05em] text-[#d71920]">27%</p>
+                      <p className="text-[12px] font-semibold text-[#503339]">
+                        People can overpay when they book without checking
+                      </p>
+                    </div>
+                    <div className="h-20 w-28 rounded-t-full border-[10px] border-b-0 border-[#16a35a] border-r-[#ffd3d5]" />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="h-[54px] w-full rounded-[15px] bg-[#075cff] text-[16px] font-black text-white shadow-[0_16px_30px_rgba(0,92,255,0.22)]"
+                >
+                  See fair Slough price
+                </button>
+              </form>
+
+              <div className="mt-4 rounded-[20px] border border-[#dbe8ff] bg-[#f8fbff] p-5">
+                <div className="flex items-center gap-4">
+                  <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-[#e7efff] text-[#075cff]">
+                    <Icon type="van" className="h-8 w-8" />
+                  </span>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[18px] font-black tracking-[-0.03em] text-[#071638]">
+                      Example fair Slough price
+                    </p>
+
+                    <div className="mt-4 grid grid-cols-2 gap-5">
+                      <div>
+                        <p className="text-[13px] font-bold text-[#273651]">Man and Van</p>
+                        <p className="mt-1 text-[32px] font-black tracking-[-0.06em] text-[#075cff]">
+                          £40 – £70<span className="text-[15px]">/hr</span>
+                        </p>
+                        <p className="mt-1 text-[12px] font-semibold text-[#52627a]">Typical fair range</p>
+                      </div>
+
+                      <div className="border-l border-[#dbe6f7] pl-5">
+                        <p className="text-[13px] font-bold text-[#273651]">Check before paying</p>
+                        <p className="mt-1 text-[32px] font-black tracking-[-0.06em] text-[#e11925]">
+                          £100+<span className="text-[15px]">/hr</span>
+                        </p>
+                        <p className="mt-1 text-[12px] font-semibold text-[#52627a]">May include hidden extras</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="mt-4 text-center text-[13px] font-semibold text-[#40506a]">
+                  No spam. No pressure. Just fair local price guidance.
                 </p>
               </div>
-              <span className="shrink-0 rounded-full bg-[#079448] px-2.5 py-1 text-[12px] font-extrabold">+8%</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="popular-services" className="mt-7 lg:mt-8">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="text-[20px] font-black tracking-[-0.04em] text-[#071638] lg:text-[27px]">
+Check fair prices for local services            </h2>
+            <span className="hidden text-[13px] font-black text-[#075cff] lg:block">Choose a service to start</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {services.slice(0, 12).map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => chooseService(item, true)}
+className="rounded-[18px] border border-[#e2e9f4] bg-white p-4 text-left shadow-[0_12px_26px_rgba(7,22,56,0.045)] transition hover:-translate-y-0.5 hover:border-[#bcd2ff] hover:bg-[#fbfdff]"              >
+                <span className="grid h-10 w-10 place-items-center rounded-[13px] bg-[#f3f7ff] text-[#075cff]">
+                  <Icon type={item.icon} className="h-5 w-5" />
+                </span>
+
+<p className="mt-4 text-[13px] font-black leading-[1.15] text-[#071638]">{item.label}</p>
+
+<p className="mt-2 min-h-[38px] text-[12px] font-semibold leading-[1.35] text-[#52627a]">
+  {item.description}
+</p>
+
+<div className="mt-4 inline-flex items-center gap-1 text-[12px] font-black text-[#075cff]">
+  Check price <span aria-hidden="true">→</span>
+</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-7 overflow-hidden rounded-[24px] bg-[#061a3d] p-5 text-white shadow-[0_24px_55px_rgba(7,22,56,0.18)] lg:mt-10 lg:p-8">
+          <div className="grid items-center gap-6 lg:grid-cols-[1.15fr_1fr_260px]">
+            <div className="flex items-start gap-4">
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-[18px] bg-white text-[#075cff]">
+                <Icon type="shield" className="h-7 w-7" />
+              </span>
+
+              <div>
+                <h2 className="text-[25px] font-black leading-[1.05] tracking-[-0.045em] lg:text-[32px]">
+                  Stop overpaying. Start saving.
+                </h2>
+                <p className="mt-3 max-w-[430px] text-[15px] font-medium leading-[1.55] text-white/78">
+                  QuickOla shows you what local provider services should cost in Slough before you book.
+                </p>
+              </div>
             </div>
 
-            <svg viewBox="0 0 300 54" className="mt-2 h-[42px] w-full fill-none" aria-hidden="true">
-              <path d="M0 43H300M0 27H300M0 11H300" className="stroke-white/10 stroke-[1]" />
-              <path
-                d="M4 42 C31 42 39 39 59 40 C78 41 90 36 108 35 C131 34 142 31 160 28 C179 25 188 27 204 21 C224 14 237 18 252 11 C270 4 283 8 296 3"
-                className="stroke-[#0bbf4d] stroke-[2.6]"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle cx="296" cy="3" r="3.5" className="fill-[#0bbf4d]" />
-            </svg>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              {[
+                ["Save money", "Avoid overpaying with fair price guidance"],
+                ["Save time", "Compare local prices in seconds"],
+                ["Choose better", "Make smarter choices with confidence"],
+              ].map(([title, body]) => (
+                <div
+                  key={title}
+                  className="rounded-[16px] border border-white/10 bg-white/5 p-3 lg:border-0 lg:bg-transparent lg:p-0 lg:text-left"
+                >
+                  <p className="text-[13px] font-black text-white">{title}</p>
+                  <p className="mt-2 text-[11px] font-medium leading-[1.4] text-white/66">{body}</p>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => document.getElementById("popular-services")?.scrollIntoView({ behavior: "smooth" })}
+              className="h-[56px] rounded-[15px] bg-[#075cff] px-6 text-[16px] font-black text-white shadow-[0_18px_36px_rgba(0,92,255,0.28)]"
+            >
+              See Services →
+            </button>
           </div>
         </div>
       </div>

@@ -1,3 +1,4 @@
+
 import Footer from "../components/Footer";
 
 export const dynamic = "force-dynamic";
@@ -104,7 +105,74 @@ const priceConfigs: Record<string, PriceConfig> = {
     from: "£70 – £150",
     note: "Typical callout and repair range before appliance type, parts and urgency are confirmed.",
   },
+  "mot-car-repairs": {
+    label: "MOT & Car Repairs",
+    from: "£45 – £95",
+    note: "Typical Slough guide range before vehicle type, garage availability, diagnostics, parts and repair work are confirmed.",
+  },
+  "car-repair": {
+    label: "Car Repair",
+    from: "£70 – £180+",
+    note: "Typical Slough garage range before diagnostics, parts, labour time and vehicle model are confirmed.",
+  },
+  tyres: {
+    label: "Tyres",
+    from: "£55 – £130",
+    note: "Typical tyre range before tyre size, brand, fitting and balancing are confirmed.",
+  },
+  "airport-transfer": {
+    label: "Airport Transfer",
+    from: "£35 – £95",
+    note: "Typical local transfer range before airport, passengers, luggage and pickup time are confirmed.",
+  },
+  "private-gp": {
+    label: "Private GP",
+    from: "£60 – £150",
+    note: "Typical appointment guide range before clinic, appointment type and tests are confirmed.",
+  },
+  dentist: {
+    label: "Dentist",
+    from: "£45 – £120",
+    note: "Typical consultation and treatment guide range before clinic and treatment type are confirmed.",
+  },
+  optician: {
+    label: "Optician",
+    from: "£20 – £60",
+    note: "Typical eye test guide range before store, prescription and glasses are confirmed.",
+  },
+  storage: {
+    label: "Storage",
+    from: "£15 – £45",
+    suffix: "/week",
+    note: "Typical storage range before unit size, access, insurance and contract length are confirmed.",
+  },
+  broadband: {
+    label: "Broadband",
+    from: "£22 – £45",
+    suffix: "/mo",
+    note: "Typical broadband range before speed, contract length, installation and provider availability are confirmed.",
+  },
 };
+
+function normaliseServiceSlug(value: string | undefined) {
+  const slug = slugify(value, "cleaning");
+
+  const aliases: Record<string, string> = {
+    mot: "mot-car-repairs",
+    "mot-repairs": "mot-car-repairs",
+    "mot-car-repair": "mot-car-repairs",
+    "car-repairs": "car-repair",
+    plumbing: "plumber",
+    electrical: "electrician",
+    painting: "painter-decorator",
+    painter: "painter-decorator",
+    decorating: "painter-decorator",
+    "van-man": "man-and-van",
+    "man-with-van": "man-and-van",
+  };
+
+  return aliases[slug] ?? slug;
+}
 
 function formatParam(value: string | undefined, fallback: string) {
   if (!value) return fallback;
@@ -137,6 +205,20 @@ function formatParam(value: string | undefined, fallback: string) {
     "oven cleaning": "Oven Cleaning",
     "waste removal": "Waste Removal",
     "appliance repair": "Appliance Repair",
+    "mot car repairs": "MOT & Car Repairs",
+    mot: "MOT",
+    "car repair": "Car Repair",
+    "car repairs": "Car Repairs",
+    tyres: "Tyres",
+    "airport transfer": "Airport Transfer",
+    "private gp": "Private GP",
+    dentist: "Dentist",
+    optician: "Optician",
+    storage: "Storage",
+    broadband: "Broadband",
+    "small car": "Small car",
+    "medium car": "Medium car",
+    "large car": "Large car",
     "small move": "Small move",
     "collection delivery": "Collection / delivery",
     "flat move": "Flat move",
@@ -152,7 +234,7 @@ function formatParam(value: string | undefined, fallback: string) {
 }
 
 function formatPostcodeParam(value: string | undefined) {
-  if (!value) return "London";
+  if (!value) return "Slough";
 
   const clean = value
     .replace(/-/g, " ")
@@ -161,7 +243,7 @@ function formatPostcodeParam(value: string | undefined) {
     .trim()
     .toUpperCase();
 
-  if (!clean) return "London";
+  if (!clean) return "Slough";
   return clean;
 }
 
@@ -174,7 +256,11 @@ function slugify(value: string | undefined, fallback: string) {
 }
 
 function getPriceConfig(serviceSlug: string) {
-  return priceConfigs[serviceSlug] ?? priceConfigs.cleaning;
+  return priceConfigs[serviceSlug] ?? {
+    label: formatParam(serviceSlug, "Service"),
+    from: "Guide price pending",
+    note: "We received your request and will review the best available local next step before confirming details.",
+  };
 }
 
 function Header() {
@@ -221,7 +307,7 @@ function ShieldIcon() {
 
 function SearchIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6 fill-none stroke-current stroke-[2]" strokeLinecap="round" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" aria-hidden="true">
       <circle cx="10.8" cy="10.8" r="6.6" />
       <path d="m16 16 4.2 4.2" />
     </svg>
@@ -267,33 +353,43 @@ function PinIcon() {
 
 function Hero({ postcode, service }: { postcode: string; service: string }) {
   return (
-    <section className="group relative overflow-hidden rounded-[22px] border border-[#dcebe1] bg-[linear-gradient(135deg,#f8fcf9_0%,#ffffff_62%,#eef9f1_100%)] shadow-[0_12px_34px_rgba(7,22,56,0.045)]">
-      <div className="pointer-events-none absolute -left-20 top-10 h-48 w-48 rounded-full bg-[#dff4e6] opacity-55 blur-[2px]" />
-      <div className="pointer-events-none absolute -right-28 top-2 h-56 w-56 rounded-full bg-[#e6f7ec] opacity-65" />
+    <section className="rounded-[24px] border border-[#dcebe1] bg-[linear-gradient(135deg,#f4fbf6_0%,#ffffff_58%,#edf9f1_100%)] p-4 text-center shadow-[0_14px_38px_rgba(7,22,56,0.055)] sm:p-7 lg:p-8">
+      <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#08783f] text-white shadow-[0_10px_22px_rgba(8,120,63,0.18)] ring-[7px] ring-[#e5f6ea] sm:h-16 sm:w-16">
+        <CheckIcon className="h-8 w-8" />
+      </div>
 
-      <div className="relative z-10 px-4 py-4 sm:px-7 sm:py-6 lg:px-8 lg:py-7">
-        <div className="grid h-11 w-11 place-items-center rounded-full bg-[#08783f] text-white shadow-[0_10px_22px_rgba(8,120,63,0.18)] ring-[6px] ring-[#e5f6ea] sm:h-14 sm:w-14">
-          <CheckIcon className="h-6 w-6 sm:h-8 sm:w-8" />
-        </div>
+      <p className="mt-5 text-[11px] font-black uppercase tracking-[0.14em] text-[#08783f]">Request received</p>
+      <h1 className="mx-auto mt-2 max-w-[760px] text-[31px] font-black leading-[1.02] tracking-[-0.055em] text-[#071638] sm:text-[44px]">
+        We’re checking your best next step.
+      </h1>
+      <p className="mx-auto mt-3 max-w-[650px] text-[14px] font-bold leading-[1.5] text-[#44506a] sm:text-[17px]">
+        Your {service.toLowerCase()} request near <span className="font-black text-[#071638]">{postcode}</span> is in motion. We’ll email your update shortly.
+      </p>
 
-        <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-[#08783f] sm:text-[11px]">Request received</p>
-        <h1 className="mt-2 max-w-[760px] text-[30px] font-black leading-[1.02] tracking-[-0.045em] text-[#071638] sm:text-[40px] lg:text-[44px]">
-          We’re checking {service.toLowerCase()} options near <span className="text-[#08783f]">{postcode}.</span>
-        </h1>
-        <p className="mt-3 max-w-[720px] text-[14px] font-semibold leading-[1.45] text-[#172545] sm:text-[16px]">
-          We’ll email your best next step shortly. No booking is made, no payment is required, and you choose whether to continue.
-        </p>
+      <div className="mx-auto mt-5 grid max-w-[520px] gap-2 sm:grid-cols-2">
+        <a
+          href="/"
+          className="flex h-[52px] items-center justify-center rounded-[14px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[15px] font-black text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5"
+        >
+          Check another price
+        </a>
+        <a
+          href="/"
+          className="flex h-[52px] items-center justify-center rounded-[14px] border border-[#d8eddd] bg-white px-5 text-[15px] font-black text-[#08783f] transition hover:-translate-y-0.5 hover:border-[#08783f]/40"
+        >
+          Back to home
+        </a>
+      </div>
 
-        <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
-          <span className="inline-flex items-center gap-2 rounded-[12px] bg-[#eff9f2] px-3 py-2 text-[13px] font-bold text-[#08783f] ring-1 ring-[#d7ecdd]">
-            <span className="h-2 w-2 rounded-full bg-[#08783f]" />
-            Status: checking local providers
-          </span>
-          <span className="inline-flex items-center gap-2 rounded-[12px] bg-white/82 px-3 py-2 text-[13px] font-bold text-[#44506a] ring-1 ring-[#dfe8e4]">
-            <ShieldIcon />
-            We don’t sell your details to a provider list
-          </span>
-        </div>
+      <div className="mx-auto mt-5 grid max-w-[760px] gap-2 sm:flex sm:flex-wrap sm:justify-center">
+        <span className="inline-flex items-center justify-center gap-2 rounded-[12px] bg-[#eff9f2] px-3 py-2 text-[13px] font-bold text-[#08783f] ring-1 ring-[#d7ecdd]">
+          <span className="h-2 w-2 rounded-full bg-[#08783f]" />
+          No booking made
+        </span>
+        <span className="inline-flex items-center justify-center gap-2 rounded-[12px] bg-white/84 px-3 py-2 text-[13px] font-bold text-[#44506a] ring-1 ring-[#dfe8e4]">
+          <ShieldIcon />
+          Your details stay private
+        </span>
       </div>
     </section>
   );
@@ -351,7 +447,7 @@ function SummaryCard({ service, postcode, jobType, jobDetail, timeNeeded }: {
         <div>
           <h2 className="text-[14px] font-bold uppercase tracking-[0.08em] text-[#071638]">Your request</h2>
           <p className="mt-1 text-[13px] font-semibold text-[#657089] sm:hidden">
-            {service} · {jobType} · {postcode}
+            {service} · {postcode}
           </p>
         </div>
         <a href={`/check-price?service=${slugify(service, "cleaning")}&postcode=${encodeURIComponent(postcode)}`} className="inline-flex h-8 items-center justify-center rounded-full border border-[#d8eddd] bg-[#f7fcf8] px-3 text-[13px] font-bold text-[#08783f] transition hover:-translate-y-0.5 hover:border-[#08783f]/40">
@@ -364,7 +460,7 @@ function SummaryCard({ service, postcode, jobType, jobDetail, timeNeeded }: {
           <div key={String(label)} className="grid grid-cols-[24px_1fr_auto] items-center gap-3 py-2.5">
             <span className="text-[#08783f]">{icon}</span>
             <span className="text-[14px] font-bold text-[#071638]">{label}</span>
-            <span className="text-right text-[14px] font-semibold text-[#44506a]">{value}</span>
+            <span className="max-w-[150px] truncate text-right text-[14px] font-semibold text-[#44506a] sm:max-w-none">{value}</span>
           </div>
         ))}
       </div>
@@ -374,28 +470,26 @@ function SummaryCard({ service, postcode, jobType, jobDetail, timeNeeded }: {
 
 function Timeline() {
   const steps = [
-    ["1", "Checking local providers", "We’re reviewing suitable options for your request.", <SearchIcon key="search" />],
-    ["2", "Emailing your match update", "We’ll send the best next step clearly, not a spam list.", <MailIcon key="mail" />],
-    ["3", "You stay in control", "Review the details and continue only if useful.", <CheckIcon key="check" />],
+    ["Request received", "We have your price check and job details.", <CheckIcon key="check" />],
+    ["Reviewing options", "We check the best local next step, not a spam list.", <SearchIcon key="search" />],
+    ["Email update", "You review the details and continue only if useful.", <MailIcon key="mail" />],
   ];
 
   return (
     <section className="rounded-[22px] border border-[#e1e6ee] bg-white p-4 shadow-[0_14px_38px_rgba(7,22,56,0.045)] sm:p-5">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <h2 className="text-[22px] font-black tracking-[-0.03em] text-[#071638]">What happens next?</h2>
-        <p className="text-[13px] font-semibold text-[#657089]">No payment taken. No booking made. You choose whether to continue.</p>
+        <p className="text-[13px] font-semibold text-[#657089]">No payment taken. No booking made.</p>
       </div>
-      <div className="mt-5 grid gap-4 lg:grid-cols-3 lg:gap-0">
-        {steps.map(([number, title, text, icon], index) => (
-          <div key={String(title)} className="relative flex gap-4 lg:block lg:px-6 lg:text-center">
-            {index < 2 ? <div className="absolute left-[22px] top-12 h-[calc(100%-20px)] w-px bg-[#dfe5ee] lg:left-auto lg:right-0 lg:top-[32px] lg:h-px lg:w-full" /> : null}
-            <div className="relative z-10 grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#f0faf3] text-[#08783f] ring-1 ring-[#d8eddd] lg:mx-auto lg:h-16 lg:w-16">
+      <div className="mt-4 grid gap-2 lg:grid-cols-3">
+        {steps.map(([title, text, icon]) => (
+          <div key={String(title)} className="flex gap-3 rounded-[17px] border border-[#edf0f5] bg-[#fbfcfd] p-3 lg:block lg:p-4 lg:text-center">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f0faf3] text-[#08783f] ring-1 ring-[#d8eddd] lg:mx-auto">
               {icon}
             </div>
             <div className="min-w-0">
-              <span className="inline-grid h-7 w-7 place-items-center rounded-full bg-[#08783f] text-[13px] font-black text-white lg:absolute lg:left-5 lg:top-5">{number}</span>
-              <p className="mt-1 text-[16px] font-black text-[#071638] lg:mt-5">{title}</p>
-              <p className="mt-1 text-[14px] font-semibold leading-[1.5] text-[#657089]">{text}</p>
+              <p className="text-[15px] font-black text-[#071638] lg:mt-3">{title}</p>
+              <p className="mt-1 text-[13px] font-semibold leading-[1.45] text-[#657089]">{text}</p>
             </div>
           </div>
         ))}
@@ -419,7 +513,7 @@ function SafetyCard({ email, phone }: { email: string; phone: string }) {
         </div>
         <div className="rounded-[18px] bg-white/70 p-4 ring-1 ring-[#d8eddd]">
           <p className="text-[13px] font-bold text-[#657089]">Your update will be sent to</p>
-          <p className="mt-1 text-[14px] font-black text-[#071638]">{email || "your email"}</p>
+          <p className="mt-1 break-all text-[14px] font-black text-[#071638]">{email || "your email"}</p>
           {phone ? <p className="mt-1 text-[14px] font-semibold text-[#44506a]">{phone}</p> : null}
         </div>
       </div>
@@ -431,25 +525,38 @@ function BottomActions() {
   return (
     <section className="rounded-[22px] border border-[#d8eddd] bg-[linear-gradient(135deg,#f7fcf8_0%,#ffffff_100%)] p-5 text-center shadow-[0_12px_34px_rgba(7,22,56,0.035)] sm:p-6">
       <h2 className="mx-auto max-w-[560px] text-[23px] font-black leading-[1.15] tracking-[-0.035em] text-[#071638]">
-        Your request is in motion.
+        Need another local price?
       </h2>
-      <p className="mt-2 text-[15px] font-semibold text-[#657089]">We’ll email the best next step. You can also check another price.</p>
+      <p className="mt-2 text-[15px] font-semibold text-[#657089]">You can check another service in seconds.</p>
       <a
         href="/"
         className="mx-auto mt-6 flex h-[50px] max-w-[420px] items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[15px] font-black text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5"
       >
         Check another price
       </a>
-      <a href="/" className="mt-4 inline-flex text-[14px] font-bold text-[#08783f] underline underline-offset-4">
-        Back to home
-      </a>
     </section>
+  );
+}
+
+function MobileStickyCta() {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#dfe6ef] bg-white/96 px-4 py-3 shadow-[0_-12px_34px_rgba(7,22,56,0.12)] backdrop-blur-md lg:hidden">
+      <div className="mx-auto flex max-w-[520px] items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[11px] font-black uppercase tracking-[0.08em] text-[#657089]">Need another price?</p>
+          <p className="truncate text-[16px] font-black tracking-[-0.04em] text-[#071638]">Check a new service</p>
+        </div>
+        <a href="/" className="flex h-12 shrink-0 items-center justify-center rounded-[14px] bg-[#08783f] px-4 text-[14px] font-black text-white shadow-[0_10px_24px_rgba(8,120,63,0.22)]">
+          Check price
+        </a>
+      </div>
+    </div>
   );
 }
 
 export default async function ResultsPage({ searchParams }: ResultsPageProps) {
   const params = await searchParams;
-  const serviceSlug = slugify(params?.service, "cleaning");
+  const serviceSlug = normaliseServiceSlug(params?.service);
   const postcode = formatPostcodeParam(params?.postcode || params?.area);
   const config = getPriceConfig(serviceSlug);
   const service = config.label;
@@ -460,11 +567,11 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
   const phone = params?.phone || "";
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#fbfcfd] text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif]">
+    <main className="min-h-screen overflow-x-hidden bg-[#fbfcfd] pb-24 text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] lg:pb-0">
       <HeroGlowStyles />
       <Header />
 
-      <section className="mx-auto w-full max-w-[1160px] px-4 pb-10 pt-3 sm:px-6 lg:px-8 lg:pb-14 lg:pt-5">
+      <section className="mx-auto w-full max-w-[1160px] px-4 pb-8 pt-3 sm:px-6 lg:px-8 lg:pb-14 lg:pt-5">
         <a href={`/check-price?service=${serviceSlug}&postcode=${encodeURIComponent(postcode)}`} className="inline-flex items-center gap-3 text-[14px] font-bold text-[#071638] transition hover:text-[#08783f]">
           <span className="text-[#08783f]">←</span>
           Back
@@ -475,9 +582,6 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
 
           <div className="grid gap-3 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)]">
             <FairPriceCard config={config} postcode={postcode} />
-            <div className="lg:hidden">
-              <Timeline />
-            </div>
             <SummaryCard
               service={service}
               postcode={postcode}
@@ -487,15 +591,17 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
             />
           </div>
 
-          <div className="hidden lg:block">
-            <Timeline />
-          </div>
+          <Timeline />
           <SafetyCard email={email} phone={phone} />
           <BottomActions />
         </div>
       </section>
 
-      <Footer />
+      <div className="hidden lg:block">
+        <Footer />
+      </div>
+
+      <MobileStickyCta />
     </main>
   );
 }

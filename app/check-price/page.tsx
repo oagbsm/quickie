@@ -1,68 +1,53 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import Footer from "../components/Footer";
 import { saveCheckPriceRequest } from "../actions";
 
 type CheckPricePageProps = {
   searchParams?: Promise<{
     service?: string;
-    area?: string;
     postcode?: string;
   }>;
 };
 
-type PriceItem = {
+type PriceBand = {
   label: string;
-  from: string;
-  typical: string;
+  price: string;
+  note: string;
+  tone: "fair" | "normal" | "warning";
 };
 
 type ServiceConfig = {
   label: string;
   slug: string;
+  icon: "van" | "plumbing" | "car" | "cleaning" | "flame" | "bolt" | "key" | "leaf" | "tool" | "shield";
   headline: string;
-  shortLine: string;
-  guideLabel: string;
-  priceItems: PriceItem[];
+  fairPrice: string;
+  totalEstimate?: string;
+  sourceLine: string;
+  warning: string;
+  bands: PriceBand[];
+  factors: string[];
+  included: string[];
+  common: string;
   jobOptions: { label: string; value: string }[];
   detailLabel: string;
   detailOptions: { label: string; value: string }[];
 };
 
 const urgencyOptions = [
-  { label: "As soon as possible", value: "asap" },
   { label: "Today", value: "today" },
   { label: "Tomorrow", value: "tomorrow" },
   { label: "This week", value: "this-week" },
   { label: "Flexible", value: "flexible" },
 ];
-const supportedPostcodeAreas = [
-  "BR",
-  "CR",
-  "DA",
-  "E",
-  "EC",
-  "EN",
-  "HA",
-  "IG",
-  "KT",
-  "N",
-  "NW",
-  "RM",
-  "SE",
-  "SL",
-  "SM",
-  "SW",
-  "TW",
-  "UB",
-  "W",
-  "WC",
-  "WD",
-];
 
 const serviceAliases: Record<string, string> = {
-  plumbing: "plumber",
+  plumber: "plumbing",
   electrical: "electrician",
+  electricians: "electrician",
+  "painter-decorator": "painter-decorator",
+  "painter-and-decorator": "painter-decorator",
 };
 
 function normalisePostcode(value: string) {
@@ -75,36 +60,262 @@ function formatPostcode(value: string) {
   return `${clean.slice(0, -3)} ${clean.slice(-3)}`;
 }
 
-function formatPostcodeParam(value: string | undefined) {
-  return formatPostcode(value || "");
-}
-
 function isValidUkPostcode(value: string) {
   return /^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/.test(value.trim().toUpperCase());
 }
 
-function getPostcodeArea(value: string) {
+function isSupportedSloughPostcode(value: string) {
   const clean = normalisePostcode(value);
-  const match = clean.match(/^[A-Z]+/);
-  return match ? match[0] : null;
+  return /^SL[123][A-Z]?\d[A-Z]{2}$/.test(clean);
 }
 
-function isSupportedPostcode(value: string) {
-  const area = getPostcodeArea(value);
-  return area ? supportedPostcodeAreas.includes(area) : false;
+function slugify(value: string | undefined) {
+  return (value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 }
+
+function getCanonicalServiceSlug(value: string | undefined) {
+  const slug = slugify(value);
+  return serviceAliases[slug] ?? slug;
+}
+
 const serviceConfigs: Record<string, ServiceConfig> = {
+  "man-and-van": {
+    label: "Man and Van",
+    slug: "man-and-van",
+    icon: "van",
+    headline: "Man and Van in Slough",
+    fairPrice: "£40 – £70/hr",
+    totalEstimate: "Most small moves: £80 – £160 total",
+    sourceLine: "Guide range based on mileage, load size, stairs, waiting time and typical Slough provider pricing.",
+    warning: "Avoid hidden extras for stairs, waiting time, fuel or mileage.",
+    bands: [
+      { label: "Fair", price: "£40 – £70/hr", note: "Good local range", tone: "fair" },
+      { label: "Higher but normal", price: "£70 – £100/hr", note: "Check distance, stairs or urgency", tone: "normal" },
+      { label: "Check before paying", price: "£100+/hr", note: "Ask what is included", tone: "warning" },
+    ],
+    factors: ["Distance & mileage", "Stairs or no lift", "Loading time", "Parking & access", "Waiting time"],
+    included: ["1 van + driver", "Loading & unloading", "Basic local mileage"],
+    common: "Small flat moves, marketplace pickups, storage runs and Heathrow-area jobs.",
+    jobOptions: [
+      { label: "Small move", value: "small-move" },
+      { label: "Collection / delivery", value: "collection-delivery" },
+      { label: "Furniture transport", value: "furniture-transport" },
+      { label: "Urgent van job", value: "urgent-van-job" },
+    ],
+    detailLabel: "Load size",
+    detailOptions: [
+      { label: "Few items", value: "few-items" },
+      { label: "One room", value: "one-room" },
+      { label: "Small flat", value: "small-flat" },
+      { label: "Large load", value: "large-load" },
+    ],
+  },
+  removals: {
+    label: "Removals",
+    slug: "removals",
+    icon: "van",
+    headline: "Removal Prices in Slough",
+    fairPrice: "£250 – £650",
+    totalEstimate: "Small flat moves usually start around £250",
+    sourceLine: "Guide range based on property size, distance, stairs, movers needed, parking and Slough removal pricing.",
+    warning: "Avoid surprise extras for packing, dismantling, stairs, waiting time or parking.",
+    bands: [
+      { label: "Fair", price: "£250 – £650", note: "Typical small-to-medium move", tone: "fair" },
+      { label: "Higher but normal", price: "£650 – £900", note: "Larger property or longer distance", tone: "normal" },
+      { label: "Check before paying", price: "£900+", note: "Ask for full breakdown", tone: "warning" },
+    ],
+    factors: ["Property size", "Distance", "Stairs or lift", "Number of movers", "Packing help"],
+    included: ["Vehicle", "Loading & unloading", "Basic local move"],
+    common: "Flat moves, house moves, storage moves and Heathrow-area relocations.",
+    jobOptions: [
+      { label: "Flat move", value: "flat-move" },
+      { label: "House move", value: "house-move" },
+      { label: "Office move", value: "office-move" },
+    ],
+    detailLabel: "Move size",
+    detailOptions: [
+      { label: "Studio / room", value: "studio-room" },
+      { label: "1 bedroom", value: "1-bedroom" },
+      { label: "2 bedrooms", value: "2-bedrooms" },
+      { label: "3+ bedrooms", value: "3-plus-bedrooms" },
+    ],
+  },
+  plumbing: {
+    label: "Plumbing",
+    slug: "plumbing",
+    icon: "plumbing",
+    headline: "Plumbing Prices in Slough",
+    fairPrice: "£45 – £85/hr",
+    totalEstimate: "Common call-outs: £80 – £150 total before parts",
+    sourceLine: "Guide range based on call-out fees, job type, urgency, parts and typical Slough plumber pricing.",
+    warning: "Avoid unclear call-out fees, parts markups or emergency charges.",
+    bands: [
+      { label: "Fair", price: "£45 – £85/hr", note: "Normal local range", tone: "fair" },
+      { label: "Higher but normal", price: "£85 – £120/hr", note: "Urgent or complex jobs", tone: "normal" },
+      { label: "Check before paying", price: "£120+/hr", note: "Ask about call-out and parts", tone: "warning" },
+    ],
+    factors: ["Call-out fee", "Parts", "Urgency", "Access", "Job complexity"],
+    included: ["Diagnosis", "Small labour time", "Basic advice"],
+    common: "Leaks, blocked sinks, toilet issues, tap repairs and urgent plumbing call-outs.",
+    jobOptions: [
+      { label: "Leak", value: "leak" },
+      { label: "Blocked sink/toilet", value: "blocked-sink-toilet" },
+      { label: "Tap or pipe repair", value: "tap-pipe-repair" },
+      { label: "Emergency plumbing", value: "emergency-plumbing" },
+    ],
+    detailLabel: "Job type",
+    detailOptions: [
+      { label: "Small repair", value: "small-repair" },
+      { label: "Callout needed", value: "callout" },
+      { label: "Urgent issue", value: "urgent" },
+      { label: "Not sure", value: "not-sure" },
+    ],
+  },
+  "emergency-plumber": {
+    label: "Emergency Plumber",
+    slug: "emergency-plumber",
+    icon: "plumbing",
+    headline: "Emergency Plumber Prices in Slough",
+    fairPrice: "£80 – £150 call-out",
+    totalEstimate: "Final price can rise if parts or extra labour are needed",
+    sourceLine: "Guide range based on emergency call-out fees, time of day, parts and Slough urgent plumber pricing.",
+    warning: "Check if the quoted price includes call-out, first hour, VAT and parts.",
+    bands: [
+      { label: "Fair", price: "£80 – £150", note: "Normal emergency range", tone: "fair" },
+      { label: "Higher but normal", price: "£150 – £220", note: "Evening/weekend or parts", tone: "normal" },
+      { label: "Check before paying", price: "£220+", note: "Ask for breakdown first", tone: "warning" },
+    ],
+    factors: ["Time of day", "Parts", "Leak severity", "Access", "Parking"],
+    included: ["Call-out", "Diagnosis", "Initial labour"],
+    common: "Leaks, burst pipes, blocked toilets and urgent repair call-outs.",
+    jobOptions: [
+      { label: "Leak", value: "leak" },
+      { label: "Burst pipe", value: "burst-pipe" },
+      { label: "Blocked toilet", value: "blocked-toilet" },
+      { label: "No hot water", value: "no-hot-water" },
+    ],
+    detailLabel: "Urgency",
+    detailOptions: [
+      { label: "Emergency now", value: "emergency-now" },
+      { label: "Today", value: "today" },
+      { label: "Tomorrow", value: "tomorrow" },
+      { label: "Not sure", value: "not-sure" },
+    ],
+  },
+  electrician: {
+    label: "Electrician",
+    slug: "electrician",
+    icon: "bolt",
+    headline: "Electrician Prices in Slough",
+    fairPrice: "£60 – £90/hr",
+    totalEstimate: "Common call-outs: £80 – £160 before parts",
+    sourceLine: "Guide range based on call-out fees, fault type, urgency, parts and Slough electrician pricing.",
+    warning: "Avoid unclear emergency charges, parts markups or vague minimum fees.",
+    bands: [
+      { label: "Fair", price: "£60 – £90/hr", note: "Normal local range", tone: "fair" },
+      { label: "Higher but normal", price: "£90 – £130/hr", note: "Urgent or complex work", tone: "normal" },
+      { label: "Check before paying", price: "£130+/hr", note: "Ask what is included", tone: "warning" },
+    ],
+    factors: ["Call-out fee", "Fault finding", "Parts", "Urgency", "Safety checks"],
+    included: ["Diagnosis", "Basic labour", "Safety guidance"],
+    common: "Sockets, lighting, tripping circuits, fuse board issues and small electrical repairs.",
+    jobOptions: [
+      { label: "Fault / repair", value: "fault-repair" },
+      { label: "Sockets / switches", value: "sockets-switches" },
+      { label: "Lighting", value: "lighting" },
+      { label: "Emergency electrician", value: "emergency-electrician" },
+    ],
+    detailLabel: "Job type",
+    detailOptions: [
+      { label: "Small repair", value: "small-repair" },
+      { label: "Installation", value: "installation" },
+      { label: "Urgent issue", value: "urgent" },
+      { label: "Not sure", value: "not-sure" },
+    ],
+  },
+  "boiler-repair": {
+    label: "Boiler Repair",
+    slug: "boiler-repair",
+    icon: "flame",
+    headline: "Boiler Repair Prices in Slough",
+    fairPrice: "£60 – £110 call-out",
+    totalEstimate: "Repairs often rise if parts are needed",
+    sourceLine: "Guide range based on engineer call-out fees, issue type, urgency, parts and Slough heating pricing.",
+    warning: "Ask if diagnosis, labour, VAT and parts are included before booking.",
+    bands: [
+      { label: "Fair", price: "£60 – £110", note: "Normal diagnosis/call-out", tone: "fair" },
+      { label: "Higher but normal", price: "£110 – £180", note: "Urgent or part-related", tone: "normal" },
+      { label: "Check before paying", price: "£180+", note: "Ask for part breakdown", tone: "warning" },
+    ],
+    factors: ["Boiler fault", "Parts", "Engineer call-out", "Urgency", "Access"],
+    included: ["Diagnosis", "Initial labour", "Repair advice"],
+    common: "No hot water, pressure issues, ignition faults and heating breakdowns.",
+    jobOptions: [
+      { label: "No hot water", value: "no-hot-water" },
+      { label: "No heating", value: "no-heating" },
+      { label: "Boiler fault", value: "boiler-fault" },
+      { label: "Service / check", value: "service-check" },
+    ],
+    detailLabel: "Issue type",
+    detailOptions: [
+      { label: "Not working", value: "not-working" },
+      { label: "Pressure issue", value: "pressure-issue" },
+      { label: "Leaking", value: "leaking" },
+      { label: "Not sure", value: "not-sure" },
+    ],
+  },
+  locksmith: {
+    label: "Locksmith",
+    slug: "locksmith",
+    icon: "key",
+    headline: "Locksmith Prices in Slough",
+    fairPrice: "£65 – £120",
+    totalEstimate: "Emergency and lock parts can increase the total",
+    sourceLine: "Guide range based on lock type, time, urgency, parts and Slough locksmith pricing.",
+    warning: "Avoid vague lockout prices that exclude parts, VAT or emergency call-out fees.",
+    bands: [
+      { label: "Fair", price: "£65 – £120", note: "Normal local range", tone: "fair" },
+      { label: "Higher but normal", price: "£120 – £180", note: "Emergency or lock parts", tone: "normal" },
+      { label: "Check before paying", price: "£180+", note: "Ask for breakdown", tone: "warning" },
+    ],
+    factors: ["Lock type", "Emergency call-out", "Parts", "Time of day", "Door type"],
+    included: ["Call-out", "Basic labour", "Lock advice"],
+    common: "Lockouts, lock changes, broken keys and UPVC door lock issues.",
+    jobOptions: [
+      { label: "Locked out", value: "locked-out" },
+      { label: "Lock change", value: "lock-change" },
+      { label: "Key issue", value: "key-issue" },
+      { label: "Emergency locksmith", value: "emergency-locksmith" },
+    ],
+    detailLabel: "Lock type",
+    detailOptions: [
+      { label: "Front door", value: "front-door" },
+      { label: "Internal door", value: "internal-door" },
+      { label: "UPVC / patio", value: "upvc-patio" },
+      { label: "Not sure", value: "not-sure" },
+    ],
+  },
   cleaning: {
     label: "Cleaning",
     slug: "cleaning",
-    headline: "Cleaning prices",
-    shortLine: "See fair cleaning ranges before you request a local match.",
-    guideLabel: "Typical cleaning ranges",
-    priceItems: [
-      { label: "Regular cleaning", from: "£18/hr", typical: "Hourly range for regular home cleaning." },
-      { label: "Deep cleaning", from: "£90", typical: "Fixed guide price depending on size and condition." },
-      { label: "End of tenancy", from: "£120", typical: "Usually fixed price, extras may apply." },
+    icon: "cleaning",
+    headline: "Cleaning Prices in Slough",
+    fairPrice: "£15 – £25/hr",
+    totalEstimate: "Most one-off cleans depend on hours and property size",
+    sourceLine: "Guide range based on local hourly rates, job size, frequency and typical Slough cleaner pricing.",
+    warning: "Check if supplies, oven, carpets, parking or deep-clean extras are included.",
+    bands: [
+      { label: "Fair", price: "£15 – £25/hr", note: "Normal local range", tone: "fair" },
+      { label: "Higher but normal", price: "£25 – £35/hr", note: "Deep clean or short notice", tone: "normal" },
+      { label: "Check before paying", price: "£35+/hr", note: "Ask what is included", tone: "warning" },
     ],
+    factors: ["Property size", "Clean type", "Frequency", "Supplies", "Parking"],
+    included: ["Basic cleaning", "Kitchen/bathroom areas", "General dusting"],
+    common: "Regular cleans, one-off cleans, move-out cleans and small flat cleaning.",
     jobOptions: [
       { label: "Regular cleaning", value: "regular-cleaning" },
       { label: "One-off cleaning", value: "one-off-cleaning" },
@@ -123,14 +334,20 @@ const serviceConfigs: Record<string, ServiceConfig> = {
   "end-of-tenancy-cleaning": {
     label: "End of Tenancy Cleaning",
     slug: "end-of-tenancy-cleaning",
-    headline: "End of tenancy cleaning prices",
-    shortLine: "Check the fair move-out cleaning range before you book.",
-    guideLabel: "Typical end of tenancy ranges",
-    priceItems: [
-      { label: "Studio / 1 bed", from: "£120", typical: "Small property guide range before extras." },
-      { label: "2–3 bedrooms", from: "£180", typical: "Depends on condition, access and appliances." },
-      { label: "Large property", from: "£300+", typical: "Bigger homes and heavy cleans cost more." },
+    icon: "cleaning",
+    headline: "End of Tenancy Cleaning Prices in Slough",
+    fairPrice: "£120 – £260",
+    totalEstimate: "Larger homes or heavy cleans can cost more",
+    sourceLine: "Guide range based on property size, condition, appliances, parking and Slough move-out cleaner pricing.",
+    warning: "Check if oven, carpets, windows, appliances and parking are included.",
+    bands: [
+      { label: "Fair", price: "£120 – £260", note: "Studio to 2-bed range", tone: "fair" },
+      { label: "Higher but normal", price: "£260 – £400", note: "Larger or heavy clean", tone: "normal" },
+      { label: "Check before paying", price: "£400+", note: "Ask for full extras list", tone: "warning" },
     ],
+    factors: ["Bedrooms", "Condition", "Appliances", "Carpets", "Parking"],
+    included: ["Move-out clean", "Kitchen/bathroom clean", "General rooms"],
+    common: "Rental move-outs, deposit cleans, studio flats and family homes.",
     jobOptions: [
       { label: "End of tenancy clean", value: "end-of-tenancy-cleaning" },
       { label: "Move-out clean", value: "move-out-cleaning" },
@@ -145,241 +362,53 @@ const serviceConfigs: Record<string, ServiceConfig> = {
       { label: "4+ bedrooms", value: "4-plus-bedrooms" },
     ],
   },
-  "man-and-van": {
-    label: "Man and Van",
-    slug: "man-and-van",
-    headline: "Man and van prices",
-    shortLine: "Check the fair local van job range before you book.",
-    guideLabel: "Typical man and van ranges",
-    priceItems: [
-      { label: "Small van job", from: "£45/hr", typical: "Usually depends on distance and loading time." },
-      { label: "Half-day move", from: "£140", typical: "Common for student moves or single-room moves." },
-      { label: "Larger van job", from: "£250+", typical: "More helpers, stairs and distance increase price." },
+  "deep-cleaning": {
+    label: "Deep Cleaning",
+    slug: "deep-cleaning",
+    icon: "cleaning",
+    headline: "Deep Cleaning Prices in Slough",
+    fairPrice: "£90 – £180",
+    totalEstimate: "Bigger homes or heavy condition can cost more",
+    sourceLine: "Guide range based on property size, condition, hours needed and typical Slough cleaner pricing.",
+    warning: "Ask if appliances, inside cupboards, carpets and supplies are included.",
+    bands: [
+      { label: "Fair", price: "£90 – £180", note: "Common small-property range", tone: "fair" },
+      { label: "Higher but normal", price: "£180 – £300", note: "Larger or heavier clean", tone: "normal" },
+      { label: "Check before paying", price: "£300+", note: "Ask what is included", tone: "warning" },
     ],
+    factors: ["Property size", "Condition", "Hours", "Appliances", "Supplies"],
+    included: ["Deep clean labour", "Kitchen/bathrooms", "General rooms"],
+    common: "One-off deep cleans, post-renovation cleans and pre-guest cleaning.",
     jobOptions: [
-      { label: "Small move", value: "small-move" },
-      { label: "Collection / delivery", value: "collection-delivery" },
-      { label: "Furniture transport", value: "furniture-transport" },
-      { label: "Urgent van job", value: "urgent-van-job" },
+      { label: "Home deep clean", value: "home-deep-clean" },
+      { label: "Kitchen deep clean", value: "kitchen-deep-clean" },
+      { label: "Post-builder clean", value: "post-builder-clean" },
     ],
-    detailLabel: "Job size",
+    detailLabel: "Property size",
     detailOptions: [
-      { label: "Few items", value: "few-items" },
-      { label: "One room", value: "one-room" },
-      { label: "Small flat", value: "small-flat" },
-      { label: "Large load", value: "large-load" },
-    ],
-  },
-  removals: {
-    label: "Removals",
-    slug: "removals",
-    headline: "Removal prices",
-    shortLine: "See fair moving ranges before you request a removal quote.",
-    guideLabel: "Typical removal ranges",
-    priceItems: [
-      { label: "Small flat move", from: "£250", typical: "Depends on distance, stairs and movers." },
-      { label: "2–3 bed move", from: "£450", typical: "Packing, floors and parking affect the final price." },
-      { label: "Large move", from: "£800+", typical: "Large homes usually need more movers and vehicles." },
-    ],
-    jobOptions: [
-      { label: "Flat move", value: "flat-move" },
-      { label: "House move", value: "house-move" },
-      { label: "Office move", value: "office-move" },
-    ],
-    detailLabel: "Move size",
-    detailOptions: [
-      { label: "Studio / room", value: "studio-room" },
+      { label: "Studio", value: "studio" },
       { label: "1 bedroom", value: "1-bedroom" },
       { label: "2 bedrooms", value: "2-bedrooms" },
       { label: "3+ bedrooms", value: "3-plus-bedrooms" },
     ],
   },
-  plumber: {
-    label: "Plumber",
-    slug: "plumber",
-    headline: "Plumber prices",
-    shortLine: "Check the fair plumbing callout range before you book.",
-    guideLabel: "Typical plumber ranges",
-    priceItems: [
-      { label: "Callout", from: "£80", typical: "Before parts or extra labour." },
-      { label: "Leak repair", from: "£90", typical: "Depends on access, urgency and parts." },
-      { label: "Emergency job", from: "£120+", typical: "Evenings and weekends usually cost more." },
-    ],
-    jobOptions: [
-      { label: "Leak", value: "leak" },
-      { label: "Blocked sink/toilet", value: "blocked-sink-toilet" },
-      { label: "Tap or pipe repair", value: "tap-pipe-repair" },
-      { label: "Emergency plumbing", value: "emergency-plumbing" },
-    ],
-    detailLabel: "Job type",
-    detailOptions: [
-      { label: "Small repair", value: "small-repair" },
-      { label: "Callout needed", value: "callout" },
-      { label: "Urgent issue", value: "urgent" },
-      { label: "Not sure", value: "not-sure" },
-    ],
-  },
-  electrician: {
-    label: "Electrician",
-    slug: "electrician",
-    headline: "Electrician prices",
-    shortLine: "Check the fair electrical callout range before you book.",
-    guideLabel: "Typical electrician ranges",
-    priceItems: [
-      { label: "Callout", from: "£80", typical: "Before parts or extra labour." },
-      { label: "Small repair", from: "£90", typical: "Sockets, switches and small faults vary by access." },
-      { label: "Emergency job", from: "£120+", typical: "Urgent or out-of-hours jobs cost more." },
-    ],
-    jobOptions: [
-      { label: "Fault / repair", value: "fault-repair" },
-      { label: "Sockets / switches", value: "sockets-switches" },
-      { label: "Lighting", value: "lighting" },
-      { label: "Emergency electrician", value: "emergency-electrician" },
-    ],
-    detailLabel: "Job type",
-    detailOptions: [
-      { label: "Small repair", value: "small-repair" },
-      { label: "Installation", value: "installation" },
-      { label: "Urgent issue", value: "urgent" },
-      { label: "Not sure", value: "not-sure" },
-    ],
-  },
-  locksmith: {
-    label: "Locksmith",
-    slug: "locksmith",
-    headline: "Locksmith prices",
-    shortLine: "Check the fair locksmith range before you book.",
-    guideLabel: "Typical locksmith ranges",
-    priceItems: [
-      { label: "Lockout", from: "£85", typical: "Depends on lock type and time." },
-      { label: "Lock change", from: "£95", typical: "Final price depends on lock and parts." },
-      { label: "Emergency", from: "£120+", typical: "Out-of-hours callouts can cost more." },
-    ],
-    jobOptions: [
-      { label: "Locked out", value: "locked-out" },
-      { label: "Lock change", value: "lock-change" },
-      { label: "Key issue", value: "key-issue" },
-      { label: "Emergency locksmith", value: "emergency-locksmith" },
-    ],
-    detailLabel: "Lock type",
-    detailOptions: [
-      { label: "Front door", value: "front-door" },
-      { label: "Internal door", value: "internal-door" },
-      { label: "UPVC / patio", value: "upvc-patio" },
-      { label: "Not sure", value: "not-sure" },
-    ],
-  },
-  handyman: {
-    label: "Handyman",
-    slug: "handyman",
-    headline: "Handyman prices",
-    shortLine: "See fair handyman ranges before you request help.",
-    guideLabel: "Typical handyman ranges",
-    priceItems: [
-      { label: "Hourly work", from: "£40/hr", typical: "Small jobs are usually charged hourly." },
-      { label: "Flat pack", from: "£50", typical: "Depends on item size and complexity." },
-      { label: "Half day", from: "£150", typical: "Good for several small jobs." },
-    ],
-    jobOptions: [
-      { label: "Small repair", value: "small-repair" },
-      { label: "Flat pack assembly", value: "flat-pack" },
-      { label: "Mounting / fitting", value: "mounting-fitting" },
-      { label: "Multiple jobs", value: "multiple-jobs" },
-    ],
-    detailLabel: "Job size",
-    detailOptions: [
-      { label: "One small job", value: "one-small-job" },
-      { label: "Few small jobs", value: "few-small-jobs" },
-      { label: "Half day", value: "half-day" },
-      { label: "Not sure", value: "not-sure" },
-    ],
-  },
-  gardener: {
-    label: "Gardener",
-    slug: "gardener",
-    headline: "Gardener prices",
-    shortLine: "Check the fair garden work range before you book.",
-    guideLabel: "Typical gardener ranges",
-    priceItems: [
-      { label: "Hourly gardening", from: "£25/hr", typical: "Basic garden maintenance is often hourly." },
-      { label: "Hedge trimming", from: "£60", typical: "Depends on height, length and waste." },
-      { label: "Garden clearance", from: "£120+", typical: "Large clearances need more labour." },
-    ],
-    jobOptions: [
-      { label: "Garden maintenance", value: "garden-maintenance" },
-      { label: "Lawn mowing", value: "lawn-mowing" },
-      { label: "Hedge trimming", value: "hedge-trimming" },
-      { label: "Garden clearance", value: "garden-clearance" },
-    ],
-    detailLabel: "Garden size",
-    detailOptions: [
-      { label: "Small", value: "small" },
-      { label: "Medium", value: "medium" },
-      { label: "Large", value: "large" },
-      { label: "Not sure", value: "not-sure" },
-    ],
-  },
-  "pest-control": {
-    label: "Pest Control",
-    slug: "pest-control",
-    headline: "Pest control prices",
-    shortLine: "Check the fair pest treatment range before you book.",
-    guideLabel: "Typical pest control ranges",
-    priceItems: [
-      { label: "Initial treatment", from: "£90", typical: "Depends on pest type and property size." },
-      { label: "Mice treatment", from: "£120", typical: "Often needs inspection and follow-up." },
-      { label: "Bed bugs", from: "£180+", typical: "Usually costs more due to complexity." },
-    ],
-    jobOptions: [
-      { label: "Mice / rats", value: "mice-rats" },
-      { label: "Bed bugs", value: "bed-bugs" },
-      { label: "Wasps", value: "wasps" },
-      { label: "Other pest", value: "other-pest" },
-    ],
-    detailLabel: "Property type",
-    detailOptions: [
-      { label: "Flat", value: "flat" },
-      { label: "House", value: "house" },
-      { label: "Business", value: "business" },
-      { label: "Not sure", value: "not-sure" },
-    ],
-  },
-  "painter-decorator": {
-    label: "Painter / Decorator",
-    slug: "painter-decorator",
-    headline: "Painter decorator prices",
-    shortLine: "Check the fair painting and decorating range before you book.",
-    guideLabel: "Typical painter ranges",
-    priceItems: [
-      { label: "Day rate", from: "£180/day", typical: "Day rates vary by area and experience." },
-      { label: "Small room", from: "£250", typical: "Depends on prep, paint and condition." },
-      { label: "Full flat", from: "£900+", typical: "Larger jobs depend on rooms and finish." },
-    ],
-    jobOptions: [
-      { label: "Room painting", value: "room-painting" },
-      { label: "Full flat / house", value: "full-property" },
-      { label: "Decorating", value: "decorating" },
-      { label: "Touch-ups", value: "touch-ups" },
-    ],
-    detailLabel: "Job size",
-    detailOptions: [
-      { label: "One room", value: "one-room" },
-      { label: "Few rooms", value: "few-rooms" },
-      { label: "Whole property", value: "whole-property" },
-      { label: "Not sure", value: "not-sure" },
-    ],
-  },
   "carpet-cleaning": {
     label: "Carpet Cleaning",
     slug: "carpet-cleaning",
-    headline: "Carpet cleaning prices",
-    shortLine: "Check the fair carpet cleaning range before you book.",
-    guideLabel: "Typical carpet cleaning ranges",
-    priceItems: [
-      { label: "Single room", from: "£40", typical: "Depends on room size and stains." },
-      { label: "Two rooms", from: "£70", typical: "Often cheaper when bundled." },
-      { label: "Whole flat", from: "£120+", typical: "Depends on room count and access." },
+    icon: "cleaning",
+    headline: "Carpet Cleaning Prices in Slough",
+    fairPrice: "£45 – £120",
+    totalEstimate: "Whole-flat carpet cleaning usually costs more",
+    sourceLine: "Guide range based on room count, stains, access and typical Slough carpet cleaner pricing.",
+    warning: "Check if stains, stairs, parking or minimum call-out are included.",
+    bands: [
+      { label: "Fair", price: "£45 – £120", note: "Common room-based range", tone: "fair" },
+      { label: "Higher but normal", price: "£120 – £200", note: "Multiple rooms or stains", tone: "normal" },
+      { label: "Check before paying", price: "£200+", note: "Ask for breakdown", tone: "warning" },
     ],
+    factors: ["Number of rooms", "Stains", "Stairs", "Parking", "Minimum fee"],
+    included: ["Machine clean", "Basic stain treatment", "Room carpet clean"],
+    common: "Single-room carpet cleans, end-of-tenancy carpets and rugs.",
     jobOptions: [
       { label: "Single room", value: "single-room" },
       { label: "Multiple rooms", value: "multiple-rooms" },
@@ -397,14 +426,20 @@ const serviceConfigs: Record<string, ServiceConfig> = {
   "oven-cleaning": {
     label: "Oven Cleaning",
     slug: "oven-cleaning",
-    headline: "Oven cleaning prices",
-    shortLine: "Check the fair oven cleaning range before you book.",
-    guideLabel: "Typical oven cleaning ranges",
-    priceItems: [
-      { label: "Single oven", from: "£50", typical: "Basic oven cleaning varies by condition." },
-      { label: "Double oven", from: "£70", typical: "Larger ovens usually cost more." },
-      { label: "Oven + hob", from: "£90+", typical: "Add-ons increase the total price." },
+    icon: "cleaning",
+    headline: "Oven Cleaning Prices in Slough",
+    fairPrice: "£50 – £90",
+    totalEstimate: "Oven + hob or extractor usually costs more",
+    sourceLine: "Guide range based on oven type, condition, add-ons and Slough oven cleaner pricing.",
+    warning: "Check if hob, extractor, trays and heavy grease are included.",
+    bands: [
+      { label: "Fair", price: "£50 – £90", note: "Single/double oven range", tone: "fair" },
+      { label: "Higher but normal", price: "£90 – £140", note: "Add-ons or heavy grease", tone: "normal" },
+      { label: "Check before paying", price: "£140+", note: "Ask what is included", tone: "warning" },
     ],
+    factors: ["Oven type", "Condition", "Hob/extractor", "Trays", "Parking"],
+    included: ["Oven clean", "Basic racks/trays", "Degreasing"],
+    common: "Single ovens, double ovens, oven + hob and move-out oven cleans.",
     jobOptions: [
       { label: "Single oven", value: "single-oven" },
       { label: "Double oven", value: "double-oven" },
@@ -419,17 +454,147 @@ const serviceConfigs: Record<string, ServiceConfig> = {
       { label: "Not sure", value: "not-sure" },
     ],
   },
+  gardener: {
+    label: "Gardener",
+    slug: "gardener",
+    icon: "leaf",
+    headline: "Gardener Prices in Slough",
+    fairPrice: "£25 – £45/hr",
+    totalEstimate: "Clearance jobs usually cost more than maintenance",
+    sourceLine: "Guide range based on garden size, waste, tools, time needed and Slough gardener pricing.",
+    warning: "Ask if waste removal, tools, hedge work and minimum hours are included.",
+    bands: [
+      { label: "Fair", price: "£25 – £45/hr", note: "Normal maintenance range", tone: "fair" },
+      { label: "Higher but normal", price: "£45 – £70/hr", note: "Clearance or specialist work", tone: "normal" },
+      { label: "Check before paying", price: "£70+/hr", note: "Ask what is included", tone: "warning" },
+    ],
+    factors: ["Garden size", "Waste removal", "Hedges", "Tools", "Access"],
+    included: ["Basic gardening", "Labour", "Light maintenance"],
+    common: "Lawn mowing, hedge trimming, garden tidy-ups and clearance jobs.",
+    jobOptions: [
+      { label: "Garden maintenance", value: "garden-maintenance" },
+      { label: "Lawn mowing", value: "lawn-mowing" },
+      { label: "Hedge trimming", value: "hedge-trimming" },
+      { label: "Garden clearance", value: "garden-clearance" },
+    ],
+    detailLabel: "Garden size",
+    detailOptions: [
+      { label: "Small", value: "small" },
+      { label: "Medium", value: "medium" },
+      { label: "Large", value: "large" },
+      { label: "Not sure", value: "not-sure" },
+    ],
+  },
+  handyman: {
+    label: "Handyman",
+    slug: "handyman",
+    icon: "tool",
+    headline: "Handyman Prices in Slough",
+    fairPrice: "£45 – £80/hr",
+    totalEstimate: "Half-day jobs often start around £150",
+    sourceLine: "Guide range based on job size, tools, travel, materials and Slough handyman pricing.",
+    warning: "Check if materials, parking, minimum hours and disposal are included.",
+    bands: [
+      { label: "Fair", price: "£45 – £80/hr", note: "Normal local range", tone: "fair" },
+      { label: "Higher but normal", price: "£80 – £120/hr", note: "Specialist or urgent work", tone: "normal" },
+      { label: "Check before paying", price: "£120+/hr", note: "Ask for breakdown", tone: "warning" },
+    ],
+    factors: ["Job complexity", "Materials", "Minimum hours", "Tools", "Parking"],
+    included: ["Labour", "Basic tools", "Small fixes"],
+    common: "Flat-pack assembly, mounting, small repairs and odd jobs.",
+    jobOptions: [
+      { label: "Small repair", value: "small-repair" },
+      { label: "Flat pack assembly", value: "flat-pack" },
+      { label: "Mounting / fitting", value: "mounting-fitting" },
+      { label: "Multiple jobs", value: "multiple-jobs" },
+    ],
+    detailLabel: "Job size",
+    detailOptions: [
+      { label: "One small job", value: "one-small-job" },
+      { label: "Few small jobs", value: "few-small-jobs" },
+      { label: "Half day", value: "half-day" },
+      { label: "Not sure", value: "not-sure" },
+    ],
+  },
+  "painter-decorator": {
+    label: "Painter & Decorator",
+    slug: "painter-decorator",
+    icon: "tool",
+    headline: "Painter & Decorator Prices in Slough",
+    fairPrice: "£120 – £220/day",
+    totalEstimate: "Room pricing depends on prep and finish",
+    sourceLine: "Guide range based on day rates, room size, prep, materials and Slough decorator pricing.",
+    warning: "Ask if paint, prep, filling, sanding and materials are included.",
+    bands: [
+      { label: "Fair", price: "£120 – £220/day", note: "Normal local day rate", tone: "fair" },
+      { label: "Higher but normal", price: "£220 – £300/day", note: "Experienced or detailed work", tone: "normal" },
+      { label: "Check before paying", price: "£300+/day", note: "Ask for full scope", tone: "warning" },
+    ],
+    factors: ["Room size", "Prep work", "Materials", "Finish", "Access"],
+    included: ["Labour", "Basic prep", "Painting/decorating"],
+    common: "Room painting, touch-ups, full-flat decorating and rental refreshes.",
+    jobOptions: [
+      { label: "Room painting", value: "room-painting" },
+      { label: "Full flat / house", value: "full-property" },
+      { label: "Decorating", value: "decorating" },
+      { label: "Touch-ups", value: "touch-ups" },
+    ],
+    detailLabel: "Job size",
+    detailOptions: [
+      { label: "One room", value: "one-room" },
+      { label: "Few rooms", value: "few-rooms" },
+      { label: "Whole property", value: "whole-property" },
+      { label: "Not sure", value: "not-sure" },
+    ],
+  },
+  "pest-control": {
+    label: "Pest Control",
+    slug: "pest-control",
+    icon: "shield",
+    headline: "Pest Control Prices in Slough",
+    fairPrice: "£80 – £160",
+    totalEstimate: "Follow-up visits can increase the total",
+    sourceLine: "Guide range based on pest type, property size, treatment visits and Slough pest control pricing.",
+    warning: "Ask if inspection, treatment, follow-up and proofing are included.",
+    bands: [
+      { label: "Fair", price: "£80 – £160", note: "Common treatment range", tone: "fair" },
+      { label: "Higher but normal", price: "£160 – £250", note: "Follow-ups or complex issue", tone: "normal" },
+      { label: "Check before paying", price: "£250+", note: "Ask for treatment plan", tone: "warning" },
+    ],
+    factors: ["Pest type", "Property size", "Visits", "Proofing", "Urgency"],
+    included: ["Inspection", "Initial treatment", "Advice"],
+    common: "Mice, rats, wasps, bed bugs and small business pest issues.",
+    jobOptions: [
+      { label: "Mice / rats", value: "mice-rats" },
+      { label: "Bed bugs", value: "bed-bugs" },
+      { label: "Wasps", value: "wasps" },
+      { label: "Other pest", value: "other-pest" },
+    ],
+    detailLabel: "Property type",
+    detailOptions: [
+      { label: "Flat", value: "flat" },
+      { label: "House", value: "house" },
+      { label: "Business", value: "business" },
+      { label: "Not sure", value: "not-sure" },
+    ],
+  },
   "waste-removal": {
     label: "Waste Removal",
     slug: "waste-removal",
-    headline: "Waste removal prices",
-    shortLine: "Check the fair rubbish removal range before you book.",
-    guideLabel: "Typical waste removal ranges",
-    priceItems: [
-      { label: "Small load", from: "£80", typical: "Depends on volume and waste type." },
-      { label: "Medium load", from: "£140", typical: "Weight, labour and disposal fees affect price." },
-      { label: "House clearance", from: "£250+", typical: "Large clearances need more labour." },
+    icon: "van",
+    headline: "Waste Removal Prices in Slough",
+    fairPrice: "£60 – £180",
+    totalEstimate: "Load size and disposal fees change the final price",
+    sourceLine: "Guide range based on load size, waste type, labour, disposal fees and Slough waste removal pricing.",
+    warning: "Ask if labour, loading, disposal fees and VAT are included.",
+    bands: [
+      { label: "Fair", price: "£60 – £180", note: "Small/medium load range", tone: "fair" },
+      { label: "Higher but normal", price: "£180 – £300", note: "Large or heavy load", tone: "normal" },
+      { label: "Check before paying", price: "£300+", note: "Ask for disposal breakdown", tone: "warning" },
     ],
+    factors: ["Load size", "Waste type", "Weight", "Labour", "Disposal fees"],
+    included: ["Loading", "Transport", "Basic disposal"],
+    common: "Furniture disposal, rubbish clearance, garden waste and small house clearances.",
     jobOptions: [
       { label: "Rubbish removal", value: "rubbish-removal" },
       { label: "Furniture disposal", value: "furniture-disposal" },
@@ -447,14 +612,20 @@ const serviceConfigs: Record<string, ServiceConfig> = {
   "appliance-repair": {
     label: "Appliance Repair",
     slug: "appliance-repair",
-    headline: "Appliance repair prices",
-    shortLine: "Check the fair appliance repair range before you book.",
-    guideLabel: "Typical appliance repair ranges",
-    priceItems: [
-      { label: "Callout", from: "£70", typical: "Diagnosis before parts or repair." },
-      { label: "Common repair", from: "£90", typical: "Depends on appliance type and parts." },
-      { label: "Urgent repair", from: "£120+", typical: "Same-day repairs can cost more." },
+    icon: "tool",
+    headline: "Appliance Repair Prices in Slough",
+    fairPrice: "£55 – £120",
+    totalEstimate: "Parts can increase the final price",
+    sourceLine: "Guide range based on appliance type, diagnosis, parts, urgency and Slough repair pricing.",
+    warning: "Ask if diagnosis, call-out, labour and parts are included.",
+    bands: [
+      { label: "Fair", price: "£55 – £120", note: "Normal diagnosis/repair range", tone: "fair" },
+      { label: "Higher but normal", price: "£120 – £200", note: "Parts or same-day repair", tone: "normal" },
+      { label: "Check before paying", price: "£200+", note: "Ask about parts first", tone: "warning" },
     ],
+    factors: ["Appliance type", "Parts", "Call-out", "Fault type", "Urgency"],
+    included: ["Diagnosis", "Basic labour", "Repair advice"],
+    common: "Washing machines, dishwashers, fridges and common kitchen appliance faults.",
     jobOptions: [
       { label: "Washing machine", value: "washing-machine" },
       { label: "Fridge / freezer", value: "fridge-freezer" },
@@ -469,39 +640,69 @@ const serviceConfigs: Record<string, ServiceConfig> = {
       { label: "Not sure", value: "not-sure" },
     ],
   },
+  "roof-repair": {
+    label: "Roof Repair",
+    slug: "roof-repair",
+    icon: "tool",
+    headline: "Roof Repair Prices in Slough",
+    fairPrice: "£120 – £350",
+    totalEstimate: "Large repairs and materials can cost more",
+    sourceLine: "Guide range based on roof access, repair type, materials, urgency and Slough roofer pricing.",
+    warning: "Ask if inspection, labour, materials, scaffolding and VAT are included.",
+    bands: [
+      { label: "Fair", price: "£120 – £350", note: "Small repair range", tone: "fair" },
+      { label: "Higher but normal", price: "£350 – £750", note: "Larger repair/materials", tone: "normal" },
+      { label: "Check before paying", price: "£750+", note: "Ask for written breakdown", tone: "warning" },
+    ],
+    factors: ["Access", "Materials", "Repair size", "Scaffolding", "Urgency"],
+    included: ["Inspection", "Small repair labour", "Advice"],
+    common: "Leaks, slipped tiles, gutter issues and small roof repairs.",
+    jobOptions: [
+      { label: "Roof leak", value: "roof-leak" },
+      { label: "Tile repair", value: "tile-repair" },
+      { label: "Gutter issue", value: "gutter-issue" },
+      { label: "Not sure", value: "not-sure" },
+    ],
+    detailLabel: "Repair size",
+    detailOptions: [
+      { label: "Small repair", value: "small-repair" },
+      { label: "Leak investigation", value: "leak-investigation" },
+      { label: "Larger repair", value: "larger-repair" },
+      { label: "Not sure", value: "not-sure" },
+    ],
+  },
+  "mot-car-repairs": {
+    label: "MOT & Car Repairs",
+    slug: "mot-car-repairs",
+    icon: "car",
+    headline: "MOT & Car Repair Prices in Slough",
+    fairPrice: "£38 – £65 MOT",
+    totalEstimate: "Repair costs depend on parts and labour",
+    sourceLine: "Guide range based on MOT pricing, labour rates, parts and local Slough garage pricing.",
+    warning: "Ask if diagnostic fees, parts, labour and VAT are included before agreeing to repairs.",
+    bands: [
+      { label: "Fair", price: "£38 – £65", note: "Typical MOT range", tone: "fair" },
+      { label: "Higher but normal", price: "£65 – £150", note: "Diagnostics or small repair", tone: "normal" },
+      { label: "Check before paying", price: "£150+", note: "Ask for repair breakdown", tone: "warning" },
+    ],
+    factors: ["MOT vs repair", "Parts", "Labour", "Diagnostics", "Vehicle type"],
+    included: ["MOT test", "Basic inspection", "Repair quote if needed"],
+    common: "MOTs, diagnostics, brake checks, tyre issues and small repairs.",
+    jobOptions: [
+      { label: "MOT", value: "mot" },
+      { label: "Diagnostics", value: "diagnostics" },
+      { label: "Car repair", value: "car-repair" },
+      { label: "Brake / tyre issue", value: "brake-tyre" },
+    ],
+    detailLabel: "Vehicle type",
+    detailOptions: [
+      { label: "Small car", value: "small-car" },
+      { label: "Medium car", value: "medium-car" },
+      { label: "Van", value: "van" },
+      { label: "Not sure", value: "not-sure" },
+    ],
+  },
 };
-
-const popularSearches = [
-  { label: "Cleaning near E17", service: "cleaning", postcode: "E17 6AA" },
-  { label: "Man and van near NW4", service: "man-and-van", postcode: "NW4 4BT" },
-  { label: "Plumber near HA8", service: "plumber", postcode: "HA8 6HU" },
-  { label: "Cleaner near SL2", service: "cleaning", postcode: "SL2 5RX" },
-  { label: "Locksmith near IG1", service: "locksmith", postcode: "IG1 1AA" },
-];
-
-function formatParam(value: string | undefined, fallback: string) {
-  if (!value) return fallback;
-
-  return value
-    .replace(/-/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
-function getCanonicalServiceSlug(value: string | undefined) {
-  const slug = slugify(value || "");
-  return serviceAliases[slug] ?? slug;
-}
 
 function getServiceConfig(serviceSlug: string): ServiceConfig | null {
   return serviceConfigs[serviceSlug] ?? null;
@@ -510,14 +711,8 @@ function getServiceConfig(serviceSlug: string): ServiceConfig | null {
 function Logo() {
   return (
     <Link href="/" className="flex min-w-0 items-center gap-3" aria-label="Quickola homepage">
-      <img
-        src="/quickola/logo-mark.png"
-        alt="Quickola"
-        className="h-9 w-9 shrink-0 rounded-full object-contain sm:h-10 sm:w-10"
-      />
-      <span className="text-[24px] font-extrabold leading-none tracking-[-0.035em] text-[#071638] sm:text-[30px]">
-        Quickola
-      </span>
+      <img src="/quickola/logo-mark.png" alt="Quickola" className="h-9 w-9 shrink-0 rounded-full object-contain sm:h-10 sm:w-10" />
+      <span className="text-[24px] font-extrabold leading-none tracking-[-0.035em] text-[#071638] sm:text-[30px]">Quickola</span>
     </Link>
   );
 }
@@ -527,10 +722,7 @@ function Header() {
     <header className="sticky top-0 z-50 border-b border-[#e4e8ef] bg-white/95 backdrop-blur-md">
       <div className="mx-auto flex min-h-[62px] w-full max-w-[1220px] items-center justify-between px-4 sm:min-h-[74px] sm:px-6 lg:px-8">
         <Logo />
-        <Link
-          href="/"
-          className="inline-flex h-9 shrink-0 items-center justify-center rounded-[11px] border border-[#dfe5ee] bg-white px-3 text-[13px] font-extrabold text-[#071638] shadow-[0_6px_14px_rgba(7,22,56,0.035)] transition hover:-translate-y-0.5 hover:border-[#b7c2d2] sm:h-10 sm:px-4 sm:text-[14px]"
-        >
+        <Link href="/" className="inline-flex h-9 shrink-0 items-center justify-center rounded-[11px] border border-[#dfe5ee] bg-white px-3 text-[13px] font-extrabold text-[#071638] shadow-[0_6px_14px_rgba(7,22,56,0.035)] transition hover:-translate-y-0.5 hover:border-[#b7c2d2] sm:h-10 sm:px-4 sm:text-[14px]">
           New search
         </Link>
       </div>
@@ -538,212 +730,190 @@ function Header() {
   );
 }
 
-function ShieldIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 3.5 5.5 6v5.2c0 4 2.6 7.5 6.5 9.1 3.9-1.6 6.5-5.1 6.5-9.1V6L12 3.5Z" />
-      <path d="m8.8 12 2 2 4.3-4.6" />
-    </svg>
-  );
+function Icon({ type, className = "h-5 w-5" }: { type: ServiceConfig["icon"] | "pin" | "clock" | "mail" | "phone" | "briefcase" | "calendar" | "tag"; className?: string }) {
+  const base = `${className} fill-none stroke-current stroke-[2]`;
+
+  if (type === "van") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h11v9H3z" /><path d="M14 10h3.5l2.5 3v3h-6" /><circle cx="6.5" cy="18" r="2" /><circle cx="17.5" cy="18" r="2" /></svg>;
+  if (type === "plumbing") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="M4 14h9a4 4 0 0 0 4-4V6" /><path d="M17 6h3" /><path d="M7 10v8" /><path d="M4 18h6" /></svg>;
+  if (type === "car") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12 7 7h10l2 5" /><path d="M5 12h14v5H5z" /><circle cx="8" cy="17" r="1.6" /><circle cx="16" cy="17" r="1.6" /></svg>;
+  if (type === "cleaning") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="m14 4 6 6" /><path d="M4 20h8" /><path d="m12 6-7 7 6 6 7-7" /><path d="M7 16l-3 4" /></svg>;
+  if (type === "flame") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c4 0 7-2.8 7-6.8 0-3.2-2-5.5-4.2-7.6-.8 2.3-2.2 3.5-3.8 4.4.4-3.3-.8-6.2-3.1-8C7.4 7.8 5 10 5 15.2 5 19.2 8 22 12 22Z" /></svg>;
+  if (type === "bolt") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="m13 2-8 12h7l-1 8 8-12h-7l1-8Z" /></svg>;
+  if (type === "key") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="15" r="3.2" /><path d="m10.3 12.7 8-8" /><path d="m15.5 7.5 2 2" /><path d="m17.5 5.5 1.5 1.5" /></svg>;
+  if (type === "leaf") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="M20 4c-7.5 0-13 4.8-13 11a5 5 0 0 0 5 5c6.2 0 8-8.2 8-16Z" /><path d="M4 20c3.5-5.5 8-8.5 14-10" /></svg>;
+  if (type === "tool") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4.5a4.5 4.5 0 0 0 5 5L10 19a3 3 0 0 1-4.2 0l-.8-.8a3 3 0 0 1 0-4.2l9.5-9.5Z" /><path d="m13 7 4 4" /></svg>;
+  if (type === "shield") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 19 6v5c0 4.7-2.8 8.2-7 10-4.2-1.8-7-5.3-7-10V6l7-3Z" /><path d="m9 12 2 2 4-5" /></svg>;
+  if (type === "pin") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s7-4.8 7-11a7 7 0 1 0-14 0c0 6.2 7 11 7 11Z" /><circle cx="12" cy="10" r="2.3" /></svg>;
+  if (type === "clock") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="8" /><path d="M12 8v5l3 2" /></svg>;
+  if (type === "mail") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="6" width="16" height="12" rx="2" /><path d="m5 8 7 5 7-5" /></svg>;
+  if (type === "phone") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.7.6 2.5a2 2 0 0 1-.4 2.1L8 9.6a16 16 0 0 0 6.4 6.4l1.3-1.3a2 2 0 0 1 2.1-.4c.8.3 1.6.5 2.5.6a2 2 0 0 1 1.7 2Z" /></svg>;
+  if (type === "briefcase") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="M9 6V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1" /><rect x="4" y="6" width="16" height="14" rx="2" /><path d="M4 12h16" /></svg>;
+  if (type === "calendar") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="M7 3v3M17 3v3M4.5 9h15" /><rect x="4.5" y="5.5" width="15" height="15" rx="2.2" /></svg>;
+  if (type === "tag") return <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round"><path d="M20 13.5 13.5 20a2 2 0 0 1-2.8 0L4 13.3V4h9.3L20 10.7a2 2 0 0 1 0 2.8Z" /><circle cx="8.5" cy="8.5" r="1.2" /></svg>;
+
+  return null;
 }
 
-function TagIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20 13.5 13.5 20a2 2 0 0 1-2.8 0L4 13.3V4h9.3L20 10.7a2 2 0 0 1 0 2.8Z" />
-      <circle cx="8.5" cy="8.5" r="1.2" />
-    </svg>
-  );
-}
+function BandCard({ band }: { band: PriceBand }) {
+  const styles = {
+    fair: "border-[#cfeedd] bg-[#f1fbf5] text-[#08783f]",
+    normal: "border-[#ffe0b8] bg-[#fff8ee] text-[#ea6a00]",
+    warning: "border-[#ffd3d8] bg-[#fff4f5] text-[#e11925]",
+  }[band.tone];
 
-function BriefcaseIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M9 6V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1" />
-      <rect x="4" y="6" width="16" height="14" rx="2" />
-      <path d="M4 12h16" />
-    </svg>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M7 3v3M17 3v3M4.5 9h15" />
-      <rect x="4.5" y="5.5" width="15" height="15" rx="2.2" />
-    </svg>
-  );
-}
-
-function MailIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="4" y="6" width="16" height="12" rx="2" />
-      <path d="m5 8 7 5 7-5" />
-    </svg>
-  );
-}
-
-function PhoneIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.7.6 2.5a2 2 0 0 1-.4 2.1L8 9.6a16 16 0 0 0 6.4 6.4l1.3-1.3a2 2 0 0 1 2.1-.4c.8.3 1.6.5 2.5.6a2 2 0 0 1 1.7 2Z" />
-    </svg>
-  );
-}
-
-function LocationIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[2]" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 21s6-5.2 6-11a6 6 0 0 0-12 0c0 5.8 6 11 6 11Z" />
-      <circle cx="12" cy="10" r="2.2" />
-    </svg>
-  );
-}
-
-function SelectField({
-  label,
-  name,
-  options,
-  icon,
-  defaultValue,
-}: {
-  label: string;
-  name: string;
-  options: { label: string; value: string }[];
-  icon: React.ReactNode;
-  defaultValue?: string;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[13px] font-bold text-[#071638]">{label}</span>
-      <div className="relative flex h-[48px] items-center gap-3 rounded-[13px] border border-[#dfe5ee] bg-white px-4 transition focus-within:border-[#08783f] focus-within:ring-4 focus-within:ring-[#08783f]/10">
-        <span className="shrink-0 text-[#071638]">{icon}</span>
-        <select
-          name={name}
-          defaultValue={defaultValue ?? options[0]?.value}
-          className="min-w-0 flex-1 appearance-none bg-transparent text-[14px] font-bold text-[#071638] outline-none"
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-        <span className="pointer-events-none text-[20px] font-black text-[#071638]">⌄</span>
-      </div>
-    </label>
-  );
-}
-
-function TextInput({
-  label,
-  name,
-  placeholder,
-  icon,
-  type = "text",
-  required,
-  pattern,
-  inputMode,
-  title,
-  minLength,
-  maxLength,
-}: {
-  label: string;
-  name: string;
-  placeholder: string;
-  icon: React.ReactNode;
-  type?: string;
-  required?: boolean;
-  pattern?: string;
-  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
-  title?: string;
-  minLength?: number;
-  maxLength?: number;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[13px] font-bold text-[#071638]">{label}</span>
-      <div className="flex h-[48px] items-center gap-3 rounded-[13px] border border-[#dfe5ee] bg-white px-4 transition focus-within:border-[#08783f] focus-within:ring-4 focus-within:ring-[#08783f]/10">
-        <span className="shrink-0 text-[#071638]">{icon}</span>
-        <input
-          name={name}
-          type={type}
-          placeholder={placeholder}
-          required={required}
-          pattern={pattern}
-          inputMode={inputMode}
-          title={title}
-          minLength={minLength}
-          maxLength={maxLength}
-          className="min-w-0 flex-1 bg-transparent text-[14px] font-bold text-[#071638] outline-none placeholder:text-[#8b94a7]"
-        />
-      </div>
-    </label>
-  );
-}
-
-function PriceCard({ config }: { config: ServiceConfig }) {
-  return (
-    <div className="overflow-hidden rounded-[22px] bg-[#071638] text-white shadow-[0_18px_46px_rgba(7,22,56,0.16)]">
-      <div className="px-4 py-4 text-center sm:px-7 sm:py-5">
-        <p className="text-[13px] font-bold text-white/82 sm:text-[15px]">Your local guide range</p>
-        <div className="mt-2 flex flex-wrap items-end justify-center gap-2 sm:mt-3">
-          <span className="text-[34px] font-black tracking-[-0.045em] sm:text-[46px]">{config.priceItems[0]?.from}</span>
-          <span className="pb-1.5 text-[18px] font-bold text-white/80 sm:pb-2 sm:text-[22px]">from</span>
-        </div>
-        <p className="mt-1 text-[12px] font-medium text-white/68 sm:mt-2 sm:text-[15px]">Based on common job types and guide pricing.</p>
-      </div>
-
-      <div className="grid grid-cols-3 border-t border-white/12">
-        {config.priceItems.slice(0, 3).map((item, index) => (
-          <div key={item.label} className={`${index < 2 ? "border-r border-white/12" : ""} px-2 py-4 text-center sm:px-4`}>
-            <p className="text-[11px] font-bold sm:text-[14px]">{item.label}</p>
-            <p className="mt-1 text-[13px] font-black sm:text-[18px]">{item.from}</p>
-            <p className="mt-0.5 text-[10px] font-bold text-white/65 sm:mt-1 sm:text-[12px]">Guide</p>
-          </div>
-        ))}
-      </div>
+    <div className={`rounded-[17px] border p-4 text-center ${styles}`}>
+      <p className="text-[13px] font-black">{band.label}</p>
+      <p className="mt-2 text-[24px] font-black tracking-[-0.05em] text-[#071638] sm:text-[28px]">{band.price}</p>
+      <div className={`mx-auto mt-3 h-1.5 w-20 rounded-full ${band.tone === "fair" ? "bg-[#13a85a]" : band.tone === "normal" ? "bg-[#ff8a00]" : "bg-[#e11925]"}`} />
+      <p className="mt-3 text-[12px] font-bold leading-[1.3] text-[#273651]">{band.note}</p>
     </div>
   );
 }
 
-function LeftPanel({ config, postcode }: { config: ServiceConfig; postcode: string }) {
+function SelectField({ label, name, options, icon }: { label: string; name: string; options: { label: string; value: string }[]; icon: ReactNode }) {
   return (
-    <section className="rounded-[24px] border border-[#e1e6ee] bg-white p-4 shadow-[0_16px_50px_rgba(7,22,56,0.06)] sm:p-6 lg:p-7">
-      <p className="text-[11px] font-black uppercase tracking-[0.1em] text-[#08783f] sm:text-[12px]">Instant price range</p>
-      <h1 className="mt-2 max-w-[650px] text-[32px] font-black leading-[1.04] tracking-[-0.055em] text-[#071638] sm:mt-3 sm:text-[48px] lg:text-[56px]">
-        {config.headline} near <span className="text-[#08783f]">{postcode}</span>
-      </h1>
+    <label className="block">
+      <span className="mb-1.5 block text-[13px] font-black text-[#071638]">{label}</span>
+      <div className="relative flex h-[50px] items-center gap-3 rounded-[14px] border border-[#dfe5ee] bg-white px-4 transition focus-within:border-[#075cff] focus-within:ring-4 focus-within:ring-[#075cff]/10">
+        <span className="shrink-0 text-[#075cff]">{icon}</span>
+        <select name={name} defaultValue={options[0]?.value} className="min-w-0 flex-1 appearance-none bg-transparent text-[14px] font-black text-[#071638] outline-none">
+          {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+        <span className="pointer-events-none text-[18px] font-black text-[#071638]">⌄</span>
+      </div>
+    </label>
+  );
+}
 
-      <p className="mt-3 max-w-[620px] text-[14px] font-semibold leading-[1.55] text-[#172545] sm:mt-4 sm:text-[17px] sm:leading-[1.6]">
-        {config.shortLine} See the guide range first, then decide if you want help finding someone suitable.
-      </p>
+function TextInput({ label, name, placeholder, icon, type = "text", required, pattern, inputMode, title, minLength, maxLength }: { label: string; name: string; placeholder: string; icon: ReactNode; type?: string; required?: boolean; pattern?: string; inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]; title?: string; minLength?: number; maxLength?: number }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[13px] font-black text-[#071638]">{label}</span>
+      <div className="flex h-[50px] items-center gap-3 rounded-[14px] border border-[#dfe5ee] bg-white px-4 transition focus-within:border-[#075cff] focus-within:ring-4 focus-within:ring-[#075cff]/10">
+        <span className="shrink-0 text-[#075cff]">{icon}</span>
+        <input name={name} type={type} placeholder={placeholder} required={required} pattern={pattern} inputMode={inputMode} title={title} minLength={minLength} maxLength={maxLength} className="min-w-0 flex-1 bg-transparent text-[14px] font-bold text-[#071638] outline-none placeholder:text-[#8b94a7]" />
+      </div>
+    </label>
+  );
+}
 
-      <div className="mt-4 sm:mt-5">
-        <PriceCard config={config} />
+function ResultPanel({ config, postcode }: { config: ServiceConfig; postcode: string }) {
+  return (
+    <section className="rounded-[24px] border border-[#dfe6ef] bg-white p-4 shadow-[0_14px_40px_rgba(7,22,56,0.055)] sm:rounded-[26px] sm:p-6 lg:p-7">
+      <div className="text-center sm:text-left">
+        <div className="inline-flex items-center gap-2 rounded-full bg-[#edf8f1] px-3 py-1.5 text-[11px] font-black text-[#08783f]">
+          <Icon type="pin" className="h-3.5 w-3.5" />
+          {config.label} · {postcode}
+        </div>
+
+        <div className="mt-4 flex flex-col items-center gap-3 sm:mt-5 sm:flex-row sm:items-start sm:gap-5">
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-[#eff5ff] text-[#075cff] sm:h-16 sm:w-16 sm:rounded-[22px]">
+            <Icon type={config.icon} className="h-8 w-8 sm:h-9 sm:w-9" />
+          </span>
+
+          <div>
+            <h1 className="text-[30px] font-black leading-[1.02] tracking-[-0.055em] text-[#071638] sm:text-[46px]">
+              {config.headline}
+            </h1>
+
+            <div className="mx-auto mt-4 max-w-[330px] rounded-[22px] border border-[#dbe8ff] bg-[#f7fbff] px-4 py-4 text-center sm:mx-0 sm:max-w-none sm:border-0 sm:bg-transparent sm:p-0 sm:text-left">
+              <p className="text-[13px] font-black uppercase tracking-[0.08em] text-[#075cff] sm:text-[18px] sm:normal-case sm:tracking-normal">
+                Fair Slough price
+              </p>
+
+              <p className="mt-1 text-[44px] font-black leading-none tracking-[-0.075em] text-[#075cff] sm:text-[48px]">
+                {config.fairPrice}
+              </p>
+
+              {config.totalEstimate ? (
+                <p className="mt-3 text-[13px] font-black leading-[1.35] text-[#071638] sm:text-[14px]">
+                  {config.totalEstimate}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        <p className="mx-auto mt-4 max-w-[700px] text-[13px] font-semibold leading-[1.55] text-[#273651] sm:mx-0 sm:text-[16px]">
+          {config.sourceLine} Final price depends on your exact job details.
+        </p>
       </div>
 
-      <div className="mt-4 rounded-[18px] border border-[#dcebe1] bg-[#f7fcf8] px-4 py-3">
-        <p className="text-[14px] font-black leading-[1.35] text-[#071638]">
-          Want someone near {postcode} who fits this fair range?
-        </p>
-        <p className="mt-1 text-[13px] font-semibold leading-[1.45] text-[#44506a]">
-          Quickola can help you request one local match. No booking is made.
-        </p>
-      </div>
-
-      <Link
-        href="#match-form"
-        className="mt-4 flex h-[48px] w-full items-center justify-center gap-3 rounded-[13px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[15px] font-black text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5 sm:hidden"
-      >
-        Find my fair-price match
-        <span className="text-[24px] leading-none">→</span>
-      </Link>
-
-      <div className="mt-4 rounded-[17px] border border-[#dfe5ee] bg-[#fbfcfd] px-4 py-3">
+      <div className="mt-4 rounded-[18px] border border-[#ffe0b8] bg-[#fff9ef] p-4 sm:mt-5">
         <div className="flex gap-3">
-          <span className="mt-0.5 shrink-0 text-[#08783f]"><TagIcon /></span>
-          <p className="text-[14px] font-bold leading-[1.55] text-[#44506a]">
-            Final price can change after job size, urgency, access, parking, parts, materials or extras are confirmed.
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#f36b00] ring-1 ring-[#ffd8a8]">
+            !
+          </span>
+          <p className="text-[13px] font-black leading-[1.45] text-[#071638] sm:text-[14px]">
+            {config.warning}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <Link
+          href="#match-form"
+          className="flex h-[56px] items-center justify-center rounded-[16px] bg-[#075cff] px-5 text-[15px] font-black text-white shadow-[0_16px_30px_rgba(0,92,255,0.22)] transition hover:-translate-y-0.5 sm:order-2"
+        >
+          Get fair local options →
+        </Link>
+
+        <Link
+          href="#quote-check"
+          className="flex h-[56px] items-center justify-center rounded-[16px] border border-[#cbd8ee] bg-white px-5 text-[15px] font-black text-[#075cff] transition hover:-translate-y-0.5 hover:border-[#075cff] sm:order-1"
+        >
+          Check my quote →
+        </Link>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-3">
+        {config.bands.map((band) => (
+          <BandCard key={band.label} band={band} />
+        ))}
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-2">
+        <div className="rounded-[18px] border border-[#e1e6ee] bg-white p-4">
+          <h2 className="text-[16px] font-black text-[#071638]">
+            What changes the price?
+          </h2>
+
+          <div className="mt-3 space-y-2">
+            {config.factors.map((item) => (
+              <div
+                key={item}
+                className="flex items-center gap-2 text-[13px] font-bold text-[#273651]"
+              >
+                <span className="text-[#075cff]">＋</span> {item}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[18px] border border-[#e1e6ee] bg-white p-4">
+          <h2 className="text-[16px] font-black text-[#071638]">
+            Usually included in fair prices
+          </h2>
+
+          <div className="mt-3 space-y-2">
+            {config.included.map((item) => (
+              <div
+                key={item}
+                className="flex items-center gap-2 text-[13px] font-bold text-[#273651]"
+              >
+                <span className="text-[#08783f]">✓</span> {item}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-[18px] border border-[#dcebe1] bg-[#f1fbf5] p-4 sm:mt-5">
+        <div className="flex gap-3">
+          <Icon type="pin" className="mt-0.5 h-5 w-5 shrink-0 text-[#08783f]" />
+          <p className="text-[13px] font-bold leading-[1.45] text-[#071638] sm:text-[14px]">
+            <span className="font-black">Common in Slough:</span> {config.common}
           </p>
         </div>
       </div>
@@ -751,189 +921,174 @@ function LeftPanel({ config, postcode }: { config: ServiceConfig; postcode: stri
   );
 }
 
-function DetailsForm({
-  config,
-  postcode,
-}: {
-  config: ServiceConfig;
-  postcode: string;
-}) {
+function QuoteCheck({ config }: { config: ServiceConfig }) {
   return (
-    <aside id="match-form" className="scroll-mt-[86px] rounded-[24px] border border-[#e1e6ee] bg-white p-4 shadow-[0_16px_50px_rgba(7,22,56,0.06)] sm:p-5 lg:sticky lg:top-[84px]">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        {["1", "2", "3"].map((step, index) => (
-          <div key={step} className="flex flex-1 items-center gap-2">
-            <span className={`grid h-8 w-8 place-items-center rounded-full text-[13px] font-black ${index === 0 ? "bg-[#071638] text-white" : "bg-[#eef3f7] text-[#40607e]"}`}>
-              {step}
-            </span>
-            {index < 2 ? <span className="h-[2px] flex-1 rounded-full bg-[#dfe5ee]" /> : null}
-          </div>
-        ))}
+    <section id="quote-check" className="scroll-mt-[90px] rounded-[24px] border border-[#e1e6ee] bg-white p-4 shadow-[0_16px_50px_rgba(7,22,56,0.06)] sm:p-5">
+      <h2 className="text-[24px] font-black tracking-[-0.04em] text-[#071638]">Already got a quote?</h2>
+      <p className="mt-1 text-[14px] font-semibold leading-[1.45] text-[#52627a]">Enter the price you were given and we’ll help you judge it against the fair Slough range.</p>
+
+      <div className="mt-4 rounded-[16px] border border-[#dbe8ff] bg-[#f8fbff] p-4">
+        <p className="text-[13px] font-black text-[#071638]">Fair guide for {config.label}</p>
+        <p className="mt-1 text-[28px] font-black tracking-[-0.05em] text-[#075cff]">{config.fairPrice}</p>
       </div>
 
-      <div className="text-center">
-        <h2 className="text-[25px] font-black leading-[1.08] tracking-[-0.04em] text-[#071638]">
-          Find someone who fits this <span className="text-[#08783f]">fair range</span>
+      <form action={saveCheckPriceRequest} className="mt-4 space-y-3">
+        <input type="hidden" name="service" value={config.slug} />
+        <input type="hidden" name="source" value="quote-check" />
+        <TextInput label="Quoted price" name="quoted_price" placeholder="e.g. £85/hr or £160 total" icon={<Icon type="tag" />} required />
+        <TextInput label="Email result to" name="email" type="email" placeholder="you@example.com" icon={<Icon type="mail" />} required />
+        <button type="submit" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#075cff] px-5 text-[15px] font-black text-white shadow-[0_16px_30px_rgba(0,92,255,0.22)]">
+          Check if it’s fair →
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function DetailsForm({ config, postcode }: { config: ServiceConfig; postcode: string }) {
+  return (
+    <aside
+      id="match-form"
+      className="scroll-mt-[90px] rounded-[24px] border border-[#dfe6ef] bg-white p-4 shadow-[0_16px_50px_rgba(7,22,56,0.06)] sm:p-5 lg:sticky lg:top-[84px]"
+    >
+      <div className="rounded-[20px] bg-[linear-gradient(180deg,#075cff_0%,#0447ca_100%)] p-4 text-white shadow-[0_14px_30px_rgba(0,92,255,0.18)]">
+        <p className="text-[12px] font-black uppercase tracking-[0.1em] text-white/75">
+          Next step
+        </p>
+
+        <h2 className="mt-1 text-[25px] font-black leading-[1.02] tracking-[-0.05em]">
+          Want fair local options?
         </h2>
-        <p className="mt-1 text-[13px] font-semibold text-[#657089]">3 quick details. No booking. No payment.</p>
+
+        <p className="mt-2 text-[13px] font-bold leading-[1.45] text-white/88">
+          Send your job details and we’ll help you compare the fair Slough range.
+          No booking is made.
+        </p>
       </div>
 
-      <form action={saveCheckPriceRequest} className="mt-5 space-y-3">
+      <form action={saveCheckPriceRequest} className="mt-4 space-y-3">
         <input type="hidden" name="service" value={config.slug} />
         <input type="hidden" name="postcode" value={postcode} />
-        <input type="hidden" name="source" value="check-price" />
+        <input type="hidden" name="source" value="check-price-match" />
 
         <div className="rounded-[16px] border border-[#dcebe1] bg-[#f7fcf8] px-4 py-3">
           <p className="text-[13px] font-black leading-[1.35] text-[#071638]">
-            Your price range is ready. Now we can check who fits this job near {postcode}.
+            Your fair price range is ready for {postcode}.
           </p>
           <p className="mt-1 text-[12px] font-semibold leading-[1.45] text-[#44506a]">
-            We don’t sell your details to a list of providers. You choose what happens next.
+            Only continue if you want help finding suitable local options.
           </p>
         </div>
 
-        <SelectField label="What job do you need?" name="job_type" options={config.jobOptions} icon={<BriefcaseIcon />} />
-        <SelectField label={config.detailLabel} name="job_detail" options={config.detailOptions} icon={<TagIcon />} />
-        <SelectField label="When do you need it?" name="time_needed" options={urgencyOptions} icon={<CalendarIcon />} />
+        <SelectField
+          label="What job do you need?"
+          name="job_type"
+          options={config.jobOptions}
+          icon={<Icon type="briefcase" />}
+        />
 
-        <div className="rounded-[14px] border border-[#dfe5ee] bg-[#fbfcfd] px-4 py-3">
-          <div className="flex items-center gap-3 text-[#071638]">
-            <LocationIcon />
-            <div>
-              <p className="text-[12px] font-black uppercase tracking-[0.08em] text-[#657089]">Confirmed area</p>
-              <p className="text-[15px] font-black text-[#071638]">{postcode}</p>
-            </div>
-          </div>
-        </div>
+        <SelectField
+          label={config.detailLabel}
+          name="job_detail"
+          options={config.detailOptions}
+          icon={<Icon type="tag" />}
+        />
+
+        <SelectField
+          label="When do you need it?"
+          name="time_needed"
+          options={urgencyOptions}
+          icon={<Icon type="calendar" />}
+        />
 
         <TextInput
-          label="Where should we send your match?"
+          label="Email"
           name="email"
           type="email"
           placeholder="you@example.com"
-          icon={<MailIcon />}
+          icon={<Icon type="mail" />}
           required
         />
-        <p className="-mt-2 text-[12px] font-bold text-[#08783f]">
-          No signup. No spam. We only use this for your match update.
-        </p>
 
         <TextInput
-          label="WhatsApp updates (optional)"
+          label="WhatsApp optional"
           name="phone"
           type="tel"
           placeholder="07xxx xxxxxx"
-          icon={<PhoneIcon />}
+          icon={<Icon type="phone" />}
           pattern="07[0-9]{9}"
           inputMode="numeric"
           title="Enter an 11-digit UK mobile number starting with 07."
           minLength={11}
           maxLength={11}
         />
-        <p className="-mt-2 text-[12px] font-bold text-[#08783f]">
-          Leave blank if you only want email. UK mobile only, starts with 07.
-        </p>
+
         <button
           type="submit"
-          className="flex h-[52px] w-full items-center justify-center gap-3 rounded-[13px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[16px] font-black text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5"
+          className="flex h-[54px] w-full items-center justify-center gap-3 rounded-[15px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[16px] font-black text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5"
         >
-          Find my fair-price match
-          <span className="text-[28px] leading-none">→</span>
+          Send me fair options →
         </button>
 
-        <p className="text-center text-[12px] font-semibold text-[#657089]">No booking is made. No payment required. You choose what happens next.</p>
+        <p className="text-center text-[12px] font-semibold text-[#657089]">
+          Free · No spam calls · No payment today · No paid ranking
+        </p>
       </form>
-
-      <div className="mt-4 rounded-[18px] border border-[#dcebe1] bg-[#f7fcf8] p-4">
-        <div className="flex gap-4">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#08783f] text-white"><ShieldIcon /></span>
-          <div>
-            <p className="text-[17px] font-black text-[#071638]">Price first. You stay in control.</p>
-            <p className="mt-1 text-[14px] font-semibold leading-[1.5] text-[#44506a]">
-              Matched by area, job fit and clear pricing — not paid ranking.
-            </p>
-          </div>
-        </div>
-      </div>
     </aside>
   );
 }
-
-function WhatHappensNext() {
-  const steps = [
-    ["1", "We receive your request", "Your job details are saved"],
-    ["2", "We check suitable providers", "Manual matching while we launch"],
-    ["3", "You choose what to do", "No obligation to book"],
-  ];
-
+function MobileStickyCta({ config, postcode }: { config: ServiceConfig; postcode: string }) {
   return (
-    <section className="mx-auto mt-5 max-w-[1220px] rounded-[26px] border border-[#e1e6ee] bg-white p-5 shadow-[0_18px_50px_rgba(7,22,56,0.05)] sm:p-7">
-      <h2 className="text-center text-[24px] font-black tracking-[-0.03em] text-[#071638]">What happens next?</h2>
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        {steps.map(([number, title, text]) => (
-          <div key={title} className="rounded-[18px] border border-[#edf0f5] bg-[#fbfcfd] p-5 text-center">
-            <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#f0faf3] text-[15px] font-black text-[#08783f] ring-1 ring-[#d8eddd]">{number}</span>
-            <p className="mt-4 text-[16px] font-black text-[#071638]">{title}</p>
-            <p className="mt-1 text-[13px] font-bold text-[#657089]">{text}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
+    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#dfe6ef] bg-white/96 px-4 py-3 shadow-[0_-12px_34px_rgba(7,22,56,0.12)] backdrop-blur-md lg:hidden">
+      <div className="mx-auto flex max-w-[520px] items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[11px] font-black uppercase tracking-[0.08em] text-[#657089]">
+            {config.label} · {postcode}
+          </p>
 
-function PopularSearches() {
-  return (
-    <div className="mx-auto mt-5 max-w-[1220px] rounded-[20px] border border-[#e1e6ee] bg-white p-4 shadow-[0_10px_28px_rgba(7,22,56,0.04)]">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <h2 className="shrink-0 text-[16px] font-black text-[#071638]">Popular postcode searches</h2>
-        <div className="flex flex-wrap gap-2">
-          {popularSearches.map((item) => (
-            <Link
-              key={item.label}
-              href={`/check-price?service=${item.service}&postcode=${encodeURIComponent(item.postcode)}`}
-              className="inline-flex h-10 min-w-0 items-center rounded-full border border-[#e1e6ee] bg-white px-4 text-[13px] font-bold text-[#071638] transition hover:-translate-y-0.5 hover:border-[#b7c2d2]"
-            >
-              {item.label}
-            </Link>
-          ))}
+          <p className="truncate text-[16px] font-black tracking-[-0.04em] text-[#071638]">
+            Fair price: {config.fairPrice}
+          </p>
         </div>
+
+        <Link
+          href="#match-form"
+          className="flex h-12 shrink-0 items-center justify-center rounded-[14px] bg-[#075cff] px-4 text-[14px] font-black text-white shadow-[0_10px_24px_rgba(0,92,255,0.22)]"
+        >
+          Get options
+        </Link>
       </div>
     </div>
   );
 }
+
 export default async function CheckPricePage({ searchParams }: CheckPricePageProps) {
   const params = await searchParams;
   const serviceSlug = getCanonicalServiceSlug(params?.service);
   const config = getServiceConfig(serviceSlug);
   const postcode = formatPostcode(params?.postcode || "");
 
-  if (!config || !postcode || !isValidUkPostcode(postcode) || !isSupportedPostcode(postcode)) {
+  if (!config || !postcode || !isValidUkPostcode(postcode) || !isSupportedSloughPostcode(postcode)) {
     redirect("/");
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-white text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] sm:bg-[#f4f8fb]">
-      <Header />
+<main className="min-h-screen overflow-x-hidden bg-[#f4f8fb] pb-24 text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] lg:pb-0">      <Header />
 
-      <section className="mx-auto w-full max-w-[1280px] px-4 pb-5 pt-5 sm:px-6 sm:py-4 lg:px-8 lg:py-5">
-        <Link href="/" className="inline-flex items-center gap-2 text-[13px] font-black text-[#071638] transition hover:text-[#08783f] sm:gap-3 sm:text-[14px]">
-          <span className="text-[#071638]">←</span>
-          Back
+      <section className="mx-auto w-full max-w-[1280px] px-4 pb-8 pt-5 sm:px-6 lg:px-8">
+        <Link href="/" className="inline-flex items-center gap-2 text-[13px] font-black text-[#071638] transition hover:text-[#08783f]">
+          ← Back
         </Link>
 
-        <div className="mt-4 grid gap-4 lg:mt-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(370px,0.95fr)] lg:items-start">
-          <LeftPanel config={config} postcode={postcode} />
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(370px,0.72fr)] lg:items-start">
+          <div className="space-y-4">
+            <ResultPanel config={config} postcode={postcode} />
+            <QuoteCheck config={config} />
+          </div>
           <DetailsForm config={config} postcode={postcode} />
         </div>
-
-        <div className="hidden sm:block">
-          <WhatHappensNext />
-          <PopularSearches />
-        </div>
       </section>
-
-      <Footer />
+            <MobileStickyCta config={config} postcode={postcode} />
     </main>
   );
 }

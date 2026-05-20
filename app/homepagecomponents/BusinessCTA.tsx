@@ -19,24 +19,24 @@ export default function BusinessCTA() {
 
           <div className="min-w-0 flex-1">
             <p className="mb-[5px] inline-flex rounded-full bg-white px-[8px] py-[4px] text-[8.5px] font-black uppercase tracking-[0.08em] text-[#08783f] ring-1 ring-[#dcebdc] sm:text-[10px]">
-              For providers
+              Provider waitlist
             </p>
 
             <h2 className="text-[20px] font-black leading-[1.02] tracking-[-0.045em] text-[#071638] sm:text-[28px] lg:text-[30px]">
-              Are you a local service provider?
+              Join the Slough provider waitlist
             </h2>
 
             <p className="mt-[7px] max-w-[690px] text-[12.5px] font-bold leading-[1.45] tracking-[-0.01em] text-[#172545] sm:mt-2 sm:text-[16px]">
-              Join Quickola for free and get local job requests when customers check fair prices in your area.
+              Quickola is building a vetted network of Slough providers for customers who want fair prices before they book.
             </p>
           </div>
         </div>
 
         <div className="mt-[13px] grid grid-cols-2 gap-[8px] text-[10.5px] font-black text-[#172545] sm:mt-4 sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-2 sm:text-[12px] lg:mt-0 lg:max-w-[420px] lg:gap-x-8 lg:text-[13px]">
-          <Tick>Free profile</Tick>
-          <Tick>No contracts</Tick>
-          <Tick>No win, no fee</Tick>
-          <Tick>Local requests</Tick>
+          <Tick>Join the waitlist</Tick>
+          <Tick>No paid ranking</Tick>
+          <Tick>Verified local profile</Tick>
+          <Tick>Fair-price requests</Tick>
         </div>
 
         <div className="mt-[14px] lg:mt-0 lg:w-auto lg:text-center">
@@ -44,14 +44,14 @@ export default function BusinessCTA() {
             href="/for-providers"
             className="inline-flex h-[44px] w-full items-center justify-center gap-[12px] rounded-[9px] bg-[#061536] px-[18px] text-[14px] font-black tracking-[-0.03em] text-white shadow-[0_12px_24px_rgba(6,21,54,0.16)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(6,21,54,0.22)] sm:h-[48px] sm:max-w-[260px] sm:text-[16px] lg:h-[52px] lg:w-auto lg:min-w-[210px]"
           >
-            Join as a provider
+            Join provider waitlist
             <span className="grid h-[26px] w-[26px] place-items-center rounded-full bg-[#9adc36] text-[18px] leading-none text-[#061536] sm:h-8 sm:w-8 sm:text-[22px]">
               →
             </span>
           </a>
 
           <p className="mt-[7px] text-center text-[11px] font-bold text-[#172545] sm:text-[13px]">
-            Free to join. Pay only after completed jobs.
+            Free to join the waitlist. Approved providers are contacted first.
           </p>
         </div>
       </div>
