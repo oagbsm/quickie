@@ -1,14 +1,12 @@
-import type { MetadataRoute } from "next";
+import { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = "https://www.quickola.co.uk";
-
   return {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/admin"],
+      disallow: ["/admin", "/matching", "/results","/qk-ops-7f3a","/qk-ops-7f3a-login"],
     },
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap: "https://www.quickola.co.uk/sitemap.xml",
   };
 }

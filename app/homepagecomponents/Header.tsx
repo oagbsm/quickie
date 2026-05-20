@@ -2,33 +2,17 @@
 
 const asset = (path: string) => `/quickola/${path}`;
 
-function scrollToPriceForm() {
-  const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
-  const form = document.getElementById(isDesktop ? "desktop-price-check-form" : "mobile-price-check-form");
-  const fallbackForm = document.getElementById("hero-price-form") ?? document.getElementById("price-check-form");
-  const targetForm = form ?? fallbackForm;
+function scrollToSection(sectionId: string, focusSelector?: string) {
+  const section = document.getElementById(sectionId);
 
-  targetForm?.scrollIntoView({ behavior: "smooth", block: "center" });
+  section?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  if (!focusSelector) return;
 
   window.setTimeout(() => {
-    const serviceInput = targetForm?.querySelector<HTMLInputElement>('input[placeholder="Enter service needed"]');
-    const anyInput = targetForm?.querySelector<HTMLInputElement>("input");
-    serviceInput?.focus();
-    if (!serviceInput) anyInput?.focus();
+    const focusTarget = section?.querySelector<HTMLElement>(focusSelector);
+    focusTarget?.focus();
   }, 400);
-}
-
-function MenuIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-[25px] w-[25px] fill-none stroke-[#071638] stroke-[2.45]"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M4.5 7h15M4.5 12h15M4.5 17h15" />
-    </svg>
-  );
 }
 
 export default function Header() {
@@ -50,26 +34,24 @@ export default function Header() {
           <a className="transition hover:text-[#079448]" href="#how">
             How it works
           </a>
-          <button type="button" onClick={scrollToPriceForm} className="transition hover:text-[#079448]">
-            Check price
+          <button type="button" onClick={() => scrollToSection("services-section")} className="transition hover:text-[#079448]">
+            Services
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToSection("business")}
+            className="flex h-[42px] items-center justify-center rounded-[10px] bg-[#079448] px-[20px] text-[14px] font-black tracking-[-0.01em] text-white shadow-[0_10px_24px_rgba(7,148,72,0.24)] transition hover:-translate-y-0.5 hover:bg-[#087f40] sm:h-[46px] sm:px-[27px] sm:text-[15px]"
+          >
+            Providers
           </button>
         </nav>
 
         <button
           type="button"
-          onClick={scrollToPriceForm}
+          onClick={() => scrollToSection("services-section")}
           className="hidden h-[46px] items-center justify-center rounded-[10px] bg-[#079448] px-[27px] text-[15px] font-black tracking-[-0.01em] text-white shadow-[0_10px_24px_rgba(7,148,72,0.24)] transition hover:-translate-y-0.5 hover:bg-[#087f40] lg:flex"
         >
-          Check price
-        </button>
-
-        <button
-          type="button"
-          onClick={scrollToPriceForm}
-          className="grid h-[40px] w-[40px] place-items-center rounded-[12px] bg-white lg:hidden"
-          aria-label="Check prices"
-        >
-          <MenuIcon />
+          Services
         </button>
       </div>
     </header>

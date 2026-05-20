@@ -11,8 +11,10 @@ export default function Home() {
       <Header />
       <Hero />
       <Categories />
-      {/* <HowItWorks /> */}
-      <BusinessCTA />
+      <HowItWorks />
+      <div id="provider-waitlist" className="scroll-mt-[96px]">
+        <BusinessCTA />
+      </div>
     </main>
   );
 }

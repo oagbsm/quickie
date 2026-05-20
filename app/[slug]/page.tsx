@@ -8,6 +8,8 @@ type SeoPageProps = {
 
 type SeoPage = {
   slug: string;
+  serviceSlug: string;
+  serviceName: string;
   title: string;
   metaTitle: string;
   metaDescription: string;
@@ -36,28 +38,134 @@ type SeoPage = {
   status: "draft" | "published";
 };
 
-const cleaningServices = [
+const serviceOptions = [
   { label: "Cleaning", value: "cleaning" },
   { label: "End of Tenancy Cleaning", value: "end-of-tenancy-cleaning" },
-  { label: "Domestic Cleaning", value: "domestic-cleaning" },
   { label: "Deep Cleaning", value: "deep-cleaning" },
   { label: "Carpet Cleaning", value: "carpet-cleaning" },
   { label: "Oven Cleaning", value: "oven-cleaning" },
-  { label: "After Builders Cleaning", value: "after-builders-cleaning" },
-  { label: "Move-out Cleaning", value: "move-out-cleaning" },
-  { label: "One-off Cleaning", value: "one-off-cleaning" },
-  { label: "Regular Cleaning", value: "regular-cleaning" },
-  { label: "Airbnb Cleaning", value: "airbnb-cleaning" },
+  { label: "Man and Van", value: "man-and-van" },
+  { label: "Removals", value: "removals" },
+  { label: "Plumber", value: "plumber" },
+  { label: "Emergency Plumber", value: "emergency-plumber" },
+  { label: "Electrician", value: "electrician" },
+  { label: "Locksmith", value: "locksmith" },
+  { label: "Gardener", value: "gardener" },
+  { label: "Handyman", value: "handyman" },
+  { label: "Waste Removal", value: "waste-removal" },
+  { label: "MOT and Car Repairs", value: "mot-car-repairs" },
+  { label: "Tyres", value: "tyres" },
+  { label: "Boiler Repair", value: "boiler-repair" },
 ];
 
-const propertySizes = [
-  { label: "Studio", value: "studio" },
-  { label: "1 bed", value: "1-bed" },
-  { label: "2 bed", value: "2-bed" },
-  { label: "3 bed", value: "3-bed" },
-  { label: "4+ bed", value: "4-bed-plus" },
-  { label: "Not sure yet", value: "not-sure" },
-];
+const detailOptionsByService: Record<string, Array<{ label: string; value: string }>> = {
+  cleaning: [
+    { label: "Studio", value: "studio" },
+    { label: "1 bed", value: "1-bed" },
+    { label: "2 bed", value: "2-bed" },
+    { label: "3 bed", value: "3-bed" },
+    { label: "4+ bed", value: "4-bed-plus" },
+    { label: "Not sure yet", value: "not-sure" },
+  ],
+  "end-of-tenancy-cleaning": [
+    { label: "Studio", value: "studio" },
+    { label: "1 bed", value: "1-bed" },
+    { label: "2 bed", value: "2-bed" },
+    { label: "3 bed", value: "3-bed" },
+    { label: "4+ bed", value: "4-bed-plus" },
+    { label: "Not sure yet", value: "not-sure" },
+  ],
+  "deep-cleaning": [
+    { label: "Small flat", value: "small-flat" },
+    { label: "2 bed", value: "2-bed" },
+    { label: "3+ bed", value: "3-bed-plus" },
+    { label: "Not sure yet", value: "not-sure" },
+  ],
+  "carpet-cleaning": [
+    { label: "1 room", value: "1-room" },
+    { label: "2 rooms", value: "2-rooms" },
+    { label: "Whole flat / house", value: "whole-property" },
+    { label: "Stairs included", value: "stairs" },
+  ],
+  "oven-cleaning": [
+    { label: "Single oven", value: "single-oven" },
+    { label: "Double oven", value: "double-oven" },
+    { label: "Oven + hob / extractor", value: "oven-hob-extractor" },
+    { label: "Not sure yet", value: "not-sure" },
+  ],
+  "man-and-van": [
+    { label: "Small collection", value: "small-collection" },
+    { label: "Furniture delivery", value: "furniture-delivery" },
+    { label: "Flat move", value: "flat-move" },
+    { label: "Need helper", value: "helper-needed" },
+  ],
+  removals: [
+    { label: "Small flat move", value: "small-flat" },
+    { label: "2–3 bed move", value: "2-3-bed" },
+    { label: "House move", value: "house-move" },
+    { label: "Packing needed", value: "packing-needed" },
+  ],
+  plumber: [
+    { label: "Leak", value: "leak" },
+    { label: "Tap / toilet repair", value: "tap-toilet" },
+    { label: "Blocked pipe", value: "blocked-pipe" },
+    { label: "Not sure yet", value: "not-sure" },
+  ],
+  "emergency-plumber": [
+    { label: "Leak now", value: "leak-now" },
+    { label: "Burst pipe", value: "burst-pipe" },
+    { label: "Blocked toilet", value: "blocked-toilet" },
+    { label: "No hot water", value: "no-hot-water" },
+  ],
+  electrician: [
+    { label: "Fault / power issue", value: "fault" },
+    { label: "Socket or switch", value: "socket-switch" },
+    { label: "Lighting", value: "lighting" },
+    { label: "Safety check", value: "safety-check" },
+  ],
+  locksmith: [
+    { label: "Locked out", value: "locked-out" },
+    { label: "Lock change", value: "lock-change" },
+    { label: "UPVC door lock", value: "upvc-door" },
+    { label: "Emergency locksmith", value: "emergency" },
+  ],
+  gardener: [
+    { label: "Grass cutting", value: "grass-cutting" },
+    { label: "Garden tidy-up", value: "garden-tidy" },
+    { label: "Hedge trimming", value: "hedge-trimming" },
+    { label: "Waste removal needed", value: "waste-removal" },
+  ],
+  handyman: [
+    { label: "Small repair", value: "small-repair" },
+    { label: "Mounting", value: "mounting" },
+    { label: "Furniture assembly", value: "assembly" },
+    { label: "Multiple jobs", value: "multiple-jobs" },
+  ],
+  "waste-removal": [
+    { label: "Small load", value: "small-load" },
+    { label: "Medium load", value: "medium-load" },
+    { label: "Large clearance", value: "large-clearance" },
+    { label: "Bulky items", value: "bulky-items" },
+  ],
+  "mot-car-repairs": [
+    { label: "MOT test", value: "mot-test" },
+    { label: "Diagnostics", value: "diagnostics" },
+    { label: "Small repair", value: "small-repair" },
+    { label: "Not sure yet", value: "not-sure" },
+  ],
+  tyres: [
+    { label: "Budget tyre", value: "budget-tyre" },
+    { label: "Mid-range tyre", value: "mid-range-tyre" },
+    { label: "Premium tyre", value: "premium-tyre" },
+    { label: "Not sure yet", value: "not-sure" },
+  ],
+  "boiler-repair": [
+    { label: "No heating", value: "no-heating" },
+    { label: "No hot water", value: "no-hot-water" },
+    { label: "Boiler fault", value: "boiler-fault" },
+    { label: "Not sure yet", value: "not-sure" },
+  ],
+};
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -85,14 +193,6 @@ function getSupabaseWriteClient() {
   });
 }
 
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
 function hydrateLocationText(value: string | null | undefined, location: string) {
   return String(value ?? "")
     .replace(/{{location}}/g, location)
@@ -115,10 +215,12 @@ async function getSeoPageBySlug(slug: string): Promise<SeoPage | null> {
     .eq("status", "published")
     .maybeSingle();
 
-  if (pageError || !pageRow) {
-    console.error("SEO page error:", pageError ?? slug);
+  if (pageError) {
+    console.error("SEO page database error:", pageError);
     return null;
   }
+
+  if (!pageRow) return null;
 
   const { data: locationRow, error: locationError } = await supabase
     .from("seo_locations")
@@ -153,6 +255,8 @@ async function getSeoPageBySlug(slug: string): Promise<SeoPage | null> {
 
   return {
     slug: pageRow.slug,
+    serviceSlug: pageRow.service_slug,
+    serviceName: serviceRow?.name ?? pageRow.service_slug,
     title: pageRow.title,
     metaTitle: hydrateLocationText(pageRow.meta_title, locationName),
     metaDescription: hydrateLocationText(pageRow.meta_description, locationName),
@@ -194,60 +298,54 @@ export async function generateMetadata({ params }: SeoPageProps) {
       follow: true,
     },
     alternates: {
-      canonical: `https://quickola.com/${page.slug}`,
+      canonical: `https://www.quickola.co.uk/${page.slug}`,
     },
     openGraph: {
       title: page.metaTitle,
       description: page.metaDescription,
-      url: `https://quickola.com/${page.slug}`,
+      url: `https://www.quickola.co.uk/${page.slug}`,
       siteName: "Quickola",
       type: "website",
     },
   };
 }
 
-function getPrimaryService(page: SeoPage) {
-  const lower = page.title.toLowerCase();
-
-  if (lower.includes("end of tenancy")) return "End of Tenancy Cleaning";
-  if (lower.includes("domestic")) return "Domestic Cleaning";
-  if (lower.includes("deep")) return "Deep Cleaning";
-  if (lower.includes("carpet")) return "Carpet Cleaning";
-  if (lower.includes("oven")) return "Oven Cleaning";
-  if (lower.includes("after builders")) return "After Builders Cleaning";
-  if (lower.includes("airbnb")) return "Airbnb Cleaning";
-  if (lower.includes("regular")) return "Regular Cleaning";
-  if (lower.includes("one-off")) return "One-off Cleaning";
-  if (lower.includes("move out")) return "Move-out Cleaning";
-
-  return "Cleaning";
-}
-
-function getPrimaryServiceSlug(page: SeoPage) {
-  const serviceName = getPrimaryService(page);
-  const serviceSlug = slugify(serviceName);
-
-  return cleaningServices.some((service) => service.value === serviceSlug)
-    ? serviceSlug
-    : "cleaning";
-}
-
 function getHeadline(page: SeoPage) {
-  const service = getPrimaryService(page);
+  return page.h1 || `${page.serviceName} prices in ${page.location}`;
+}
 
-  if (service === "Cleaning") {
-    return `Cleaning prices in ${page.location}`;
+function getDetailLabel(page: SeoPage) {
+  if (["cleaning", "end-of-tenancy-cleaning", "deep-cleaning"].includes(page.serviceSlug)) {
+    return "Property size";
   }
 
-  return `${service} prices in ${page.location}`;
+  if (["man-and-van", "removals"].includes(page.serviceSlug)) return "Move type";
+  if (["mot-car-repairs", "tyres"].includes(page.serviceSlug)) return "Vehicle / job type";
+  if (page.serviceSlug === "locksmith") return "Locksmith issue";
+  if (["plumber", "emergency-plumber", "boiler-repair"].includes(page.serviceSlug)) return "Issue type";
+  if (page.serviceSlug === "electrician") return "Electrical issue";
+  if (page.serviceSlug === "waste-removal") return "Waste amount";
+  if (page.serviceSlug === "gardener") return "Garden job";
+  if (page.serviceSlug === "handyman") return "Job type";
+
+  return "Job details";
+}
+
+function getDetailOptions(page: SeoPage) {
+  return detailOptionsByService[page.serviceSlug] ?? [
+    { label: "Small job", value: "small-job" },
+    { label: "Medium job", value: "medium-job" },
+    { label: "Large job", value: "large-job" },
+    { label: "Not sure yet", value: "not-sure" },
+  ];
 }
 
 async function saveSeoLandingRequest(formData: FormData) {
   "use server";
 
   const service = String(formData.get("service") ?? "cleaning").trim();
-  const area = String(formData.get("area") ?? "london").trim();
-  const propertySize = String(formData.get("propertySize") ?? "").trim();
+  const area = String(formData.get("area") ?? "slough").trim();
+  const jobDetail = String(formData.get("jobDetail") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const sourceSlug = String(formData.get("sourceSlug") ?? "").trim();
 
@@ -260,7 +358,7 @@ async function saveSeoLandingRequest(formData: FormData) {
   const message = JSON.stringify({
     source: "seo-landing-page",
     source_slug: sourceSlug,
-    property_size: propertySize || null,
+    job_detail: jobDetail || null,
   });
 
   const { error } = await supabase.from("requests").insert({
@@ -296,7 +394,7 @@ async function saveSeoLandingRequest(formData: FormData) {
     saved: "1",
   });
 
-  if (propertySize) params.set("propertySize", propertySize);
+  if (jobDetail) params.set("job_detail", jobDetail);
 
   redirect(`/results?${params.toString()}`);
 }
@@ -335,7 +433,7 @@ function Header() {
           className="grid h-11 w-11 place-items-center rounded-[13px] border border-[#dfe8ef] bg-white text-[#071638] shadow-[0_8px_18px_rgba(7,22,56,0.06)] sm:hidden"
           aria-label="Jump to price check"
         >
-          <span className="block h-[2px] w-5 rounded-full bg-[#071638] shadow-[0_7px_0_#071638,0_-7px_0_#071638]" />
+          <span className="text-[20px] font-black">£</span>
         </a>
       </div>
     </header>
@@ -363,14 +461,14 @@ function RequestForm({ page }: { page: SeoPage }) {
       <div className="mt-5 space-y-3.5">
         <label className="block">
           <span className="mb-1.5 block text-[12px] font-black text-[#34425d]">
-            Cleaning type
+            Service
           </span>
           <select
             name="service"
-            defaultValue={getPrimaryServiceSlug(page)}
+            defaultValue={page.serviceSlug}
             className="h-[58px] w-full rounded-[16px] border border-[#dbe4ed] bg-white px-4 text-[15px] font-black text-[#071638] outline-none transition focus:border-[#0b8f41] focus:ring-4 focus:ring-[#0b8f41]/10"
           >
-            {cleaningServices.map((service) => (
+            {serviceOptions.map((service) => (
               <option key={service.value} value={service.value}>
                 {service.label}
               </option>
@@ -380,14 +478,14 @@ function RequestForm({ page }: { page: SeoPage }) {
 
         <label className="block">
           <span className="mb-1.5 block text-[12px] font-black text-[#34425d]">
-            Property size
+            {getDetailLabel(page)}
           </span>
           <select
-            name="propertySize"
-            defaultValue="2-bed"
+            name="jobDetail"
+            defaultValue={getDetailOptions(page)[0]?.value ?? "not-sure"}
             className="h-[58px] w-full rounded-[16px] border border-[#dbe4ed] bg-white px-4 text-[15px] font-black text-[#071638] outline-none transition focus:border-[#0b8f41] focus:ring-4 focus:ring-[#0b8f41]/10"
           >
-            {propertySizes.map((size) => (
+            {getDetailOptions(page).map((size) => (
               <option key={size.value} value={size.value}>
                 {size.label}
               </option>
@@ -403,7 +501,7 @@ function RequestForm({ page }: { page: SeoPage }) {
             name="area"
             defaultValue={page.location}
             required
-            placeholder="e.g. W3, E15, Ilford"
+            placeholder="e.g. SL1 1AA"
             className="h-[58px] w-full rounded-[16px] border border-[#dbe4ed] bg-white px-4 text-[15px] font-black text-[#071638] outline-none transition placeholder:text-[#93a0b3] focus:border-[#0b8f41] focus:ring-4 focus:ring-[#0b8f41]/10"
           />
         </label>
@@ -457,7 +555,7 @@ function Hero({ page }: { page: SeoPage }) {
           </h1>
 
           <p className="mt-5 max-w-[650px] text-[17px] font-semibold leading-[1.58] text-[#4b5b78] sm:text-[18px] lg:max-w-[560px]">
-            See the fair price range in under 30 seconds. No pressure to book.
+            {page.intro || `See the fair ${page.serviceName.toLowerCase()} price range before you book. No pressure to continue.`}
           </p>
         </div>
 
@@ -472,19 +570,19 @@ function PriceGuide({ page }: { page: SeoPage }) {
     ? page.priceGuide
     : [
         {
-          label: "Regular cleaning",
-          from: "£18/hr",
-          typical: "Most regular cleans are hourly and depend on frequency and property size.",
+          label: "Small job",
+          from: "£60",
+          typical: "Usually depends on job type, access, availability and urgency.",
         },
         {
-          label: "Deep cleaning",
-          from: "£90",
-          typical: "Usually quoted as a fixed price depending on condition and size.",
-        },
-        {
-          label: "End of tenancy",
+          label: "Medium job",
           from: "£120",
-          typical: "Usually fixed price. Extras may include oven, carpets or appliances.",
+          typical: "Usually depends on size, time needed and materials or parts.",
+        },
+        {
+          label: "Larger job",
+          from: "£200+",
+          typical: "Usually quoted after checking details, access and final scope.",
         },
       ];
 
@@ -496,7 +594,7 @@ function PriceGuide({ page }: { page: SeoPage }) {
             Price guide
           </p>
           <h2 className="mt-2 text-[30px] font-black tracking-[-0.045em] text-[#071638] sm:text-[46px]">
-            Typical price ranges in {page.location}
+            Typical {page.serviceName.toLowerCase()} price ranges in {page.location}
           </h2>
         </div>
 
@@ -524,26 +622,33 @@ function PriceGuide({ page }: { page: SeoPage }) {
         </div>
 
         <p className="mt-5 rounded-[14px] border border-[#dfe8ef] bg-[#fbfcfd] px-4 py-3 text-[13px] font-semibold leading-[1.5] text-[#607089]">
-          Final price depends on property condition, access, appliances and add-ons.
+          Final price depends on job details, urgency, access, parts or materials and local availability.
         </p>
       </div>
     </section>
   );
 }
 
-function IncludedSection() {
+function IncludedSection({ page }: { page: SeoPage }) {
+  const isCleaning = ["cleaning", "end-of-tenancy-cleaning", "deep-cleaning", "carpet-cleaning", "oven-cleaning"].includes(page.serviceSlug);
+
+  const includedItems = isCleaning
+    ? ["Property size price context", "Common cleaning tasks", "Access and urgency factors", "Add-on warning before booking"]
+    : ["Local guide price context", "Common cost factors", "Urgency and access warning", "What may affect the final quote"];
+
+  const extraItems = isCleaning
+    ? ["Oven cleaning", "Carpet cleaning", "Inside appliances", "Heavy limescale or mould"]
+    : ["Parts or materials", "Urgent booking", "Difficult access", "Larger job scope"];
+
   return (
     <section id="included" className="bg-[#f7f9fb] px-4 py-14 sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-[1180px] gap-6 lg:grid-cols-2">
         <div className="rounded-[24px] border border-[#dfe8ef] bg-white p-6 shadow-[0_12px_30px_rgba(7,22,56,0.04)]">
-          <h2 className="text-[26px] font-black tracking-[-0.035em] text-[#071638]">Usually included</h2>
+          <h2 className="text-[26px] font-black tracking-[-0.035em] text-[#071638]">
+            Usually included in the guide
+          </h2>
           <div className="mt-5 grid gap-3 text-[15px] font-semibold leading-[1.5] text-[#34425d]">
-            {[
-              "Kitchen, bathroom and living areas",
-              "Floors vacuumed and mopped",
-              "Surfaces, skirting boards and switches",
-              "Inside empty cupboards where agreed",
-            ].map((item) => (
+            {includedItems.map((item) => (
               <p key={item} className="flex gap-3">
                 <span className="font-black text-[#0b8f41]">✓</span>
                 {item}
@@ -555,12 +660,7 @@ function IncludedSection() {
         <div className="rounded-[24px] border border-[#dfe8ef] bg-white p-6 shadow-[0_12px_30px_rgba(7,22,56,0.04)]">
           <h2 className="text-[26px] font-black tracking-[-0.035em] text-[#071638]">Common extras</h2>
           <div className="mt-5 grid gap-3 text-[15px] font-semibold leading-[1.5] text-[#34425d]">
-            {[
-              "Oven, hob or extractor cleaning",
-              "Carpet or upholstery cleaning",
-              "Inside fridge or freezer",
-              "Heavy limescale, mould or after-builders dust",
-            ].map((item) => (
+            {extraItems.map((item) => (
               <p key={item} className="flex gap-3">
                 <span className="font-black text-[#0b8f41]">•</span>
                 {item}
@@ -580,9 +680,7 @@ function AreasSection({ page }: { page: SeoPage }) {
       ? page.localNeighbourhoods
       : [];
 
-  if (!areas.length) {
-    return null;
-  }
+  if (!areas.length) return null;
 
   return (
     <section id="areas" className="bg-white px-4 py-14 sm:px-6 lg:px-8">
@@ -619,7 +717,7 @@ function SeoText({ page }: { page: SeoPage }) {
     page.surroundingAreasLine,
     page.localPriceNote,
     page.localSearchNote,
-    `${page.location} cleaner prices can change depending on property size, job type, notice period and availability.`,
+    `${page.location} ${page.serviceName.toLowerCase()} prices can change depending on job type, urgency, access, parts, travel time and availability.`,
   ].filter(Boolean);
 
   const faqs = page.faqs.filter((faq) => faq.question && faq.answer).slice(0, 5);
@@ -695,7 +793,7 @@ export default async function SeoLandingPage({ params }: SeoPageProps) {
       <Header />
       <Hero page={page} />
       <PriceGuide page={page} />
-      <IncludedSection />
+      <IncludedSection page={page} />
       <AreasSection page={page} />
       <SeoText page={page} />
       <FinalCta />
