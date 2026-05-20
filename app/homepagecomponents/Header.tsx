@@ -3,13 +3,18 @@
 const asset = (path: string) => `/quickola/${path}`;
 
 function scrollToPriceForm() {
-  const form = document.getElementById("hero-price-form") ?? document.getElementById("price-check-form");
-  const input = document.getElementById("service-input") as HTMLInputElement | null;
+  const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+  const form = document.getElementById(isDesktop ? "desktop-price-check-form" : "mobile-price-check-form");
+  const fallbackForm = document.getElementById("hero-price-form") ?? document.getElementById("price-check-form");
+  const targetForm = form ?? fallbackForm;
 
-  form?.scrollIntoView({ behavior: "smooth", block: "center" });
+  targetForm?.scrollIntoView({ behavior: "smooth", block: "center" });
 
   window.setTimeout(() => {
-    input?.focus();
+    const serviceInput = targetForm?.querySelector<HTMLInputElement>('input[placeholder="Enter service needed"]');
+    const anyInput = targetForm?.querySelector<HTMLInputElement>("input");
+    serviceInput?.focus();
+    if (!serviceInput) anyInput?.focus();
   }, 400);
 }
 
@@ -46,17 +51,8 @@ export default function Header() {
             How it works
           </a>
           <button type="button" onClick={scrollToPriceForm} className="transition hover:text-[#079448]">
-            Prices
+            Check price
           </button>
-          <a className="transition hover:text-[#079448]" href="#reviews">
-            Reviews
-          </a>
-          <a className="transition hover:text-[#079448]" href="#blog">
-            Blog
-          </a>
-          <a className="transition hover:text-[#079448]" href="#about">
-            About
-          </a>
         </nav>
 
         <button
@@ -64,14 +60,14 @@ export default function Header() {
           onClick={scrollToPriceForm}
           className="hidden h-[46px] items-center justify-center rounded-[10px] bg-[#079448] px-[27px] text-[15px] font-black tracking-[-0.01em] text-white shadow-[0_10px_24px_rgba(7,148,72,0.24)] transition hover:-translate-y-0.5 hover:bg-[#087f40] lg:flex"
         >
-          Check Prices
+          Check price
         </button>
 
         <button
           type="button"
           onClick={scrollToPriceForm}
           className="grid h-[40px] w-[40px] place-items-center rounded-[12px] bg-white lg:hidden"
-          aria-label="Open menu"
+          aria-label="Check prices"
         >
           <MenuIcon />
         </button>
