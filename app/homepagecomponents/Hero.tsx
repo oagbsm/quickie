@@ -54,8 +54,16 @@ function isSupportedSloughPostcode(value: string) {
 }
 
 function Icon({ type, className = "h-5 w-5" }: { type: string; className?: string }) {
+  
   const base = `${className} fill-none stroke-current stroke-[2]`;
-
+if (type === "search") {
+  return (
+    <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="10.8" cy="10.8" r="6.5" />
+      <path d="m16 16 4 4" />
+    </svg>
+  );
+}
   if (type === "van") {
     return (
       <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -189,11 +197,28 @@ function Icon({ type, className = "h-5 w-5" }: { type: string; className?: strin
   return null;
 }
 
+function PriceCtaButton({ className = "" }: { className?: string }) {
+  return (
+    <button
+      type="submit"
+      className={`group relative flex h-[54px] w-full items-center justify-center overflow-hidden rounded-[15px] bg-[#075cff] px-5 text-[16px] font-black text-white shadow-[0_16px_30px_rgba(0,92,255,0.25)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#004fe6] hover:shadow-[0_22px_44px_rgba(0,92,255,0.34)] active:translate-y-0 active:scale-[0.985] active:bg-[#003fc2] focus:outline-none focus:ring-4 focus:ring-[#075cff]/25 ${className}`}
+    >
+      <span className="absolute inset-0 -translate-x-full bg-[linear-gradient(110deg,transparent_0%,rgba(255,255,255,0.26)_45%,transparent_72%)] opacity-0 transition-all duration-700 group-hover:translate-x-full group-hover:opacity-100" />
+      <span className="relative z-10 flex items-center gap-3">
+        See fair Slough price
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-white/16 text-[25px] leading-none transition-transform duration-200 group-hover:translate-x-1 group-active:translate-x-2">
+          →
+        </span>
+      </span>
+    </button>
+  );
+}
+
 export default function Hero() {
   const router = useRouter();
 
   const [service, setService] = useState("man-and-van");
-  const [serviceSearch, setServiceSearch] = useState("Man and Van");
+const [serviceSearch, setServiceSearch] = useState("");
   const [serviceOpen, setServiceOpen] = useState(false);
 
   const [postcode, setPostcode] = useState("");
@@ -240,10 +265,15 @@ export default function Hero() {
 
     const formattedPostcode = formatPostcode(postcode);
 
-    if (!hasSelectedValidService) {
-      setError("Choose a service from the dropdown.");
-      return;
-    }
+ if (!serviceSearch.trim()) {
+  setError("Enter the service you need, then choose it from the dropdown.");
+  return;
+}
+
+if (!hasSelectedValidService) {
+  setError("Choose a service from the dropdown.");
+  return;
+}
 
     if (!formattedPostcode) {
       setError("Enter your Slough postcode.");
@@ -309,8 +339,7 @@ export default function Hero() {
                 <span className="text-[12px] font-extrabold text-[#071638]">Choose a service</span>
 
                 <div className="mt-2 flex items-center gap-3">
-                  <Icon type={selectedService.icon} className="h-5 w-5 text-[#0b63ff]" />
-
+<Icon type={serviceSearch ? selectedService.icon : "search"} className="h-5 w-5 text-[#0b63ff]" />
                   <input
                     value={serviceSearch}
                     onChange={(event) => {
@@ -320,8 +349,7 @@ export default function Hero() {
                     }}
                     onFocus={() => setServiceOpen(true)}
                     className="min-w-0 flex-1 bg-transparent text-[15px] font-extrabold text-[#071638] outline-none placeholder:text-[#8b94a7]"
-                    placeholder="Type a service e.g. plumber"
-                  />
+placeholder="Enter service needed"                  />
 
                   <button
                     type="button"
@@ -386,13 +414,7 @@ export default function Hero() {
 
               {error ? <p className="mt-2 px-1 text-[12px] font-bold text-[#d93025]">{error}</p> : null}
 
-              <button
-                type="submit"
-                className="mt-3 flex h-[52px] w-full items-center justify-center gap-3 rounded-[14px] bg-[#075cff] text-[16px] font-black text-white shadow-[0_16px_30px_rgba(0,92,255,0.25)]"
-              >
-                See fair Slough price
-                <span className="text-[24px] leading-none">→</span>
-              </button>
+              <PriceCtaButton className="mt-3 h-[52px] rounded-[14px]" />
             </form>
 
             <div className="mt-5 grid max-w-[520px] grid-cols-2 gap-2 rounded-[16px] bg-[#effaf3] px-3 py-3 text-center sm:grid-cols-4 lg:hidden">
@@ -448,13 +470,7 @@ export default function Hero() {
 
             {/* Desktop buttons */}
             <form id="desktop-price-check-form" onSubmit={handleSubmit} className="mt-8 hidden items-stretch gap-4 lg:flex">
-              <button
-                type="submit"
-                className="flex h-[64px] items-center justify-center gap-4 rounded-[17px] bg-[#075cff] px-10 text-[18px] font-black text-white shadow-[0_18px_34px_rgba(0,92,255,0.24)] transition hover:-translate-y-0.5 hover:bg-[#034ee2]"
-              >
-                See fair Slough price
-                <span className="text-[26px] leading-none">→</span>
-              </button>
+              <PriceCtaButton className="h-[64px] rounded-[17px] px-10 text-[18px]" />
 
               <a
                 href="#popular-services"
@@ -504,8 +520,7 @@ export default function Hero() {
                   <span className="mb-1.5 block text-[12px] font-extrabold text-[#52627a]">Service</span>
 
                   <div className="flex h-[54px] items-center gap-3 rounded-[14px] border border-[#dfe7f2] bg-white px-4">
-                    <Icon type={selectedService.icon} className="h-5 w-5 text-[#071638]" />
-
+<Icon type={serviceSearch ? selectedService.icon : "search"} className="h-5 w-5 text-[#071638]" />
                     <input
                       value={serviceSearch}
                       onChange={(event) => {
@@ -515,8 +530,7 @@ export default function Hero() {
                       }}
                       onFocus={() => setServiceOpen(true)}
                       className="min-w-0 flex-1 bg-transparent text-[15px] font-black text-[#071638] outline-none placeholder:text-[#8b94a7]"
-                      placeholder="Type a service e.g. plumber"
-                    />
+placeholder="Enter service needed"                    />
 
                     <button
                       type="button"
@@ -581,39 +595,61 @@ export default function Hero() {
 
                 {error ? <p className="text-[12px] font-bold text-[#d93025]">{error}</p> : null}
 
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div className="rounded-[16px] border border-[#dfe7f2] bg-white p-4">
-                    <p className="text-[12px] font-bold text-[#52627a]">Average Local Price</p>
-                    <p className="mt-2 text-[38px] font-black tracking-[-0.06em] text-[#071638]">£54</p>
-                    <p className="mt-1 text-[12px] font-semibold text-[#52627a]">Typical range: £45 – £65</p>
-                  </div>
-
-                  <div className="rounded-[16px] border border-[#dff0e5] bg-[#eefaf3] p-4">
-                    <p className="text-[12px] font-bold text-[#07833f]">Cheapest Nearby</p>
-                    <p className="mt-2 text-[38px] font-black tracking-[-0.06em] text-[#079448]">£38</p>
-                    <p className="mt-1 text-[12px] font-semibold text-[#37543f]">Slough area</p>
-                  </div>
-                </div>
-
-                <div className="rounded-[16px] bg-[#fff0f1] p-4">
-                  <p className="text-[13px] font-black text-[#c31623]">Avoid overpaying by</p>
-                  <div className="mt-2 flex items-end justify-between gap-5">
+                <div className="rounded-[18px] border border-[#dbe8ff] bg-[#f8fbff] p-4">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[38px] font-black tracking-[-0.05em] text-[#d71920]">27%</p>
-                      <p className="text-[12px] font-semibold text-[#503339]">
-                        People can overpay when they book without checking
+                      <p className="text-[12px] font-black uppercase tracking-[0.09em] text-[#075cff]">
+                        Example price check
+                      </p>
+                      <p className="mt-2 text-[18px] font-black tracking-[-0.035em] text-[#071638]">
+                        See what is fair before you call.
                       </p>
                     </div>
-                    <div className="h-20 w-28 rounded-t-full border-[10px] border-b-0 border-[#16a35a] border-r-[#ffd3d5]" />
+                    <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[11px] font-black text-[#08783f] ring-1 ring-[#d8eddd]">
+                      Slough guide
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <div className="rounded-[15px] border border-[#e3eaf5] bg-white p-3">
+                      <p className="text-[11px] font-black text-[#52627a]">Service</p>
+                      <p className="mt-2 text-[14px] font-black leading-[1.15] text-[#071638]">Man and Van</p>
+                      <p className="mt-1 text-[11px] font-semibold leading-[1.3] text-[#657089]">Small local move</p>
+                    </div>
+
+                    <div className="rounded-[15px] border border-[#d8eddd] bg-[#effaf3] p-3">
+                      <p className="text-[11px] font-black text-[#08783f]">Fair range</p>
+                      <p className="mt-2 text-[22px] font-black tracking-[-0.06em] text-[#08783f]">£40–£70</p>
+                      <p className="mt-1 text-[11px] font-semibold text-[#355443]">per hour</p>
+                    </div>
+
+                    <div className="rounded-[15px] border border-[#ffd5d5] bg-[#fff3f3] p-3">
+                      <p className="text-[11px] font-black text-[#c51622]">Be careful above</p>
+                      <p className="mt-2 text-[22px] font-black tracking-[-0.06em] text-[#c51622]">£100+</p>
+                      <p className="mt-1 text-[11px] font-semibold text-[#6b3b3b]">unless extras apply</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-[15px] border border-[#e7edf5] bg-white p-3">
+                    <div className="mb-1 flex items-center justify-between text-[11px] font-black text-[#08783f]">
+                      <span>Fair guide range</span>
+                      <span>£40–£70/hr</span>
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-[#e7eef8]">
+                      <div className="h-full w-[62%] rounded-full bg-[#08783f]" />
+                    </div>
+
+                    <div className="mb-1 mt-3 flex items-center justify-between text-[11px] font-black text-[#c51622]">
+                      <span>Likely expensive</span>
+                      <span>£100+/hr</span>
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-[#f7dede]">
+                      <div className="h-full w-[88%] rounded-full bg-[#c51622]" />
+                    </div>
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  className="h-[54px] w-full rounded-[15px] bg-[#075cff] text-[16px] font-black text-white shadow-[0_16px_30px_rgba(0,92,255,0.22)]"
-                >
-                  See fair Slough price
-                </button>
+                <PriceCtaButton />
               </form>
 
               <div className="mt-4 rounded-[20px] border border-[#dbe8ff] bg-[#f8fbff] p-5">
@@ -658,7 +694,8 @@ export default function Hero() {
         <div id="popular-services" className="mt-7 lg:mt-8">
           <div className="mb-4 flex items-center justify-between gap-4">
             <h2 className="text-[20px] font-black tracking-[-0.04em] text-[#071638] lg:text-[27px]">
-Check fair prices for local services            </h2>
+              Check fair prices for local services
+            </h2>
             <span className="hidden text-[13px] font-black text-[#075cff] lg:block">Choose a service to start</span>
           </div>
 
@@ -668,20 +705,21 @@ Check fair prices for local services            </h2>
                 key={item.value}
                 type="button"
                 onClick={() => chooseService(item, true)}
-className="rounded-[18px] border border-[#e2e9f4] bg-white p-4 text-left shadow-[0_12px_26px_rgba(7,22,56,0.045)] transition hover:-translate-y-0.5 hover:border-[#bcd2ff] hover:bg-[#fbfdff]"              >
+                className="rounded-[18px] border border-[#e2e9f4] bg-white p-4 text-left shadow-[0_12px_26px_rgba(7,22,56,0.045)] transition hover:-translate-y-0.5 hover:border-[#bcd2ff] hover:bg-[#fbfdff]"
+              >
                 <span className="grid h-10 w-10 place-items-center rounded-[13px] bg-[#f3f7ff] text-[#075cff]">
                   <Icon type={item.icon} className="h-5 w-5" />
                 </span>
 
-<p className="mt-4 text-[13px] font-black leading-[1.15] text-[#071638]">{item.label}</p>
+                <p className="mt-4 text-[13px] font-black leading-[1.15] text-[#071638]">{item.label}</p>
 
-<p className="mt-2 min-h-[38px] text-[12px] font-semibold leading-[1.35] text-[#52627a]">
-  {item.description}
-</p>
+                <p className="mt-2 min-h-[38px] text-[12px] font-semibold leading-[1.35] text-[#52627a]">
+                  {item.description}
+                </p>
 
-<div className="mt-4 inline-flex items-center gap-1 text-[12px] font-black text-[#075cff]">
-  Check price <span aria-hidden="true">→</span>
-</div>
+                <div className="mt-4 inline-flex items-center gap-1 text-[12px] font-black text-[#075cff]">
+                  Check price <span aria-hidden="true">→</span>
+                </div>
               </button>
             ))}
           </div>
