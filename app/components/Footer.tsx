@@ -15,12 +15,12 @@ export default function Footer() {
           </a>
 
           <p className="mt-3 text-[13.5px] font-semibold leading-[1.6] text-[#657089]">
-            Quickola helps people check fair local service price ranges before they book. Prices are guides, not final quotes, and availability can vary by area and job type.
+            Quickola helps people in Slough check fair local service price ranges before they book. Prices are guides, not final quotes, and availability can vary by area and job type.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2 text-[12px] font-extrabold text-[#44506a]">
             <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">Price-first</span>
-            <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">15 service categories</span>
+            <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">17 Slough price checks</span>
             <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">No booking pressure</span>
           </div>
         </div>
@@ -32,8 +32,8 @@ export default function Footer() {
             </p>
             <div className="grid gap-2 text-[14px] font-extrabold text-[#071638]">
               <a href="/contact" className="hover:text-[#08783f]">Contact</a>
-              <a href="/cleaning-london" className="hover:text-[#08783f]">Service prices</a>
-              <a href="/for-providers" className="hover:text-[#08783f]">Join as a provider</a>
+              <a href="/locksmith-slough-price" className="hover:text-[#08783f]">Service prices</a>
+              <a href="/#business" className="hover:text-[#08783f]">Provider waitlist</a>
             </div>
           </div>
 
@@ -52,7 +52,7 @@ export default function Footer() {
 
       <div className="mx-auto mt-7 flex max-w-[1220px] flex-col gap-2 border-t border-[#edf0f5] pt-5 text-[12px] font-semibold text-[#8b94a7] sm:flex-row sm:items-center sm:justify-between">
         <p>© {new Date().getFullYear()} Quickola. All rights reserved.</p>
-        <p>Built for fair local service price checks across London.</p>
+        <p>Built for fair local service price checks in Slough.</p>
       </div>
     </footer>
   );

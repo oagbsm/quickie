@@ -68,6 +68,73 @@ ${process.env.NEXT_PUBLIC_SITE_URL || "https://quickola.com"}/qk-ops-7f3a
   }
 }
 
+async function sendAdminBusinessAlert({
+  businessName,
+  category,
+  whatsapp,
+  startingPrice,
+  availability,
+  profileSlug,
+  description,
+  areas,
+  source,
+}: {
+  businessName: string;
+  category: string;
+  whatsapp: string;
+  startingPrice?: string | number | null;
+  availability?: string | null;
+  profileSlug?: string | null;
+  description?: string | null;
+  areas: string[];
+  source: string;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL;
+  const fromEmail = process.env.FROM_EMAIL || "Quickola <onboarding@resend.dev>";
+
+  if (!apiKey || !adminEmail) {
+    console.warn("Admin business alert skipped: missing RESEND_API_KEY or ADMIN_ALERT_EMAIL.");
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+
+  try {
+    const displayCategory = category.replace(/-/g, " ");
+    const displayAreas = areas.length ? areas.join(", ") : "Not provided";
+
+    await resend.emails.send({
+      from: fromEmail,
+      to: adminEmail,
+      subject: `New Quickola provider application: ${businessName || "Unnamed business"}`,
+      text: `
+New Quickola provider application
+
+Business: ${businessName || "Not provided"}
+Service: ${displayCategory || "Not provided"}
+WhatsApp: ${whatsapp || "Not provided"}
+Starting price: ${startingPrice || "Not provided"}
+Availability: ${availability || "Not provided"}
+Areas: ${displayAreas}
+Profile slug: ${profileSlug || "Not provided"}
+Source: ${source || "Not provided"}
+
+Description:
+${description || "No description"}
+
+Action:
+Review this provider in admin, then approve, reject or contact them.
+
+Open admin:
+${process.env.NEXT_PUBLIC_SITE_URL || "https://quickola.com"}/qk-ops-7f3a
+      `.trim(),
+    });
+  } catch (error) {
+    console.error("Failed to send admin business alert:", error);
+  }
+}
+
 export async function createRequest(formData: FormData) {
   const service = clean(formData.get("service")) || "cleaner";
   const area = clean(formData.get("area")) || "ilford";
@@ -101,6 +168,17 @@ export async function createRequest(formData: FormData) {
     console.error("Failed to create request:", error);
     throw new Error(`Could not save request: ${error.message}`);
   }
+
+  await sendAdminRequestAlert({
+    service,
+    area,
+    postcode,
+    timeNeeded,
+    email: email || "Not provided",
+    phone: phone || null,
+    details,
+  });
+
   redirect(
     `/results?service=${encodeURIComponent(service)}&area=${encodeURIComponent(area)}&postcode=${encodeURIComponent(postcode)}&phone=${encodeURIComponent(phone)}&saved=true`
   );
@@ -115,24 +193,45 @@ export async function createBusiness(formData: FormData) {
   const profileSlug = clean(formData.get("profileSlug"));
   const description = clean(formData.get("description"));
   const areas = formData.getAll("areas").map(String);
+  const areasCustom = clean(formData.get("areasCustom"));
+  const source = clean(formData.get("source")) || "website";
+  const allAreas = [
+    ...areas,
+    ...areasCustom
+      .split(",")
+      .map((area) => area.trim().toUpperCase())
+      .filter(Boolean),
+  ];
 
   const { error } = await supabase.from("businesses").insert({
     business_name: businessName,
     category,
     whatsapp,
     starting_price: startingPrice ? Number(startingPrice) : null,
-    areas,
+    areas: allAreas,
     availability,
     profile_slug: profileSlug,
     description,
     status: "new",
-    source: "website",
+    source,
   });
 
   if (error) {
     console.error("Failed to create business:", error);
     throw new Error(`Could not save business: ${error.message}`);
   }
+
+  await sendAdminBusinessAlert({
+    businessName,
+    category,
+    whatsapp,
+    startingPrice,
+    availability,
+    profileSlug,
+    description,
+    areas: allAreas,
+    source,
+  });
 
   redirect("/business-success");
 }
@@ -366,6 +465,18 @@ export async function addProvider(formData: FormData) {
     throw new Error(`Could not add provider: ${error.message}`);
   }
 
+  await sendAdminBusinessAlert({
+    businessName,
+    category,
+    whatsapp,
+    startingPrice: startingPriceRaw,
+    availability,
+    profileSlug: null,
+    description,
+    areas,
+    source: "manual-admin",
+  });
+
   revalidatePath("/qk-ops-7f3a");
 }
 
@@ -425,12 +536,22 @@ export async function createAdminRequest(formData: FormData) {
     throw new Error(`Could not create request: ${error.message}`);
   }
 
+  await sendAdminRequestAlert({
+    service,
+    area,
+    postcode,
+    timeNeeded,
+    email: "Admin-created request",
+    phone: phone || null,
+    details,
+  });
+
   revalidatePath("/qk-ops-7f3a");
 }
 
 export async function saveCheckPriceRequest(formData: FormData) {
   const service = clean(formData.get("service")) || "cleaning";
-  const area = clean(formData.get("area")) || "london";
+  const area = clean(formData.get("area")) || "slough";
   const postcode = clean(formData.get("postcode")).toUpperCase();
   const jobType = clean(formData.get("job_type"));
   const jobDetail = clean(formData.get("job_detail"));

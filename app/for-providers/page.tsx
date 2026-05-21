@@ -8,54 +8,26 @@ type FieldOption = {
 };
 
 const categories: FieldOption[] = [
+  { label: "Man and Van", value: "man-and-van" },
+  { label: "Removals", value: "removals" },
   { label: "Cleaning", value: "cleaning" },
+  { label: "End of Tenancy Cleaning", value: "end-of-tenancy-cleaning" },
+  { label: "Deep Cleaning", value: "deep-cleaning" },
+  { label: "Carpet Cleaning", value: "carpet-cleaning" },
+  { label: "Oven Cleaning", value: "oven-cleaning" },
+  { label: "Handyman", value: "handyman" },
   { label: "Plumber", value: "plumber" },
+  { label: "Emergency Plumber", value: "emergency-plumber" },
   { label: "Electrician", value: "electrician" },
   { label: "Locksmith", value: "locksmith" },
-  { label: "Removals", value: "removals" },
-  { label: "Handyman", value: "handyman" },
-  { label: "Man and van", value: "man-and-van" },
   { label: "Gardener", value: "gardener" },
-  { label: "Pest control", value: "pest-control" },
-  { label: "Painter / decorator", value: "painter-decorator" },
-  { label: "Carpet cleaning", value: "carpet-cleaning" },
-  { label: "Oven cleaning", value: "oven-cleaning" },
-  { label: "Waste removal", value: "waste-removal" },
+  { label: "Waste Removal", value: "waste-removal" },
+  { label: "Boiler Repair", value: "boiler-repair" },
+  { label: "MOT and Car Repairs", value: "mot-car-repairs" },
+  { label: "Tyres", value: "tyres" },
 ];
 
-const areas = [
-  "HA8",
-  "SL2",
-  "SL1",
-  "E17",
-  "E12",
-  "E6",
-  "E7",
-  "E10",
-  "E15",
-  "IG1",
-  "IG2",
-  "IG3",
-  "IG11",
-  "RM1",
-  "RM6",
-  "NW4",
-  "NW10",
-  "N15",
-  "N17",
-  "EN1",
-  "CR0",
-  "SW2",
-  "SW4",
-  "SW17",
-  "KT1",
-  "TW3",
-  "W5",
-  "UB1",
-  "UB3",
-  "SE18",
-  "SE13",
-];
+const areas = ["SL1", "SL2", "SL3"];
 
 
 function Logo() {
@@ -79,7 +51,7 @@ function Header() {
       <div className="mx-auto flex h-full max-w-[1320px] items-center justify-between px-5 sm:px-8 lg:px-[50px]">
         <Logo />
         <nav className="hidden items-center gap-10 text-[15px] font-semibold text-[#172545] lg:flex">
-          <a href="/" className="transition hover:text-[#08783f]">Customers</a>
+          <a href="/" className="transition hover:text-[#08783f]">For customers</a>
           <a href="#how" className="transition hover:text-[#08783f]">How it works</a>
           <a href="#signup" className="transition hover:text-[#08783f]">Join free</a>
         </nav>
@@ -87,9 +59,9 @@ function Header() {
           href="#signup"
           className="hidden h-[46px] items-center justify-center rounded-[11px] bg-[#071638] px-5 text-[15px] font-extrabold text-white shadow-[0_12px_24px_rgba(7,22,56,0.16)] transition hover:-translate-y-0.5 sm:flex"
         >
-          Create provider profile
+          Apply to join
         </a>
-        <a href="#signup" aria-label="Create free profile" className="grid h-[42px] w-[42px] place-items-center rounded-[12px] bg-[#071638] text-[22px] leading-none text-white sm:hidden">
+        <a href="#signup" aria-label="Apply to join" className="grid h-[42px] w-[42px] place-items-center rounded-[12px] bg-[#071638] text-[22px] leading-none text-white sm:hidden">
           →
         </a>
       </div>
@@ -212,21 +184,23 @@ function SignupForm() {
     <form id="signup" action={createBusiness} className="scroll-mt-[96px] rounded-[26px] border border-[#dcebe1] bg-white p-5 shadow-[0_26px_80px_rgba(7,22,56,0.11)] sm:p-7">
       <div className="flex items-start justify-between gap-4 border-b border-[#edf0f5] pb-5">
         <div>
-          <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[#08783f]">Free provider profile</p>
-          <h2 className="mt-2 text-[28px] font-extrabold leading-[1.05] tracking-[-0.03em] text-[#071638] sm:text-[34px]">Join Quickola as a local provider in under 60 seconds.</h2>
+          <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[#08783f]">Provider applications</p>
+          <h2 className="mt-2 text-[28px] font-extrabold leading-[1.05] tracking-[-0.03em] text-[#071638] sm:text-[34px]">Apply to become a selected Quickola provider in Slough.</h2>
         </div>
-        <span className="hidden rounded-full bg-[#f1faf3] px-4 py-2 text-[13px] font-extrabold text-[#08783f] ring-1 ring-[#d8eddd] sm:inline-flex">No contracts</span>
+        <span className="hidden rounded-full bg-[#f1faf3] px-4 py-2 text-[13px] font-extrabold text-[#08783f] ring-1 ring-[#d8eddd] sm:inline-flex">Selected providers only</span>
       </div>
+
+      <input type="hidden" name="source" value="selected-provider-application-slough" />
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field label="Business name">
-          <Input name="businessName" placeholder="e.g. East London Van Man" required />
+          <Input name="businessName" placeholder="e.g. Slough Van Man" required />
         </Field>
 
         <Field label="Service you offer">
           <div className="relative">
             <Select name="category">
-              <option value="" disabled>Choose category</option>
+              <option value="" disabled>Choose your main service</option>
               {categories.map((category) => (
                 <option key={category.value} value={category.value}>{category.label}</option>
               ))}
@@ -253,28 +227,28 @@ function SignupForm() {
       <div className="mt-5">
         <p className="mb-1 text-[14px] font-extrabold text-[#071638]">Postcode areas you cover</p>
         <p className="mb-3 text-[12px] font-bold leading-[1.4] text-[#657089]">
-          Select common postcode prefixes below, or type any extra areas you cover. Use outward postcode prefixes, not full postcodes. Example: HA8 matches HA8 6HU.
+          Quickola is currently accepting selected Slough providers. Choose the Slough postcode prefixes you cover. Example: SL1 matches SL1 1AA.
         </p>
         <details className="rounded-[16px] border border-[#dfe5ee] bg-[#fbfcfd] p-3">
           <summary className="cursor-pointer list-none text-[13px] font-extrabold text-[#08783f] [&::-webkit-details-marker]:hidden">
-            Choose from common postcode areas
+            Choose Slough postcode areas
           </summary>
           <div className="mt-3 flex max-h-[190px] flex-wrap gap-2 overflow-y-auto pr-1">
             {areas.map((area) => <AreaChip key={area} area={area} />)}
           </div>
           <p className="mt-3 text-[11px] font-bold text-[#9aa4b5]">
-            Selected areas turn green. Use the box below if your area is missing.
+            Selected areas turn green. Only Slough areas are being accepted at launch.
           </p>
         </details>
         <label className="mt-4 block">
           <span className="mb-2 block text-[13px] font-extrabold text-[#071638]">Add other postcode areas</span>
           <input
             name="areasCustom"
-            placeholder="e.g. HA1, HA2, SL3, UB6, NW9"
+            placeholder="Only use SL1, SL2 or SL3"
             className="h-[48px] w-full rounded-[12px] border border-[#dfe5ee] bg-white px-4 text-[14px] font-semibold uppercase text-[#071638] outline-none transition placeholder:normal-case placeholder:text-[#8b94a7] focus:border-[#98d7ad] focus:ring-4 focus:ring-[#e8f7ed]"
           />
           <span className="mt-2 block text-[11px] font-bold leading-[1.4] text-[#9aa4b5]">
-            Separate each area with a comma. Do not enter full customer postcodes here.
+            Only Slough provider areas are being accepted. Do not enter full customer postcodes here.
           </span>
         </label>
       </div>
@@ -295,7 +269,7 @@ function SignupForm() {
         </Field>
 
         <Field label="Profile link name">
-          <Input name="profileSlug" placeholder="e.g. east-london-van-man" />
+          <Input name="profileSlug" placeholder="e.g. slough-van-man" />
         </Field>
       </div>
 
@@ -310,13 +284,13 @@ function SignupForm() {
       </label>
 
       <button type="submit" className="mt-6 flex h-[58px] w-full items-center justify-center gap-4 rounded-[13px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[18px] font-extrabold text-white shadow-[0_16px_34px_rgba(0,104,47,0.24)] transition hover:-translate-y-0.5">
-        Create free provider profile
+        Apply to join Quickola
         <span className="text-[28px] leading-none">→</span>
       </button>
 
       <div className="mt-5 grid gap-3 text-[13px] font-bold text-[#44506a] sm:grid-cols-3">
         <span className="flex items-center gap-2"><span className="text-[#08783f]"><TickIcon /></span>Manual approval</span>
-        <span className="flex items-center gap-2"><span className="text-[#08783f]"><TickIcon /></span>No monthly fee</span>
+        <span className="flex items-center gap-2"><span className="text-[#08783f]"><TickIcon /></span>Free to apply</span>
         <span className="flex items-center gap-2"><span className="text-[#08783f]"><TickIcon /></span>No paid ranking</span>
       </div>
     </form>
@@ -335,7 +309,7 @@ function ProfilePreview() {
             <span className="grid h-[62px] w-[62px] place-items-center rounded-[18px] bg-white text-[28px]">⚡</span>
             <div>
               <h3 className="text-[24px] font-extrabold leading-none tracking-[-0.025em]">Local Service Provider</h3>
-              <p className="mt-2 text-[14px] font-semibold text-white/70">Cleaning · Plumbing · Handyman</p>
+              <p className="mt-2 text-[14px] font-semibold text-white/70">Slough · Man and Van · Cleaning</p>
             </div>
           </div>
         </div>
@@ -344,7 +318,7 @@ function ProfilePreview() {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-[16px] bg-[#f6fcf8] p-4 ring-1 ring-[#d8eddd]">
               <p className="text-[12px] font-bold text-[#657089]">From</p>
-              <p className="mt-1 text-[24px] font-extrabold text-[#08783f]">£65</p>
+              <p className="mt-1 text-[24px] font-extrabold text-[#08783f]">£40</p>
             </div>
             <div className="rounded-[16px] bg-[#fbfcfd] p-4 ring-1 ring-[#e1e6ee]">
               <p className="text-[12px] font-bold text-[#657089]">Availability</p>
@@ -363,7 +337,7 @@ function ProfilePreview() {
             </div>
           </div>
 
-          <button className="mt-5 h-[50px] w-full rounded-[13px] bg-[#08783f] text-[16px] font-extrabold text-white">Request this provider</button>
+          <button className="mt-5 h-[50px] w-full rounded-[13px] bg-[#08783f] text-[16px] font-extrabold text-white">Example only</button>
         </div>
       </div>
     </div>
@@ -393,27 +367,27 @@ export default function ForProvidersPage() {
           <div className="flex flex-col justify-center">
             <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-4 py-2 text-[12px] font-extrabold uppercase tracking-[0.07em] text-[#08783f] shadow-[0_10px_24px_rgba(7,22,56,0.06)] ring-1 ring-[#d8eddd]">
               <ShieldIcon />
-              Free provider signup
+              Selected Slough providers
             </div>
 
             <h1 className="mt-6 max-w-[680px] text-[46px] font-extrabold leading-[0.98] tracking-[-0.04em] text-[#071638] sm:text-[62px] lg:text-[72px]">
-              Get local service requests without paying to rank.
+              Become a selected Quickola provider in Slough.
             </h1>
 
             <p className="mt-6 max-w-[600px] text-[18px] font-semibold leading-[1.55] text-[#44506a] sm:text-[20px]">
-              Create a free Quickola provider profile so we can send you relevant local requests by WhatsApp when customers check prices in the postcode areas you cover.
+              Quickola is building a trusted Slough provider network for fair-price customer requests. Apply to be reviewed and considered for suitable WhatsApp request alerts.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
-              <ProofPill>No monthly fee</ProofPill>
+              <ProofPill>Slough provider network</ProofPill>
+              <ProofPill>Application reviewed</ProofPill>
               <ProofPill>No paid ranking</ProofPill>
-              <ProofPill>No long contract</ProofPill>
-              <ProofPill>Relevant local requests</ProofPill>
+              <ProofPill>WhatsApp request alerts</ProofPill>
             </div>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a href="#signup" className="inline-flex h-[58px] items-center justify-center gap-4 rounded-[13px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-7 text-[18px] font-extrabold text-white shadow-[0_16px_34px_rgba(0,104,47,0.22)] transition hover:-translate-y-0.5">
-                Create free profile
+                Apply to join
                 <span className="text-[28px] leading-none">→</span>
               </a>
               <a href="#how" className="inline-flex h-[58px] items-center justify-center rounded-[13px] border border-[#cfd6e2] bg-white px-7 text-[17px] font-extrabold text-[#071638] shadow-[0_10px_22px_rgba(7,22,56,0.04)] transition hover:-translate-y-0.5">
@@ -431,15 +405,15 @@ export default function ForProvidersPage() {
 
         <div className="flex flex-col justify-center">
           <p className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#08783f]">Why providers join</p>
-          <h2 className="mt-3 text-[36px] font-extrabold leading-[1.05] tracking-[-0.035em] text-[#071638] sm:text-[48px]">A profile built for real local service jobs.</h2>
+          <h2 className="mt-3 text-[36px] font-extrabold leading-[1.05] tracking-[-0.035em] text-[#071638] sm:text-[48px]">Join a curated Slough provider network.</h2>
           <p className="mt-4 max-w-[620px] text-[17px] font-semibold leading-[1.55] text-[#44506a]">
-            Customers do not want a messy directory. They want to know which provider is available, what a fair price looks like and who they can contact quickly.
+            Quickola is built around fair local pricing, not messy directories or paid ranking. Providers are reviewed before being added, so the Slough network stays useful, local and trusted.
           </p>
 
           <div className="mt-7 grid gap-4 sm:grid-cols-3">
-            <BenefitCard icon={<PriceIcon />} title="Show clear starting prices" text="Add a starting price so customers understand your range before messaging." />
-            <BenefitCard icon={<RequestIcon />} title="Get matched local requests" text="Receive relevant requests for the services and areas you actually cover." />
-            <BenefitCard icon={<ShieldIcon />} title="Fair ranking" text="Provider ranking is not sold to the highest bidder. Clear profiles win trust." />
+            <BenefitCard icon={<PriceIcon />} title="Stand out with clear pricing" text="Add a starting price so customers understand your rough range before they decide who to continue with." />
+            <BenefitCard icon={<RequestIcon />} title="Receive suitable Slough requests" text="Approved providers can receive relevant WhatsApp alerts for the services and Slough postcode areas they cover." />
+            <BenefitCard icon={<ShieldIcon />} title="No paid ranking" text="Quickola is not selling top spots. Visibility is based on fit, response speed, clear pricing and customer feedback." />
           </div>
         </div>
       </section>
@@ -452,9 +426,9 @@ export default function ForProvidersPage() {
           </div>
 
           <div className="mt-7 grid gap-4 md:grid-cols-3">
-            <HowStep number="1" title="Create your free provider profile" text="Add your business name, service, WhatsApp, starting price and postcode areas such as HA8 or SL2." />
-            <HowStep number="2" title="We send matching local requests" text="If a customer request matches your service and postcode prefix, Quickola can send you an anonymous WhatsApp alert." />
-            <HowStep number="3" title="You reply with rough price and availability" text="Customer details stay hidden until Quickola filters the options and the customer chooses to continue." />
+            <HowStep number="1" title="Apply to join" text="Add your business name, main service, WhatsApp number, starting price and the Slough postcode areas you cover." />
+            <HowStep number="2" title="We review your details" text="Quickola reviews provider applications before adding businesses to the Slough network." />
+            <HowStep number="3" title="Receive suitable requests" text="When a Slough customer request fits your service, Quickola can send the details by WhatsApp so you can reply with price and availability." />
           </div>
         </div>
       </section>
@@ -463,11 +437,11 @@ export default function ForProvidersPage() {
         <div className="mx-auto flex max-w-[1320px] flex-col items-center justify-between gap-6 rounded-[28px] bg-[#071638] p-6 text-center text-white shadow-[0_26px_80px_rgba(7,22,56,0.18)] sm:p-8 lg:flex-row lg:text-left">
           <div>
             <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-white/60">Ready when you are</p>
-            <h2 className="mt-3 text-[34px] font-extrabold leading-[1.05] tracking-[-0.035em] sm:text-[46px]">Create your Quickola provider profile.</h2>
-            <p className="mt-3 max-w-[620px] text-[16px] font-semibold leading-[1.5] text-white/72">Start free. No monthly fee. No paid ranking. No long contract.</p>
+            <h2 className="mt-3 text-[34px] font-extrabold leading-[1.05] tracking-[-0.035em] sm:text-[46px]">Apply to join the Slough provider network.</h2>
+            <p className="mt-3 max-w-[620px] text-[16px] font-semibold leading-[1.5] text-white/72">Free to apply. No paid ranking. No long contract. Selected Slough providers only.</p>
           </div>
           <a href="#signup" className="inline-flex h-[58px] shrink-0 items-center justify-center gap-4 rounded-[13px] bg-white px-7 text-[18px] font-extrabold text-[#071638] transition hover:-translate-y-0.5">
-            Join as a provider
+            Apply now
             <span className="text-[28px] leading-none text-[#08783f]">→</span>
           </a>
         </div>
