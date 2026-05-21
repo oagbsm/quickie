@@ -15,6 +15,9 @@ function scrollToSection(sectionId: string, focusSelector?: string) {
   }, 400);
 }
 
+const whatsappHref =
+  "https://wa.me/447347962272?text=Hi%20Quickola%2C%20I%20need%20help%20checking%20a%20fair%20local%20price.%0A%0AService%3A%0APostcode%3A%0AWhen%20needed%3A%0AJob%20details%3A";
+
 export default function Header() {
   return (
     <header className="absolute left-0 top-0 z-50 w-full border-b border-[#e8edf4] bg-white/92 backdrop-blur-xl">
@@ -37,22 +40,20 @@ export default function Header() {
           <button type="button" onClick={() => scrollToSection("services-section")} className="transition hover:text-[#079448]">
             Services
           </button>
-          <button
-            type="button"
-            onClick={() => scrollToSection("business")}
-            className="flex h-[42px] items-center justify-center rounded-[10px] bg-[#079448] px-[20px] text-[14px] font-black tracking-[-0.01em] text-white shadow-[0_10px_24px_rgba(7,148,72,0.24)] transition hover:-translate-y-0.5 hover:bg-[#087f40] sm:h-[46px] sm:px-[27px] sm:text-[15px]"
-          >
-            Providers
+          <button type="button" onClick={() => scrollToSection("business")} className="transition hover:text-[#079448]">
+            For providers
           </button>
         </nav>
 
-        <button
-          type="button"
-          onClick={() => scrollToSection("services-section")}
+        <a
+          href={whatsappHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="WhatsApp Quickola"
           className="hidden h-[46px] items-center justify-center rounded-[10px] bg-[#079448] px-[27px] text-[15px] font-black tracking-[-0.01em] text-white shadow-[0_10px_24px_rgba(7,148,72,0.24)] transition hover:-translate-y-0.5 hover:bg-[#087f40] lg:flex"
         >
-          Services
-        </button>
+          WhatsApp us
+        </a>
       </div>
     </header>
   );
