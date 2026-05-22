@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import Footer from "../components/Footer";
 import { createClient } from "@supabase/supabase-js";
-import { saveCheckPriceRequest } from "../actions";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type SeoPageProps = {
   params: Promise<{ slug: string }>;
@@ -369,11 +371,13 @@ function RequestForm({ page }: { page: SeoPage }) {
   return (
     <form
       id="request"
-      action={saveCheckPriceRequest}
+      action="/check-price"
+      method="GET"
       className="scroll-mt-[88px] rounded-[28px] border border-[#dfe8ef] bg-white p-5 shadow-[0_22px_60px_rgba(7,22,56,0.10)] sm:p-6"
     >
       <input type="hidden" name="source" value={`seo-page:${page.slug}`} />
       <input type="hidden" name="time_needed" value="this-week" />
+      <input type="hidden" name="postcode" value={page.location} />
 
       <div className="text-left">
         <h2 className="text-[28px] font-black leading-[1.06] tracking-[-0.045em] text-[#071638]">
@@ -427,7 +431,7 @@ function RequestForm({ page }: { page: SeoPage }) {
             name="area"
             defaultValue={page.location}
             required
-            placeholder="e.g. SL1 1AA"
+            placeholder="e.g. Slough or SL1 1AA"
             className="h-[58px] w-full rounded-[16px] border border-[#dbe4ed] bg-white px-4 text-[15px] font-black text-[#071638] outline-none transition placeholder:text-[#93a0b3] focus:border-[#0b8f41] focus:ring-4 focus:ring-[#0b8f41]/10"
           />
         </label>
@@ -547,9 +551,15 @@ function PriceGuide({ page }: { page: SeoPage }) {
           ))}
         </div>
 
-        <p className="mt-5 rounded-[14px] border border-[#dfe8ef] bg-[#fbfcfd] px-4 py-3 text-[13px] font-semibold leading-[1.5] text-[#607089]">
-          Final price depends on job details, urgency, access, parts or materials and local availability.
-        </p>
+        <div className="mt-5 rounded-[14px] border border-[#dfe8ef] bg-[#fbfcfd] px-4 py-3 text-[13px] font-semibold leading-[1.5] text-[#607089]">
+          <p>
+            Last updated: May 2026. Prices are guide ranges. Final quotes depend on job details, urgency, access, parts or materials and local availability.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-3 text-[12px] font-black text-[#0b8f41]">
+            <a href="/pricing-methodology" className="hover:underline">How Quickola estimates prices</a>
+            <a href="/trust-safety" className="hover:underline">Trust & Safety</a>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -644,6 +654,7 @@ function SeoText({ page }: { page: SeoPage }) {
     page.localPriceNote,
     page.localSearchNote,
     `${page.location} ${page.serviceName.toLowerCase()} prices can change depending on job type, urgency, access, parts, travel time and availability.`,
+    `Quickola guide ranges are designed to help customers understand what may be reasonable before booking. Final quotes should always be confirmed directly with the provider before work begins.`,
   ].filter(Boolean);
 
   const faqs = page.faqs.filter((faq) => faq.question && faq.answer).slice(0, 5);

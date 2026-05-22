@@ -15,6 +15,7 @@ export default function Home() {
       <div id="provider-waitlist" className="scroll-mt-[96px]">
         <BusinessCTA />
       </div>
+      <Footer/>
     </main>
   );
 }
