@@ -1,6 +1,7 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Footer from "../components/Footer";
 import { createClient } from "@supabase/supabase-js";
+import { saveCheckPriceRequest } from "../actions";
 
 type SeoPageProps = {
   params: Promise<{ slug: string }>;
@@ -176,23 +177,6 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseAnonKey);
 }
 
-function getSupabaseWriteClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Missing Supabase environment variables");
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-}
-
 function hydrateLocationText(value: string | null | undefined, location: string) {
   return String(value ?? "")
     .replace(/{{location}}/g, location)
@@ -340,65 +324,6 @@ function getDetailOptions(page: SeoPage) {
   ];
 }
 
-async function saveSeoLandingRequest(formData: FormData) {
-  "use server";
-
-  const service = String(formData.get("service") ?? "cleaning").trim();
-  const area = String(formData.get("area") ?? "slough").trim();
-  const jobDetail = String(formData.get("jobDetail") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const sourceSlug = String(formData.get("sourceSlug") ?? "").trim();
-
-  if (!service || !area || !email) {
-    throw new Error("Missing required request fields");
-  }
-
-  const supabase = getSupabaseWriteClient();
-
-  const message = JSON.stringify({
-    source: "seo-landing-page",
-    source_slug: sourceSlug,
-    job_detail: jobDetail || null,
-  });
-
-  const { error } = await supabase.from("requests").insert({
-    service,
-    area,
-    email,
-    phone: null,
-    status: "new",
-    message,
-  });
-
-  if (error) {
-    console.error("Failed to save SEO landing request:", error);
-
-    const { error: fallbackError } = await supabase.from("requests").insert({
-      service,
-      area,
-      email,
-      phone: null,
-      status: "new",
-    });
-
-    if (fallbackError) {
-      console.error("Failed to save SEO landing fallback request:", fallbackError);
-      throw new Error("Could not save request");
-    }
-  }
-
-  const params = new URLSearchParams({
-    service,
-    area,
-    email,
-    saved: "1",
-  });
-
-  if (jobDetail) params.set("job_detail", jobDetail);
-
-  redirect(`/results?${params.toString()}`);
-}
-
 function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-[#e8edf3] bg-white/96 backdrop-blur-xl">
@@ -444,10 +369,11 @@ function RequestForm({ page }: { page: SeoPage }) {
   return (
     <form
       id="request"
-      action={saveSeoLandingRequest}
+      action={saveCheckPriceRequest}
       className="scroll-mt-[88px] rounded-[28px] border border-[#dfe8ef] bg-white p-5 shadow-[0_22px_60px_rgba(7,22,56,0.10)] sm:p-6"
     >
-      <input type="hidden" name="sourceSlug" value={page.slug} />
+      <input type="hidden" name="source" value={`seo-page:${page.slug}`} />
+      <input type="hidden" name="time_needed" value="this-week" />
 
       <div className="text-left">
         <h2 className="text-[28px] font-black leading-[1.06] tracking-[-0.045em] text-[#071638]">
@@ -481,7 +407,7 @@ function RequestForm({ page }: { page: SeoPage }) {
             {getDetailLabel(page)}
           </span>
           <select
-            name="jobDetail"
+            name="job_detail"
             defaultValue={getDetailOptions(page)[0]?.value ?? "not-sure"}
             className="h-[58px] w-full rounded-[16px] border border-[#dbe4ed] bg-white px-4 text-[15px] font-black text-[#071638] outline-none transition focus:border-[#0b8f41] focus:ring-4 focus:ring-[#0b8f41]/10"
           >
