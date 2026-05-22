@@ -49,8 +49,8 @@ async function sendSeoPageRequestEmail(formData: FormData) {
   "use server";
 
   const apiKey = process.env.RESEND_API_KEY;
-  const adminEmail = process.env.ADMIN_ALERT_EMAIL;
-  const fromEmail = process.env.FROM_EMAIL || "Quickola <onboarding@resend.dev>";
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL || "matointernationalgroup@gmail.com";
+  const fromEmail = process.env.FROM_EMAIL || "Quickola <hello@quickola.co.uk>";
 
   const service = cleanFormValue(formData.get("service"));
   const jobDetail = cleanFormValue(formData.get("job_detail"));
@@ -624,13 +624,15 @@ function PriceGuide({ page }: { page: SeoPage }) {
           ))}
         </div>
 
-        <div className="mt-5 rounded-[14px] border border-[#dfe8ef] bg-[#fbfcfd] px-4 py-3 text-[13px] font-semibold leading-[1.5] text-[#607089]">
-          <p>
-            Last updated: May 2026. Prices are guide ranges. Final quotes depend on job details, urgency, access, parts or materials and local availability.
+        <div className="mt-5 rounded-[18px] border border-[#dfe8ef] bg-[#fbfcfd] px-4 py-4 text-[13px] font-semibold leading-[1.55] text-[#607089] sm:px-5">
+          <p className="font-black text-[#071638]">Last updated: May 2026</p>
+          <p className="mt-1">
+            Prices are guide ranges. Final quotes depend on job details, access, urgency, parts, materials and provider availability.
           </p>
-          <div className="mt-2 flex flex-wrap gap-3 text-[12px] font-black text-[#0b8f41]">
+          <div className="mt-3 flex flex-wrap gap-3 text-[12px] font-black text-[#0b8f41]">
             <a href="/pricing-methodology" className="hover:underline">How Quickola estimates prices</a>
             <a href="/trust-safety" className="hover:underline">Trust & Safety</a>
+            <a href="/quickola-price-index" className="hover:underline">UK Local Services Price Index 2026</a>
           </div>
         </div>
       </div>
@@ -751,23 +753,38 @@ function SeoText({ page }: { page: SeoPage }) {
           </div>
         </div>
 
-        {faqs.length > 0 ? (
-          <div id="faq" className="rounded-[24px] border border-[#dfe8ef] bg-white p-6 shadow-[0_12px_30px_rgba(7,22,56,0.04)]">
-            <h2 className="text-[28px] font-black tracking-[-0.035em] text-[#071638]">FAQ</h2>
-            <div className="mt-4 divide-y divide-[#edf1f5]">
-              {faqs.map((faq) => (
-                <details key={faq.question} className="py-4">
-                  <summary className="cursor-pointer list-none text-[15px] font-black text-[#071638]">
-                    {faq.question}
-                  </summary>
-                  <p className="mt-2 text-[14px] font-medium leading-[1.6] text-[#556177]">
-                    {faq.answer}
-                  </p>
-                </details>
-              ))}
-            </div>
+        <aside className="space-y-5">
+          <div className="rounded-[24px] border border-[#dfe8ef] bg-white p-6 shadow-[0_12px_30px_rgba(7,22,56,0.04)]">
+            <p className="text-[12px] font-black uppercase tracking-[0.14em] text-[#0b8f41]">Operator note</p>
+            <h2 className="mt-2 text-[26px] font-black tracking-[-0.035em] text-[#071638]">
+              Built for clearer local pricing
+            </h2>
+            <p className="mt-3 text-[14px] font-semibold leading-[1.65] text-[#556177]">
+              Quickola is being built in the UK to make local service pricing clearer before people book.
+            </p>
+            <p className="mt-3 text-[14px] font-semibold leading-[1.65] text-[#556177]">
+              Operating location: Slough-first, UK. Contact: <a href="mailto:hello@quickola.co.uk" className="font-black text-[#0b8f41] hover:underline">hello@quickola.co.uk</a>
+            </p>
           </div>
-        ) : null}
+
+          {faqs.length > 0 ? (
+            <div id="faq" className="rounded-[24px] border border-[#dfe8ef] bg-white p-6 shadow-[0_12px_30px_rgba(7,22,56,0.04)]">
+              <h2 className="text-[28px] font-black tracking-[-0.035em] text-[#071638]">FAQ</h2>
+              <div className="mt-4 divide-y divide-[#edf1f5]">
+                {faqs.map((faq) => (
+                  <details key={faq.question} className="py-4">
+                    <summary className="cursor-pointer list-none text-[15px] font-black text-[#071638]">
+                      {faq.question}
+                    </summary>
+                    <p className="mt-2 text-[14px] font-medium leading-[1.6] text-[#556177]">
+                      {faq.answer}
+                    </p>
+                  </details>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </aside>
       </div>
     </section>
   );
@@ -779,7 +796,7 @@ function FinalCta() {
       <div className="mx-auto flex max-w-[1180px] flex-col gap-5 rounded-[28px] bg-[#071638] p-7 text-white sm:flex-row sm:items-center sm:justify-between sm:p-9">
         <div>
           <h2 className="text-[30px] font-black tracking-[-0.04em] sm:text-[40px]">Check the fair price first.</h2>
-          <p className="mt-2 text-[15px] font-medium text-white/75">See the range first, then decide.</p>
+          <p className="mt-2 text-[15px] font-medium text-white/75">Last updated: May 2026 · Guide ranges only · No booking pressure</p>
         </div>
         <a
           href="#request"
