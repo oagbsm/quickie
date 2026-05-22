@@ -1,7 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Footer from "../components/Footer";
 import { createClient } from "@supabase/supabase-js";
-
+import { Resend } from "resend";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -40,6 +40,81 @@ type SeoPage = {
   indexable: boolean;
   status: "draft" | "published";
 };
+
+function cleanFormValue(value: FormDataEntryValue | null) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+async function sendSeoPageRequestEmail(formData: FormData) {
+  "use server";
+
+  const apiKey = process.env.RESEND_API_KEY;
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL;
+  const fromEmail = process.env.FROM_EMAIL || "Quickola <onboarding@resend.dev>";
+
+  const service = cleanFormValue(formData.get("service"));
+  const jobDetail = cleanFormValue(formData.get("job_detail"));
+  const area = cleanFormValue(formData.get("area"));
+  const postcode = cleanFormValue(formData.get("postcode"));
+  const email = cleanFormValue(formData.get("email"));
+  const source = cleanFormValue(formData.get("source"));
+  const timeNeeded =
+    cleanFormValue(formData.get("timeNeeded")) ||
+    cleanFormValue(formData.get("time_needed")) ||
+    "this-week";
+
+  const redirectUrl = `/check-price?service=${encodeURIComponent(service)}&postcode=${encodeURIComponent(
+    area || postcode
+  )}&email=${encodeURIComponent(email)}&source=${encodeURIComponent(source)}`;
+
+  if (!apiKey || !adminEmail) {
+    console.error("SEO request email skipped: missing RESEND_API_KEY or ADMIN_ALERT_EMAIL.");
+    redirect(redirectUrl);
+  }
+
+  if (!service || !area || !email) {
+    console.error("SEO request email skipped: missing service, area or email.");
+    redirect(redirectUrl);
+  }
+
+  const resend = new Resend(apiKey);
+
+  try {
+    await resend.emails.send({
+      from: fromEmail,
+      to: adminEmail,
+      replyTo: email,
+      subject: `New Quickola SEO request: ${service} in ${area}`,
+      text: [
+        "New Quickola SEO page request",
+        "",
+        `Service: ${service}`,
+        `Job detail: ${jobDetail || "Not provided"}`,
+        `Area: ${area}`,
+        `Postcode/location: ${postcode || "Not provided"}`,
+        `Time needed: ${timeNeeded}`,
+        `Customer email: ${email}`,
+        `Source: ${source || "SEO page"}`,
+      ].join("\n"),
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.5;color:#071638;">
+          <h2 style="margin:0 0 12px;">New Quickola SEO page request</h2>
+          <p><strong>Service:</strong> ${service}</p>
+          <p><strong>Job detail:</strong> ${jobDetail || "Not provided"}</p>
+          <p><strong>Area:</strong> ${area}</p>
+          <p><strong>Postcode/location:</strong> ${postcode || "Not provided"}</p>
+          <p><strong>Time needed:</strong> ${timeNeeded}</p>
+          <p><strong>Customer email:</strong> ${email}</p>
+          <p><strong>Source:</strong> ${source || "SEO page"}</p>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error("Failed to send SEO request email:", error);
+  }
+
+  redirect(redirectUrl);
+}
 
 const serviceOptions = [
   { label: "Cleaning", value: "cleaning" },
@@ -369,15 +444,13 @@ function Header() {
 
 function RequestForm({ page }: { page: SeoPage }) {
   return (
-    <form
-      id="request"
-      action="/check-price"
-      method="GET"
-      className="scroll-mt-[88px] rounded-[28px] border border-[#dfe8ef] bg-white p-5 shadow-[0_22px_60px_rgba(7,22,56,0.10)] sm:p-6"
-    >
+<form
+  id="request"
+  action={sendSeoPageRequestEmail}
+  className="scroll-mt-[88px] rounded-[28px] border border-[#dfe8ef] bg-white p-5 shadow-[0_22px_60px_rgba(7,22,56,0.10)] sm:p-6"
+>
       <input type="hidden" name="source" value={`seo-page:${page.slug}`} />
-      <input type="hidden" name="time_needed" value="this-week" />
-      <input type="hidden" name="postcode" value={page.location} />
+<input type="hidden" name="timeNeeded" value="this-week" />      <input type="hidden" name="postcode" value={page.location} />
 
       <div className="text-left">
         <h2 className="text-[28px] font-black leading-[1.06] tracking-[-0.045em] text-[#071638]">

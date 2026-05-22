@@ -9,6 +9,66 @@ function clean(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function getAdminAlertEmails() {
+  return [
+    process.env.ADMIN_ALERT_EMAIL,
+    process.env.ADMIN_EMAIL,
+    process.env.CONTACT_EMAIL,
+  ]
+    .filter(Boolean)
+    .join(",");
+}
+
+async function sendEmailOrLog({
+  subject,
+  text,
+}: {
+  subject: string;
+  text: string;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const adminEmail = getAdminAlertEmails();
+  const fromEmail = process.env.FROM_EMAIL || "Quickola <onboarding@resend.dev>";
+
+  if (!apiKey || !adminEmail) {
+    console.error("Quickola email skipped: missing email env vars.", {
+      hasResendApiKey: Boolean(apiKey),
+      adminEmail,
+      hasAdminAlertEmail: Boolean(process.env.ADMIN_ALERT_EMAIL),
+      hasAdminEmail: Boolean(process.env.ADMIN_EMAIL),
+      hasContactEmail: Boolean(process.env.CONTACT_EMAIL),
+      fromEmail,
+      subject,
+    });
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+
+  const result = await resend.emails.send({
+    from: fromEmail,
+    to: adminEmail,
+    subject,
+    text,
+  });
+
+  if (result.error) {
+    console.error("Quickola email failed:", {
+      subject,
+      to: adminEmail,
+      from: fromEmail,
+      error: result.error,
+    });
+    return;
+  }
+
+  console.log("Quickola email sent:", {
+    subject,
+    to: adminEmail,
+    id: result.data?.id,
+  });
+}
+
 async function sendAdminRequestAlert({
   service,
   area,
@@ -26,24 +86,11 @@ async function sendAdminRequestAlert({
   phone?: string | null;
   details: string;
 }) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const adminEmail = process.env.ADMIN_ALERT_EMAIL;
-  const fromEmail = process.env.FROM_EMAIL || "Quickola <onboarding@resend.dev>";
-
-  if (!apiKey || !adminEmail) {
-    console.warn("Admin request alert skipped: missing RESEND_API_KEY or ADMIN_ALERT_EMAIL.");
-    return;
-  }
-
-  const resend = new Resend(apiKey);
-
   try {
     const displayService = service.replace(/-/g, " ");
     const displayArea = area.replace(/-/g, " ");
 
-    await resend.emails.send({
-      from: fromEmail,
-      to: adminEmail,
+    await sendEmailOrLog({
       subject: `New Quickola request: ${displayService} in ${displayArea}`,
       text: `
 New Quickola request
@@ -60,7 +107,7 @@ Details:
 ${details || "No details"}
 
 Open admin:
-${process.env.NEXT_PUBLIC_SITE_URL || "https://quickola.com"}/qk-ops-7f3a
+${process.env.NEXT_PUBLIC_SITE_URL || "https://quickola.co.uk"}/qk-ops-7f3a
       `.trim(),
     });
   } catch (error) {
@@ -89,24 +136,11 @@ async function sendAdminBusinessAlert({
   areas: string[];
   source: string;
 }) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const adminEmail = process.env.ADMIN_ALERT_EMAIL;
-  const fromEmail = process.env.FROM_EMAIL || "Quickola <onboarding@resend.dev>";
-
-  if (!apiKey || !adminEmail) {
-    console.warn("Admin business alert skipped: missing RESEND_API_KEY or ADMIN_ALERT_EMAIL.");
-    return;
-  }
-
-  const resend = new Resend(apiKey);
-
   try {
     const displayCategory = category.replace(/-/g, " ");
     const displayAreas = areas.length ? areas.join(", ") : "Not provided";
 
-    await resend.emails.send({
-      from: fromEmail,
-      to: adminEmail,
+    await sendEmailOrLog({
       subject: `New Quickola provider application: ${businessName || "Unnamed business"}`,
       text: `
 New Quickola provider application
@@ -127,7 +161,7 @@ Action:
 Review this provider in admin, then approve, reject or contact them.
 
 Open admin:
-${process.env.NEXT_PUBLIC_SITE_URL || "https://quickola.com"}/qk-ops-7f3a
+${process.env.NEXT_PUBLIC_SITE_URL || "https://quickola.co.uk"}/qk-ops-7f3a
       `.trim(),
     });
   } catch (error) {
@@ -137,7 +171,7 @@ ${process.env.NEXT_PUBLIC_SITE_URL || "https://quickola.com"}/qk-ops-7f3a
 
 export async function createRequest(formData: FormData) {
   const service = clean(formData.get("service")) || "cleaner";
-  const area = clean(formData.get("area")) || "ilford";
+  const area = clean(formData.get("area")) || "slough";
   const postcode = clean(formData.get("postcode")).toUpperCase();
   const details = clean(formData.get("details"));
   const phone = clean(formData.get("phone"));

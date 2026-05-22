@@ -1,5 +1,5 @@
 
-
+import type { ReactNode } from "react";
 import { createBusiness } from "../actions";
 import Footer from "../components/Footer";
 type FieldOption = {
@@ -113,7 +113,7 @@ function PriceIcon() {
   );
 }
 
-function ProofPill({ children }: { children: React.ReactNode }) {
+function ProofPill({ children }: { children: ReactNode }) {
   return (
     <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-extrabold text-[#071638] shadow-[0_10px_22px_rgba(7,22,56,0.06)] ring-1 ring-[#dfe5ee]">
       <span className="grid h-5 w-5 place-items-center rounded-full bg-[#f1faf3] text-[#08783f]"><TickIcon /></span>
@@ -122,7 +122,7 @@ function ProofPill({ children }: { children: React.ReactNode }) {
   );
 }
 
-function BenefitCard({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+function BenefitCard({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
   return (
     <div className="rounded-[20px] border border-[#e1e6ee] bg-white p-5 shadow-[0_16px_40px_rgba(7,22,56,0.06)]">
       <span className="grid h-[48px] w-[48px] place-items-center rounded-full bg-[#f1faf3] text-[#08783f] ring-1 ring-[#d8eddd]">{icon}</span>
@@ -132,7 +132,7 @@ function BenefitCard({ icon, title, text }: { icon: React.ReactNode; title: stri
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
       <span className="mb-2 block text-[14px] font-extrabold text-[#071638]">{label}</span>
@@ -150,10 +150,21 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
-function Select({ children, name, defaultValue = "" }: { children: React.ReactNode; name: string; defaultValue?: string }) {
+function Select({
+  children,
+  name,
+  defaultValue = "",
+  required = true,
+}: {
+  children: ReactNode;
+  name: string;
+  defaultValue?: string;
+  required?: boolean;
+}) {
   return (
     <select
       name={name}
+      required={required}
       className="h-[52px] w-full appearance-none rounded-[12px] border border-[#dfe5ee] bg-white px-4 text-[15px] font-semibold text-[#071638] outline-none transition focus:border-[#98d7ad] focus:ring-4 focus:ring-[#e8f7ed]"
       defaultValue={defaultValue}
     >
@@ -194,7 +205,7 @@ function SignupForm() {
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field label="Business name">
-          <Input name="businessName" placeholder="e.g. Slough Van Man" required />
+          <Input name="businessName" placeholder="e.g. Slough Van Man" autoComplete="organization" required />
         </Field>
 
         <Field label="Service you offer">
@@ -212,14 +223,26 @@ function SignupForm() {
         <Field label="WhatsApp number">
           <div className="flex h-[52px] overflow-hidden rounded-[12px] border border-[#dfe5ee] bg-white focus-within:border-[#98d7ad] focus-within:ring-4 focus-within:ring-[#e8f7ed]">
             <div className="grid w-[58px] place-items-center border-r border-[#dfe5ee] text-[#08783f]"><PhoneIcon /></div>
-            <input name="whatsapp" inputMode="tel" placeholder="07123 456789" required className="min-w-0 flex-1 px-4 text-[15px] font-semibold text-[#071638] outline-none placeholder:text-[#8b94a7]" />
+            <input name="whatsapp" inputMode="tel" autoComplete="tel" pattern="^(?:0|\\+44)[0-9 ]{9,14}$" title="Enter a valid UK phone number, for example 07123 456789" placeholder="07123 456789" required className="min-w-0 flex-1 px-4 text-[15px] font-semibold text-[#071638] outline-none placeholder:text-[#8b94a7]" />
           </div>
+        </Field>
+
+        <Field label="Business postcode">
+          <Input
+            name="postcode"
+            placeholder="e.g. SL1 1AA"
+            autoComplete="postal-code"
+            required
+            pattern="^SL[123]\\s?[0-9][A-Z]{2}$"
+            title="Enter a valid Slough postcode starting with SL1, SL2 or SL3, for example SL1 1AA"
+            className="uppercase"
+          />
         </Field>
 
         <Field label="Starting price from (optional)">
           <div className="flex h-[52px] overflow-hidden rounded-[12px] border border-[#dfe5ee] bg-white focus-within:border-[#98d7ad] focus-within:ring-4 focus-within:ring-[#e8f7ed]">
             <div className="grid w-[48px] place-items-center border-r border-[#dfe5ee] text-[17px] font-extrabold text-[#071638]">£</div>
-            <input name="startingPrice" inputMode="decimal" placeholder="e.g. 65" className="min-w-0 flex-1 px-4 text-[15px] font-semibold text-[#071638] outline-none placeholder:text-[#8b94a7]" />
+            <input name="startingPrice" inputMode="decimal" min="0" step="1" placeholder="e.g. 65" className="min-w-0 flex-1 px-4 text-[15px] font-semibold text-[#071638] outline-none placeholder:text-[#8b94a7]" />
           </div>
         </Field>
       </div>
@@ -227,14 +250,14 @@ function SignupForm() {
       <div className="mt-5">
         <p className="mb-1 text-[14px] font-extrabold text-[#071638]">Postcode areas you cover</p>
         <p className="mb-3 text-[12px] font-bold leading-[1.4] text-[#657089]">
-          Quickola is currently accepting selected Slough providers. Choose the Slough postcode prefixes you cover. Example: SL1 matches SL1 1AA.
+          Enter your business postcode above, then choose the Slough postcode prefixes you actually cover. Example: SL1 matches SL1 1AA.
         </p>
         <details className="rounded-[16px] border border-[#dfe5ee] bg-[#fbfcfd] p-3">
           <summary className="cursor-pointer list-none text-[13px] font-extrabold text-[#08783f] [&::-webkit-details-marker]:hidden">
             Choose Slough postcode areas
           </summary>
           <div className="mt-3 flex max-h-[190px] flex-wrap gap-2 overflow-y-auto pr-1">
-            {areas.map((area) => <AreaChip key={area} area={area} />)}
+            {areas.map((area, index) => <AreaChip key={area} area={area} defaultChecked={index === 0} />)}
           </div>
           <p className="mt-3 text-[11px] font-bold text-[#9aa4b5]">
             Selected areas turn green. Only Slough areas are being accepted at launch.
@@ -245,10 +268,12 @@ function SignupForm() {
           <input
             name="areasCustom"
             placeholder="Only use SL1, SL2 or SL3"
+            pattern="^(?:\\s*SL[123]\\s*,?\\s*)*$"
+            title="Only SL1, SL2 and SL3 are accepted at launch. Separate multiple areas with commas."
             className="h-[48px] w-full rounded-[12px] border border-[#dfe5ee] bg-white px-4 text-[14px] font-semibold uppercase text-[#071638] outline-none transition placeholder:normal-case placeholder:text-[#8b94a7] focus:border-[#98d7ad] focus:ring-4 focus:ring-[#e8f7ed]"
           />
           <span className="mt-2 block text-[11px] font-bold leading-[1.4] text-[#9aa4b5]">
-            Only Slough provider areas are being accepted. Do not enter full customer postcodes here.
+            This is for extra coverage areas only. Your main business postcode above is required.
           </span>
         </label>
       </div>
@@ -269,7 +294,7 @@ function SignupForm() {
         </Field>
 
         <Field label="Profile link name">
-          <Input name="profileSlug" placeholder="e.g. slough-van-man" />
+          <Input name="profileSlug" placeholder="e.g. slough-van-man" pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$" title="Use lowercase letters, numbers and hyphens only, for example slough-van-man" />
         </Field>
       </div>
 
@@ -278,6 +303,7 @@ function SignupForm() {
         <textarea
           name="description"
           maxLength={180}
+          required
           placeholder="Tell customers what service you offer, which areas you cover and when you are usually available."
           className="h-[104px] w-full resize-none rounded-[12px] border border-[#dfe5ee] bg-white px-4 py-3 text-[15px] font-semibold text-[#071638] outline-none transition placeholder:text-[#8b94a7] focus:border-[#98d7ad] focus:ring-4 focus:ring-[#e8f7ed]"
         />

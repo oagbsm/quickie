@@ -31,7 +31,7 @@ export default function Footer() {
               Quickola
             </p>
             <div className="grid gap-2 text-[14px] font-extrabold text-[#071638]">
-              <a href="/About" className="hover:text-[#08783f]">About</a>
+              <a href="/about" className="hover:text-[#08783f]">About</a>
               <a href="/how-it-works" className="hover:text-[#08783f]">How it works</a>
               <a href="/contact" className="hover:text-[#08783f]">Contact</a>
             </div>
