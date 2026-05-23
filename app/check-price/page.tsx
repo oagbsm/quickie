@@ -851,19 +851,12 @@ function ResultPanel({ config, postcode }: { config: ServiceConfig; postcode: st
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      <div className="mt-5">
         <Link
           href="#match-form"
-          className="flex h-[56px] items-center justify-center rounded-[16px] bg-[#075cff] px-5 text-[15px] font-black text-white shadow-[0_16px_30px_rgba(0,92,255,0.22)] transition hover:-translate-y-0.5 sm:order-2"
+          className="flex h-[56px] w-full items-center justify-center rounded-[16px] bg-[#075cff] px-5 text-[15px] font-black text-white shadow-[0_16px_30px_rgba(0,92,255,0.22)] transition hover:-translate-y-0.5"
         >
           Get fair local options →
-        </Link>
-
-        <Link
-          href="#quote-check"
-          className="flex h-[56px] items-center justify-center rounded-[16px] border border-[#cbd8ee] bg-white px-5 text-[15px] font-black text-[#075cff] transition hover:-translate-y-0.5 hover:border-[#075cff] sm:order-1"
-        >
-          Check my quote →
         </Link>
       </div>
 
@@ -921,29 +914,6 @@ function ResultPanel({ config, postcode }: { config: ServiceConfig; postcode: st
   );
 }
 
-function QuoteCheck({ config }: { config: ServiceConfig }) {
-  return (
-    <section id="quote-check" className="scroll-mt-[90px] rounded-[24px] border border-[#e1e6ee] bg-white p-4 shadow-[0_16px_50px_rgba(7,22,56,0.06)] sm:p-5">
-      <h2 className="text-[24px] font-black tracking-[-0.04em] text-[#071638]">Already got a quote?</h2>
-      <p className="mt-1 text-[14px] font-semibold leading-[1.45] text-[#52627a]">Enter the price you were given and we’ll help you judge it against the fair Slough range.</p>
-
-      <div className="mt-4 rounded-[16px] border border-[#dbe8ff] bg-[#f8fbff] p-4">
-        <p className="text-[13px] font-black text-[#071638]">Fair guide for {config.label}</p>
-        <p className="mt-1 text-[28px] font-black tracking-[-0.05em] text-[#075cff]">{config.fairPrice}</p>
-      </div>
-
-      <form action={saveCheckPriceRequest} className="mt-4 space-y-3">
-        <input type="hidden" name="service" value={config.slug} />
-        <input type="hidden" name="source" value="quote-check" />
-        <TextInput label="Quoted price" name="quoted_price" placeholder="e.g. £85/hr or £160 total" icon={<Icon type="tag" />} required />
-        <TextInput label="Email result to" name="email" type="email" placeholder="you@example.com" icon={<Icon type="mail" />} required />
-        <button type="submit" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#075cff] px-5 text-[15px] font-black text-white shadow-[0_16px_30px_rgba(0,92,255,0.22)]">
-          Check if it’s fair →
-        </button>
-      </form>
-    </section>
-  );
-}
 
 function DetailsForm({ config, postcode }: { config: ServiceConfig; postcode: string }) {
   return (
@@ -1083,7 +1053,6 @@ export default async function CheckPricePage({ searchParams }: CheckPricePagePro
         <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(370px,0.72fr)] lg:items-start">
           <div className="space-y-4">
             <ResultPanel config={config} postcode={postcode} />
-            <QuoteCheck config={config} />
           </div>
           <DetailsForm config={config} postcode={postcode} />
         </div>
