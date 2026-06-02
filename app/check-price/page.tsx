@@ -7,6 +7,8 @@ type CheckPricePageProps = {
   searchParams?: Promise<{
     service?: string;
     postcode?: string;
+    request_id?: string;
+    mode?: string;
   }>;
 };
 
@@ -46,6 +48,13 @@ const serviceAliases: Record<string, string> = {
   plumber: "plumbing",
   electrical: "electrician",
   electricians: "electrician",
+  helper: "local-helper",
+  labourer: "local-helper",
+  laborer: "local-helper",
+  "local-help": "local-helper",
+  "lifting-help": "local-helper",
+  "small-rubbish": "local-helper",
+  "flat-pack": "local-helper",
   "painter-decorator": "painter-decorator",
   "painter-and-decorator": "painter-decorator",
 };
@@ -107,11 +116,48 @@ const serviceConfigs: Record<string, ServiceConfig> = {
       { label: "Urgent van job", value: "urgent-van-job" },
     ],
     detailLabel: "Load size",
-    detailOptions: [
+     detailOptions: [
       { label: "Few items", value: "few-items" },
       { label: "One room", value: "one-room" },
       { label: "Small flat", value: "small-flat" },
       { label: "Large load", value: "large-load" },
+    ],
+  },
+  "local-helper": {
+    label: "Local Helper",
+    slug: "local-helper",
+    icon: "tool",
+    headline: "Local Helper Prices in Slough",
+    fairPrice: "£25 – £60",
+    totalEstimate: "Small quick jobs are often around £40 if nearby and simple",
+    sourceLine:
+      "Guide range based on small local tasks, lifting help, light labour, small rubbish jobs and informal Slough helper pricing.",
+    warning:
+      "Use local helpers only for low-risk tasks. Do not use informal helpers for gas, electrical, plumbing, roof, locksmith or safety-critical jobs.",
+    bands: [
+      { label: "Small task", price: "£25 – £40", note: "Quick nearby help", tone: "fair" },
+      { label: "Normal helper job", price: "£40 – £60", note: "Most small local jobs", tone: "normal" },
+      { label: "Check before paying", price: "£60+", note: "May need a proper provider", tone: "warning" },
+    ],
+    factors: ["Task size", "Time needed", "Lifting required", "Distance", "Rubbish amount", "Urgency"],
+    included: ["Basic local help", "Small-task labour", "Quick availability check"],
+    common:
+      "Lifting a few items, taking small rubbish, flat-pack assembly, garden tidy-ups, furniture pickup help and quick local labour tasks.",
+    jobOptions: [
+      { label: "Lifting help", value: "lifting-help" },
+      { label: "Small rubbish job", value: "small-rubbish-job" },
+      { label: "Labourer / helper", value: "labourer-helper" },
+      { label: "Flat-pack assembly", value: "flat-pack-assembly" },
+      { label: "Move a few items", value: "move-few-items" },
+      { label: "Garden tidy help", value: "garden-tidy-help" },
+    ],
+    detailLabel: "Task size",
+    detailOptions: [
+      { label: "Very small task", value: "very-small-task" },
+      { label: "Around 1 hour", value: "around-1-hour" },
+      { label: "Few items / bags", value: "few-items-bags" },
+      { label: "Half-day help", value: "half-day-help" },
+      { label: "Not sure", value: "not-sure" },
     ],
   },
   removals: {
@@ -798,116 +844,103 @@ function TextInput({ label, name, placeholder, icon, type = "text", required, pa
   );
 }
 
-function ResultPanel({ config, postcode }: { config: ServiceConfig; postcode: string }) {
+function ResultPanel({ config, postcode, requestId }: { config: ServiceConfig; postcode: string; requestId?: string }) {
   return (
     <section className="rounded-[24px] border border-[#dfe6ef] bg-white p-4 shadow-[0_14px_40px_rgba(7,22,56,0.055)] sm:rounded-[26px] sm:p-6 lg:p-7">
-      <div className="text-center sm:text-left">
+      <div className="text-center">
         <div className="inline-flex items-center gap-2 rounded-full bg-[#edf8f1] px-3 py-1.5 text-[11px] font-black text-[#08783f]">
           <Icon type="pin" className="h-3.5 w-3.5" />
           {config.label} · {postcode}
         </div>
 
-        <div className="mt-4 flex flex-col items-center gap-3 sm:mt-5 sm:flex-row sm:items-start sm:gap-5">
-          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-[#eff5ff] text-[#075cff] sm:h-16 sm:w-16 sm:rounded-[22px]">
-            <Icon type={config.icon} className="h-8 w-8 sm:h-9 sm:w-9" />
-          </span>
+        <h1 className="mx-auto mt-4 max-w-[560px] text-[34px] font-black leading-[0.98] tracking-[-0.06em] text-[#071638] sm:text-[52px]">
+          Price guide ready
+        </h1>
 
-          <div>
-            <h1 className="text-[30px] font-black leading-[1.02] tracking-[-0.055em] text-[#071638] sm:text-[46px]">
-              {config.headline}
-            </h1>
-
-            <div className="mx-auto mt-4 max-w-[330px] rounded-[22px] border border-[#dbe8ff] bg-[#f7fbff] px-4 py-4 text-center sm:mx-0 sm:max-w-none sm:border-0 sm:bg-transparent sm:p-0 sm:text-left">
-              <p className="text-[13px] font-black uppercase tracking-[0.08em] text-[#075cff] sm:text-[18px] sm:normal-case sm:tracking-normal">
-                Fair Slough price
-              </p>
-
-              <p className="mt-1 text-[44px] font-black leading-none tracking-[-0.075em] text-[#075cff] sm:text-[48px]">
-                {config.fairPrice}
-              </p>
-
-              {config.totalEstimate ? (
-                <p className="mt-3 text-[13px] font-black leading-[1.35] text-[#071638] sm:text-[14px]">
-                  {config.totalEstimate}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        <p className="mx-auto mt-4 max-w-[700px] text-[13px] font-semibold leading-[1.55] text-[#273651] sm:mx-0 sm:text-[16px]">
-          {config.sourceLine} Final price depends on your exact job details.
+        <p className="mx-auto mt-3 max-w-[520px] text-[14px] font-bold leading-[1.45] text-[#44506a] sm:text-[17px]">
+          Choose whether you only want to see the guide price, or want Quickola to help find someone available.
         </p>
       </div>
 
-      <div className="mt-4 rounded-[18px] border border-[#ffe0b8] bg-[#fff9ef] p-4 sm:mt-5">
-        <div className="flex gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#f36b00] ring-1 ring-[#ffd8a8]">
-            !
-          </span>
-          <p className="text-[13px] font-black leading-[1.45] text-[#071638] sm:text-[14px]">
-            {config.warning}
+      <div className="mt-6 rounded-[22px] border border-[#dfe6ef] bg-[#fbfdff] p-4 sm:p-5">
+        <h2 className="text-[19px] font-black tracking-[-0.035em] text-[#071638] sm:text-[24px]">
+          What do you want to do?
+        </h2>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <Link
+            href={`/results?service=${encodeURIComponent(config.slug)}&postcode=${encodeURIComponent(postcode)}&intent=just-checking`}
+            className="group rounded-[20px] border-2 border-[#0b8a43] bg-white p-4 shadow-[0_12px_30px_rgba(8,120,63,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(8,120,63,0.14)] sm:p-5"
+          >
+            <div className="flex items-start gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[16px] bg-[#f1fbf5] text-[#08783f]">
+                <Icon type="tag" className="h-6 w-6" />
+              </span>
+
+              <div>
+                <p className="text-[19px] font-black leading-[1.15] tracking-[-0.035em] text-[#071638]">
+                  See price guide
+                </p>
+                <p className="mt-2 text-[13px] font-bold leading-[1.45] text-[#44506a]">
+                  No contact details needed. Just see the fair local price guide.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex h-[50px] items-center justify-center rounded-[14px] bg-[#08783f] px-4 text-[14px] font-black text-white shadow-[0_12px_24px_rgba(8,120,63,0.18)] transition group-hover:-translate-y-0.5">
+              See price guide →
+            </div>
+          </Link>
+
+          <a
+            href={`/check-price?service=${encodeURIComponent(config.slug)}&postcode=${encodeURIComponent(postcode)}&mode=find-provider${requestId ? `&request_id=${encodeURIComponent(requestId)}` : ""}`}
+            className="group rounded-[20px] border border-[#dfe6ef] bg-white p-4 transition hover:-translate-y-0.5 hover:border-[#b7c2d2] hover:shadow-[0_14px_32px_rgba(7,22,56,0.08)] sm:p-5"
+          >
+            <div className="flex items-start gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[16px] bg-[#eff5ff] text-[#075cff]">
+                <Icon type="briefcase" className="h-6 w-6" />
+              </span>
+
+              <div>
+                <p className="text-[19px] font-black leading-[1.15] tracking-[-0.035em] text-[#071638]">
+                  Find someone available
+                </p>
+                <p className="mt-2 text-[13px] font-bold leading-[1.45] text-[#44506a]">
+                  Use this only if you want Quickola to check local providers.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex h-[50px] items-center justify-center rounded-[14px] border border-[#075cff] bg-white px-4 text-[14px] font-black text-[#075cff] transition group-hover:bg-[#eff5ff]">
+              Connect me with a provider
+            </div>
+          </a>
+        </div>
+
+        <div className="mt-4 rounded-[16px] border border-[#dcebe1] bg-[#f7fcf8] px-4 py-3">
+          <p className="text-[13px] font-black leading-[1.4] text-[#071638]">
+            Free either way. No payment. No obligation.
+          </p>
+          <p className="mt-1 text-[12px] font-semibold leading-[1.45] text-[#44506a]">
+            We only ask for details if you choose local options.
           </p>
         </div>
       </div>
 
-      <div className="mt-5">
-        <Link
-          href="#match-form"
-          className="flex h-[56px] w-full items-center justify-center rounded-[16px] bg-[#075cff] px-5 text-[15px] font-black text-white shadow-[0_16px_30px_rgba(0,92,255,0.22)] transition hover:-translate-y-0.5"
-        >
-          Get fair local options →
-        </Link>
-      </div>
+      <div className="mt-4 rounded-[18px] border border-[#e1e6ee] bg-white p-4 sm:mt-5">
+        <h2 className="text-[16px] font-black text-[#071638]">
+          What affects the final price?
+        </h2>
 
-      <div className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-3">
-        {config.bands.map((band) => (
-          <BandCard key={band.label} band={band} />
-        ))}
-      </div>
-
-      <div className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-2">
-        <div className="rounded-[18px] border border-[#e1e6ee] bg-white p-4">
-          <h2 className="text-[16px] font-black text-[#071638]">
-            What changes the price?
-          </h2>
-
-          <div className="mt-3 space-y-2">
-            {config.factors.map((item) => (
-              <div
-                key={item}
-                className="flex items-center gap-2 text-[13px] font-bold text-[#273651]"
-              >
-                <span className="text-[#075cff]">＋</span> {item}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[18px] border border-[#e1e6ee] bg-white p-4">
-          <h2 className="text-[16px] font-black text-[#071638]">
-            Usually included in fair prices
-          </h2>
-
-          <div className="mt-3 space-y-2">
-            {config.included.map((item) => (
-              <div
-                key={item}
-                className="flex items-center gap-2 text-[13px] font-bold text-[#273651]"
-              >
-                <span className="text-[#08783f]">✓</span> {item}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 rounded-[18px] border border-[#dcebe1] bg-[#f1fbf5] p-4 sm:mt-5">
-        <div className="flex gap-3">
-          <Icon type="pin" className="mt-0.5 h-5 w-5 shrink-0 text-[#08783f]" />
-          <p className="text-[13px] font-bold leading-[1.45] text-[#071638] sm:text-[14px]">
-            <span className="font-black">Common in Slough:</span> {config.common}
-          </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {config.factors.slice(0, 4).map((item) => (
+            <div
+              key={item}
+              className="flex items-center gap-2 text-[13px] font-bold text-[#273651]"
+            >
+              <span className="text-[#075cff]">＋</span> {item}
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -915,11 +948,19 @@ function ResultPanel({ config, postcode }: { config: ServiceConfig; postcode: st
 }
 
 
-function DetailsForm({ config, postcode }: { config: ServiceConfig; postcode: string }) {
+function DetailsForm({
+  config,
+  postcode,
+  requestId,
+}: {
+  config: ServiceConfig;
+  postcode: string;
+  requestId?: string;
+}) {
   return (
-    <aside
+    <section
       id="match-form"
-      className="scroll-mt-[90px] rounded-[24px] border border-[#dfe6ef] bg-white p-4 shadow-[0_16px_50px_rgba(7,22,56,0.06)] sm:p-5 lg:sticky lg:top-[84px]"
+      className="mx-auto max-w-[720px] scroll-mt-[90px] rounded-[24px] border border-[#dfe6ef] bg-white p-4 shadow-[0_16px_50px_rgba(7,22,56,0.06)] sm:p-5"
     >
       <div className="rounded-[20px] bg-[linear-gradient(180deg,#075cff_0%,#0447ca_100%)] p-4 text-white shadow-[0_14px_30px_rgba(0,92,255,0.18)]">
         <p className="text-[12px] font-black uppercase tracking-[0.1em] text-white/75">
@@ -927,26 +968,28 @@ function DetailsForm({ config, postcode }: { config: ServiceConfig; postcode: st
         </p>
 
         <h2 className="mt-1 text-[25px] font-black leading-[1.02] tracking-[-0.05em]">
-          Want fair local options?
+          Find someone available
         </h2>
 
         <p className="mt-2 text-[13px] font-bold leading-[1.45] text-white/88">
-          Send your job details and we’ll help you compare the fair Slough range.
-          No booking is made.
+          Just a few details so we can send your request to one suitable local provider.
+          No payment, no booking and no obligation.
         </p>
       </div>
 
       <form action={saveCheckPriceRequest} className="mt-4 space-y-3">
         <input type="hidden" name="service" value={config.slug} />
         <input type="hidden" name="postcode" value={postcode} />
-        <input type="hidden" name="source" value="check-price-match" />
+        <input type="hidden" name="source" value="cumar_complete" />
+        <input type="hidden" name="intent" value="wants_options" />
+        {requestId ? <input type="hidden" name="request_id" value={requestId} /> : null}
 
         <div className="rounded-[16px] border border-[#dcebe1] bg-[#f7fcf8] px-4 py-3">
           <p className="text-[13px] font-black leading-[1.35] text-[#071638]">
-            Your fair price range is ready for {postcode}.
+            Your number is only sent to one suitable provider if they can help.
           </p>
           <p className="mt-1 text-[12px] font-semibold leading-[1.45] text-[#44506a]">
-            Only continue if you want help finding suitable local options.
+            They contact you directly. You choose whether to continue.
           </p>
         </div>
 
@@ -972,16 +1015,15 @@ function DetailsForm({ config, postcode }: { config: ServiceConfig; postcode: st
         />
 
         <TextInput
-          label="Email"
+          label="Email optional"
           name="email"
           type="email"
           placeholder="you@example.com"
           icon={<Icon type="mail" />}
-          required
         />
 
         <TextInput
-          label="WhatsApp optional"
+          label="Mobile number"
           name="phone"
           type="tel"
           placeholder="07xxx xxxxxx"
@@ -991,44 +1033,21 @@ function DetailsForm({ config, postcode }: { config: ServiceConfig; postcode: st
           title="Enter an 11-digit UK mobile number starting with 07."
           minLength={11}
           maxLength={11}
+          required
         />
 
         <button
           type="submit"
           className="flex h-[54px] w-full items-center justify-center gap-3 rounded-[15px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[16px] font-black text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5"
         >
-          Send me fair options →
+          Send my request →
         </button>
 
         <p className="text-center text-[12px] font-semibold text-[#657089]">
-          Free · No spam calls · No payment today · No paid ranking
+          Free · Sent to one suitable provider · No payment today
         </p>
       </form>
-    </aside>
-  );
-}
-function MobileStickyCta({ config, postcode }: { config: ServiceConfig; postcode: string }) {
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#dfe6ef] bg-white/96 px-4 py-3 shadow-[0_-12px_34px_rgba(7,22,56,0.12)] backdrop-blur-md lg:hidden">
-      <div className="mx-auto flex max-w-[520px] items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[11px] font-black uppercase tracking-[0.08em] text-[#657089]">
-            {config.label} · {postcode}
-          </p>
-
-          <p className="truncate text-[16px] font-black tracking-[-0.04em] text-[#071638]">
-            Fair price: {config.fairPrice}
-          </p>
-        </div>
-
-        <Link
-          href="#match-form"
-          className="flex h-12 shrink-0 items-center justify-center rounded-[14px] bg-[#075cff] px-4 text-[14px] font-black text-white shadow-[0_10px_24px_rgba(0,92,255,0.22)]"
-        >
-          Get options
-        </Link>
-      </div>
-    </div>
+    </section>
   );
 }
 
@@ -1037,27 +1056,30 @@ export default async function CheckPricePage({ searchParams }: CheckPricePagePro
   const serviceSlug = getCanonicalServiceSlug(params?.service);
   const config = getServiceConfig(serviceSlug);
   const postcode = formatPostcode(params?.postcode || "");
+  const requestId = typeof params?.request_id === "string" ? params.request_id : undefined;
+  const mode = params?.mode === "find-provider" ? "find-provider" : "choose";
 
   if (!config || !postcode || !isValidUkPostcode(postcode) || !isSupportedSloughPostcode(postcode)) {
     redirect("/");
   }
 
   return (
-<main className="min-h-screen overflow-x-hidden bg-[#f4f8fb] pb-24 text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] lg:pb-0">      <Header />
+    <main className="min-h-screen overflow-x-hidden bg-[#f4f8fb] pb-8 text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] lg:pb-0">
+      <Header />
 
       <section className="mx-auto w-full max-w-[1280px] px-4 pb-8 pt-5 sm:px-6 lg:px-8">
         <Link href="/" className="inline-flex items-center gap-2 text-[13px] font-black text-[#071638] transition hover:text-[#08783f]">
           ← Back
         </Link>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(370px,0.72fr)] lg:items-start">
-          <div className="space-y-4">
-            <ResultPanel config={config} postcode={postcode} />
-          </div>
-          <DetailsForm config={config} postcode={postcode} />
+        <div className="mt-4">
+          {mode === "find-provider" ? (
+            <DetailsForm config={config} postcode={postcode} requestId={requestId} />
+          ) : (
+            <ResultPanel config={config} postcode={postcode} requestId={requestId} />
+          )}
         </div>
       </section>
-            <MobileStickyCta config={config} postcode={postcode} />
     </main>
   );
 }

@@ -4,6 +4,8 @@ import {
   deleteBusiness,
   deleteRequest,
   matchRequestToBusiness,
+  runPolForRequest,
+  sendPolMatchToProvider,
   updateBusinessStatus,
   updateRequestStatus,
 } from "../actions";
@@ -82,26 +84,38 @@ async function matchSelectedRequestToBusiness(formData: FormData) {
   await matchRequestToBusiness(formData);
 }
 
+async function runPolForSelectedRequest(formData: FormData) {
+  "use server";
+
+  await runPolForRequest(formData);
+}
+
+async function sendPolMatchForSelectedRequest(formData: FormData) {
+  "use server";
+
+  await sendPolMatchToProvider(formData);
+}
+
 async function getAdminData() {
   const [requestsResult, businessesResult, matchesResult] = await Promise.all([
     supabase
       .from("requests")
       .select(
-        "id, service, area, postcode, time_needed, details, phone, email, status, source, created_at, updated_at, completed_at, matched_business_id, admin_notes"
+        "id, service, area, postcode, time_needed, details, phone, email, status, source, created_at, updated_at, completed_at, matched_business_id, admin_notes, cumar_status, ready_for_pol, pol_status, provider_lane, job_size, job_risk, customer_budget, budget_note"
       )
       .order("created_at", { ascending: false })
       .limit(300),
     supabase
       .from("businesses")
       .select(
-        "id, business_name, category, whatsapp, starting_price, areas, availability, profile_slug, description, status, source, created_at, updated_at, approved_at, rejected_at, completed_jobs, internal_notes"
+        "id, business_name, category, whatsapp, email, phone, contact_name, starting_price, minimum_charge, callout_fee, areas, postcode, postcode_districts, services, provider_type, availability, profile_slug, description, status, source, created_at, updated_at, approved_at, rejected_at, completed_jobs, internal_notes, active, trust_score, provider_score, average_response_minutes, auto_match_enabled, auto_send_enabled, max_daily_leads, leads_sent_today, verification_status, whatsapp_alerts_enabled, email_alerts_enabled"
       )
       .order("created_at", { ascending: false })
       .limit(300),
     supabase
       .from("request_matches")
       .select(
-        "id, request_id, business_id, status, quoted_price, availability, provider_reply, sent_at, accepted_at, rejected_at, selected_at, completed_at, created_at, updated_at"
+        "id, request_id, business_id, status, quoted_price, availability, provider_reply, sent_at, accepted_at, rejected_at, selected_at, completed_at, created_at, updated_at, rough_range, callout_fee, minimum_charge, final_price_depends_on, match_label, user_option_number, twilio_message_sid, provider_reply_raw, admin_approved_at, sent_to_user_at"
       )
       .order("created_at", { ascending: false })
       .limit(1000),
@@ -222,6 +236,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     requestMatches={requestMatches}
                     updateRequestStatus={updateSelectedRequestStatus}
                     matchRequestToBusiness={matchSelectedRequestToBusiness}
+                    runPolForRequest={runPolForSelectedRequest}
+                    sendPolMatchToProvider={sendPolMatchForSelectedRequest}
                   />
                 </div>
               </>

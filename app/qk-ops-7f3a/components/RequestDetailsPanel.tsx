@@ -10,7 +10,31 @@ import {
 } from "../lib/admin-utils";
 import StatusBadge from "./StatusBadge";
 
+
 type RequestAction = (formData: FormData) => Promise<void>;
+
+type PolRequestMatchRow = RequestMatchRow & {
+  user_option_number?: number | string | null;
+  match_label?: string | null;
+  rough_range?: string | null;
+  quoted_price?: number | string | null;
+  minimum_charge?: number | string | null;
+  callout_fee?: number | string | null;
+  availability?: string | null;
+  provider_reply?: string | null;
+  sent_at?: string | null;
+};
+
+type PolRequestRow = RequestRow & {
+  ready_for_pol?: boolean | null;
+  cumar_status?: string | null;
+  pol_status?: string | null;
+  provider_lane?: string | null;
+  job_size?: string | null;
+  job_risk?: string | null;
+  customer_budget?: number | string | null;
+  budget_note?: string | null;
+};
 
 const londonAreas = [
   "ilford",
@@ -68,6 +92,7 @@ const serviceAliases: Record<string, string[]> = {
   "regular-cleaning": ["regular-cleaning", "regular cleaning", "domestic-cleaning", "domestic cleaning", "cleaning"],
   "deep-cleaning": ["deep-cleaning", "deep cleaning", "cleaning"],
   "man-and-van": ["man-and-van", "man and van", "removals"],
+  "local-helper": ["local-helper", "local helper", "helper", "labourer", "laborer", "lifting help", "small rubbish", "flat-pack", "garden tidy"],
   removals: ["removals", "man-and-van", "man and van"],
   plumber: ["plumber", "plumbing"],
   electrician: ["electrician", "electrical"],
@@ -341,9 +366,11 @@ function MatchedProviderCard({ business }: { business: BusinessRow | null }) {
 function MatchAttemptsCard({
   requestMatches,
   businesses,
+  sendPolMatchToProvider,
 }: {
   requestMatches: RequestMatchRow[];
   businesses: BusinessRow[];
+  sendPolMatchToProvider?: RequestAction;
 }) {
   if (requestMatches.length === 0) {
     return (
@@ -360,12 +387,13 @@ function MatchAttemptsCard({
           Provider attempts
         </h3>
         <span className="rounded-full bg-[#f7f9fb] px-3 py-1 text-[11px] font-black text-[#071638] ring-1 ring-[#e1e6ee]">
-          {requestMatches.length} sent
+          {requestMatches.length} queued
         </span>
       </div>
 
       <div className="mt-3 grid gap-2">
         {requestMatches.map((match) => {
+          const polMatch = match as PolRequestMatchRow;
           const business = businesses.find((item) => item.id === match.business_id);
 
           return (
@@ -383,11 +411,27 @@ function MatchAttemptsCard({
               </div>
 
               <div className="mt-3 grid gap-1.5 text-[12px] font-semibold text-[#44506a]">
-                <p><span className="font-black text-[#071638]">Quote:</span> {match.quoted_price ? `£${match.quoted_price}` : "Not provided"}</p>
-                <p><span className="font-black text-[#071638]">Availability:</span> {match.availability || "Not provided"}</p>
-                <p><span className="font-black text-[#071638]">Reply:</span> {match.provider_reply || "No reply yet"}</p>
-                <p><span className="font-black text-[#071638]">Sent:</span> {formatDate(match.sent_at || match.created_at)}</p>
+                <p><span className="font-black text-[#071638]">Option:</span> {polMatch.user_option_number || "—"}</p>
+                <p><span className="font-black text-[#071638]">Label:</span> {formatLabel(polMatch.match_label || "queued")}</p>
+                <p><span className="font-black text-[#071638]">Rough range:</span> {polMatch.rough_range || (polMatch.quoted_price ? `£${polMatch.quoted_price}` : "Not provided")}</p>
+                <p><span className="font-black text-[#071638]">Minimum:</span> {polMatch.minimum_charge ? `£${polMatch.minimum_charge}` : "Not provided"}</p>
+                <p><span className="font-black text-[#071638]">Call-out:</span> {polMatch.callout_fee ? `£${polMatch.callout_fee}` : "Not provided"}</p>
+                <p><span className="font-black text-[#071638]">Availability:</span> {polMatch.availability || "Not provided"}</p>
+                <p><span className="font-black text-[#071638]">Reply:</span> {polMatch.provider_reply || "No reply yet"}</p>
+                <p><span className="font-black text-[#071638]">Created:</span> {formatDate(polMatch.sent_at || match.created_at)}</p>
               </div>
+
+              {sendPolMatchToProvider && match.status === "queued" ? (
+                <form action={sendPolMatchToProvider} className="mt-3">
+                  <input type="hidden" name="request_match_id" value={match.id} />
+                  <button
+                    type="submit"
+                    className="h-10 w-full rounded-[12px] bg-[#075cff] px-4 text-[12px] font-black text-white shadow-[0_10px_20px_rgba(0,92,255,0.16)] transition hover:-translate-y-0.5"
+                  >
+                    Send to provider
+                  </button>
+                </form>
+              ) : null}
             </div>
           );
         })}
@@ -403,6 +447,8 @@ export default function RequestDetailsPanel({
   updateRequestStatus,
   updateRequestNotes,
   matchRequestToBusiness,
+  runPolForRequest,
+  sendPolMatchToProvider,
 }: {
   request: RequestRow | null;
   businesses: BusinessRow[];
@@ -410,6 +456,8 @@ export default function RequestDetailsPanel({
   updateRequestStatus?: RequestAction;
   updateRequestNotes?: RequestAction;
   matchRequestToBusiness?: RequestAction;
+  runPolForRequest?: RequestAction;
+  sendPolMatchToProvider?: RequestAction;
 }) {
   if (!request) {
     return (
@@ -422,6 +470,7 @@ export default function RequestDetailsPanel({
     );
   }
 
+  const polRequest = request as PolRequestRow;
   const matchedBusiness = getMatchedBusiness(request, businesses);
   const providerMessage = buildProviderRequestMessage(request);
   const customerConsentMessage = buildCustomerConsentMessage(request, matchedBusiness);
@@ -435,6 +484,23 @@ export default function RequestDetailsPanel({
           <span className="rounded-full bg-[#f1faf4] px-3 py-1 text-[11px] font-black text-[#08783f] ring-1 ring-[#d8eddd]">Match first</span>
         </div>
         <div className="grid gap-3">
+          {runPolForRequest && polRequest.ready_for_pol && polRequest.pol_status === "waiting" ? (
+            <form action={runPolForRequest} className="rounded-[16px] border border-[#dbe8ff] bg-[#f7fbff] p-3">
+              <input type="hidden" name="request_id" value={request.id} />
+              <div className="mb-2 rounded-[13px] bg-white px-3 py-2 ring-1 ring-[#e1e8f5]">
+                <p className="text-[12px] font-black uppercase tracking-[0.08em] text-[#075cff]">Pol ready</p>
+                <p className="mt-1 text-[12px] font-bold leading-[1.35] text-[#44506a]">
+                  Auto-find matching providers and create queued request matches.
+                </p>
+              </div>
+              <button
+                type="submit"
+                className="h-11 w-full rounded-[13px] bg-[#075cff] px-4 text-[13px] font-black text-white shadow-[0_10px_22px_rgba(0,92,255,0.18)] transition hover:-translate-y-0.5"
+              >
+                Run Pol matching
+              </button>
+            </form>
+          ) : null}
           <MatchBusinessForm request={request} businesses={businesses} matchRequestToBusiness={matchRequestToBusiness} />
           <StatusForm request={request} updateRequestStatus={updateRequestStatus} />
         </div>
@@ -461,13 +527,23 @@ export default function RequestDetailsPanel({
           <DetailRow label="Needed" value={formatLabel(request.time_needed)} />
           <DetailRow label="Details" value={request.details || "No details"} preserveLines />
           <DetailRow label="Source" value={formatLabel(request.source)} />
+          <DetailRow label="Cumar" value={formatLabel(polRequest.cumar_status || "not started")} />
+          <DetailRow label="Pol" value={formatLabel(polRequest.pol_status || "not started")} />
+          <DetailRow label="Lane" value={formatLabel(polRequest.provider_lane || "not set")} />
+          <DetailRow label="Job size" value={formatLabel(polRequest.job_size || "not set")} />
+          <DetailRow label="Risk" value={formatLabel(polRequest.job_risk || "not set")} />
+          <DetailRow label="Budget" value={polRequest.customer_budget ? `£${polRequest.customer_budget}` : polRequest.budget_note || "Not provided"} />
           <DetailRow label="Created" value={formatDate(request.created_at)} />
           <DetailRow label="Updated" value={formatDate(request.updated_at)} />
         </dl>
       </section>
 
       <MatchedProviderCard business={matchedBusiness} />
-      <MatchAttemptsCard requestMatches={matchesForRequest} businesses={businesses} />
+      <MatchAttemptsCard
+        requestMatches={matchesForRequest}
+        businesses={businesses}
+        sendPolMatchToProvider={sendPolMatchToProvider}
+      />
 
       <CopyBox title="Provider message" text={providerMessage} />
       <CopyBox title="Customer consent message" text={customerConsentMessage} />

@@ -1,4 +1,3 @@
-
 import Footer from "../components/Footer";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +13,9 @@ type ResultsPageProps = {
     time_needed?: string;
     email?: string;
     phone?: string;
+    intent?: string;
+    request_id?: string;
+    ready_for_provider?: string;
   }>;
 };
 
@@ -25,6 +27,12 @@ type PriceConfig = {
 };
 
 const priceConfigs: Record<string, PriceConfig> = {
+  "local-helper": {
+    label: "Local Helper",
+    from: "£25 – £45",
+    suffix: "/hr",
+    note: "Typical Slough range before job size, access, lifting, waiting time and urgency are confirmed.",
+  },
   cleaning: {
     label: "Cleaning",
     from: "£18 – £25",
@@ -256,11 +264,13 @@ function slugify(value: string | undefined, fallback: string) {
 }
 
 function getPriceConfig(serviceSlug: string) {
-  return priceConfigs[serviceSlug] ?? {
-    label: formatParam(serviceSlug, "Service"),
-    from: "Guide price pending",
-    note: "We received your request and will review the best available local next step before confirming details.",
-  };
+  return (
+    priceConfigs[serviceSlug] ?? {
+      label: formatParam(serviceSlug, "Service"),
+      from: "Guide price pending",
+      note: "We do not have enough local price data for this service yet. Use this as a placeholder until Quickola has more local checks.",
+    }
+  );
 }
 
 function Header() {
@@ -277,6 +287,7 @@ function Header() {
             Quickola
           </span>
         </a>
+
         <a
           href="/"
           className="inline-flex h-9 shrink-0 items-center justify-center rounded-[10px] border border-[#dfe5ee] bg-white px-3 text-[13px] font-bold text-[#071638] shadow-[0_5px_12px_rgba(7,22,56,0.03)] transition hover:-translate-y-0.5 hover:border-[#b7c2d2] sm:h-10 sm:px-4 sm:text-[14px]"
@@ -351,82 +362,244 @@ function PinIcon() {
   );
 }
 
-function Hero({ postcode, service }: { postcode: string; service: string }) {
-  return (
-    <section className="rounded-[24px] border border-[#dcebe1] bg-[linear-gradient(135deg,#f4fbf6_0%,#ffffff_58%,#edf9f1_100%)] p-4 text-center shadow-[0_14px_38px_rgba(7,22,56,0.055)] sm:p-7 lg:p-8">
-      <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#08783f] text-white shadow-[0_10px_22px_rgba(8,120,63,0.18)] ring-[7px] ring-[#e5f6ea] sm:h-16 sm:w-16">
-        <CheckIcon className="h-8 w-8" />
-      </div>
-
-      <p className="mt-5 text-[11px] font-black uppercase tracking-[0.14em] text-[#08783f]">Request received</p>
-      <h1 className="mx-auto mt-2 max-w-[760px] text-[31px] font-black leading-[1.02] tracking-[-0.055em] text-[#071638] sm:text-[44px]">
-        We’re checking your best next step.
-      </h1>
-      <p className="mx-auto mt-3 max-w-[650px] text-[14px] font-bold leading-[1.5] text-[#44506a] sm:text-[17px]">
-        Your {service.toLowerCase()} request near <span className="font-black text-[#071638]">{postcode}</span> is in motion. We’ll email your update shortly.
-      </p>
-
-      <div className="mx-auto mt-5 grid max-w-[520px] gap-2 sm:grid-cols-2">
-        <a
-          href="/"
-          className="flex h-[52px] items-center justify-center rounded-[14px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[15px] font-black text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5"
-        >
-          Check another price
-        </a>
-        <a
-          href="/"
-          className="flex h-[52px] items-center justify-center rounded-[14px] border border-[#d8eddd] bg-white px-5 text-[15px] font-black text-[#08783f] transition hover:-translate-y-0.5 hover:border-[#08783f]/40"
-        >
-          Back to home
-        </a>
-      </div>
-
-      <div className="mx-auto mt-5 grid max-w-[760px] gap-2 sm:flex sm:flex-wrap sm:justify-center">
-        <span className="inline-flex items-center justify-center gap-2 rounded-[12px] bg-[#eff9f2] px-3 py-2 text-[13px] font-bold text-[#08783f] ring-1 ring-[#d7ecdd]">
-          <span className="h-2 w-2 rounded-full bg-[#08783f]" />
-          No booking made
-        </span>
-        <span className="inline-flex items-center justify-center gap-2 rounded-[12px] bg-white/84 px-3 py-2 text-[13px] font-bold text-[#44506a] ring-1 ring-[#dfe8e4]">
-          <ShieldIcon />
-          Your details stay private
-        </span>
-      </div>
-    </section>
-  );
-}
-
 function HeroGlowStyles() {
   return (
     <style>{`
-      @keyframes quickolaOrbit {
-        to {
-          transform: rotate(360deg);
+      @keyframes quickolaCheckingFade {
+        0%, 88% {
+          opacity: 1;
+          visibility: visible;
+          pointer-events: auto;
+        }
+        100% {
+          opacity: 0;
+          visibility: hidden;
+          pointer-events: none;
         }
       }
+
+      @keyframes quickolaCheckingBar {
+        0% { width: 8%; }
+        32% { width: 42%; }
+        68% { width: 76%; }
+        100% { width: 100%; }
+      }
+
+      @keyframes quickolaCheckingPulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.08); opacity: 0.86; }
+      }
+
+      @keyframes quickolaStepOne {
+        0%, 12% { opacity: 0.4; }
+        18%, 100% { opacity: 1; }
+      }
+
+      @keyframes quickolaStepTwo {
+        0%, 34% { opacity: 0.4; }
+        44%, 100% { opacity: 1; }
+      }
+
+      @keyframes quickolaStepThree {
+        0%, 60% { opacity: 0.4; }
+        72%, 100% { opacity: 1; }
+      }
+
+      .quickola-checking-overlay {
+        animation: quickolaCheckingFade 3s ease forwards;
+      }
+
+      .quickola-checking-bar {
+        animation: quickolaCheckingBar 2.55s ease-out forwards;
+      }
+
+      .quickola-checking-pulse {
+        animation: quickolaCheckingPulse 1.1s ease-in-out infinite;
+      }
+
+      .quickola-step-1 { animation: quickolaStepOne 2.55s ease forwards; }
+      .quickola-step-2 { animation: quickolaStepTwo 2.55s ease forwards; }
+      .quickola-step-3 { animation: quickolaStepThree 2.55s ease forwards; }
     `}</style>
   );
 }
 
+function PriceCheckingOverlay({ config, postcode }: { config: PriceConfig; postcode: string }) {
+  const checks = [
+    ["Checking local data", "quickola-step-1", "✓"],
+    ["Looking at recent jobs", "quickola-step-2", "✓"],
+    ["Calculating fair range", "quickola-step-3", "○"],
+  ];
+
+  return (
+    <div className="quickola-checking-overlay fixed inset-0 z-[90] grid place-items-center bg-white px-4">
+      <div className="w-full max-w-[390px] rounded-[28px] border border-[#e1e6ee] bg-white p-5 text-center shadow-[0_24px_70px_rgba(7,22,56,0.16)]">
+        <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#eef9f2] text-[#08783f] ring-[8px] ring-[#f6fbf8]">
+          <div className="quickola-checking-pulse grid h-11 w-11 place-items-center rounded-full bg-[#08783f] text-white shadow-[0_10px_22px_rgba(8,120,63,0.2)]">
+            <SearchIcon />
+          </div>
+        </div>
+
+        <h2 className="mx-auto mt-5 max-w-[310px] text-[21px] font-black leading-[1.08] tracking-[-0.045em] text-[#071638]">
+          Getting your price guide
+        </h2>
+
+        <p className="mx-auto mt-2 max-w-[310px] text-[13px] font-bold leading-[1.45] text-[#44506a]">
+          Please wait a moment...
+        </p>
+
+        <p className="mx-auto mt-2 max-w-[310px] text-[12px] font-black uppercase tracking-[0.08em] text-[#08783f]">
+          {config.label} · {postcode}
+        </p>
+
+        <div className="mt-5 overflow-hidden rounded-full bg-[#eaf1ee]">
+          <div className="quickola-checking-bar h-1.5 rounded-full bg-[#08783f]" />
+        </div>
+
+        <div className="mt-5 grid gap-3 text-left">
+          {checks.map(([check, className, icon]) => (
+            <div
+              key={check}
+              className={`${className} flex items-center gap-3 text-[13px] font-bold text-[#071638]`}
+            >
+              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-[#b9d9c4] text-[11px] text-[#08783f]">
+                {icon}
+              </span>
+              <span>{check}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8 border-t border-[#edf0f5] pt-4">
+          <p className="text-[12px] font-bold leading-[1.45] text-[#44506a]">
+            This doesn’t send a request. No contact details needed.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function FairPriceCard({ config, postcode }: { config: PriceConfig; postcode: string }) {
   return (
-    <section className="overflow-hidden rounded-[22px] bg-[radial-gradient(circle_at_85%_15%,rgba(255,255,255,0.13),transparent_28%),linear-gradient(135deg,#08783f_0%,#064f35_48%,#071638_100%)] p-5 text-white shadow-[0_16px_42px_rgba(7,22,56,0.12)] lg:p-5">
-      <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-white/76">Your local fair price guide</p>
-      <div className="mt-3 flex flex-wrap items-end gap-3">
-        <span className="text-[40px] font-black leading-none tracking-[-0.055em] sm:text-[48px]">{config.from}</span>
-        {config.suffix ? <span className="pb-2 text-[22px] font-bold">{config.suffix}</span> : null}
-      </div>
-      <p className="mt-3 text-[15px] font-semibold text-white/84">
-        Typical guide range for {config.label.toLowerCase()} near <span className="font-black text-white">{postcode}</span>
+    <section className="overflow-hidden rounded-[22px] bg-[radial-gradient(circle_at_85%_15%,rgba(255,255,255,0.13),transparent_28%),linear-gradient(135deg,#08783f_0%,#064f35_48%,#071638_100%)] p-4 text-center text-white shadow-[0_16px_42px_rgba(7,22,56,0.12)] sm:text-left lg:p-5">
+      <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-white/76">
+        Your local fair price guide
       </p>
 
-      <p className="mt-4 border-t border-white/14 pt-3 text-[13px] font-medium leading-[1.6] text-white/78">
+      <div className="mt-3 flex flex-wrap items-end justify-center gap-3 text-center sm:justify-start sm:text-left">
+        <span className="text-[38px] font-black leading-[0.95] tracking-[-0.065em] sm:text-[52px]">
+          {config.from}
+        </span>
+        {config.suffix ? <span className="pb-2 text-[22px] font-bold">{config.suffix}</span> : null}
+      </div>
+
+      <p className="mt-3 text-[15px] font-semibold text-white/86">
+        Typical guide range for {config.label.toLowerCase()} near{" "}
+        <span className="font-black text-white">{postcode}</span>
+      </p>
+
+      <p className="mt-3 border-t border-white/14 pt-3 text-[13px] font-medium leading-[1.45] text-white/78">
         {config.note}
       </p>
     </section>
   );
 }
 
-function SummaryCard({ service, postcode, jobType, jobDetail, timeNeeded }: {
+function JustCheckingResult({
+  config,
+  postcode,
+  serviceSlug,
+}: {
+  config: PriceConfig;
+  postcode: string;
+  serviceSlug: string;
+}) {
+  const factors = ["Distance", "Load size", "Stairs", "Parking", "Urgency"];
+
+  return (
+    <div className="mx-auto max-w-[680px] space-y-3">
+      <section className="rounded-[24px] border border-[#dcebe1] bg-white p-4 text-center shadow-[0_14px_38px_rgba(7,22,56,0.055)] sm:p-5 lg:p-6">
+        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#08783f]">
+          Price guide
+        </p>
+
+        <h1 className="mx-auto mt-2 max-w-[520px] text-[28px] font-black leading-[1.02] tracking-[-0.055em] text-[#071638] sm:text-[40px]">
+          Your fair price guide
+        </h1>
+
+        <p className="mx-auto mt-2 max-w-[520px] text-[14px] font-bold leading-[1.45] text-[#44506a] sm:text-[16px]">
+          {config.label} · {postcode}
+        </p>
+
+        <div className="mx-auto mt-3 inline-flex items-center justify-center gap-2 rounded-full bg-[#f7fcf8] px-4 py-2 text-[12px] font-black text-[#08783f] ring-1 ring-[#d8eddd]">
+          <CheckIcon className="h-4 w-4" />
+          Price guide ready
+        </div>
+
+        <div className="mt-4">
+          <FairPriceCard config={config} postcode={postcode} />
+        </div>
+
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <span className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-[12px] bg-[#eff9f2] px-3 py-2 text-[13px] font-bold text-[#08783f] ring-1 ring-[#d7ecdd]">
+            <span className="h-2 w-2 rounded-full bg-[#08783f]" />
+            No request sent
+          </span>
+
+          <span className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-[12px] bg-[#f7fafc] px-3 py-2 text-[13px] font-bold text-[#44506a] ring-1 ring-[#dfe6ef]">
+            <ShieldIcon />
+            No provider contacted
+          </span>
+        </div>
+
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <a
+            href={`/check-price?service=${encodeURIComponent(serviceSlug)}&postcode=${encodeURIComponent(
+              postcode
+            )}&mode=find-provider`}
+            className="flex h-[52px] items-center justify-center rounded-[14px] bg-[#075cff] px-5 text-[15px] font-black text-white shadow-[0_12px_24px_rgba(0,92,255,0.2)] transition hover:-translate-y-0.5"
+          >
+            Connect me with a provider
+          </a>
+
+          <a
+            href="/"
+            className="flex h-[52px] items-center justify-center rounded-[14px] border border-[#d8eddd] bg-white px-5 text-[15px] font-black text-[#08783f] transition hover:-translate-y-0.5 hover:border-[#08783f]/40"
+          >
+            Check another price
+          </a>
+        </div>
+      </section>
+
+      <section className="rounded-[20px] border border-[#e1e6ee] bg-white p-3 shadow-[0_10px_28px_rgba(7,22,56,0.035)] sm:p-4">
+        <h2 className="text-[16px] font-black tracking-[-0.02em] text-[#071638]">
+          What affects the price?
+        </h2>
+
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {factors.map((factor) => (
+            <div
+              key={factor}
+              className="rounded-[14px] bg-[#f7fafc] px-3 py-3 text-center text-[12px] font-black text-[#44506a] ring-1 ring-[#edf0f5]"
+            >
+              {factor}
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SummaryCard({
+  service,
+  postcode,
+  jobType,
+  jobDetail,
+  timeNeeded,
+}: {
   service: string;
   postcode: string;
   jobType: string;
@@ -445,12 +618,18 @@ function SummaryCard({ service, postcode, jobType, jobDetail, timeNeeded }: {
     <section className="rounded-[22px] border border-[#e1e6ee] bg-white p-4 shadow-[0_14px_38px_rgba(7,22,56,0.045)] sm:p-5">
       <div className="flex items-center justify-between gap-4 border-b border-[#edf0f5] pb-4">
         <div>
-          <h2 className="text-[14px] font-bold uppercase tracking-[0.08em] text-[#071638]">Your request</h2>
+          <h2 className="text-[14px] font-bold uppercase tracking-[0.08em] text-[#071638]">
+            Your request
+          </h2>
           <p className="mt-1 text-[13px] font-semibold text-[#657089] sm:hidden">
             {service} · {postcode}
           </p>
         </div>
-        <a href={`/check-price?service=${slugify(service, "cleaning")}&postcode=${encodeURIComponent(postcode)}`} className="inline-flex h-8 items-center justify-center rounded-full border border-[#d8eddd] bg-[#f7fcf8] px-3 text-[13px] font-bold text-[#08783f] transition hover:-translate-y-0.5 hover:border-[#08783f]/40">
+
+        <a
+          href={`/check-price?service=${slugify(service, "cleaning")}&postcode=${encodeURIComponent(postcode)}`}
+          className="inline-flex h-8 items-center justify-center rounded-full border border-[#d8eddd] bg-[#f7fcf8] px-3 text-[13px] font-bold text-[#08783f] transition hover:-translate-y-0.5 hover:border-[#08783f]/40"
+        >
           Edit
         </a>
       </div>
@@ -460,7 +639,9 @@ function SummaryCard({ service, postcode, jobType, jobDetail, timeNeeded }: {
           <div key={String(label)} className="grid grid-cols-[24px_1fr_auto] items-center gap-3 py-2.5">
             <span className="text-[#08783f]">{icon}</span>
             <span className="text-[14px] font-bold text-[#071638]">{label}</span>
-            <span className="max-w-[150px] truncate text-right text-[14px] font-semibold text-[#44506a] sm:max-w-none">{value}</span>
+            <span className="max-w-[150px] truncate text-right text-[14px] font-semibold text-[#44506a] sm:max-w-none">
+              {value}
+            </span>
           </div>
         ))}
       </div>
@@ -468,22 +649,69 @@ function SummaryCard({ service, postcode, jobType, jobDetail, timeNeeded }: {
   );
 }
 
+function ProviderResultHero({
+  postcode,
+  service,
+}: {
+  postcode: string;
+  service: string;
+}) {
+  return (
+    <section className="rounded-[24px] border border-[#dcebe1] bg-[linear-gradient(135deg,#f4fbf6_0%,#ffffff_58%,#edf9f1_100%)] p-4 text-center shadow-[0_14px_38px_rgba(7,22,56,0.055)] sm:p-7 lg:p-8">
+      <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#08783f] text-white shadow-[0_10px_22px_rgba(8,120,63,0.18)] ring-[7px] ring-[#e5f6ea] sm:h-16 sm:w-16">
+        <CheckIcon className="h-8 w-8" />
+      </div>
+
+      <p className="mt-5 text-[11px] font-black uppercase tracking-[0.14em] text-[#08783f]">
+        Request sent
+      </p>
+
+      <h1 className="mx-auto mt-2 max-w-[760px] text-[31px] font-black leading-[1.02] tracking-[-0.055em] text-[#071638] sm:text-[44px]">
+        A provider will contact you soon.
+      </h1>
+
+      <p className="mx-auto mt-3 max-w-[650px] text-[14px] font-bold leading-[1.5] text-[#44506a] sm:text-[17px]">
+        We’ve sent your {service.toLowerCase()} request near{" "}
+        <span className="font-black text-[#071638]">{postcode}</span> to one suitable local provider.
+        They’ll contact you directly.
+      </p>
+
+      <div className="mx-auto mt-5 grid max-w-[760px] gap-2 sm:flex sm:flex-wrap sm:justify-center">
+        <span className="inline-flex items-center justify-center gap-2 rounded-[12px] bg-[#eff9f2] px-3 py-2 text-[13px] font-bold text-[#08783f] ring-1 ring-[#d7ecdd]">
+          <span className="h-2 w-2 rounded-full bg-[#08783f]" />
+          No booking made
+        </span>
+        <span className="inline-flex items-center justify-center gap-2 rounded-[12px] bg-white/84 px-3 py-2 text-[13px] font-bold text-[#44506a] ring-1 ring-[#dfe8e4]">
+          <ShieldIcon />
+          Your number is only used for this request
+        </span>
+      </div>
+    </section>
+  );
+}
+
 function Timeline() {
   const steps = [
-    ["Request received", "We have your price check and job details.", <CheckIcon key="check" />],
-    ["Reviewing options", "We check the best local next step, not a spam list.", <SearchIcon key="search" />],
-    ["Email update", "You review the details and continue only if useful.", <MailIcon key="mail" />],
+    ["Request sent", "We send your request to one suitable local provider.", <CheckIcon key="check" />],
+    ["Provider contacts you", "They call or text you directly.", <MailIcon key="mail" />],
+    ["You stay in control", "No booking or payment is made by Quickola.", <ShieldIcon key="shield" />],
   ];
 
   return (
     <section className="rounded-[22px] border border-[#e1e6ee] bg-white p-4 shadow-[0_14px_38px_rgba(7,22,56,0.045)] sm:p-5">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-        <h2 className="text-[22px] font-black tracking-[-0.03em] text-[#071638]">What happens next?</h2>
+        <h2 className="text-[22px] font-black tracking-[-0.03em] text-[#071638]">
+          What happens next?
+        </h2>
         <p className="text-[13px] font-semibold text-[#657089]">No payment taken. No booking made.</p>
       </div>
+
       <div className="mt-4 grid gap-2 lg:grid-cols-3">
         {steps.map(([title, text, icon]) => (
-          <div key={String(title)} className="flex gap-3 rounded-[17px] border border-[#edf0f5] bg-[#fbfcfd] p-3 lg:block lg:p-4 lg:text-center">
+          <div
+            key={String(title)}
+            className="flex gap-3 rounded-[17px] border border-[#edf0f5] bg-[#fbfcfd] p-3 lg:block lg:p-4 lg:text-center"
+          >
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f0faf3] text-[#08783f] ring-1 ring-[#d8eddd] lg:mx-auto">
               {icon}
             </div>
@@ -503,18 +731,24 @@ function SafetyCard({ email, phone }: { email: string; phone: string }) {
     <section className="rounded-[22px] border border-[#d8eddd] bg-[linear-gradient(135deg,#f1faf4_0%,#ffffff_100%)] p-4 shadow-[0_12px_34px_rgba(7,22,56,0.035)] sm:p-5">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex gap-4">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#08783f] text-white ring-[7px] ring-[#e1f3e7]"><ShieldIcon /></span>
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#08783f] text-white ring-[7px] ring-[#e1f3e7]">
+            <ShieldIcon />
+          </span>
           <div>
-            <h2 className="text-[19px] font-black tracking-[-0.02em] text-[#071638]">Your details are private.</h2>
+            <h2 className="text-[19px] font-black tracking-[-0.02em] text-[#071638]">
+              Your details stay private.
+            </h2>
             <p className="mt-2 max-w-[560px] text-[15px] font-semibold leading-[1.55] text-[#44506a]">
-              We never share your information publicly, post your request as a listing, or sell your details to a provider list.
+              We send your request to one suitable provider so they can contact you. We do not post your
+              request publicly or sell your details to a provider list.
             </p>
           </div>
         </div>
+
         <div className="rounded-[18px] bg-white/70 p-4 ring-1 ring-[#d8eddd]">
-          <p className="text-[13px] font-bold text-[#657089]">Your update will be sent to</p>
-          <p className="mt-1 break-all text-[14px] font-black text-[#071638]">{email || "your email"}</p>
-          {phone ? <p className="mt-1 text-[14px] font-semibold text-[#44506a]">{phone}</p> : null}
+          <p className="text-[13px] font-bold text-[#657089]">Provider can contact you on</p>
+          <p className="mt-1 break-all text-[14px] font-black text-[#071638]">{phone || "your mobile"}</p>
+          {email ? <p className="mt-1 break-all text-[14px] font-semibold text-[#44506a]">{email}</p> : null}
         </div>
       </div>
     </section>
@@ -525,9 +759,11 @@ function BottomActions() {
   return (
     <section className="rounded-[22px] border border-[#d8eddd] bg-[linear-gradient(135deg,#f7fcf8_0%,#ffffff_100%)] p-5 text-center shadow-[0_12px_34px_rgba(7,22,56,0.035)] sm:p-6">
       <h2 className="mx-auto max-w-[560px] text-[23px] font-black leading-[1.15] tracking-[-0.035em] text-[#071638]">
-        Need another local price?
+        Need another price?
       </h2>
-      <p className="mt-2 text-[15px] font-semibold text-[#657089]">You can check another service in seconds.</p>
+      <p className="mt-2 text-[15px] font-semibold text-[#657089]">
+        Start a new Quickola price check anytime.
+      </p>
       <a
         href="/"
         className="mx-auto mt-6 flex h-[50px] max-w-[420px] items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[15px] font-black text-white shadow-[0_12px_24px_rgba(0,104,47,0.2)] transition hover:-translate-y-0.5"
@@ -535,22 +771,6 @@ function BottomActions() {
         Check another price
       </a>
     </section>
-  );
-}
-
-function MobileStickyCta() {
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#dfe6ef] bg-white/96 px-4 py-3 shadow-[0_-12px_34px_rgba(7,22,56,0.12)] backdrop-blur-md lg:hidden">
-      <div className="mx-auto flex max-w-[520px] items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[11px] font-black uppercase tracking-[0.08em] text-[#657089]">Need another price?</p>
-          <p className="truncate text-[16px] font-black tracking-[-0.04em] text-[#071638]">Check a new service</p>
-        </div>
-        <a href="/" className="flex h-12 shrink-0 items-center justify-center rounded-[14px] bg-[#08783f] px-4 text-[14px] font-black text-white shadow-[0_10px_24px_rgba(8,120,63,0.22)]">
-          Check price
-        </a>
-      </div>
-    </div>
   );
 }
 
@@ -565,43 +785,52 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
   const timeNeeded = formatParam(params?.time_needed, "This week");
   const email = params?.email || "";
   const phone = params?.phone || "";
+  const intent = params?.intent === "just-checking" ? "just-checking" : "wants-provider";
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#fbfcfd] pb-24 text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] lg:pb-0">
+    <main className="min-h-screen overflow-x-hidden bg-[#fbfcfd] pb-8 text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] lg:pb-0">
       <HeroGlowStyles />
       <Header />
 
-      <section className="mx-auto w-full max-w-[1160px] px-4 pb-8 pt-3 sm:px-6 lg:px-8 lg:pb-14 lg:pt-5">
-        <a href={`/check-price?service=${serviceSlug}&postcode=${encodeURIComponent(postcode)}`} className="inline-flex items-center gap-3 text-[14px] font-bold text-[#071638] transition hover:text-[#08783f]">
+      <section className="mx-auto w-full max-w-[1160px] px-4 pb-8 pt-3 sm:px-6 lg:px-8 lg:pb-14 lg:pt-4">
+        <a
+          href={`/check-price?service=${serviceSlug}&postcode=${encodeURIComponent(postcode)}`}
+          className="inline-flex items-center gap-3 text-[14px] font-bold text-[#071638] transition hover:text-[#08783f]"
+        >
           <span className="text-[#08783f]">←</span>
           Back
         </a>
 
-        <div className="mt-3 space-y-3 sm:mt-4 sm:space-y-4">
-          <Hero postcode={postcode} service={service} />
-
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)]">
-            <FairPriceCard config={config} postcode={postcode} />
-            <SummaryCard
-              service={service}
-              postcode={postcode}
-              jobType={jobType}
-              jobDetail={jobDetail}
-              timeNeeded={timeNeeded}
-            />
+        {intent === "just-checking" ? (
+          <div className="mt-3 sm:mt-4">
+            <PriceCheckingOverlay config={config} postcode={postcode} />
+            <JustCheckingResult config={config} postcode={postcode} serviceSlug={serviceSlug} />
           </div>
+        ) : (
+          <div className="mt-3 space-y-3 sm:mt-4 sm:space-y-4">
+            <ProviderResultHero postcode={postcode} service={service} />
 
-          <Timeline />
-          <SafetyCard email={email} phone={phone} />
-          <BottomActions />
-        </div>
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)]">
+              <FairPriceCard config={config} postcode={postcode} />
+              <SummaryCard
+                service={service}
+                postcode={postcode}
+                jobType={jobType}
+                jobDetail={jobDetail}
+                timeNeeded={timeNeeded}
+              />
+            </div>
+
+            <SafetyCard email={email} phone={phone} />
+            <Timeline />
+            <BottomActions />
+          </div>
+        )}
       </section>
 
       <div className="hidden lg:block">
         <Footer />
       </div>
-
-      <MobileStickyCta />
     </main>
   );
 }
