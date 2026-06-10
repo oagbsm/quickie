@@ -1109,10 +1109,9 @@ export async function createAdminRequest(formData: FormData) {
 
   revalidatePath("/qk-ops-7f3a");
 }
-
 export async function saveCheckPriceRequest(formData: FormData) {
   const requestId = clean(formData.get("request_id"));
-  const service = clean(formData.get("service")) || "cleaning";
+  const service = clean(formData.get("service")) || "cleaner";
   const area = clean(formData.get("area")) || "slough";
   const postcode = clean(formData.get("postcode")).toUpperCase();
   const jobType = clean(formData.get("job_type"));
@@ -1122,7 +1121,7 @@ export async function saveCheckPriceRequest(formData: FormData) {
   const phone = clean(formData.get("phone"));
   const source = clean(formData.get("source")) || "check-price";
   const intent = clean(formData.get("intent")) || "wants-provider";
-  // Insert new block for lane and budget logic
+
   const requestedLane = getRequestLane(service);
   const providerLane = clean(formData.get("provider_lane")) || requestedLane.providerLane;
   const jobSize = clean(formData.get("job_size")) || requestedLane.jobSize;
@@ -1130,6 +1129,7 @@ export async function saveCheckPriceRequest(formData: FormData) {
   const customerBudgetRaw = clean(formData.get("customer_budget"));
   const customerBudget = toNumberOrNull(customerBudgetRaw);
   const budgetNote = clean(formData.get("budget_note"));
+
   const phoneLooksValid = /^07[0-9]{9}$/.test(phone);
 
   if (!phoneLooksValid) {
@@ -1237,6 +1237,7 @@ export async function saveCheckPriceRequest(formData: FormData) {
     job_detail: jobDetail,
     time_needed: timeNeeded,
     email,
+    source,
     request_id: savedRequestId,
     ready_for_provider: "true",
     provider_lane: providerLane,
@@ -1250,6 +1251,10 @@ export async function saveCheckPriceRequest(formData: FormData) {
 
   if (customerBudget !== null) {
     params.set("customer_budget", String(customerBudget));
+  }
+
+  if (source === "book-page") {
+    redirect(`/complete?${params.toString()}`);
   }
 
   redirect(`/results?${params.toString()}`);

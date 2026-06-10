@@ -28,3 +28,31 @@ select,
 textarea {
   font: inherit;
 }
+
+@keyframes quickolaPriceReadyPulse {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 12px 24px rgba(7, 131, 63, 0.2);
+  }
+  50% {
+    transform: translateY(-1px) scale(1.01);
+    box-shadow: 0 16px 34px rgba(7, 131, 63, 0.28);
+  }
+}
+
+@keyframes quickolaPriceReadyArrow {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+}
+
+.quickola-price-ready {
+  animation: quickolaPriceReadyPulse 2.4s ease-in-out 3;
+}
+
+.quickola-price-ready-arrow {
+  animation: quickolaPriceReadyArrow 1.8s ease-in-out 3;
+}

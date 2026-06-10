@@ -1,33 +1,23 @@
 const trustItems = [
   {
-    icon: "data",
-    title: "Real data",
-    text: "from real jobs",
-  },
-  {
-    icon: "ranking",
-    title: "No hidden",
-    text: "ranking",
-  },
-  {
     icon: "shield",
-    title: "Built to protect",
-    text: "you from overpaying",
+    title: "Clear answers",
+    text: "See the usual local price in seconds.",
   },
   {
-    icon: "clock",
-    title: "We respect",
-    text: "your time",
+    icon: "users",
+    title: "Local help",
+    text: "Get matched with trusted local pros.",
   },
   {
     icon: "lock",
-    title: "You stay in",
-    text: "control",
+    title: "You’re in control",
+    text: "No pressure. Just the facts.",
   },
 ];
 
 function TrustIcon({ type }: { type: string }) {
-  const className = "h-[23px] w-[23px] fill-none stroke-current stroke-[2]";
+  const className = "h-[24px] w-[24px] fill-none stroke-current stroke-[2.15]";
 
   if (type === "data") {
     return (
@@ -69,6 +59,17 @@ function TrustIcon({ type }: { type: string }) {
     );
   }
 
+  if (type === "users") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M16 20v-1.7a3.8 3.8 0 0 0-3.8-3.8H7.8A3.8 3.8 0 0 0 4 18.3V20" />
+        <circle cx="10" cy="7.5" r="3.5" />
+        <path d="M20 20v-1.5a3.5 3.5 0 0 0-2.6-3.4" />
+        <path d="M15.5 4.3a3.5 3.5 0 0 1 0 6.4" />
+      </svg>
+    );
+  }
+
   return (
     <svg viewBox="0 0 24 24" className={className} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M7 10V8a5 5 0 0 1 10 0v2" />
@@ -80,21 +81,27 @@ function TrustIcon({ type }: { type: string }) {
 
 export default function Categories() {
   return (
-    <section className="bg-white px-5 pb-8 pt-5 sm:px-8 lg:px-10 lg:pb-8 lg:pt-4">
+    <section className="bg-white px-5 pb-5 pt-3 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-[1320px]">
-        <div className="grid grid-cols-2 overflow-hidden rounded-[16px] border border-[#e4e9ef] bg-white shadow-[0_10px_26px_rgba(7,22,56,0.035)] sm:grid-cols-5 lg:border-0 lg:shadow-none">
-          {trustItems.map((item) => (
+        <div className="grid grid-cols-3 overflow-hidden rounded-[18px] border border-[#e6ebf0] bg-white shadow-[0_8px_22px_rgba(7,22,56,0.035)]">
+          {trustItems.map((item, index) => (
             <div
               key={item.title}
-              className="flex min-h-[92px] flex-col items-center justify-center border-[#e4e9ef] px-3 py-4 text-center text-[#079448] odd:border-r sm:border-r sm:last:border-r-0 lg:min-h-[106px]"
+              className={`flex min-h-[82px] items-center justify-center gap-2.5 px-3 py-3 text-left ${
+                index !== trustItems.length - 1 ? "border-r border-[#e6ebf0]" : ""
+              }`}
             >
-              <TrustIcon type={item.icon} />
-              <p className="mt-2 text-[12px] font-black leading-[1.2] tracking-[-0.02em] text-[#071638] sm:text-[13px]">
-                {item.title}
-              </p>
-              <p className="mt-0.5 text-[11px] font-bold leading-[1.25] tracking-[-0.015em] text-[#071638] sm:text-[12px]">
-                {item.text}
-              </p>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eff8f2] text-[#071638]">
+                <TrustIcon type={item.icon} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[12.5px] font-extrabold leading-[1.1] tracking-[-0.025em] text-[#071638] sm:text-[14px]">
+                  {item.title}
+                </p>
+                <p className="mt-1 text-[10.8px] font-semibold leading-[1.18] tracking-[-0.015em] text-[#52627a] sm:text-[12px]">
+                  {item.text}
+                </p>
+              </div>
             </div>
           ))}
         </div>

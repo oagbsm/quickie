@@ -1,48 +1,39 @@
-
-
 function StepIcon({ type }: { type: string }) {
-  if (type === "price") {
+  const navy = "#071638";
+  const green = "#08783f";
+
+  if (type === "form") {
     return (
-      <svg
-        viewBox="0 0 64 64"
-        className="h-[42px] w-[42px] fill-none stroke-[#071638] stroke-[4]"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M18 19h28M18 32h22M18 45h17" />
-        <path d="M45 36c5 0 8 3 8 7s-3 7-8 7h-8V36h8Z" fill="#f0faf3" />
-        <path d="M39 30v26" />
+      <svg viewBox="0 0 56 56" className="h-[38px] w-[38px]" aria-hidden="true">
+        <rect x="13" y="11" width="30" height="34" rx="5" fill={navy} />
+        <rect x="18" y="17" width="20" height="4" rx="2" fill="white" opacity="0.92" />
+        <rect x="18" y="25" width="14" height="3.5" rx="1.75" fill="white" opacity="0.55" />
+        <rect x="18" y="32" width="18" height="3.5" rx="1.75" fill="white" opacity="0.55" />
+        <circle cx="39" cy="39" r="8" fill={green} />
+        <path d="m35.4 39.2 2.4 2.4 5-5.5" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
 
-  if (type === "match") {
+  if (type === "price") {
     return (
-      <svg
-        viewBox="0 0 64 64"
-        className="h-[42px] w-[42px] fill-none stroke-[#071638] stroke-[3.6]"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M15 18h34M15 32h34M15 46h34" />
-        <path d="M23 18a5 5 0 1 0 0 .1M41 32a5 5 0 1 0 0 .1M29 46a5 5 0 1 0 0 .1" fill="#fff" />
+      <svg viewBox="0 0 56 56" className="h-[38px] w-[38px]" aria-hidden="true">
+        <circle cx="28" cy="28" r="19" fill={navy} />
+        <path d="M32.5 18.5h-8a5.5 5.5 0 0 0 0 11h6.5a5.2 5.2 0 0 1 0 10.4h-9" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" />
+        <path d="M28 14v28" stroke="white" strokeWidth="4" strokeLinecap="round" />
+        <circle cx="40" cy="38" r="8" fill={green} />
+        <path d="m36.6 38.2 2.4 2.4 4.8-5.4" fill="none" stroke="white" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
 
   return (
-    <svg
-      viewBox="0 0 64 64"
-      className="h-[42px] w-[42px] fill-none stroke-[#071638] stroke-[3.6]"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M16 17h32v30H16V17Z" fill="#fff" />
-      <path d="m21 31 7 7 15-17" />
-      <path d="M13 51h38" />
+    <svg viewBox="0 0 56 56" className="h-[38px] w-[38px]" aria-hidden="true">
+      <circle cx="20" cy="22" r="8" fill={navy} />
+      <path d="M8 43c1.6-8 6-12 12-12s10.4 4 12 12" fill={navy} />
+      <circle cx="38" cy="18" r="6.5" fill={green} />
+      <path d="M28.5 40c1.4-6.4 4.8-9.7 9.5-9.7 4.8 0 8.3 3.3 9.7 9.7" fill={green} />
+      <path d="M31 25.5 24 32" stroke="white" strokeWidth="2.8" strokeLinecap="round" opacity="0.85" />
     </svg>
   );
 }
@@ -59,13 +50,13 @@ function HowStep({
   icon: string;
 }) {
   return (
-    <div className="relative rounded-[22px] border border-[#dfe8ef] bg-white p-5 text-left shadow-[0_12px_30px_rgba(7,22,56,0.045)] md:text-center">
+    <div className="relative rounded-[22px] border border-[#dfe8ef] bg-white p-5 text-left shadow-[0_10px_24px_rgba(7,22,56,0.035)] md:text-center">
       <div className="flex items-start gap-4 md:block">
         <div className="relative shrink-0 md:mx-auto">
-          <span className="absolute -right-2 -top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-[#08783f] text-[14px] font-black text-white shadow-[0_8px_18px_rgba(8,120,63,0.22)]">
+          <span className="absolute -right-2 -top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-[#08783f] text-[14px] font-black text-white shadow-[0_6px_14px_rgba(8,120,63,0.18)]">
             {number}
           </span>
-          <div className="grid h-[70px] w-[70px] place-items-center rounded-[22px] bg-[#f0faf3] ring-1 ring-[#d8eddd]">
+          <div className="grid h-[70px] w-[70px] place-items-center rounded-[22px] bg-[#f2f8f4] ring-1 ring-[#dceee2]">
             <StepIcon type={icon} />
           </div>
         </div>
@@ -100,13 +91,13 @@ export default function HowItWorks() {
           <HowStep
             number="1"
             title="Choose a service"
-            text="Pick what you need and enter your London area."
+            text="Pick what you need and enter your Slough area."
             icon="form"
           />
           <HowStep
             number="2"
-            title="See the fair range"
-            text="Quickola shows what the job should usually cost."
+            title="See the usual range"
+            text="Quickola shows a guide based on local jobs."
             icon="price"
           />
           <HowStep
