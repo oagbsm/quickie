@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img">
+  <title>Blinds Curtains</title>
+
+  <rect x="19" y="15" width="58" height="60" rx="6" fill="#ffffff" stroke="#071638" stroke-width="5"/>
+  <path d="M24 27h48M24 39h48M24 51h48" stroke="#bfeccf" stroke-width="6" stroke-linecap="round"/>
+  <path d="M48 17v58" stroke="#071638" stroke-width="5"/>
+  <path d="M78 18v43" stroke="#071638" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="78" cy="68" r="5" fill="#07833f" stroke="#071638" stroke-width="4"/>
+  <path d="M30 65h12M55 65h12" stroke="#2f94c8" stroke-width="5" stroke-linecap="round"/>
+
+</svg>

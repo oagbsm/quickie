@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img">
+  <title>House Clearance</title>
+
+  <path d="M16 41 48 17l32 24v39H16z" fill="#ffffff" stroke="#071638" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M33 80V56h30v24" fill="#bfeccf" stroke="#071638" stroke-width="5"/>
+  <rect x="59" y="52" width="19" height="28" rx="4" fill="#07833f" stroke="#071638" stroke-width="5"/>
+  <path d="M56 49h25" stroke="#071638" stroke-width="5" stroke-linecap="round"/>
+  <path d="M65 61v11M72 61v11" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M24 42h48" stroke="#07833f" stroke-width="5" stroke-linecap="round"/>
+
+</svg>

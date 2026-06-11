@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img" aria-label="Gardener">
+  <title>Gardener</title>
+  <circle cx="48" cy="48" r="43" fill="#e8f8ee"/>
+  <circle cx="48" cy="48" r="43" stroke="#071638" stroke-width="2" opacity=".08"/>
+
+  <path d="M22 73c22-3 42-23 49-52-30 5-50 25-53 48a4 4 0 0 0 4 4Z" fill="#10b45c" stroke="#071638" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M23 73c13-20 29-33 48-52" stroke="#071638" stroke-width="5" stroke-linecap="round"/>
+  <path d="M42 53c-7 0-13-3-18-8M54 41c-1-7-4-13-9-18" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M21 79h54" stroke="#071638" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+</svg>

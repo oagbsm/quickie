@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img">
+  <title>Waste Removal</title>
+
+  <rect x="26" y="30" width="44" height="52" rx="7" fill="#07833f" stroke="#071638" stroke-width="5"/>
+  <rect x="21" y="23" width="54" height="10" rx="4" fill="#bfeccf" stroke="#071638" stroke-width="5"/>
+  <rect x="38" y="12" width="20" height="11" rx="4" fill="#07833f" stroke="#071638" stroke-width="5"/>
+  <path d="M37 43v26M48 43v26M59 43v26" stroke="#071638" stroke-width="5" stroke-linecap="round" opacity=".62"/>
+  <path d="M73 66h10M78 61v10" stroke="#2f94c8" stroke-width="5" stroke-linecap="round"/>
+
+</svg>

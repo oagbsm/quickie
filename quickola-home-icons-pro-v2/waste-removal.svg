@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img" aria-label="Waste Removal">
+  <title>Waste Removal</title>
+  <circle cx="48" cy="48" r="43" fill="#e8f8ee"/>
+  <circle cx="48" cy="48" r="43" stroke="#071638" stroke-width="2" opacity=".08"/>
+
+  <rect x="27" y="31" width="42" height="51" rx="7" fill="#10b45c" stroke="#071638" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="22" y="24" width="52" height="10" rx="4" fill="#ffd94a" stroke="#071638" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="39" y="13" width="18" height="11" rx="4" fill="#10b45c" stroke="#071638" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M38 44v25M48 44v25M58 44v25" stroke="#071638" stroke-width="5" stroke-linecap="round" opacity=".65"/>
+
+</svg>

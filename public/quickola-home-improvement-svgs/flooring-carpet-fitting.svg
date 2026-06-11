@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img">
+  <title>Flooring Carpet Fitting</title>
+
+  <path d="M15 70 48 48l33 22-33 18z" fill="#bfeccf" stroke="#071638" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M15 55 48 33l33 22-33 18z" fill="#ffffff" stroke="#071638" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M15 40 48 18l33 22-33 18z" fill="#ffd94a" stroke="#071638" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M34 28l33 22M29 48l33 22" stroke="#071638" stroke-width="4" opacity=".45"/>
+
+</svg>

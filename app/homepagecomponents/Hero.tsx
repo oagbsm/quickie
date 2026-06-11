@@ -105,7 +105,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative isolate overflow-hidden bg-white pt-[64px] lg:pt-[84px]">
+    <section className="relative isolate overflow-hidden bg-[#061a3d] pt-[64px] lg:pt-[84px]">
       <div className="relative overflow-hidden bg-[#061a3d]">
         <div
           className="absolute inset-0 z-0 bg-contain bg-center bg-no-repeat opacity-100 lg:bg-cover lg:bg-center lg:opacity-95"
@@ -139,7 +139,7 @@ export default function Hero() {
         </div>
       </div>  
 
-      <div className="relative z-20 mx-auto -mt-[68px] max-w-[1040px] px-4 sm:px-6 lg:-mt-[94px] lg:px-8">
+      <div className="relative z-20 mx-auto -mt-[68px] max-w-[1040px] bg-[#061a3d] px-4 pb-6 sm:px-6 lg:-mt-[94px] lg:px-8">
         <div className="overflow-hidden rounded-[22px] bg-white p-3 shadow-[0_26px_70px_rgba(7,22,56,0.18)] sm:rounded-[26px] sm:p-6 lg:p-7">
           <h2 className="text-center text-[18px] font-black tracking-[-0.045em] text-[#071638] sm:text-[22px] lg:text-[30px]">
             Check your local price

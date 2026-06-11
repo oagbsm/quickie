@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img">
+  <title>Roofing Guttering</title>
+
+  <path d="M14 43 48 16l34 27" fill="#bfeccf" stroke="#071638" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M22 42v37h52V42" fill="#ffffff" stroke="#071638" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M16 51h64" stroke="#2f94c8" stroke-width="6" stroke-linecap="round"/>
+  <path d="M72 51v19c0 6-4 10-10 10" stroke="#2f94c8" stroke-width="6" stroke-linecap="round"/>
+  <path d="M36 79V58h24v21" fill="#bfeccf" stroke="#071638" stroke-width="5"/>
+
+</svg>

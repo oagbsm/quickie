@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img" aria-label="Kitchen Repairs">
+  <title>Kitchen Repairs</title>
+  <circle cx="48" cy="48" r="43" fill="#e8f8ee"/>
+  <circle cx="48" cy="48" r="43" stroke="#071638" stroke-width="2" opacity=".08"/>
+
+  <rect x="19" y="19" width="58" height="57" rx="8" fill="#ffffff" stroke="#071638" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M20 45h56" stroke="#071638" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="31" y="30" width="34" height="9" rx="4.5" fill="#2f94c8" stroke="#071638" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M38 46v30M58 46v30" stroke="#071638" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M31 62h7M58 62h7" stroke="#07833f" stroke-width="5" stroke-linecap="round"/>
+  <path d="M69 22l11-11M76 11l4 4" stroke="#071638" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+</svg>

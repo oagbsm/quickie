@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img" aria-label="Cctv Security">
+  <title>Cctv Security</title>
+  <circle cx="48" cy="48" r="43" fill="#e8f8ee"/>
+  <circle cx="48" cy="48" r="43" stroke="#071638" stroke-width="2" opacity=".08"/>
+
+  <path d="M18 31h42l12 16H30L18 31Z" fill="#ffffff" stroke="#071638" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="45" cy="39" r="7" fill="#2f94c8" stroke="#071638" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M66 47v13c0 9-6 16-18 22-12-6-18-13-18-22v-8" fill="#ffd94a" stroke="#071638" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M39 64l6 6 13-15" stroke="#07833f" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M61 31l11-9" stroke="#071638" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+</svg>

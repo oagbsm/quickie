@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img">
+  <title>Plumber</title>
+
+  <rect x="14" y="42" width="44" height="13" rx="6.5" fill="#2f94c8" stroke="#071638" stroke-width="5"/>
+  <rect x="52" y="19" width="13" height="36" rx="6.5" fill="#2f94c8" stroke="#071638" stroke-width="5"/>
+  <rect x="61" y="17" width="22" height="12" rx="6" fill="#2f94c8" stroke="#071638" stroke-width="5"/>
+  <rect x="24" y="54" width="13" height="21" rx="6.5" fill="#2f94c8" stroke="#071638" stroke-width="5"/>
+  <path d="M75 59c0 10-7 18-16 18s-16-8-16-18c0-8 10-19 16-26 6 7 16 18 16 26Z" fill="#bfeccf" stroke="#071638" stroke-width="5"/>
+
+</svg>

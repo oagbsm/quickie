@@ -44,6 +44,82 @@ export function CumarIcon({
 }) {
   const base = `${className} fill-none stroke-current stroke-[2]`;
 
+  const publicIconMap: Record<string, string> = {
+    "man-and-van": "/icons/man-and-van.svg",
+    removals: "/icons/man-and-van.svg",
+    van: "/icons/man-and-van.svg",
+    truck: "/icons/man-and-van.svg",
+    "moving-truck": "/icons/man-and-van.svg",
+
+    cleaner: "/icons/cleaner.svg",
+    clean: "/icons/cleaner.svg",
+    cleaning: "/icons/cleaner.svg",
+    "spray-can": "/icons/cleaner.svg",
+    "home-check": "/icons/cleaner.svg",
+    "end-of-tenancy-cleaning": "/icons/end-of-tenancy-cleaning.svg",
+    "carpet-cleaning": "/icons/carpet-cleaning.svg",
+    "oven-cleaning": "/icons/oven-cleaning.svg",
+    "window-cleaning": "/icons/window-cleaning.svg",
+
+    plumber: "/icons/plumber.svg",
+    plumbing: "/icons/plumber.svg",
+    tap: "/icons/plumber.svg",
+    "water-alert": "/icons/plumber.svg",
+    "emergency-plumber": "/icons/emergency-plumber.svg",
+    "boiler-repair": "/icons/boiler-repair.svg",
+    flame: "/icons/boiler-repair.svg",
+    "bathroom-repairs": "/icons/bathroom-repairs.svg",
+    "kitchen-repairs": "/icons/kitchen-repairs.svg",
+
+    electrician: "/icons/electrician.svg",
+    electrical: "/icons/electrician.svg",
+    electric: "/icons/electrician.svg",
+    bolt: "/icons/electrician.svg",
+    plug: "/icons/electrician.svg",
+    zap: "/icons/electrician.svg",
+
+    locksmith: "/icons/locksmith.svg",
+    key: "/icons/locksmith.svg",
+    lock: "/icons/locksmith.svg",
+
+    handyman: "/icons/handyman.svg",
+    tool: "/icons/handyman.svg",
+    hammer: "/icons/handyman.svg",
+
+    "painter-decorator": "/icons/painter-decorator.svg",
+    painter: "/icons/painter-decorator.svg",
+    painting: "/icons/painter-decorator.svg",
+    "paint-roller": "/icons/painter-decorator.svg",
+
+    gardener: "/icons/gardener.svg",
+    gardening: "/icons/gardener.svg",
+    leaf: "/icons/gardener.svg",
+
+    "waste-removal": "/icons/waste-removal.svg",
+    waste: "/icons/waste-removal.svg",
+    bin: "/icons/waste-removal.svg",
+    trash: "/icons/waste-removal.svg",
+    rubbish: "/icons/waste-removal.svg",
+    recycle: "/icons/waste-removal.svg",
+    "house-clearance": "/icons/house-clearance.svg",
+
+    "appliance-repair": "/icons/appliance-repair.svg",
+    "pest-control": "/icons/pest-control.svg",
+    "roofing-guttering": "/icons/roofing-guttering.svg",
+    "cctv-security": "/icons/cctv-security.svg",
+    shield: "/icons/cctv-security.svg",
+    "home-shield": "/icons/cctv-security.svg",
+    "blinds-curtains": "/icons/blinds-curtains.svg",
+    "flooring-carpet-fitting": "/icons/flooring-carpet-fitting.svg",
+    "furniture-assembly": "/icons/furniture-assembly.svg",
+  };
+
+  const publicIconSrc = publicIconMap[type];
+
+  if (publicIconSrc) {
+    return <img src={publicIconSrc} alt="" aria-hidden="true" className={`${className} object-contain`} />;
+  }
+
   if (type === "search") {
     return (
       <svg viewBox="0 0 24 24" className={base} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -237,27 +313,25 @@ export default function CumarIntakeForm({
     return getServiceFormConfig(selectedService.value);
   }, [selectedService]);
 
+  const popularServices = useMemo(() => {
+    const popularValues = [
+      "man-and-van",
+      "cleaner",
+      "plumber",
+      "locksmith",
+      "electrician",
+      "waste-removal",
+    ];
+
+    return popularValues
+      .map((value) => cumarServices.find((item) => item.value === value))
+      .filter(Boolean) as CumarService[];
+  }, []);
+
   useEffect(() => {
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
-      return;
     }
-
-    if (!selectedServiceConfig) return;
-
-    const timeoutId = window.setTimeout(() => {
-      const target = dynamicFieldsRef.current;
-      if (!target) return;
-
-      const targetTop = target.getBoundingClientRect().top + window.scrollY;
-
-      window.scrollTo({
-        top: Math.max(targetTop - 150, 0),
-        behavior: "smooth",
-      });
-    }, 120);
-
-    return () => window.clearTimeout(timeoutId);
   }, [selectedServiceConfig]);
 
   const dynamicFields = selectedServiceConfig?.fields ?? [];
@@ -297,16 +371,12 @@ export default function CumarIntakeForm({
     priceCheckFields.length > 0 &&
     answeredPriceFieldCount === priceCheckFields.length;
 
-  const progressText = selectedServiceConfig
-    ? isPriceReady
-      ? "Ready to check"
-      : `${answeredPriceFieldCount}/${priceCheckFields.length || 2} answered`
-    : "2 quick questions";
-
-  const submitLabel = selectedServiceConfig?.ctaLabel ?? "Check price";
-  const formTitle = selectedService ? "2 quick questions" : "Choose a service";
+  const submitLabel = selectedService
+    ? `Check ${selectedService.label.toLowerCase()} price`
+    : "Check price";
 
   const hasSelectedValidService = Boolean(selectedService && selectedService.label === serviceSearch);
+  const canSubmitPriceCheck = Boolean(selectedService) && (priceCheckFields.length === 0 || isPriceReady);
 
   const filteredServices = useMemo(() => {
     const query = serviceSearch.trim().toLowerCase();
@@ -326,6 +396,21 @@ export default function CumarIntakeForm({
     setFormValues({});
     setShowQuoteInput(false);
     setError(null);
+
+    window.setTimeout(() => {
+      const target = dynamicFieldsRef.current;
+      if (!target) return;
+
+      const targetRect = target.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+
+      if (targetRect.top > viewportHeight * 0.62) {
+        window.scrollBy({
+          top: 200,
+          behavior: "smooth",
+        });
+      }
+    }, 100);
   }
 
   function updateFormValue(name: string, value: string) {
@@ -341,6 +426,18 @@ export default function CumarIntakeForm({
       return next;
     });
     setError(null);
+
+    const answeredPriceField = priceCheckFields.some((field) => field.name === name);
+    const hasValue = String(value ?? "").trim().length > 0;
+
+    if (answeredPriceField && hasValue) {
+      window.setTimeout(() => {
+        window.scrollBy({
+          top: 120,
+          behavior: "smooth",
+        });
+      }, 90);
+    }
   }
 
   function getRequiredMissingField(fields: ServiceFormField[]) {
@@ -355,13 +452,13 @@ export default function CumarIntakeForm({
 
     if (isSubmitting) return;
 
-    if (!serviceSearch.trim()) {
-      setError("Enter the service you need, then choose it from the dropdown.");
+    if (!selectedService) {
+      setError("Choose a service to continue.");
       return;
     }
 
-    if (!hasSelectedValidService || !selectedService) {
-      setError("Choose a service from the dropdown.");
+    if (!hasSelectedValidService) {
+      setError("Choose a service from the list or search results.");
       return;
     }
 
@@ -518,59 +615,73 @@ export default function CumarIntakeForm({
 
   return (
     <form id={formId} onSubmit={handleSubmit} className={`space-y-2 sm:space-y-3.5 ${className}`}>
-      <div className="space-y-2">
-        <div>
-          <div className="mb-1 flex items-center justify-between gap-3">
-            <p className="text-[13px] font-extrabold tracking-[-0.025em] text-[#071638] sm:text-[15px]">
-              {formTitle}
-            </p>
-            <span className="text-[10.5px] font-extrabold text-[#07833f]">
-              {progressText}
+      <div className="space-y-3 sm:space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <label className="block text-[15px] font-extrabold tracking-[-0.03em] text-[#071638] sm:text-[17px]">
+            Choose a service
+          </label>
+          {selectedService ? (
+            <span className="rounded-full bg-[#e8f8ee] px-3 py-1 text-[11px] font-extrabold text-[#07833f]">
+              Selected
             </span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-[#e8f0f5]">
-            <div
-              className="h-full rounded-full bg-[#07833f] transition-all duration-300"
-              style={{ width: `${priceProgressPercent}%` }}
-            />
-          </div>
+          ) : null}
         </div>
-      </div>
 
-      <div className="relative">
-        <label className="mb-1 block text-[12px] font-extrabold tracking-[-0.02em] text-[#071638] sm:mb-2 sm:text-[15px]">
-          Choose service
-        </label>
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+          {popularServices.map((item) => {
+            const isSelected = selectedService?.value === item.value;
 
-        <div className="flex h-[40px] items-center gap-2.5 rounded-[12px] border border-[#e7edf3] bg-white px-3 shadow-[0_4px_12px_rgba(7,22,56,0.025)] sm:h-[56px] sm:gap-3 sm:rounded-[14px] sm:px-4">
+            return (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => chooseService(item)}
+                className={`relative flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-[14px] border bg-white px-2 py-2.5 text-center shadow-[0_8px_18px_rgba(7,22,56,0.045)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#07833f]/50 hover:shadow-[0_14px_28px_rgba(7,22,56,0.08)] active:translate-y-0 sm:min-h-[112px] sm:rounded-[16px] sm:py-3 ${
+                  isSelected
+                    ? "border-[#07833f] bg-[#f5fff8] shadow-[0_14px_28px_rgba(7,131,63,0.12)]"
+                    : "border-[#e4ebf1]"
+                }`}
+                aria-pressed={isSelected}
+              >
+                {isSelected ? (
+                  <span className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#07833f] text-[16px] font-extrabold leading-none text-white shadow-[0_6px_14px_rgba(7,131,63,0.24)]">
+                    ✓
+                  </span>
+                ) : null}
+
+                <CumarIcon
+                  type={item.icon}
+                  className={`h-11 w-11 sm:h-12 sm:w-12 ${isSelected ? "text-[#07833f]" : "text-[#071638]"}`}
+                />
+                <span className="max-w-[94px] text-[12px] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#071638] sm:text-[14px]">
+                  {item.label === "Man & Van" ? "Man & Van / Moving" : item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="relative">
           <CumarIcon
-            type={selectedService ? selectedService.icon : "grid"}
-            className="h-5 w-5 text-[#071638] sm:h-6 sm:w-6"
+            type="search"
+            className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#071638]"
           />
-
           <input
-            value={serviceSearch}
+            value={hasSelectedValidService ? "" : serviceSearch}
             onChange={(event) => {
               setServiceSearch(event.target.value);
               setServiceOpen(true);
               setError(null);
             }}
             onFocus={() => setServiceOpen(true)}
-            className="min-w-0 flex-1 bg-transparent text-[14px] font-semibold text-[#071638] outline-none placeholder:font-medium placeholder:text-[#7f8ca3] sm:text-[16px]"
-            placeholder="Select a service"
+            className="h-[42px] w-full rounded-[14px] border border-[#dfe7ef] bg-white pl-12 pr-4 text-[14px] font-semibold text-[#071638] outline-none transition focus:border-[#07833f] focus:ring-4 focus:ring-[#07833f]/10 placeholder:font-medium placeholder:text-[#7f8ca3] sm:h-[50px] sm:text-[16px]"
+            placeholder="Search any service..."
           />
 
-          <button
-            type="button"
-            onClick={() => setServiceOpen((value) => !value)}
-            className="text-[20px] font-extrabold leading-none text-[#071638] sm:text-[22px]"
-            aria-label="Open service list"
-          >
-            ⌄
-          </button>
+          {serviceOpen && serviceSearch.trim() && !hasSelectedValidService ? (
+            <ServiceDropdown services={filteredServices} onChoose={chooseService} />
+          ) : null}
         </div>
-
-        {serviceOpen ? <ServiceDropdown services={filteredServices} onChoose={chooseService} /> : null}
       </div>
 
       {selectedServiceConfig ? (
@@ -611,15 +722,17 @@ export default function CumarIntakeForm({
 
       <button
         type="submit"
-        disabled={isSubmitting}
-        className={`group relative flex h-[42px] w-full items-center justify-center overflow-hidden rounded-[12px] bg-[#07833f] px-5 text-[16px] font-extrabold tracking-[-0.02em] text-white shadow-[0_12px_24px_rgba(7,131,63,0.20)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#066f36] active:translate-y-0 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-70 sm:h-[56px] sm:rounded-[14px] sm:text-[19px] ${
-          isPriceReady && !isSubmitting ? "quickola-price-ready shadow-[0_16px_34px_rgba(7,131,63,0.28)]" : ""
-        }`}
+        disabled={isSubmitting || !canSubmitPriceCheck}
+        className={`group relative flex h-[44px] w-full items-center justify-center overflow-hidden rounded-[14px] px-5 text-[16px] font-extrabold tracking-[-0.02em] transition-all duration-200 active:scale-[0.985] sm:h-[52px] sm:text-[18px] ${
+          canSubmitPriceCheck && !isSubmitting
+            ? "bg-[#07833f] text-white shadow-[0_14px_28px_rgba(7,131,63,0.24)] hover:-translate-y-0.5 hover:bg-[#066f36]"
+            : "cursor-not-allowed bg-[#dcece2] text-[#7f9a8a] shadow-none"
+        } ${isPriceReady && !isSubmitting ? "quickola-price-ready" : ""}`}
       >
         <span className="absolute inset-0 -translate-x-full bg-[linear-gradient(110deg,transparent_0%,rgba(255,255,255,0.20)_45%,transparent_72%)] opacity-0 transition-all duration-700 group-hover:translate-x-full group-hover:opacity-100" />
 
         <span className="relative z-10 flex items-center gap-3">
-          {isSubmitting ? "Checking..." : isPriceReady ? "Check price" : submitLabel}
+          {isSubmitting ? "Checking..." : submitLabel}
           <span
             className={`text-[25px] leading-none transition-transform duration-200 group-hover:translate-x-1 sm:text-[30px] ${
               isPriceReady && !isSubmitting ? "quickola-price-ready-arrow" : ""
@@ -629,6 +742,11 @@ export default function CumarIntakeForm({
           </span>
         </span>
       </button>
+      {!selectedService ? (
+        <p className="text-center text-[12px] font-semibold text-[#7f8ca3] sm:text-[13px]">
+          Please select a service to continue
+        </p>
+      ) : null}
     </form>
   );
 }
@@ -641,7 +759,7 @@ function ServiceDropdown({
   onChoose: (item: CumarService) => void;
 }) {
   return (
-    <div className="relative z-[120] mt-2 rounded-[14px] border border-[#e7edf3] bg-white p-2 shadow-[0_12px_26px_rgba(7,22,56,0.12)]">
+    <div className="absolute left-0 right-0 z-[120] mt-2 rounded-[14px] border border-[#e7edf3] bg-white p-2 shadow-[0_16px_34px_rgba(7,22,56,0.14)]">
       {services.length ? (
         services.map((item) => (
           <button
@@ -650,13 +768,13 @@ function ServiceDropdown({
             onClick={() => onChoose(item)}
             className="flex w-full items-center gap-3 rounded-[10px] px-3 py-1.5 text-left hover:bg-[#f3f8f5]"
           >
-            <CumarIcon type={item.icon} className="h-[18px] w-[18px] text-[#071638]" />
+            <CumarIcon type={item.icon} className="h-[26px] w-[26px] text-[#07833f]" />
             <span className="text-[13px] font-extrabold text-[#071638]">{item.label}</span>
           </button>
         ))
       ) : (
         <div className="px-3 py-3 text-[13px] font-bold text-[#d93025]">
-          Choose a service from the dropdown.
+          No matching service found. Try another search.
         </div>
       )}
     </div>
