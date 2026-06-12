@@ -198,17 +198,35 @@ function getResultUiCopy(config: PriceConfig, serviceSlug: string): ResultUiCopy
   const lowerLabel = label.toLowerCase();
   const lowerSlug = serviceSlug.toLowerCase();
 
+  const configWithRows = config as PriceConfig & {
+    resultRows?: { label: string; price: string }[];
+  };
+
+  const withConfigRows = (
+    fallbackRows: { label: string; icon: typeof LockIcon }[]
+  ) =>
+    (configWithRows.resultRows?.length
+      ? configWithRows.resultRows.map((row, index) => ({
+          label: row.label,
+          price: row.price,
+          icon: fallbackRows[index]?.icon ?? LockIcon,
+        }))
+      : fallbackRows.map((row) => ({
+          ...row,
+          price: config.from,
+        })));
+
   if (lowerLabel.includes("locksmith") || lowerSlug.includes("locksmith")) {
     return {
       actionName: "locksmith",
       ctaTitle: "Need a locksmith today?",
       ctaBody: "We’ll connect you with a trusted local locksmith who can help.",
       ctaButton: "Find a trusted locksmith near me",
-      priceRows: [
-        { label: "Standard lockout", price: "£85 – £120", icon: LockIcon },
-        { label: "Lock change", price: "£100 – £160", icon: KeyIcon },
-        { label: "Emergency callout", price: "£130 – £180+", icon: AlertIcon },
-      ],
+      priceRows: withConfigRows([
+        { label: "Standard lockout", icon: LockIcon },
+        { label: "Lock change", icon: KeyIcon },
+        { label: "Emergency callout", icon: AlertIcon },
+      ]),
       finalNote: "Final price depends on lock type, urgency, time of day and replacement parts.",
       factors: ["Lock type", "Urgency", "Time of day", "Parts needed"],
     };
@@ -220,11 +238,11 @@ function getResultUiCopy(config: PriceConfig, serviceSlug: string): ResultUiCopy
       ctaTitle: "Need an end of tenancy cleaner?",
       ctaBody: "We’ll connect you with an available local cleaner for your move-out clean.",
       ctaButton: "Find an end of tenancy cleaner",
-      priceRows: [
-        { label: "1–2 bed flat", price: "£180 – £280", icon: LockIcon },
-        { label: "3–4 bed home", price: config.from, icon: KeyIcon },
-        { label: "Deep clean add-ons", price: "£80 – £180+", icon: AlertIcon },
-      ],
+      priceRows: withConfigRows([
+        { label: "1–2 bed flat", icon: LockIcon },
+        { label: "3–4 bed home", icon: KeyIcon },
+        { label: "Deep clean add-ons", icon: AlertIcon },
+      ]),
       finalNote: "Final price depends on property size, condition, bathrooms, carpets and extras.",
       factors: ["Property size", "Bathrooms", "Carpets", "Extras needed"],
     };
@@ -236,11 +254,11 @@ function getResultUiCopy(config: PriceConfig, serviceSlug: string): ResultUiCopy
       ctaTitle: "Need an oven cleaner?",
       ctaBody: "We’ll connect you with an available local oven cleaner who can help.",
       ctaButton: "Find an oven cleaner near me",
-      priceRows: [
-        { label: "Single oven", price: "£65 – £95", icon: LockIcon },
-        { label: "Double oven", price: "£85 – £120", icon: KeyIcon },
-        { label: "Oven + hob", price: "£110 – £160+", icon: AlertIcon },
-      ],
+      priceRows: withConfigRows([
+        { label: "Single oven", icon: LockIcon },
+        { label: "Double oven", icon: KeyIcon },
+        { label: "Oven + hob", icon: AlertIcon },
+      ]),
       finalNote: "Final price depends on oven type, condition, racks, hob, extractor and parking.",
       factors: ["Oven type", "Condition", "Hob/extractor", "Parking"],
     };
@@ -252,11 +270,11 @@ function getResultUiCopy(config: PriceConfig, serviceSlug: string): ResultUiCopy
       ctaTitle: "Need a carpet cleaner?",
       ctaBody: "We’ll connect you with an available local carpet cleaner who can help.",
       ctaButton: "Find a carpet cleaner near me",
-      priceRows: [
-        { label: "One room", price: "£45 – £75", icon: LockIcon },
-        { label: "2–3 rooms", price: "£85 – £150", icon: KeyIcon },
-        { label: "Whole home", price: "£150 – £280+", icon: AlertIcon },
-      ],
+      priceRows: withConfigRows([
+        { label: "One room", icon: LockIcon },
+        { label: "2–3 rooms", icon: KeyIcon },
+        { label: "Whole home", icon: AlertIcon },
+      ]),
       finalNote: "Final price depends on room count, stains, carpet type, access and drying time.",
       factors: ["Room count", "Stains", "Carpet type", "Access"],
     };
@@ -268,11 +286,11 @@ function getResultUiCopy(config: PriceConfig, serviceSlug: string): ResultUiCopy
       ctaTitle: "Need a cleaner?",
       ctaBody: "We’ll connect you with an available local cleaner who can help.",
       ctaButton: "Find a trusted cleaner near me",
-      priceRows: [
-        { label: "Standard clean", price: config.from, icon: LockIcon },
-        { label: "Deep clean", price: config.from, icon: KeyIcon },
-        { label: "Urgent clean", price: config.from, icon: AlertIcon },
-      ],
+      priceRows: withConfigRows([
+        { label: "Standard clean", icon: LockIcon },
+        { label: "Deep clean", icon: KeyIcon },
+        { label: "Urgent clean", icon: AlertIcon },
+      ]),
       finalNote: "Final price depends on property size, condition, time needed and any extras.",
       factors: ["Property size", "Condition", "Time needed", "Extras"],
     };
@@ -284,11 +302,11 @@ function getResultUiCopy(config: PriceConfig, serviceSlug: string): ResultUiCopy
       ctaTitle: "Need a plumber today?",
       ctaBody: "We’ll connect you with a trusted local plumber who can help.",
       ctaButton: "Find a trusted plumber near me",
-      priceRows: [
-        { label: "Small repair", price: config.from, icon: LockIcon },
-        { label: "Parts needed", price: config.from, icon: KeyIcon },
-        { label: "Emergency callout", price: config.from, icon: AlertIcon },
-      ],
+      priceRows: withConfigRows([
+        { label: "Small repair", icon: LockIcon },
+        { label: "Parts needed", icon: KeyIcon },
+        { label: "Emergency callout", icon: AlertIcon },
+      ]),
       finalNote: "Final price depends on the fault, urgency, parts needed and time on site.",
       factors: ["Fault type", "Urgency", "Parts needed", "Time on site"],
     };
@@ -301,11 +319,11 @@ function getResultUiCopy(config: PriceConfig, serviceSlug: string): ResultUiCopy
     ctaTitle: `Need ${/^[aeiou]/i.test(genericAction) ? "an" : "a"} ${genericAction}?`,
     ctaBody: `We’ll connect you with an available local ${genericAction} provider who can help.`,
     ctaButton: `Find ${/^[aeiou]/i.test(genericAction) ? "an" : "a"} available ${genericAction}`,
-    priceRows: [
-      { label: "Typical job", price: config.from, icon: LockIcon },
-      { label: "Larger job", price: config.from, icon: KeyIcon },
-      { label: "Urgent request", price: config.from, icon: AlertIcon },
-    ],
+    priceRows: withConfigRows([
+      { label: "Typical job", icon: LockIcon },
+      { label: "Larger job", icon: KeyIcon },
+      { label: "Urgent request", icon: AlertIcon },
+    ]),
     finalNote: config.note,
     factors: ["Job size", "Urgency", "Access", "Extras needed"],
   };
@@ -316,30 +334,36 @@ function getShortResultTitle(label: string, serviceSlug: string) {
   const slug = serviceSlug.toLowerCase();
 
   if (lower.includes("end of tenancy") || slug.includes("end-of-tenancy")) {
-    return "End of tenancy cleaning near SL1";
+    return "Avoid overpaying for end of tenancy cleaning";
   }
 
   if (lower.includes("oven") || slug.includes("oven")) {
-    return "Oven cleaning near SL1";
+    return "Avoid overpaying for oven cleaning";
   }
 
   if (lower.includes("carpet") || slug.includes("carpet")) {
-    return "Carpet cleaning near SL1";
+    return "Avoid overpaying for carpet cleaning";
   }
 
   if (lower.includes("locksmith") || slug.includes("locksmith")) {
-    return "Locksmith fair price near SL1";
+    return "Avoid overpaying for a locksmith";
   }
 
   if (lower.includes("plumber") || slug.includes("plumber")) {
-    return "Plumber fair price near SL1";
+    return "Avoid overpaying for a plumber";
   }
 
-  return `${label} fair price near SL1`;
+  if (lower.includes("electrician") || slug.includes("electrician")) {
+    return "Avoid overpaying for an electrician";
+  }
+
+  return `Avoid overpaying for ${label.toLowerCase()}`;
 }
+
 
 function FairPriceCard({
   config,
+  postcode,
   uiCopy,
 }: {
   config: PriceConfig;
@@ -349,51 +373,228 @@ function FairPriceCard({
   const rows = uiCopy.priceRows;
 
   return (
-    <section className="overflow-hidden rounded-[18px] bg-white text-[#071638] shadow-[0_14px_34px_rgba(7,22,56,0.07)] ring-1 ring-[#edf1f5]">
-<div className="bg-[radial-gradient(circle_at_90%_10%,rgba(255,255,255,0.14),transparent_30%),linear-gradient(135deg,#06833f_0%,#066432_48%,#071638_100%)] px-4 pb-2.5 pt-3 text-center text-white">        <p className="text-[10.5px] font-black uppercase tracking-[0.13em] text-white/82">
-          Usual local price range
+    <section className="overflow-hidden rounded-[17px] bg-white text-[#071638] shadow-[0_14px_34px_rgba(7,22,56,0.07)] ring-1 ring-[#edf1f5]">
+      <div className="bg-[radial-gradient(circle_at_90%_10%,rgba(255,255,255,0.14),transparent_30%),linear-gradient(135deg,#06833f_0%,#066432_48%,#071638_100%)] px-4 pb-3 pt-3.5 text-center text-white">
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/82">
+          Quickola fair price check
         </p>
 
-<div className="mt-1 text-[34px] font-black leading-[0.9] tracking-[-0.075em] sm:text-[46px]">          {config.from}
+        <div className="mt-1 text-[36px] font-black leading-[0.9] tracking-[-0.075em] sm:text-[48px]">
+          {config.from}
         </div>
 
-<p className="mt-1.5 text-[13px] font-extrabold leading-[1.15] text-white/92 sm:text-[14.5px]">          Most local jobs near SL1 fall in this range
+        <p className="mt-1.5 text-[13px] font-extrabold leading-[1.15] text-white/92 sm:text-[14.5px]">
+          Most local jobs near {postcode} should land around here
         </p>
       </div>
 
-      <div className="px-3.5 py-1.5 sm:px-4">
+      <div className="grid grid-cols-3 border-b border-[#edf1f5] bg-[#fbfffc] text-center">
+        <div className="border-r border-[#edf1f5] px-2 py-2">
+          <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#08783f]">
+            Local
+          </p>
+          <p className="mt-0.5 text-[11px] font-extrabold leading-[1.1] text-[#44506a]">
+            SL1 guide
+          </p>
+        </div>
+
+        <div className="border-r border-[#edf1f5] px-2 py-2">
+          <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#08783f]">
+            No bias
+          </p>
+          <p className="mt-0.5 text-[11px] font-extrabold leading-[1.1] text-[#44506a]">
+            Price first
+          </p>
+        </div>
+
+        <div className="px-2 py-2">
+          <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#08783f]">
+            Warning
+          </p>
+          <p className="mt-0.5 text-[11px] font-extrabold leading-[1.1] text-[#44506a]">
+            Avoid overpay
+          </p>
+        </div>
+      </div>
+
+      <div className="px-3.5 py-1 sm:px-4">
         {rows.map((row) => {
           const Icon = row.icon;
 
           return (
             <div
               key={row.label}
-              className="flex items-center justify-between gap-3 border-b border-[#edf1f5] py-2.5 last:border-b-0"
+              className="flex items-center justify-between gap-3 border-b border-[#edf1f5] py-2 last:border-b-0"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eef9f1] text-[#08783f] ring-1 ring-[#dcefe2]">
-                  <Icon className="h-[18px] w-[18px]" />
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eef9f1] text-[#08783f] ring-1 ring-[#dcefe2]">
+                  <Icon className="h-[16px] w-[16px]" />
                 </span>
 
-                <span className="truncate text-[13.5px] font-black tracking-[-0.02em] text-[#071638] sm:text-[15.5px]">
+                <span className="truncate text-[13px] font-black tracking-[-0.02em] text-[#071638] sm:text-[15px]">
                   {row.label}
                 </span>
               </div>
 
-              <span className="shrink-0 text-[13.5px] font-black tracking-[-0.025em] text-[#08783f] sm:text-[16px]">
+              <span className="shrink-0 text-[13px] font-black tracking-[-0.025em] text-[#08783f] sm:text-[15px]">
                 {row.price}
               </span>
             </div>
           );
         })}
 
-        <div className="flex gap-2.5 border-t border-[#edf1f5] py-3 text-left">
+        <div className="flex gap-2.5 border-t border-[#edf1f5] py-2.5 text-left">
           <InfoIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#6b7280]" />
-          <p className="text-[12px] font-bold leading-[1.35] text-[#545f76]">
+          <p className="text-[11.5px] font-bold leading-[1.35] text-[#545f76]">
             {uiCopy.finalNote}
           </p>
         </div>
       </div>
+    </section>
+  );
+}
+
+function CostGuideAccordion({ config }: { config: PriceConfig }) {
+  const guide = config.costGuide;
+
+  if (!guide) return null;
+
+  return (
+    <section className="rounded-[20px] border border-[#e1e8ef] bg-white p-3 shadow-[0_14px_34px_rgba(7,22,56,0.05)] sm:p-4">
+      <div className="text-left">
+        <p className="text-[10.5px] font-black uppercase tracking-[0.17em] text-[#08783f]">
+          Cost guide
+        </p>
+        <h2 className="mt-1 text-[22px] font-black leading-[1.02] tracking-[-0.055em] text-[#071638] sm:text-[28px]">
+          {guide.title}
+        </h2>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {guide.updatedLabel ? (
+            <span className="inline-flex rounded-full bg-[#eef9f1] px-3 py-1 text-[11px] font-black text-[#08783f] ring-1 ring-[#dcefe2]">
+              {guide.updatedLabel}
+            </span>
+          ) : null}
+          {guide.sourceLabel ? (
+            <span className="inline-flex rounded-full bg-[#f7fafc] px-3 py-1 text-[11px] font-black text-[#5d6678] ring-1 ring-[#edf1f5]">
+              {guide.sourceLabel}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-3 rounded-[15px] border border-[#dcefe2] bg-[#f7fcf8] p-3 text-left">
+          <p className="text-[12px] font-black uppercase tracking-[0.11em] text-[#08783f]">
+            How Quickola estimates fair prices
+          </p>
+          <p className="mt-1 text-[12.5px] font-bold leading-[1.4] text-[#4f5b70] sm:text-[13.5px]">
+            We compare public UK cost-guide benchmarks, local provider price ranges, customer quote checks and completed Quickola job data where available. Prices are guides, not fixed quotes.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-2.5">
+        {guide.sections.map((section, index) => (
+          <details
+            key={section.title}
+            open={index < 2}
+            className="group rounded-[16px] border border-[#e7edf3] bg-[#fbfcfd] p-3 text-left shadow-[0_8px_18px_rgba(7,22,56,0.025)]"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
+              <span>
+                <span className="block text-[15px] font-black tracking-[-0.035em] text-[#071638] sm:text-[17px]">
+                  {section.title}
+                </span>
+                {section.intro ? (
+                  <span className="mt-0.5 block text-[11.5px] font-bold leading-[1.35] text-[#657089] sm:text-[12.5px]">
+                    {section.intro}
+                  </span>
+                ) : null}
+              </span>
+              <span className="shrink-0 text-[24px] font-black leading-none text-[#08783f] transition group-open:rotate-180">
+                ⌄
+              </span>
+            </summary>
+
+            {section.rows?.length ? (
+              <div className="mt-3 overflow-hidden rounded-[14px] border border-[#e4ece7] bg-white">
+                {section.rows.map((row) => (
+                  <div
+                    key={`${section.title}-${row.label}`}
+                    className="grid grid-cols-[1fr_auto] gap-3 border-b border-[#edf1f5] px-3 py-2.5 last:border-b-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-black leading-[1.15] tracking-[-0.025em] text-[#071638] sm:text-[14px]">
+                        {row.label}
+                      </p>
+                      {row.included ? (
+                        <p className="mt-0.5 text-[11.5px] font-bold leading-[1.3] text-[#657089] sm:text-[12.5px]">
+                          {row.included}
+                        </p>
+                      ) : null}
+                      {row.note ? (
+                        <p className="mt-0.5 text-[11.5px] font-bold leading-[1.3] text-[#657089] sm:text-[12.5px]">
+                          {row.note}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-[13px] font-black tracking-[-0.025em] text-[#08783f] sm:text-[14px]">
+                        {row.price}
+                      </p>
+                      {row.average ? (
+                        <p className="mt-0.5 text-[10.5px] font-black text-[#8a94a6] sm:text-[11px]">
+                          {row.average}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {section.bullets?.length ? (
+              <ul className="mt-3 space-y-2">
+                {section.bullets.map((bullet) => (
+                  <li key={bullet} className="flex gap-2.5 text-[12.5px] font-bold leading-[1.35] text-[#4e5a70] sm:text-[13.5px]">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#eef9f1] text-[#08783f] ring-1 ring-[#dcefe2]">
+                      <CheckIcon className="h-3.5 w-3.5" />
+                    </span>
+                    <span>{bullet}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
+            {section.warning ? (
+              <div className="mt-3 rounded-[14px] border border-[#fde8b3] bg-[#fff9e8] p-3 text-[12.5px] font-black leading-[1.35] text-[#7a4f00]">
+                {section.warning}
+              </div>
+            ) : null}
+          </details>
+        ))}
+      </div>
+
+      {guide.faqs?.length ? (
+        <div className="mt-4 rounded-[16px] border border-[#e7edf3] bg-[#fbfcfd] p-3 text-left">
+          <h3 className="text-[17px] font-black tracking-[-0.04em] text-[#071638] sm:text-[20px]">
+            FAQs about {config.label.toLowerCase()} costs
+          </h3>
+          <div className="mt-2 space-y-2">
+            {guide.faqs.map((faq) => (
+              <details key={faq.question} className="group rounded-[14px] border border-[#edf1f5] bg-white p-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-black leading-[1.2] tracking-[-0.025em] text-[#071638] sm:text-[14px]">
+                  {faq.question}
+                  <span className="shrink-0 text-[20px] font-black leading-none text-[#08783f] transition group-open:rotate-180">
+                    ⌄
+                  </span>
+                </summary>
+                <p className="mt-2 text-[12.5px] font-bold leading-[1.4] text-[#5d6678] sm:text-[13.5px]">
+                  {faq.answer}
+                </p>
+              </details>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -415,19 +616,36 @@ function JustCheckingResult({
   const resultTitle = getShortResultTitle(config.label, serviceSlug);
 
   return (
-    <div className="mx-auto max-w-[640px] space-y-2">
-<section className="rounded-[20px] border border-[#e1e8ef] bg-white p-2.5 text-center shadow-[0_14px_34px_rgba(7,22,56,0.05)] sm:p-3">        <p className="text-[11px] font-black uppercase tracking-[0.17em] text-[#08783f]">
+    <div className="mx-auto max-w-[620px] space-y-2">
+      <section className="rounded-[20px] border border-[#e1e8ef] bg-white p-2.5 text-center shadow-[0_14px_34px_rgba(7,22,56,0.05)] sm:p-3">
+        <p className="text-[10.5px] font-black uppercase tracking-[0.17em] text-[#08783f]">
           Price guide
         </p>
 
-<h1 className="mx-auto mt-1.5 max-w-[520px] text-[22px] font-black leading-[1] tracking-[-0.055em] text-[#071638] sm:text-[32px]">          {resultTitle}
+        <h1 className="mx-auto mt-1.5 max-w-[520px] text-[22px] font-black leading-[1] tracking-[-0.055em] text-[#071638] sm:text-[32px]">
+          {resultTitle}
         </h1>
 
-<p className="mx-auto mt-1.5 max-w-[520px] text-[12.5px] font-extrabold leading-[1.25] text-[#5d6678] sm:text-[14px]">          Based on {config.label.toLowerCase()} prices around {postcode}
+        <p className="mx-auto mt-1.5 max-w-[520px] text-[12.5px] font-extrabold leading-[1.25] text-[#5d6678] sm:text-[14px]">
+          Based on {config.label.toLowerCase()} prices around {postcode}. Check before you book.
         </p>
 
-<div className="mx-auto mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-[#f6fcf7] px-3 py-1.5 text-[11.5px] font-black text-[#08783f] ring-1 ring-[#d8eddd]">          <CheckIcon className="h-4 w-4" />
-          Price guide calculated for your area
+        <p className="mx-auto mt-1.5 max-w-[500px] rounded-full bg-[#eef9f1] px-3 py-1.5 text-[11.5px] font-black leading-[1.25] text-[#08783f] ring-1 ring-[#dcefe2] sm:text-[12.5px]">
+          Before you book, check Quickola first.
+        </p>
+
+        <div className="mx-auto mt-2 grid max-w-[420px] grid-cols-3 overflow-hidden rounded-[14px] border border-[#d8eddd] bg-[#f6fcf7] text-center">
+          <div className="border-r border-[#d8eddd] px-2 py-1.5">
+            <p className="text-[10px] font-black text-[#08783f]">Fair range</p>
+          </div>
+
+          <div className="border-r border-[#d8eddd] px-2 py-1.5">
+            <p className="text-[10px] font-black text-[#08783f]">Local check</p>
+          </div>
+
+          <div className="px-2 py-1.5">
+            <p className="text-[10px] font-black text-[#08783f]">No pressure</p>
+          </div>
         </div>
 
         <div className="mt-2.5">
@@ -437,26 +655,36 @@ function JustCheckingResult({
 
       {quote ? <ExpensiveQuoteCard quote={quote} /> : null}
 
-      <section className="rounded-[20px] border border-[#dcebe1] bg-[#fbfffc] p-3 shadow-[0_10px_26px_rgba(7,22,56,0.04)] sm:p-4">
+      <section className="rounded-[18px] border border-[#dcebe1] bg-[#fbfffc] p-3 shadow-[0_10px_26px_rgba(7,22,56,0.04)] sm:p-4">
         <div className="flex items-start gap-3 text-left">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#eef9f1] text-[#08783f] ring-1 ring-[#dcefe2]">
-            <ShieldCheckIcon className="h-6 w-6" />
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eef9f1] text-[#08783f] ring-1 ring-[#dcefe2]">
+            <ShieldCheckIcon className="h-5 w-5" />
           </span>
 
           <div>
-            <h2 className="text-[19px] font-black leading-[1.05] tracking-[-0.045em] text-[#071638] sm:text-[22px]">
+            <h2 className="text-[18px] font-black leading-[1.05] tracking-[-0.045em] text-[#071638] sm:text-[21px]">
               {uiCopy.ctaTitle}
             </h2>
 
-            <p className="mt-0.5 text-[12.5px] font-bold leading-[1.35] text-[#5d6678] sm:text-[14px]">
+            <p className="mt-0.5 text-[12.5px] font-bold leading-[1.3] text-[#5d6678] sm:text-[14px]">
               {uiCopy.ctaBody}
             </p>
           </div>
         </div>
 
+        <div className="mt-2.5 rounded-[14px] border border-[#edf1f5] bg-white px-3 py-2 text-left">
+          <p className="text-[12px] font-black leading-[1.3] text-[#071638]">
+            Why check first?
+          </p>
+
+          <p className="mt-0.5 text-[11.5px] font-bold leading-[1.35] text-[#5d6678]">
+            Some quotes can sit far above the normal local range. Quickola helps you spot that before you say yes.
+          </p>
+        </div>
+
         <a
           href={`/book?${bookQueryString}`}
-          className="mt-3 flex h-[50px] items-center justify-center gap-2 rounded-[13px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-3.5 text-center text-[13.5px] font-black tracking-[-0.025em] text-white shadow-[0_10px_22px_rgba(0,104,47,0.18)] transition hover:-translate-y-0.5 sm:h-[56px] sm:text-[17px]"
+          className="mt-3 flex h-[50px] items-center justify-center gap-2 rounded-[13px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-3.5 text-center text-[13.5px] font-black tracking-[-0.025em] text-white shadow-[0_10px_22px_rgba(0,104,47,0.18)] transition hover:-translate-y-0.5 sm:h-[54px] sm:text-[16px]"
         >
           <LocationIcon className="h-5 w-5" />
           {uiCopy.ctaButton}
@@ -469,7 +697,7 @@ function JustCheckingResult({
           Usually takes under 2 minutes. No payment required.
         </p>
 
-        <div className="mt-3 border-t border-[#e4ece7] pt-2 text-center">
+        <div className="mt-2.5 border-t border-[#e4ece7] pt-2 text-center">
           <a
             href="/"
             className="inline-flex items-center justify-center gap-2 rounded-[12px] px-3 py-1.5 text-[13px] font-black text-[#08783f] transition hover:bg-[#f0faf3]"
@@ -480,41 +708,60 @@ function JustCheckingResult({
         </div>
       </section>
 
-      <details className="rounded-[18px] border border-[#e1e6ee] bg-white p-3 shadow-[0_8px_22px_rgba(7,22,56,0.03)]">
+      <details className="rounded-[16px] border border-[#e1e6ee] bg-white p-3 shadow-[0_8px_22px_rgba(7,22,56,0.03)]">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left">
           <span className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eef9f1] text-[#08783f]">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eef9f1] text-[#08783f]">
               <InfoIcon className="h-5 w-5" />
             </span>
 
             <span>
-              <span className="block text-[16px] font-black tracking-[-0.03em] text-[#071638]">
+              <span className="block text-[15px] font-black tracking-[-0.03em] text-[#071638]">
                 What affects this price?
               </span>
 
-              <span className="mt-0.5 block text-[12px] font-bold leading-[1.3] text-[#657089]">
+              <span className="mt-0.5 block text-[11.5px] font-bold leading-[1.3] text-[#657089]">
                 Price changes based on{" "}
                 {uiCopy.factors.map((factor) => factor.toLowerCase()).join(", ")}.
               </span>
             </span>
           </span>
 
-          <span className="shrink-0 text-[28px] font-black leading-none text-[#08783f]">
+          <span className="shrink-0 text-[26px] font-black leading-none text-[#08783f]">
             ⌄
           </span>
         </summary>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2">
           {uiCopy.factors.map((factor) => (
             <div
               key={factor}
-              className="rounded-[14px] bg-[#f7fafc] px-3 py-3 text-center text-[12px] font-black text-[#44506a] ring-1 ring-[#edf0f5]"
+              className="rounded-[13px] bg-[#f7fafc] px-3 py-2.5 text-center text-[12px] font-black text-[#44506a] ring-1 ring-[#edf0f5]"
             >
               {factor}
             </div>
           ))}
         </div>
       </details>
+
+      <CostGuideAccordion config={config} />
+
+      <div className="fixed bottom-3 left-3 right-3 z-[99999] rounded-[20px] border border-[#dcebe1] bg-white p-2 shadow-[0_18px_42px_rgba(7,22,56,0.28)]">
+        <div className="mb-1.5 flex items-center justify-center gap-1.5 text-[11px] font-black text-[#08783f]">
+          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#eef9f1] text-[10px] ring-1 ring-[#dcefe2]">
+            ✓
+          </span>
+          No payment · No obligation · Usually under 2 minutes
+        </div>
+
+        <a
+          href={`/book?${bookQueryString}`}
+          className="flex h-[54px] items-center justify-center gap-2 rounded-[15px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-3.5 text-center text-[15px] font-black tracking-[-0.03em] text-white shadow-[0_12px_24px_rgba(0,104,47,0.24)] sm:text-[16px]"
+        >
+          <LocationIcon className="h-5 w-5" />
+          {uiCopy.ctaButton}
+        </a>
+      </div>
     </div>
   );
 }
@@ -523,17 +770,17 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
   const params = (await searchParams) ?? {};
   const rawService = Array.isArray(params.service) ? params.service[0] : params.service;
   const rawPostcode = params.postcode || params.area;
-const serviceSlug = normalisePriceServiceSlug(rawService);
-const postcode = formatPostcodeParam(rawPostcode);
-const config = getPriceConfigForResults(params);
+  const serviceSlug = normalisePriceServiceSlug(rawService);
+  const postcode = formatPostcodeParam(rawPostcode);
+  const config = getPriceConfigForResults(params);
 
-const quoteAmount = getMoneyAmount(params.quote || params.userQuote || params.currentQuote);
-const highestRangePrice = getHighestPriceFromRange(config.from);
+  const quoteAmount = getMoneyAmount(params.quote || params.userQuote || params.currentQuote);
+  const highestRangePrice = getHighestPriceFromRange(config.from);
 
-const quote =
-  quoteAmount && highestRangePrice && quoteAmount > highestRangePrice
-    ? formatPounds(quoteAmount)
-    : "";
+  const quote =
+    quoteAmount && highestRangePrice && quoteAmount > highestRangePrice
+      ? formatPounds(quoteAmount)
+      : "";
   const bookParams = new URLSearchParams();
 
   Object.entries(params).forEach(([key, value]) => {
@@ -553,10 +800,12 @@ const quote =
 
   const bookQueryString = bookParams.toString();
 
-  return (
-<main className="min-h-screen overflow-x-hidden bg-[#fbfcfd] pb-5 text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif]">      <Header />
+return (
+  <main className="min-h-screen overflow-x-hidden bg-[#fbfcfd] pb-40 text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] sm:pb-32">
+      <Header />
 
-<section className="mx-auto w-full max-w-[740px] px-3.5 pb-4 pt-1 sm:px-5 sm:pt-2">        <div>
+      <section className="mx-auto w-full max-w-[740px] px-3.5 pb-4 pt-1 sm:px-5 sm:pt-2">
+        <div>
           <JustCheckingResult
             config={config}
             postcode={postcode}
