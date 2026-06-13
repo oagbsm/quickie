@@ -109,6 +109,10 @@ export default async function BookPage({ searchParams }: BookPageProps) {
   const serviceSlug = getParam(params, "service", "local-pro");
   const service = formatService(serviceSlug);
   const postcode = getParam(params, "postcode", "");
+  const requestId = getParam(params, "request_id", "");
+  const mode = getParam(params, "mode", "find-provider");
+  const wasteType = getParam(params, "wasteType", "");
+  const loadSize = getParam(params, "loadSize", "");
 
   async function submitBookRequest(formData: FormData) {
     "use server";
@@ -159,12 +163,16 @@ export default async function BookPage({ searchParams }: BookPageProps) {
           </p>
         </section>
 
-        <form className="mt-4 grid gap-3" action={submitBookRequest}>
+        <form className="mt-4 grid gap-3" action={submitBookRequest} encType="multipart/form-data">
           <input type="hidden" name="service" value={serviceSlug} />
           <input type="hidden" name="area" value="slough" />
           <input type="hidden" name="source" value="book-page" />
           <input type="hidden" name="intent" value="wants-provider" />
-          <input type="hidden" name="job_type" value={serviceSlug} />
+          <input type="hidden" name="mode" value={mode} />
+          <input type="hidden" name="job_type" value={wasteType || serviceSlug} />
+          {requestId ? <input type="hidden" name="request_id" value={requestId} /> : null}
+          {wasteType ? <input type="hidden" name="waste_type" value={wasteType} /> : null}
+          {loadSize ? <input type="hidden" name="load_size" value={loadSize} /> : null}
 
           <fieldset>
             <legend className="mb-2 text-[12px] font-black leading-none text-[#071638]">When do you need it?</legend>
@@ -259,10 +267,10 @@ export default async function BookPage({ searchParams }: BookPageProps) {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-black leading-tight text-[#071638]">Upload photos of the job</p>
-                <p className="mt-1 text-[11px] font-bold leading-tight text-[#657089]">Photos help the provider understand the job faster.</p>
+                <p className="mt-1 text-[11px] font-bold leading-tight text-[#657089]">Leaks, damage, access issues or broken parts. Max 5 photos.</p>
               </div>
               <span className="rounded-full bg-[#eef8f2] px-3 py-1 text-[11px] font-black text-[#07833f]">Add</span>
-              <input className="sr-only" type="file" name="photos" accept="image/*" multiple />
+              <input className="sr-only" type="file" name="photos" accept="image/png,image/jpeg,image/webp,image/heic,image/heif" multiple />
             </div>
           </label>
 

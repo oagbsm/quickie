@@ -62,10 +62,96 @@ function getPostcodeDistrict(value: string) {
 }
 
 
+
 function toNumberOrNull(value: string) {
   if (!value) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+const REQUEST_PHOTO_BUCKET = "request-photos";
+const MAX_REQUEST_PHOTOS = 5;
+const MAX_REQUEST_PHOTO_SIZE_BYTES = 8 * 1024 * 1024;
+const ALLOWED_REQUEST_PHOTO_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);
+
+function getRequestPhotoExtension(file: File) {
+  const fromName = file.name.split(".").pop()?.toLowerCase() || "";
+
+  if (["jpg", "jpeg", "png", "webp", "heic", "heif"].includes(fromName)) {
+    return fromName === "jpeg" ? "jpg" : fromName;
+  }
+
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/webp") return "webp";
+  if (file.type === "image/heic") return "heic";
+  if (file.type === "image/heif") return "heif";
+  return "jpg";
+}
+
+async function uploadRequestPhotos({
+  formData,
+  requestId,
+}: {
+  formData: FormData;
+  requestId: string;
+}) {
+  const photoFiles = formData
+    .getAll("photos")
+    .filter((entry): entry is File => {
+      if (!entry || typeof entry !== "object") return false;
+
+      const maybeFile = entry as File;
+
+      return (
+        typeof maybeFile.arrayBuffer === "function" &&
+        typeof maybeFile.size === "number" &&
+        maybeFile.size > 0 &&
+        typeof maybeFile.type === "string"
+      );
+    })
+    .slice(0, MAX_REQUEST_PHOTOS);
+
+  if (!photoFiles.length) {
+    return [];
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const uploadedPaths: string[] = [];
+
+  for (const [index, file] of photoFiles.entries()) {
+    if (!ALLOWED_REQUEST_PHOTO_TYPES.has(file.type)) {
+      throw new Error("Please upload JPG, PNG, WEBP, HEIC or HEIF images only.");
+    }
+
+    if (file.size > MAX_REQUEST_PHOTO_SIZE_BYTES) {
+      throw new Error("Each photo must be under 8MB.");
+    }
+
+    const extension = getRequestPhotoExtension(file);
+    const storagePath = `${requestId}/photo-${index + 1}-${Date.now()}.${extension}`;
+
+    const { error } = await supabaseAdmin.storage
+      .from(REQUEST_PHOTO_BUCKET)
+      .upload(storagePath, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (error) {
+      console.error("Failed to upload request photo:", error);
+      throw new Error(`Could not upload photo: ${error.message}`);
+    }
+
+    uploadedPaths.push(storagePath);
+  }
+
+  return uploadedPaths;
 }
 
 
@@ -542,6 +628,93 @@ ${buildProviderOfferUrl("").replace(/\/p\/provider-offer\/$/, "")}/qk-ops-7f3a
     });
   } catch (error) {
     console.error("Failed to send admin request alert:", error);
+  }
+}
+function escapeTelegramHtml(value: string | number | null | undefined) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+async function sendTelegramRequestAlert({
+  requestId,
+  service,
+  area,
+  postcode,
+  timeNeeded,
+  email,
+  phone,
+  details,
+  source,
+  photoCount = 0,
+}: {
+  requestId?: string | null;
+  service: string;
+  area: string;
+  postcode?: string | null;
+  timeNeeded: string;
+  email?: string | null;
+  phone?: string | null;
+  details: string;
+  source?: string | null;
+  photoCount?: number;
+}) {
+  try {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+
+    if (!token || !chatId) {
+      console.error("Quickola Telegram skipped: missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID.");
+      return;
+    }
+
+    const adminUrl = `${buildProviderOfferUrl("").replace(/\/p\/provider-offer\/$/, "")}/qk-ops-7f3a`;
+    const photoUrl = requestId ? `${adminUrl}/request-photos/${requestId}` : "";
+    const displayService = service.replace(/-/g, " ");
+    const displayArea = area.replace(/-/g, " ");
+    const displayTimeNeeded = timeNeeded.replace(/-/g, " ");
+
+    const message = [
+      "🚨 <b>New Quickola Request</b>",
+      "",
+      `🛠 <b>Service:</b> ${escapeTelegramHtml(displayService)}`,
+      `📍 <b>Area:</b> ${escapeTelegramHtml(displayArea)}`,
+      postcode ? `📮 <b>Postcode:</b> ${escapeTelegramHtml(postcode)}` : "",
+      `⏰ <b>Needed:</b> ${escapeTelegramHtml(displayTimeNeeded)}`,
+      phone ? `📱 <b>Phone:</b> ${escapeTelegramHtml(phone)}` : "",
+      email ? `✉️ <b>Email:</b> ${escapeTelegramHtml(email)}` : "",
+      source ? `🔎 <b>Source:</b> ${escapeTelegramHtml(source)}` : "",
+      photoCount > 0 ? `📸 <b>Photos:</b> ${photoCount}` : "",
+      photoCount > 0 && photoUrl ? `🔗 <b>Photo link:</b> ${escapeTelegramHtml(photoUrl)}` : "",
+      requestId ? `🆔 <b>Request ID:</b> <code>${escapeTelegramHtml(requestId)}</code>` : "",
+      "",
+      details ? `📝 <b>Details</b>\n${escapeTelegramHtml(details)}` : "📝 <b>Details</b>\nNo details",
+      "",
+      `Admin: ${escapeTelegramHtml(adminUrl)}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Quickola Telegram failed:", errorText);
+    }
+  } catch (error) {
+    console.error("Failed to send Telegram request alert:", error);
   }
 }
 
@@ -1136,11 +1309,25 @@ export async function saveCheckPriceRequest(formData: FormData) {
     throw new Error("Please enter an 11-digit UK mobile number starting with 07.");
   }
 
+  const savedRequestId = requestId || crypto.randomUUID();
+  let photoPaths: string[] = [];
+
+  try {
+    photoPaths = await uploadRequestPhotos({
+      formData,
+      requestId: savedRequestId,
+    });
+  } catch (error) {
+    console.error("Request saved without photos because photo upload failed:", error);
+    photoPaths = [];
+  }
+
   const details = [
     jobType ? `Job type: ${jobType}` : "",
     jobDetail ? `Job detail: ${jobDetail}` : "",
     postcode ? `Postcode: ${postcode}` : "",
     timeNeeded ? `Time needed: ${timeNeeded}` : "",
+    photoPaths.length ? `Photos uploaded: ${photoPaths.length}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -1166,7 +1353,7 @@ export async function saveCheckPriceRequest(formData: FormData) {
     pol_status: "waiting",
     missing_fields: [],
     raw_payload: {
-      request_id: requestId || null,
+      request_id: savedRequestId,
       service,
       area,
       postcode,
@@ -1182,10 +1369,12 @@ export async function saveCheckPriceRequest(formData: FormData) {
       job_risk: jobRisk,
       customer_budget: customerBudget,
       budget_note: budgetNote || null,
+      has_photos: photoPaths.length > 0,
+      photo_count: photoPaths.length,
+      photo_paths: photoPaths,
+      photo_bucket: REQUEST_PHOTO_BUCKET,
     },
   };
-
-  let savedRequestId = requestId;
 
   if (requestId) {
     const { data, error } = await supabase
@@ -1193,29 +1382,41 @@ export async function saveCheckPriceRequest(formData: FormData) {
       .update(completedPayload)
       .eq("id", requestId)
       .select("id")
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("Failed to complete Cumar request:", error);
       throw new Error(`Could not complete request: ${error.message}`);
     }
 
-    savedRequestId = data.id;
+    if (!data) {
+      console.error("Request id from book page was not found. Creating a new completed request instead:", requestId);
+
+      const { error: insertFallbackError } = await supabase
+        .from("requests")
+        .insert({
+          id: savedRequestId,
+          ...completedPayload,
+        });
+
+      if (insertFallbackError) {
+        console.error("Failed to save fallback check-price request:", insertFallbackError);
+        throw new Error(`Could not save request: ${insertFallbackError.message}`);
+      }
+    }
   } else {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("requests")
-      .insert(completedPayload)
-      .select("id")
-      .single();
+      .insert({
+        id: savedRequestId,
+        ...completedPayload,
+      });
 
     if (error) {
       console.error("Failed to save check-price request:", error);
       throw new Error(`Could not save request: ${error.message}`);
     }
-
-    savedRequestId = data.id;
   }
-
   await sendAdminRequestAlert({
     service,
     area,
@@ -1224,6 +1425,19 @@ export async function saveCheckPriceRequest(formData: FormData) {
     email,
     phone,
     details,
+  });
+
+  await sendTelegramRequestAlert({
+    requestId: savedRequestId,
+    service,
+    area,
+    postcode,
+    timeNeeded,
+    email,
+    phone,
+    details,
+    source,
+    photoCount: photoPaths.length,
   });
 
   revalidatePath("/qk-ops-7f3a");
