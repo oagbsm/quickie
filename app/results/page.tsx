@@ -61,7 +61,7 @@ function getHighestPriceFromRange(value: string) {
 function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-[#edf1f5] bg-white/96 backdrop-blur-md">
-      <div className="mx-auto flex min-h-[52px] w-full max-w-[760px] items-center justify-between px-4 sm:min-h-[60px] sm:px-5">
+      <div className="mx-auto flex min-h-[52px] w-full max-w-[760px] items-center justify-between px-4 sm:min-h-[60px] sm:px-5 lg:max-w-[1180px] lg:px-8">
         <a href="/" className="flex min-w-0 items-center gap-2.5" aria-label="Quickola homepage">
           <img
             src="/quickola/logo-mark.png"
@@ -616,8 +616,9 @@ function JustCheckingResult({
   const resultTitle = getShortResultTitle(config.label, serviceSlug);
 
   return (
-    <div className="mx-auto max-w-[620px] space-y-2">
-      <section className="rounded-[20px] border border-[#e1e8ef] bg-white p-2.5 text-center shadow-[0_14px_34px_rgba(7,22,56,0.05)] sm:p-3">
+    <div className="mx-auto max-w-[620px] space-y-2 lg:max-w-none lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.75fr)] lg:items-start lg:gap-7 lg:space-y-0">
+      <div className="lg:space-y-4">
+      <section className="rounded-[20px] border border-[#e1e8ef] bg-white p-2.5 text-center shadow-[0_14px_34px_rgba(7,22,56,0.05)] sm:p-3 lg:rounded-[26px] lg:p-6 lg:shadow-[0_24px_70px_rgba(7,22,56,0.08)]">
         <p className="text-[10.5px] font-black uppercase tracking-[0.17em] text-[#08783f]">
           Price guide
         </p>
@@ -654,8 +655,10 @@ function JustCheckingResult({
       </section>
 
       {quote ? <ExpensiveQuoteCard quote={quote} /> : null}
+      </div>
 
-      <section className="rounded-[18px] border border-[#dcebe1] bg-[#fbfffc] p-3 shadow-[0_10px_26px_rgba(7,22,56,0.04)] sm:p-4">
+      <aside className="space-y-2 lg:sticky lg:top-[84px] lg:space-y-4">
+      <section className="rounded-[18px] border border-[#dcebe1] bg-[#fbfffc] p-3 shadow-[0_10px_26px_rgba(7,22,56,0.04)] sm:p-4 lg:rounded-[26px] lg:p-6 lg:shadow-[0_18px_48px_rgba(7,22,56,0.07)]">
         <div className="flex items-start gap-3 text-left">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eef9f1] text-[#08783f] ring-1 ring-[#dcefe2]">
             <ShieldCheckIcon className="h-5 w-5" />
@@ -708,7 +711,7 @@ function JustCheckingResult({
         </div>
       </section>
 
-      <details className="rounded-[16px] border border-[#e1e6ee] bg-white p-3 shadow-[0_8px_22px_rgba(7,22,56,0.03)]">
+      <details className="rounded-[16px] border border-[#e1e6ee] bg-white p-3 shadow-[0_8px_22px_rgba(7,22,56,0.03)] lg:rounded-[22px] lg:p-5 lg:shadow-[0_14px_36px_rgba(7,22,56,0.05)]" open>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left">
           <span className="flex items-center gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eef9f1] text-[#08783f]">
@@ -744,9 +747,13 @@ function JustCheckingResult({
         </div>
       </details>
 
-      <CostGuideAccordion config={config} />
+      </aside>
 
-      <div className="fixed bottom-3 left-3 right-3 z-[99999] rounded-[20px] border border-[#dcebe1] bg-white p-2 shadow-[0_18px_42px_rgba(7,22,56,0.28)]">
+      <div className="lg:col-span-2 lg:mt-7">
+        <CostGuideAccordion config={config} />
+      </div>
+
+      <div className="fixed bottom-3 left-3 right-3 z-[99999] rounded-[20px] border border-[#dcebe1] bg-white p-2 shadow-[0_18px_42px_rgba(7,22,56,0.28)] lg:hidden">
         <div className="mb-1.5 flex items-center justify-center gap-1.5 text-[11px] font-black text-[#08783f]">
           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#eef9f1] text-[10px] ring-1 ring-[#dcefe2]">
             ✓
@@ -801,10 +808,10 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
   const bookQueryString = bookParams.toString();
 
 return (
-  <main className="min-h-screen overflow-x-hidden bg-[#fbfcfd] pb-40 text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] sm:pb-32">
+  <main className="min-h-screen overflow-x-hidden bg-[#fbfcfd] pb-40 text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] sm:pb-32 lg:pb-0">
       <Header />
 
-      <section className="mx-auto w-full max-w-[740px] px-3.5 pb-4 pt-1 sm:px-5 sm:pt-2">
+      <section className="mx-auto w-full max-w-[740px] px-3.5 pb-4 pt-1 sm:px-5 sm:pt-2 lg:max-w-[1180px] lg:px-8 lg:pb-12 lg:pt-8">
         <div>
           <JustCheckingResult
             config={config}

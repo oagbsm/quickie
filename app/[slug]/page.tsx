@@ -1,7 +1,19 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Footer from "../components/Footer";
 import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+
+import {
+  serviceFormConfigs,
+  serviceOptions as dynamicServiceOptions,
+  type ServiceKey,
+  type ServiceFormField,
+} from "../data/serviceFormConfigs";
+
+import {
+  getPriceConfigForResults,
+  type PriceConfig as DynamicPriceConfig,
+} from "../data/priceConfigs";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -33,216 +45,14 @@ type SeoPage = {
     from: string;
     typical: string;
   }>;
+  dynamicPriceConfig?: DynamicPriceConfig;
+  dynamicFormFields?: ServiceFormField[];
   faqs: Array<{
     question: string;
     answer: string;
   }>;
   indexable: boolean;
   status: "draft" | "published";
-};
-
-function cleanFormValue(value: FormDataEntryValue | null) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-async function sendSeoPageRequestEmail(formData: FormData) {
-  "use server";
-
-  const apiKey = process.env.RESEND_API_KEY;
-  const adminEmail = process.env.ADMIN_ALERT_EMAIL || "matointernationalgroup@gmail.com";
-  const fromEmail = process.env.FROM_EMAIL || "Quickola <hello@quickola.co.uk>";
-
-  const service = cleanFormValue(formData.get("service"));
-  const jobDetail = cleanFormValue(formData.get("job_detail"));
-  const area = cleanFormValue(formData.get("area"));
-  const postcode = cleanFormValue(formData.get("postcode"));
-  const email = cleanFormValue(formData.get("email"));
-  const source = cleanFormValue(formData.get("source"));
-  const timeNeeded =
-    cleanFormValue(formData.get("timeNeeded")) ||
-    cleanFormValue(formData.get("time_needed")) ||
-    "this-week";
-
-  const redirectUrl = `/check-price?service=${encodeURIComponent(service)}&postcode=${encodeURIComponent(
-    area || postcode
-  )}&email=${encodeURIComponent(email)}&source=${encodeURIComponent(source)}`;
-
-  if (!apiKey || !adminEmail) {
-    console.error("SEO request email skipped: missing RESEND_API_KEY or ADMIN_ALERT_EMAIL.");
-    redirect(redirectUrl);
-  }
-
-  if (!service || !area || !email) {
-    console.error("SEO request email skipped: missing service, area or email.");
-    redirect(redirectUrl);
-  }
-
-  const resend = new Resend(apiKey);
-
-  try {
-    await resend.emails.send({
-      from: fromEmail,
-      to: adminEmail,
-      replyTo: email,
-      subject: `New Quickola SEO request: ${service} in ${area}`,
-      text: [
-        "New Quickola SEO page request",
-        "",
-        `Service: ${service}`,
-        `Job detail: ${jobDetail || "Not provided"}`,
-        `Area: ${area}`,
-        `Postcode/location: ${postcode || "Not provided"}`,
-        `Time needed: ${timeNeeded}`,
-        `Customer email: ${email}`,
-        `Source: ${source || "SEO page"}`,
-      ].join("\n"),
-      html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.5;color:#071638;">
-          <h2 style="margin:0 0 12px;">New Quickola SEO page request</h2>
-          <p><strong>Service:</strong> ${service}</p>
-          <p><strong>Job detail:</strong> ${jobDetail || "Not provided"}</p>
-          <p><strong>Area:</strong> ${area}</p>
-          <p><strong>Postcode/location:</strong> ${postcode || "Not provided"}</p>
-          <p><strong>Time needed:</strong> ${timeNeeded}</p>
-          <p><strong>Customer email:</strong> ${email}</p>
-          <p><strong>Source:</strong> ${source || "SEO page"}</p>
-        </div>
-      `,
-    });
-  } catch (error) {
-    console.error("Failed to send SEO request email:", error);
-  }
-
-  redirect(redirectUrl);
-}
-
-const serviceOptions = [
-  { label: "Cleaning", value: "cleaning" },
-  { label: "End of Tenancy Cleaning", value: "end-of-tenancy-cleaning" },
-  { label: "Deep Cleaning", value: "deep-cleaning" },
-  { label: "Carpet Cleaning", value: "carpet-cleaning" },
-  { label: "Oven Cleaning", value: "oven-cleaning" },
-  { label: "Man and Van", value: "man-and-van" },
-  { label: "Removals", value: "removals" },
-  { label: "Plumber", value: "plumber" },
-  { label: "Emergency Plumber", value: "emergency-plumber" },
-  { label: "Electrician", value: "electrician" },
-  { label: "Locksmith", value: "locksmith" },
-  { label: "Gardener", value: "gardener" },
-  { label: "Handyman", value: "handyman" },
-  { label: "Waste Removal", value: "waste-removal" },
-  { label: "MOT and Car Repairs", value: "mot-car-repairs" },
-  { label: "Tyres", value: "tyres" },
-  { label: "Boiler Repair", value: "boiler-repair" },
-];
-
-const detailOptionsByService: Record<string, Array<{ label: string; value: string }>> = {
-  cleaning: [
-    { label: "Studio", value: "studio" },
-    { label: "1 bed", value: "1-bed" },
-    { label: "2 bed", value: "2-bed" },
-    { label: "3 bed", value: "3-bed" },
-    { label: "4+ bed", value: "4-bed-plus" },
-    { label: "Not sure yet", value: "not-sure" },
-  ],
-  "end-of-tenancy-cleaning": [
-    { label: "Studio", value: "studio" },
-    { label: "1 bed", value: "1-bed" },
-    { label: "2 bed", value: "2-bed" },
-    { label: "3 bed", value: "3-bed" },
-    { label: "4+ bed", value: "4-bed-plus" },
-    { label: "Not sure yet", value: "not-sure" },
-  ],
-  "deep-cleaning": [
-    { label: "Small flat", value: "small-flat" },
-    { label: "2 bed", value: "2-bed" },
-    { label: "3+ bed", value: "3-bed-plus" },
-    { label: "Not sure yet", value: "not-sure" },
-  ],
-  "carpet-cleaning": [
-    { label: "1 room", value: "1-room" },
-    { label: "2 rooms", value: "2-rooms" },
-    { label: "Whole flat / house", value: "whole-property" },
-    { label: "Stairs included", value: "stairs" },
-  ],
-  "oven-cleaning": [
-    { label: "Single oven", value: "single-oven" },
-    { label: "Double oven", value: "double-oven" },
-    { label: "Oven + hob / extractor", value: "oven-hob-extractor" },
-    { label: "Not sure yet", value: "not-sure" },
-  ],
-  "man-and-van": [
-    { label: "Small collection", value: "small-collection" },
-    { label: "Furniture delivery", value: "furniture-delivery" },
-    { label: "Flat move", value: "flat-move" },
-    { label: "Need helper", value: "helper-needed" },
-  ],
-  removals: [
-    { label: "Small flat move", value: "small-flat" },
-    { label: "2–3 bed move", value: "2-3-bed" },
-    { label: "House move", value: "house-move" },
-    { label: "Packing needed", value: "packing-needed" },
-  ],
-  plumber: [
-    { label: "Leak", value: "leak" },
-    { label: "Tap / toilet repair", value: "tap-toilet" },
-    { label: "Blocked pipe", value: "blocked-pipe" },
-    { label: "Not sure yet", value: "not-sure" },
-  ],
-  "emergency-plumber": [
-    { label: "Leak now", value: "leak-now" },
-    { label: "Burst pipe", value: "burst-pipe" },
-    { label: "Blocked toilet", value: "blocked-toilet" },
-    { label: "No hot water", value: "no-hot-water" },
-  ],
-  electrician: [
-    { label: "Fault / power issue", value: "fault" },
-    { label: "Socket or switch", value: "socket-switch" },
-    { label: "Lighting", value: "lighting" },
-    { label: "Safety check", value: "safety-check" },
-  ],
-  locksmith: [
-    { label: "Locked out", value: "locked-out" },
-    { label: "Lock change", value: "lock-change" },
-    { label: "UPVC door lock", value: "upvc-door" },
-    { label: "Emergency locksmith", value: "emergency" },
-  ],
-  gardener: [
-    { label: "Grass cutting", value: "grass-cutting" },
-    { label: "Garden tidy-up", value: "garden-tidy" },
-    { label: "Hedge trimming", value: "hedge-trimming" },
-    { label: "Waste removal needed", value: "waste-removal" },
-  ],
-  handyman: [
-    { label: "Small repair", value: "small-repair" },
-    { label: "Mounting", value: "mounting" },
-    { label: "Furniture assembly", value: "assembly" },
-    { label: "Multiple jobs", value: "multiple-jobs" },
-  ],
-  "waste-removal": [
-    { label: "Small load", value: "small-load" },
-    { label: "Medium load", value: "medium-load" },
-    { label: "Large clearance", value: "large-clearance" },
-    { label: "Bulky items", value: "bulky-items" },
-  ],
-  "mot-car-repairs": [
-    { label: "MOT test", value: "mot-test" },
-    { label: "Diagnostics", value: "diagnostics" },
-    { label: "Small repair", value: "small-repair" },
-    { label: "Not sure yet", value: "not-sure" },
-  ],
-  tyres: [
-    { label: "Budget tyre", value: "budget-tyre" },
-    { label: "Mid-range tyre", value: "mid-range-tyre" },
-    { label: "Premium tyre", value: "premium-tyre" },
-    { label: "Not sure yet", value: "not-sure" },
-  ],
-  "boiler-repair": [
-    { label: "No heating", value: "no-heating" },
-    { label: "No hot water", value: "no-hot-water" },
-    { label: "Boiler fault", value: "boiler-fault" },
-    { label: "Not sure yet", value: "not-sure" },
-  ],
 };
 
 function getSupabaseClient() {
@@ -259,6 +69,31 @@ function hydrateLocationText(value: string | null | undefined, location: string)
     .replace(/{{location}}/g, location)
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normaliseServiceKey(value: string): ServiceKey | null {
+  const slug = String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
+  const aliases: Record<string, ServiceKey> = {
+    cleaning: "cleaner",
+    clean: "cleaner",
+    cleaner: "cleaner",
+    painting: "painter-decorator",
+    painter: "painter-decorator",
+    decorating: "painter-decorator",
+    plumbing: "plumber",
+    electrical: "electrician",
+    moving: "man-and-van",
+    "man-with-van": "man-and-van",
+    "van-man": "man-and-van",
+  };
+
+  const candidate = aliases[slug] ?? (slug as ServiceKey);
+  return serviceFormConfigs[candidate] ? candidate : null;
 }
 
 async function getSeoPageBySlug(slug: string): Promise<SeoPage | null> {
@@ -306,6 +141,7 @@ async function getSeoPageBySlug(slug: string): Promise<SeoPage | null> {
   }
 
   const locationName = locationRow.name;
+  const serviceKey = normaliseServiceKey(pageRow.service_slug);
 
   const hydratedFaqs = Array.isArray(pageRow.faqs)
     ? pageRow.faqs.map((faq: { question?: string; answer?: string }) => ({
@@ -334,6 +170,11 @@ async function getSeoPageBySlug(slug: string): Promise<SeoPage | null> {
     primaryKeyword: serviceRow?.primary_keyword ?? pageRow.title,
     secondaryKeywords: serviceRow?.secondary_keywords ?? [],
     priceGuide: pageRow.price_guide ?? [],
+    dynamicPriceConfig: getPriceConfigForResults({
+      service: pageRow.service_slug,
+      postcode: locationName,
+    }),
+    dynamicFormFields: serviceKey ? serviceFormConfigs[serviceKey]?.fields : undefined,
     faqs: hydratedFaqs,
     indexable: pageRow.indexable,
     status: pageRow.status,
@@ -375,30 +216,38 @@ function getHeadline(page: SeoPage) {
   return page.h1 || `${page.serviceName} prices in ${page.location}`;
 }
 
-function getDetailLabel(page: SeoPage) {
-  if (["cleaning", "end-of-tenancy-cleaning", "deep-cleaning"].includes(page.serviceSlug)) {
-    return "Property size";
-  }
-
-  if (["man-and-van", "removals"].includes(page.serviceSlug)) return "Move type";
-  if (["mot-car-repairs", "tyres"].includes(page.serviceSlug)) return "Vehicle / job type";
-  if (page.serviceSlug === "locksmith") return "Locksmith issue";
-  if (["plumber", "emergency-plumber", "boiler-repair"].includes(page.serviceSlug)) return "Issue type";
-  if (page.serviceSlug === "electrician") return "Electrical issue";
-  if (page.serviceSlug === "waste-removal") return "Waste amount";
-  if (page.serviceSlug === "gardener") return "Garden job";
-  if (page.serviceSlug === "handyman") return "Job type";
-
-  return "Job details";
+function getDynamicServiceConfig(page: SeoPage) {
+  const serviceKey = normaliseServiceKey(page.serviceSlug);
+  return serviceKey ? serviceFormConfigs[serviceKey] : null;
 }
 
-function getDetailOptions(page: SeoPage) {
-  return detailOptionsByService[page.serviceSlug] ?? [
-    { label: "Small job", value: "small-job" },
-    { label: "Medium job", value: "medium-job" },
-    { label: "Large job", value: "large-job" },
-    { label: "Not sure yet", value: "not-sure" },
-  ];
+function getPrimaryDynamicFields(page: SeoPage) {
+  const config = getDynamicServiceConfig(page);
+  if (!config) return [];
+
+  const supportedFields = config.fields
+    .filter((field) => field.type === "chips" || field.type === "select" || field.type === "text")
+    .sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
+
+  const priceFields = supportedFields.filter((field) => field.stage === "price");
+
+  return (priceFields.length ? priceFields : supportedFields).slice(0, 2);
+}
+
+function getDynamicPriceGuideRows(page: SeoPage) {
+  const dynamicRows = page.dynamicPriceConfig?.resultRows;
+
+  if (dynamicRows?.length) {
+    return dynamicRows.slice(0, 3).map((row) => ({
+      label: row.label,
+      from: row.price,
+      typical:
+        page.dynamicPriceConfig?.note ??
+        "Final price depends on job details, urgency, access and local provider availability.",
+    }));
+  }
+
+  return page.priceGuide;
 }
 
 function Header() {
@@ -443,21 +292,28 @@ function Header() {
 }
 
 function RequestForm({ page }: { page: SeoPage }) {
+  const dynamicServiceConfig = getDynamicServiceConfig(page);
+  const primaryFields = getPrimaryDynamicFields(page);
+
   return (
-<form
-  id="request"
-  action={sendSeoPageRequestEmail}
-  className="scroll-mt-[88px] rounded-[28px] border border-[#dfe8ef] bg-white p-5 shadow-[0_22px_60px_rgba(7,22,56,0.10)] sm:p-6"
->
+    <form
+      id="request"
+      action="/screen2"
+      method="GET"
+      className="scroll-mt-[88px] rounded-[28px] border border-[#dfe8ef] bg-white p-5 shadow-[0_22px_60px_rgba(7,22,56,0.10)] sm:p-6"
+    >
       <input type="hidden" name="source" value={`seo-page:${page.slug}`} />
-<input type="hidden" name="timeNeeded" value="this-week" />      <input type="hidden" name="postcode" value={page.location} />
+      <input type="hidden" name="timeNeeded" value="this-week" />
+      {dynamicServiceConfig ? (
+        <input type="hidden" name="matchingMode" value={dynamicServiceConfig.matchingMode} />
+      ) : null}
 
       <div className="text-left">
         <h2 className="text-[28px] font-black leading-[1.06] tracking-[-0.045em] text-[#071638]">
           Get your fair price range
         </h2>
         <p className="mt-2 text-[15px] font-semibold leading-[1.5] text-[#607089]">
-          Free to check. Not a booking.
+          {dynamicServiceConfig?.intro ?? "Free to check. Not a booking."}
         </p>
       </div>
 
@@ -466,59 +322,60 @@ function RequestForm({ page }: { page: SeoPage }) {
           <span className="mb-1.5 block text-[12px] font-black text-[#34425d]">
             Service
           </span>
-          <select
-            name="service"
-            defaultValue={page.serviceSlug}
-            className="h-[58px] w-full rounded-[16px] border border-[#dbe4ed] bg-white px-4 text-[15px] font-black text-[#071638] outline-none transition focus:border-[#0b8f41] focus:ring-4 focus:ring-[#0b8f41]/10"
-          >
-            {serviceOptions.map((service) => (
-              <option key={service.value} value={service.value}>
-                {service.label}
-              </option>
-            ))}
-          </select>
+          <input type="hidden" name="service" value={page.serviceSlug} />
+          <div className="flex h-[58px] w-full items-center rounded-[16px] border border-[#dbe4ed] bg-[#f7fafc] px-4 text-[15px] font-black text-[#071638]">
+            {dynamicServiceConfig?.shortLabel ?? dynamicServiceConfig?.label ?? page.serviceName}
+          </div>
         </label>
+        {primaryFields.map((field) => {
+          const options = field.options ?? [];
+
+          if ((field.type === "chips" || field.type === "select") && options.length) {
+            return (
+              <label key={field.name} className="block">
+                <span className="mb-1.5 block text-[12px] font-black text-[#34425d]">
+                  {field.label}
+                </span>
+                <select
+                  name={field.name}
+                  defaultValue={options[0]?.value ?? "not-sure"}
+                  className="h-[58px] w-full rounded-[16px] border border-[#dbe4ed] bg-white px-4 text-[15px] font-black text-[#071638] outline-none transition focus:border-[#0b8f41] focus:ring-4 focus:ring-[#0b8f41]/10"
+                >
+                  {options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            );
+          }
+
+          return (
+            <label key={field.name} className="block">
+              <span className="mb-1.5 block text-[12px] font-black text-[#34425d]">
+                {field.label}
+              </span>
+              <input
+                name={field.name}
+                placeholder={field.placeholder ?? field.example ?? "Enter details"}
+                className="h-[58px] w-full rounded-[16px] border border-[#dbe4ed] bg-white px-4 text-[15px] font-black text-[#071638] outline-none transition placeholder:text-[#93a0b3] focus:border-[#0b8f41] focus:ring-4 focus:ring-[#0b8f41]/10"
+              />
+            </label>
+          );
+        })}
 
         <label className="block">
           <span className="mb-1.5 block text-[12px] font-black text-[#34425d]">
-            {getDetailLabel(page)}
-          </span>
-          <select
-            name="job_detail"
-            defaultValue={getDetailOptions(page)[0]?.value ?? "not-sure"}
-            className="h-[58px] w-full rounded-[16px] border border-[#dbe4ed] bg-white px-4 text-[15px] font-black text-[#071638] outline-none transition focus:border-[#0b8f41] focus:ring-4 focus:ring-[#0b8f41]/10"
-          >
-            {getDetailOptions(page).map((size) => (
-              <option key={size.value} value={size.value}>
-                {size.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="mb-1.5 block text-[12px] font-black text-[#34425d]">
-            Area or postcode
+            Postcode
           </span>
           <input
-            name="area"
-            defaultValue={page.location}
+            name="postcode"
             required
-            placeholder="e.g. Slough or SL1 1AA"
-            className="h-[58px] w-full rounded-[16px] border border-[#dbe4ed] bg-white px-4 text-[15px] font-black text-[#071638] outline-none transition placeholder:text-[#93a0b3] focus:border-[#0b8f41] focus:ring-4 focus:ring-[#0b8f41]/10"
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-1.5 block text-[12px] font-black text-[#34425d]">
-            Email address
-          </span>
-          <input
-            name="email"
-            type="email"
-            required
-            placeholder="you@example.com"
-            className="h-[58px] w-full rounded-[16px] border border-[#dbe4ed] bg-white px-4 text-[15px] font-black text-[#071638] outline-none transition placeholder:text-[#93a0b3] focus:border-[#0b8f41] focus:ring-4 focus:ring-[#0b8f41]/10"
+            placeholder="e.g. SL1 1AA"
+            pattern="^SL[1-9][A-Z]?\s?[0-9][A-Z]{2}$"
+            title="Enter a valid SL postcode, for example SL1 1AA"
+            className="h-[58px] w-full rounded-[16px] border border-[#dbe4ed] bg-white px-4 text-[15px] font-black uppercase text-[#071638] outline-none transition placeholder:normal-case placeholder:text-[#93a0b3] focus:border-[#0b8f41] focus:ring-4 focus:ring-[#0b8f41]/10"
           />
         </label>
       </div>
@@ -527,11 +384,11 @@ function RequestForm({ page }: { page: SeoPage }) {
         type="submit"
         className="mt-5 flex h-[60px] w-full items-center justify-center rounded-[16px] bg-[#079940] text-[17px] font-black text-white shadow-[0_18px_34px_rgba(7,153,64,0.25)] transition hover:-translate-y-0.5"
       >
-        Get my fair price →
+        Check price →
       </button>
 
       <p className="mt-4 text-center text-[12px] font-semibold leading-[1.45] text-[#607089]">
-        Your request stays private.
+        No email needed. This opens your fair-price result instantly.
       </p>
     </form>
   );
@@ -558,7 +415,9 @@ function Hero({ page }: { page: SeoPage }) {
           </h1>
 
           <p className="mt-5 max-w-[650px] text-[17px] font-semibold leading-[1.58] text-[#4b5b78] sm:text-[18px] lg:max-w-[560px]">
-            {page.intro || `See the fair ${page.serviceName.toLowerCase()} price range before you book. No pressure to continue.`}
+            {page.intro ||
+              page.dynamicPriceConfig?.subheadline ||
+              `See the fair ${page.serviceName.toLowerCase()} price range before you book. No pressure to continue.`}
           </p>
         </div>
 
@@ -569,8 +428,9 @@ function Hero({ page }: { page: SeoPage }) {
 }
 
 function PriceGuide({ page }: { page: SeoPage }) {
-  const rows = page.priceGuide.length
-    ? page.priceGuide
+  const dynamicRows = getDynamicPriceGuideRows(page);
+  const rows = dynamicRows.length
+    ? dynamicRows
     : [
         {
           label: "Small job",
@@ -597,7 +457,8 @@ function PriceGuide({ page }: { page: SeoPage }) {
             Price guide
           </p>
           <h2 className="mt-2 text-[30px] font-black tracking-[-0.045em] text-[#071638] sm:text-[46px]">
-            Typical {page.serviceName.toLowerCase()} price ranges in {page.location}
+            {page.dynamicPriceConfig?.costGuide?.title ??
+              `Typical ${page.serviceName.toLowerCase()} price ranges in ${page.location}`}
           </h2>
         </div>
 
@@ -625,9 +486,12 @@ function PriceGuide({ page }: { page: SeoPage }) {
         </div>
 
         <div className="mt-5 rounded-[18px] border border-[#dfe8ef] bg-[#fbfcfd] px-4 py-4 text-[13px] font-semibold leading-[1.55] text-[#607089] sm:px-5">
-          <p className="font-black text-[#071638]">Last updated: May 2026</p>
+          <p className="font-black text-[#071638]">
+            {page.dynamicPriceConfig?.costGuide?.updatedLabel ?? "Last updated: May 2026"}
+          </p>
           <p className="mt-1">
-            Prices are guide ranges. Final quotes depend on job details, access, urgency, parts, materials and provider availability.
+            {page.dynamicPriceConfig?.note ??
+              "Prices are guide ranges. Final quotes depend on job details, access, urgency, parts, materials and provider availability."}
           </p>
           <div className="mt-3 flex flex-wrap gap-3 text-[12px] font-black text-[#0b8f41]">
             <a href="/pricing-methodology" className="hover:underline">How Quickola estimates prices</a>
@@ -641,7 +505,7 @@ function PriceGuide({ page }: { page: SeoPage }) {
 }
 
 function IncludedSection({ page }: { page: SeoPage }) {
-  const isCleaning = ["cleaning", "end-of-tenancy-cleaning", "deep-cleaning", "carpet-cleaning", "oven-cleaning"].includes(page.serviceSlug);
+  const isCleaning = ["cleaning", "end-of-tenancy-cleaning", "deep-cleaning", "carpet-cleaning", "oven-cleaning", "cleaner"].includes(page.serviceSlug);
 
   const includedItems = isCleaning
     ? ["Property size price context", "Common cleaning tasks", "Access and urgency factors", "Add-on warning before booking"]

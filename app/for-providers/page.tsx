@@ -27,7 +27,7 @@ const categories: FieldOption[] = [
   { label: "Tyres", value: "tyres" },
 ];
 
-const areas = ["SL1", "SL2", "SL3"];
+const areas = ["SL1", "SL2", "SL3", "SL4", "SL5", "SL6", "SL7", "SL8", "SL9"];
 
 
 function Logo() {
@@ -233,8 +233,8 @@ function SignupForm() {
             placeholder="e.g. SL1 1AA"
             autoComplete="postal-code"
             required
-            pattern="^SL[123]\\s?[0-9][A-Z]{2}$"
-            title="Enter a valid Slough postcode starting with SL1, SL2 or SL3, for example SL1 1AA"
+            pattern="^SL[1-9]\\s?[0-9][A-Z]{2}$"
+            title="Enter a valid Slough postcode starting with SL1 to SL9, for example SL1 1AA"
             className="uppercase"
           />
         </Field>
@@ -250,7 +250,7 @@ function SignupForm() {
       <div className="mt-5">
         <p className="mb-1 text-[14px] font-extrabold text-[#071638]">Postcode areas you cover</p>
         <p className="mb-3 text-[12px] font-bold leading-[1.4] text-[#657089]">
-          Enter your business postcode above, then choose the Slough postcode prefixes you actually cover. Example: SL1 matches SL1 1AA.
+          Enter your business postcode above, then choose the Slough postcode prefixes you actually cover. Example: SL1 matches SL1 1AA. SL1 to SL9 are accepted.
         </p>
         <details className="rounded-[16px] border border-[#dfe5ee] bg-[#fbfcfd] p-3">
           <summary className="cursor-pointer list-none text-[13px] font-extrabold text-[#08783f] [&::-webkit-details-marker]:hidden">
@@ -260,16 +260,16 @@ function SignupForm() {
             {areas.map((area, index) => <AreaChip key={area} area={area} defaultChecked={index === 0} />)}
           </div>
           <p className="mt-3 text-[11px] font-bold text-[#9aa4b5]">
-            Selected areas turn green. Only Slough areas are being accepted at launch.
+            Selected areas turn green. SL1 to SL9 are being accepted at launch.
           </p>
         </details>
         <label className="mt-4 block">
           <span className="mb-2 block text-[13px] font-extrabold text-[#071638]">Add other postcode areas</span>
           <input
             name="areasCustom"
-            placeholder="Only use SL1, SL2 or SL3"
-            pattern="^(?:\\s*SL[123]\\s*,?\\s*)*$"
-            title="Only SL1, SL2 and SL3 are accepted at launch. Separate multiple areas with commas."
+            placeholder="Only use SL1 to SL9"
+            pattern="^(?:\\s*SL[1-9]\\s*,?\\s*)*$"
+            title="Only SL1 to SL9 are accepted at launch. Separate multiple areas with commas."
             className="h-[48px] w-full rounded-[12px] border border-[#dfe5ee] bg-white px-4 text-[14px] font-semibold uppercase text-[#071638] outline-none transition placeholder:normal-case placeholder:text-[#8b94a7] focus:border-[#98d7ad] focus:ring-4 focus:ring-[#e8f7ed]"
           />
           <span className="mt-2 block text-[11px] font-bold leading-[1.4] text-[#9aa4b5]">

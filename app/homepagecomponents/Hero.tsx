@@ -113,25 +113,25 @@ export default function Hero() {
         />
         <div className="absolute inset-0 z-0 bg-[linear-gradient(90deg,rgba(6,26,61,0.58)_0%,rgba(6,26,61,0.38)_43%,rgba(6,26,61,0.02)_100%)] lg:bg-[linear-gradient(90deg,rgba(6,26,61,0.78)_0%,rgba(6,26,61,0.48)_43%,rgba(6,26,61,0.12)_100%)]" />
 
-        <div className="relative z-10 mx-auto max-w-[1180px] px-4 pb-[24px] pt-4 sm:px-6 lg:px-10 lg:pb-[120px] lg:pt-10">
-          <div className="relative grid min-h-[292px] grid-cols-2 items-start gap-0 pt-0 sm:min-h-[500px] lg:min-h-[520px] lg:grid-cols-[minmax(0,0.88fr)_minmax(380px,0.72fr)] lg:items-center lg:gap-6 lg:pt-0">
-            <div className="relative z-20 col-span-1 max-w-[210px] -translate-y-2 pb-4 pt-0 sm:max-w-[520px] lg:max-w-[620px] lg:translate-y-0 lg:pb-10 lg:pt-8">
+        <div className="relative z-10 mx-auto max-w-[1180px] px-4 pb-[24px] pt-4 sm:px-6 lg:px-8 lg:pb-[125px] lg:pt-8 xl:pb-[136px]">
+          <div className="relative grid min-h-[292px] grid-cols-2 items-start gap-0 pt-0 sm:min-h-[500px] lg:min-h-[296px] lg:grid-cols-[minmax(0,0.86fr)_minmax(336px,0.74fr)] lg:items-center lg:gap-6 lg:pt-0 xl:min-h-[312px]">
+            <div className="relative z-20 col-span-1 max-w-[210px] -translate-y-2 pb-4 pt-0 sm:max-w-[520px] lg:ml-8 lg:max-w-[448px] lg:-translate-y-1.5 lg:pb-8 lg:pt-4 xl:ml-10">
 
-              <h1 className="mt-0 max-w-[210px] text-[39px] font-black leading-[0.91] tracking-[-0.055em] text-white sm:mt-6 sm:max-w-[520px] sm:text-[62px] lg:text-[82px]">
+              <h1 className="mt-0 max-w-[210px] text-[39px] font-black leading-[0.91] tracking-[-0.055em] text-white sm:mt-6 sm:max-w-[520px] sm:text-[62px] lg:mt-0 lg:max-w-[448px] lg:text-[62px] xl:text-[67px]">
                 What do you <span className="text-[#4bd35f]">need today?</span>
               </h1>
 
-              <p className="mt-4 max-w-[205px] text-[15px] font-semibold leading-[1.32] tracking-[-0.025em] text-white/90 sm:mt-5 sm:max-w-[520px] sm:text-[21px]">
+              <p className="mt-4 max-w-[205px] text-[15px] font-semibold leading-[1.32] tracking-[-0.025em] text-white/90 sm:mt-5 sm:max-w-[520px] sm:text-[21px] lg:mt-4 lg:max-w-[432px] lg:text-[17px]">
                 Kola checks the <span className="font-black text-[#4bd35f]">usual local price</span> — and can help find someone available.
               </p>
 
             </div>
 
-            <div className="pointer-events-none absolute bottom-[26px] right-[-22px] z-10 w-[220px] opacity-100 sm:right-[-50px] sm:w-[540px] lg:bottom-0 lg:right-[5.5%] lg:w-[620px] xl:w-[690px]">
+            <div className="pointer-events-none absolute bottom-[-21px] right-[-22px] z-10 w-[220px] opacity-100 sm:right-[-50px] sm:w-[540px] lg:bottom-[-72px] lg:right-[7%] lg:w-[306px] xl:bottom-[-82px] xl:right-[5%] xl:w-[348px]">
               <img
                 src="/quickola_koala_cutout.png"
                 alt="Kola the Quickola koala holding a magnifying glass"
-                className="h-auto w-full select-none object-contain drop-shadow-[0_28px_55px_rgba(0,0,0,0.28)]"
+                className="h-auto w-full select-none object-contain drop-shadow-[0_22px_44px_rgba(0,0,0,0.28)]"
                 draggable="false"
               />
             </div>
@@ -139,15 +139,15 @@ export default function Hero() {
         </div>
       </div>  
 
-      <div className="relative z-20 mx-auto -mt-[68px] max-w-[1040px] bg-[#061a3d] px-4 pb-6 sm:px-6 lg:-mt-[94px] lg:px-8">
-        <div className="overflow-hidden rounded-[22px] bg-white p-3 shadow-[0_26px_70px_rgba(7,22,56,0.18)] sm:rounded-[26px] sm:p-6 lg:p-7">
-          <h2 className="text-center text-[18px] font-black tracking-[-0.045em] text-[#071638] sm:text-[22px] lg:text-[30px]">
+      <div className="relative z-20 mx-auto -mt-[68px] max-w-[1040px] bg-[#061a3d] px-4 pb-6 sm:px-6 lg:-mt-[123px] lg:max-w-none lg:bg-[linear-gradient(to_bottom,#061a3d_0%,#061a3d_50%,#ffffff_50%,#ffffff_100%)] lg:px-5 lg:pb-8">
+        <div className="mx-auto overflow-hidden rounded-[22px] bg-white p-3 shadow-[0_22px_64px_rgba(7,22,56,0.20)] ring-1 ring-[#edf2f7] sm:rounded-[26px] sm:p-6 lg:max-w-[940px] lg:p-6 xl:max-w-[980px]">
+          <h2 className="text-center text-[18px] font-black tracking-[-0.045em] text-[#071638] sm:text-[22px] lg:text-[24px]">
             Check your local price
           </h2>
 
-          <CumarIntakeForm variant="desktop" className="mt-3 sm:mt-5" />
+          <CumarIntakeForm variant="desktop" className="mt-3 sm:mt-5 lg:mt-4" />
 
-          <div className="mt-3 grid grid-cols-3 divide-x divide-[#dde7f2] rounded-[14px] bg-[#fbfdff] px-1.5 py-2 text-center text-[10px] font-black text-[#071638] sm:mt-4 sm:rounded-[16px] sm:px-3 sm:py-3 sm:text-[14px]">
+          <div className="mt-3 grid grid-cols-3 divide-x divide-[#dde7f2] rounded-[14px] bg-[#fbfdff] px-1.5 py-2 text-center text-[10px] font-black text-[#071638] sm:mt-4 sm:rounded-[16px] sm:px-3 sm:py-3 sm:text-[14px] lg:mt-5 lg:bg-white lg:px-3 lg:py-2 lg:text-[12px]">
             <div className="flex items-center justify-center gap-2 px-2">
               <span className="text-[#079448]">✓</span> Free to check
             </div>

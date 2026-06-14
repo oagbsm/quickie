@@ -71,7 +71,7 @@ function toNumberOrNull(value: string) {
 
 const REQUEST_PHOTO_BUCKET = "request-photos";
 const MAX_REQUEST_PHOTOS = 5;
-const MAX_REQUEST_PHOTO_SIZE_BYTES = 8 * 1024 * 1024;
+const MAX_REQUEST_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
 const ALLOWED_REQUEST_PHOTO_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -130,7 +130,7 @@ async function uploadRequestPhotos({
     }
 
     if (file.size > MAX_REQUEST_PHOTO_SIZE_BYTES) {
-      throw new Error("Each photo must be under 8MB.");
+      throw new Error("Each photo must be under 4MB. Please upload a smaller photo.");
     }
 
     const extension = getRequestPhotoExtension(file);
@@ -336,7 +336,7 @@ function buildProviderOfferUrl(token: string) {
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.SITE_URL ||
     process.env.APP_URL ||
-    "http://localhost:3000";
+    "https://quickola.co.uk";
 
   let siteUrl = rawSiteUrl.trim().replace(/\/+$/, "");
 
@@ -345,11 +345,7 @@ function buildProviderOfferUrl(token: string) {
     siteUrl.includes("127.0.0.1") ||
     siteUrl.includes("0.0.0.0")
   ) {
-    siteUrl = siteUrl.replace(/^https:\/\//i, "http://");
-
-    if (!/^http:\/\//i.test(siteUrl)) {
-      siteUrl = "http://localhost:3000";
-    }
+    siteUrl = "https://quickola.co.uk";
   }
 
   return `${siteUrl}/p/provider-offer/${token}`;
@@ -1306,6 +1302,14 @@ export async function saveCheckPriceRequest(formData: FormData) {
   const phoneLooksValid = /^07[0-9]{9}$/.test(phone);
 
   if (!phoneLooksValid) {
+    console.error("Quickola book request blocked because phone number was invalid.", {
+      service,
+      area,
+      postcode,
+      phoneLength: phone.length,
+      phoneStart: phone.slice(0, 2),
+    });
+
     throw new Error("Please enter an 11-digit UK mobile number starting with 07.");
   }
 
@@ -1318,7 +1322,13 @@ export async function saveCheckPriceRequest(formData: FormData) {
       requestId: savedRequestId,
     });
   } catch (error) {
-    console.error("Request saved without photos because photo upload failed:", error);
+    console.error("Request saved without photos because photo upload failed:", {
+      requestId: savedRequestId,
+      service,
+      area,
+      postcode,
+      error,
+    });
     photoPaths = [];
   }
 
