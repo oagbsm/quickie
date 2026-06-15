@@ -38,7 +38,7 @@ export default function NotFound() {
           </p>
 
           <div className="mt-3 flex flex-wrap justify-center gap-2">
-            {["Man and Van", "Plumbing", "Cleaning", "MOT & Repairs"].map((item) => (
+            {["Man and Van", "Plumbing", "Cleaning"].map((item) => (
               <Link
                 key={item}
                 href="/"
