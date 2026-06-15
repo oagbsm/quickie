@@ -185,8 +185,8 @@ export default function TermsPage() {
             <Section title="13. Contact">
               <p>
                 For questions about these terms, contact Quickola at:{" "}
-                <a href="mailto:hello@quickola.co.uk" className="font-black text-[#08783f] underline underline-offset-4">
-                  hello@quickola.co.uk
+                <a href="mailto:quickolauk@gmail.com" className="font-black text-[#08783f] underline underline-offset-4">
+                  quickolauk@gmail.com
                 </a>
               </p>
             </Section>

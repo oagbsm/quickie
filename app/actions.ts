@@ -598,6 +598,11 @@ async function sendAdminRequestAlert({
   phone?: string | null;
   details: string;
 }) {
+  if (process.env.ENABLE_REQUEST_EMAIL_ALERTS !== "true") {
+    console.log("Quickola request email skipped: ENABLE_REQUEST_EMAIL_ALERTS is not true.");
+    return;
+  }
+
   try {
     const displayService = service.replace(/-/g, " ");
     const displayArea = area.replace(/-/g, " ");

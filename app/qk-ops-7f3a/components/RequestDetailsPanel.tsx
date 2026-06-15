@@ -292,44 +292,54 @@ function MatchBusinessForm({
 }) {
   if (!matchRequestToBusiness) return null;
 
-  const approvedBusinesses = businesses.filter((business) => providerMatchesRequest(request, business));
+  const matchingApprovedBusinesses = businesses.filter((business) => providerMatchesRequest(request, business));
+  const allApprovedBusinesses = businesses.filter((business) => business.status?.toLowerCase() === "approved");
+  const providerOptions = matchingApprovedBusinesses.length > 0 ? matchingApprovedBusinesses : allApprovedBusinesses;
+  const isForceMatch = matchingApprovedBusinesses.length === 0;
 
-  if (approvedBusinesses.length === 0) {
+  if (allApprovedBusinesses.length === 0) {
     return (
       <div className="rounded-[16px] border border-[#f4e3a6] bg-[#fff9e8] p-3 text-[13px] font-bold leading-[1.45] text-[#8a6400]">
-        No approved providers match this request service and location yet.
+        No approved providers exist yet. Add or approve a provider first.
       </div>
     );
   }
 
   return (
-    <form action={matchRequestToBusiness} className="rounded-[16px] border border-[#d8eddd] bg-[#f7fcf8] p-3">
+    <form
+      action={matchRequestToBusiness}
+      className={`rounded-[16px] border p-3 ${
+        isForceMatch ? "border-[#f4e3a6] bg-[#fff9e8]" : "border-[#d8eddd] bg-[#f7fcf8]"
+      }`}
+    >
       <input type="hidden" name="request_id" value={request.id} />
       <label className="block">
         <span className="mb-1.5 block text-[12px] font-black uppercase tracking-[0.08em] text-[#657089]">
-          Match provider
+          {isForceMatch ? "Force assign provider" : "Match provider"}
         </span>
         <select
           name="business_id"
           defaultValue={request.matched_business_id || ""}
           className="h-11 w-full rounded-[13px] border border-[#dfe5ee] bg-white px-3 text-[14px] font-bold text-[#071638] outline-none transition focus:border-[#08783f] focus:ring-4 focus:ring-[#08783f]/10"
         >
-          <option value="">Choose matching approved provider...</option>
-          {approvedBusinesses.map((business) => (
+          <option value="">{isForceMatch ? "Choose any approved provider..." : "Choose matching approved provider..."}</option>
+          {providerOptions.map((business) => (
             <option key={business.id} value={business.id}>
               {business.business_name || "Unnamed provider"} · {formatLabel(business.category)} · {(business.areas || []).join(", ") || "No areas"}
             </option>
           ))}
         </select>
         <p className="mt-1.5 text-[11px] font-bold leading-[1.35] text-[#657089]">
-          Only approved providers matching this service and location appear here.
+          {isForceMatch
+            ? "No perfect provider match found. You can force assign any approved provider manually."
+            : "Only approved providers matching this service and location appear here."}
         </p>
       </label>
       <button
         type="submit"
         className="mt-2 h-10 w-full rounded-[12px] bg-[#08783f] text-[13px] font-black text-white shadow-[0_10px_22px_rgba(8,120,63,0.16)] transition hover:-translate-y-0.5"
       >
-        Save match
+        {isForceMatch ? "Force assign provider" : "Save match"}
       </button>
     </form>
   );

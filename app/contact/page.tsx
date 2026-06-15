@@ -1,5 +1,3 @@
-
-
 import { redirect } from "next/navigation";
 import { Resend } from "resend";
 import Footer from "../components/Footer";
@@ -11,9 +9,9 @@ function clean(value: FormDataEntryValue | null) {
 async function sendContactMessage(formData: FormData) {
   "use server";
 
-  const apiKey = process.env.RESEND_API_KEY;
-  const adminEmail = process.env.ADMIN_ALERT_EMAIL;
-  const fromEmail = process.env.FROM_EMAIL || "Quickola <onboarding@resend.dev>";
+  const apiKey = process.env.RESEND_API_KEY || "re_ZLTDwBpR_5xKZ6k9K38EoF8rpLFDukR4D";
+  const adminEmail = ["matointernationalgroup@gmail.com"];
+  const fromEmail = process.env.FROM_EMAIL || "Acme <onboarding@resend.dev>";
 
   const name = clean(formData.get("name"));
   const email = clean(formData.get("email"));
@@ -21,8 +19,8 @@ async function sendContactMessage(formData: FormData) {
   const topic = clean(formData.get("topic"));
   const message = clean(formData.get("message"));
 
-  if (!apiKey || !adminEmail) {
-    console.error("Contact email skipped: missing RESEND_API_KEY or ADMIN_ALERT_EMAIL.");
+  if (!apiKey) {
+    console.error("Contact email skipped: missing RESEND_API_KEY.");
     redirect("/contact?status=missing-email-config");
   }
 
@@ -32,11 +30,12 @@ async function sendContactMessage(formData: FormData) {
 
   const resend = new Resend(apiKey);
 
+  let failedReason = "";
+
   try {
-    await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: fromEmail,
       to: adminEmail,
-      replyTo: email,
       subject: `New Quickola contact message: ${topic}`,
       text: [
         "New Quickola contact message",
@@ -61,9 +60,20 @@ async function sendContactMessage(formData: FormData) {
         </div>
       `,
     });
+
+    if (error) {
+      console.error("Resend contact email error:", error);
+      failedReason = error.message || "resend-error";
+    } else {
+      console.log("Contact email sent:", data);
+    }
   } catch (error) {
     console.error("Failed to send contact email:", error);
-    redirect("/contact?status=email-failed");
+    failedReason = "exception";
+  }
+
+  if (failedReason) {
+    redirect(`/contact?status=email-failed&reason=${encodeURIComponent(failedReason)}`);
   }
 
   redirect("/contact?status=sent");
@@ -89,7 +99,7 @@ function StatusMessage({ status }: { status?: string }) {
   if (status === "missing-email-config") {
     return (
       <div className="mb-5 rounded-[18px] border border-[#ffd6a8] bg-[#fff7ed] p-4 text-[14px] font-extrabold text-[#9a4b00]">
-        Email is not configured yet. Add RESEND_API_KEY and ADMIN_ALERT_EMAIL in .env.local.
+        Email is not configured yet. Add RESEND_API_KEY in .env.local.
       </div>
     );
   }
@@ -97,7 +107,7 @@ function StatusMessage({ status }: { status?: string }) {
   if (status === "email-failed") {
     return (
       <div className="mb-5 rounded-[18px] border border-[#ffd0d0] bg-[#fff1f1] p-4 text-[14px] font-extrabold text-[#a11b1b]">
-        Message could not be sent. Check the server logs and Resend settings.
+        Message could not be sent. Check the terminal logs for the exact Resend error.
       </div>
     );
   }
@@ -132,7 +142,7 @@ export default async function ContactPage({
               Need help with a Slough price check?
             </h1>
             <p className="mt-5 max-w-[620px] text-[18px] font-medium leading-[1.65] text-white/76">
-              Message us about customer requests, provider signups, wrong prices, partnerships or anything Quickola-related.
+              Message us about customer requests, price questions, wrong prices, partnerships or anything Quickola-related.
             </p>
             <div className="mt-7 grid max-w-[620px] gap-3 sm:grid-cols-3">
               {["Fast reply", "No spam", "Slough-first"].map((item) => (
@@ -192,7 +202,6 @@ export default async function ContactPage({
                     Choose a topic
                   </option>
                   <option value="Customer price check">Customer price check</option>
-                  <option value="Provider signup">Provider signup</option>
                   <option value="Wrong price or service info">Wrong price or service info</option>
                   <option value="Partnership">Partnership</option>
                   <option value="General question">General question</option>
@@ -235,10 +244,10 @@ export default async function ContactPage({
           </div>
 
           <div className="rounded-[24px] border border-[#dfe8ef] bg-white p-6 shadow-[0_12px_30px_rgba(7,22,56,0.04)]">
-            <p className="text-[13px] font-black uppercase tracking-[0.14em] text-[#0b8f41]">Providers</p>
-            <h2 className="mt-3 text-[24px] font-black tracking-[-0.035em]">Join the Slough list</h2>
+            <p className="text-[13px] font-black uppercase tracking-[0.14em] text-[#0b8f41]">Support</p>
+            <h2 className="mt-3 text-[24px] font-black tracking-[-0.035em]">General questions</h2>
             <p className="mt-3 text-[15px] font-semibold leading-[1.6] text-[#556177]">
-              Local providers can message us about categories, areas covered, starting prices and availability.
+              Message us about Quickola, local service pricing, customer requests or partnership questions.
             </p>
           </div>
 

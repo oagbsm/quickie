@@ -2,9 +2,6 @@
 
 const asset = (path: string) => `/quickola/${path}`;
 
-const whatsappHref =
-  "https://wa.me/447347962272?text=Hi%20Quickola%2C%20I%20need%20help%20checking%20a%20fair%20local%20price.%0A%0AService%3A%0APostcode%3A%0AWhen%20needed%3A%0AJob%20details%3A";
-
 function scrollToSection(sectionId: string) {
   document.getElementById(sectionId)?.scrollIntoView({
     behavior: "smooth",
@@ -41,21 +38,16 @@ export default function Header() {
           <button type="button" onClick={() => scrollToSection("popular-services")} className="transition hover:text-[#079448]">
             Services
           </button>
-          <button type="button" onClick={() => scrollToSection("business")} className="transition hover:text-[#079448]">
-            For providers
-          </button>
         </nav>
 
         <div className="hidden items-center lg:flex">
-          <a
-            href={whatsappHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="WhatsApp Quickola"
+          <button
+            type="button"
+            onClick={() => scrollToSection("price-check")}
             className="inline-flex h-[42px] items-center justify-center rounded-[10px] bg-[#079448] px-6 text-[13px] font-black tracking-[-0.01em] text-white transition hover:-translate-y-0.5 hover:bg-[#087f40]"
           >
-            WhatsApp us
-          </a>
+            Check price
+          </button>
         </div>
       </div>
     </header>

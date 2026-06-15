@@ -2,7 +2,7 @@ import { saveCheckPriceRequest } from "../actions";
 
 declare global {
   interface Window {
-    __quickolaPhotosReady?: boolean;
+    __quickolaBookPhotosInitialised?: boolean;
   }
 }
 
@@ -165,21 +165,75 @@ export default async function BookPage({ searchParams }: BookPageProps) {
   const wasteType = getParam(params, "wasteType", "");
   const loadSize = getParam(params, "loadSize", "");
 
-  async function submitBookRequest(formData: FormData) {
-    "use server";
+async function submitBookRequest(formData: FormData) {
+  "use server";
 
-    const rawPhone = String(formData.get("phone") || "").trim();
+  const honeypot = String(formData.get("company_website") || "").trim();
+  if (honeypot) {
+    throw new Error("Request blocked.");
+  }
 
-    if (!/^07[0-9]{9}$/.test(rawPhone)) {
-      throw new Error("Please enter a valid UK mobile number starting with 07 and using 11 digits only.");
+  const startedAt = Number(formData.get("started_at") || 0);
+  const secondsTaken = startedAt ? (Date.now() - startedAt) / 1000 : 999;
+  if (secondsTaken < 3) {
+    throw new Error("Please take a few seconds to complete the form before sending.");
+  }
+
+  const photos = formData
+    .getAll("photos")
+    .filter((item): item is File => item instanceof File && item.size > 0);
+
+  const allowedPhotoTypes = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+  ]);
+
+  if (photos.length > 5) {
+    throw new Error("Please upload no more than 5 photos.");
+  }
+
+  for (const photo of photos) {
+    if (!allowedPhotoTypes.has(photo.type)) {
+      throw new Error("Please upload images only.");
     }
 
-    formData.set("phone", rawPhone);
-    formData.set("job_detail", String(formData.get("job_detail") || "").trim());
-    formData.set("postcode", String(formData.get("postcode") || "").trim().toUpperCase());
-
-    return saveCheckPriceRequest(formData);
+    if (photo.size > 8 * 1024 * 1024) {
+      throw new Error("Each photo must be under 8MB.");
+    }
   }
+
+  const rawPhone = String(formData.get("phone") || "").trim();
+
+  if (!/^07[0-9]{9}$/.test(rawPhone)) {
+    throw new Error("Please enter a valid UK mobile number starting with 07 and using 11 digits only.");
+  }
+
+  formData.set("phone", rawPhone);
+  formData.set("job_detail", String(formData.get("job_detail") || "").trim());
+
+  const jobDetail = String(formData.get("job_detail") || "").toLowerCase();
+  const spamWords = [
+    "crypto",
+    "casino",
+    "viagra",
+    "seo backlinks",
+    "telegram channel",
+    "loan offer",
+    "make money fast",
+  ];
+  const linkCount = (jobDetail.match(/https?:\/\//g) || []).length;
+
+  if (jobDetail.length > 2000 || linkCount >= 2 || spamWords.some((word) => jobDetail.includes(word))) {
+    throw new Error("Request blocked as spam.");
+  }
+
+  formData.set("postcode", String(formData.get("postcode") || "").trim().toUpperCase());
+
+  return saveCheckPriceRequest(formData);
+}
 
   return (
     <main className="min-h-screen bg-white text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] lg:bg-[radial-gradient(circle_at_74%_34%,rgba(7,131,63,0.10)_0%,rgba(7,131,63,0.04)_26%,transparent_45%),linear-gradient(180deg,#ffffff_0%,#ffffff_100%)]">
@@ -247,8 +301,14 @@ export default async function BookPage({ searchParams }: BookPageProps) {
               <input type="hidden" name="area" value="slough" />
               <input type="hidden" name="source" value="book-page" />
               <input type="hidden" name="intent" value="wants-provider" />
-              <input type="hidden" name="mode" value={mode} />
-              <input type="hidden" name="job_type" value={wasteType || serviceSlug} />
+<input type="hidden" name="started_at" value={String(Date.now())} /><input
+  type="text"
+  name="company_website"
+  tabIndex={-1}
+  autoComplete="off"
+  className="hidden"
+  aria-hidden="true"
+/>              <input type="hidden" name="job_type" value={wasteType || serviceSlug} />
               {requestId ? <input type="hidden" name="request_id" value={requestId} /> : null}
               {wasteType ? <input type="hidden" name="waste_type" value={wasteType} /> : null}
               {loadSize ? <input type="hidden" name="load_size" value={loadSize} /> : null}
@@ -347,7 +407,7 @@ export default async function BookPage({ searchParams }: BookPageProps) {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-black leading-tight text-[#071638] lg:text-[15px]">Upload photos of the job</p>
-                      <p className="mt-1 text-[11px] font-bold leading-tight text-[#657089] lg:text-[12px]">Add photos in more than one go. Remove any before sending.</p>
+                      <p className="mt-1 text-[11px] font-bold leading-tight text-[#657089] lg:text-[12px]">Up to 5 photos. Large photos are compressed before sending.</p>
                     </div>
                     <span className="rounded-full bg-[#eef8f2] px-3 py-1 text-[11px] font-black text-[#07833f] lg:px-4 lg:py-1.5 lg:text-[12px]">Add</span>
                     <input id="bookPhotosInput" className="sr-only" type="file" name="photos" accept="image/png,image/jpeg,image/webp,image/heic,image/heif" multiple />
@@ -357,92 +417,169 @@ export default async function BookPage({ searchParams }: BookPageProps) {
                 <div id="bookPhotosPreview" className="hidden grid grid-cols-3 gap-2 lg:grid-cols-5" />
                 <p id="bookPhotosCount" className="hidden text-[11px] font-bold text-[#657089]">0 photos selected</p>
               </div>
-
               <script
-                dangerouslySetInnerHTML={{
-                  __html: `
-                    (() => {
-                      const input = document.getElementById("bookPhotosInput");
-                      const preview = document.getElementById("bookPhotosPreview");
-                      const count = document.getElementById("bookPhotosCount");
+  dangerouslySetInnerHTML={{
+    __html: `
+      (() => {
 
-                      if (!input || !preview || !count || window.__quickolaPhotosReady === true) return;
-                      window.__quickolaPhotosReady = true;
 
-                      let selectedFiles = [];
+        const input = document.getElementById("bookPhotosInput");
+        const preview = document.getElementById("bookPhotosPreview");
+        const count = document.getElementById("bookPhotosCount");
 
-                      const syncInputFiles = () => {
-                        const transfer = new DataTransfer();
-                        selectedFiles.forEach((file) => transfer.items.add(file));
-                        input.files = transfer.files;
-                      };
+if (!input || !preview || !count) return;
+if (window.__quickolaBookPhotosInitialised === true) return;
+window.__quickolaBookPhotosInitialised = true;
 
-                      const render = () => {
-                        preview.innerHTML = "";
+        let selectedFiles = [];
+        const maxPhotos = 5;
+        const maxRawSize = 8 * 1024 * 1024;
+        const maxOutputWidthOrHeight = 1400;
+        const outputQuality = 0.78;
+        const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 
-                        if (!selectedFiles.length) {
-                          preview.classList.add("hidden");
-                          count.classList.add("hidden");
-                          count.textContent = "0 photos selected";
-                          return;
-                        }
+        const syncInputFiles = () => {
+          const transfer = new DataTransfer();
+          selectedFiles.forEach((file) => transfer.items.add(file));
+          input.files = transfer.files;
+        };
 
-                        preview.classList.remove("hidden");
-                        count.classList.remove("hidden");
-                        count.textContent = selectedFiles.length === 1 ? "1 photo selected" : selectedFiles.length + " photos selected";
+        const compressImageFile = (file) =>
+          new Promise((resolve) => {
+            if (
+              !file.type.startsWith("image/") ||
+              file.type === "image/heic" ||
+              file.type === "image/heif" ||
+              file.size < 900 * 1024
+            ) {
+              resolve(file);
+              return;
+            }
 
-                        selectedFiles.forEach((file, index) => {
-                          const card = document.createElement("div");
-                          card.className = "relative overflow-hidden rounded-[10px] border border-[#dfe6ef] bg-white shadow-[0_8px_16px_rgba(7,22,56,0.06)]";
+            const objectUrl = URL.createObjectURL(file);
+            const image = new Image();
 
-                          const img = document.createElement("img");
-                          img.className = "h-[74px] w-full object-cover lg:h-[82px]";
-                          img.alt = file.name;
+            image.onload = () => {
+              URL.revokeObjectURL(objectUrl);
 
-                          if (file.type.startsWith("image/")) {
-                            img.src = URL.createObjectURL(file);
-                            img.onload = () => URL.revokeObjectURL(img.src);
-                          }
+              const scale = Math.min(1, maxOutputWidthOrHeight / Math.max(image.width, image.height));
+              const width = Math.max(1, Math.round(image.width * scale));
+              const height = Math.max(1, Math.round(image.height * scale));
+              const canvas = document.createElement("canvas");
+              canvas.width = width;
+              canvas.height = height;
 
-                          const button = document.createElement("button");
-                          button.type = "button";
-                          button.className = "absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-white/95 text-[16px] font-black leading-none text-[#071638] shadow-[0_4px_10px_rgba(7,22,56,0.18)]";
-                          button.setAttribute("aria-label", "Remove photo");
-                          button.textContent = "×";
-                          button.addEventListener("click", () => {
-                            selectedFiles = selectedFiles.filter((_, fileIndex) => fileIndex !== index);
-                            syncInputFiles();
-                            render();
-                          });
+              const context = canvas.getContext("2d");
+              if (!context) {
+                resolve(file);
+                return;
+              }
 
-                          card.appendChild(img);
-                          card.appendChild(button);
-                          preview.appendChild(card);
-                        });
-                      };
+              context.drawImage(image, 0, 0, width, height);
+              canvas.toBlob(
+                (blob) => {
+                  if (!blob) {
+                    resolve(file);
+                    return;
+                  }
 
-                      input.addEventListener("change", () => {
-                        const incomingFiles = Array.from(input.files || []);
-                        const mergedFiles = [...selectedFiles];
+                  const safeName = file.name.replace(/\\.[^.]+$/, "") || "quickola-photo";
+                  const compressedFile = new File([blob], safeName + ".jpg", {
+                    type: "image/jpeg",
+                    lastModified: Date.now(),
+                  });
 
-                        incomingFiles.forEach((file) => {
-                          const alreadySelected = mergedFiles.some(
-                            (selected) => selected.name === file.name && selected.size === file.size && selected.lastModified === file.lastModified
-                          );
+                  resolve(compressedFile.size < file.size ? compressedFile : file);
+                },
+                "image/jpeg",
+                outputQuality
+              );
+            };
 
-                          if (!alreadySelected && mergedFiles.length < 5) {
-                            mergedFiles.push(file);
-                          }
-                        });
+            image.onerror = () => {
+              URL.revokeObjectURL(objectUrl);
+              resolve(file);
+            };
 
-                        selectedFiles = mergedFiles;
-                        syncInputFiles();
-                        render();
-                      });
-                    })();
-                  `,
-                }}
-              />
+            image.src = objectUrl;
+          });
+
+        const render = () => {
+          preview.innerHTML = "";
+
+          if (!selectedFiles.length) {
+            preview.classList.add("hidden");
+            count.classList.add("hidden");
+            count.textContent = "0 photos selected";
+            syncInputFiles();
+            return;
+          }
+
+          preview.classList.remove("hidden");
+          count.classList.remove("hidden");
+          count.textContent = selectedFiles.length === 1 ? "1 photo selected" : selectedFiles.length + " photos selected";
+
+          selectedFiles.forEach((file, index) => {
+            const card = document.createElement("div");
+            card.className = "relative overflow-hidden rounded-[10px] border border-[#dfe6ef] bg-white shadow-[0_8px_16px_rgba(7,22,56,0.06)]";
+
+            const img = document.createElement("img");
+            img.className = "h-[74px] w-full object-cover lg:h-[82px]";
+            img.alt = file.name;
+
+            if (file.type.startsWith("image/")) {
+              img.loading = "lazy";
+              img.decoding = "async";
+              img.src = URL.createObjectURL(file);
+              img.onload = () => URL.revokeObjectURL(img.src);
+            }
+
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-white/95 text-[16px] font-black leading-none text-[#071638] shadow-[0_4px_10px_rgba(7,22,56,0.18)]";
+            button.setAttribute("aria-label", "Remove photo");
+            button.textContent = "×";
+            button.addEventListener("click", () => {
+              selectedFiles = selectedFiles.filter((_, fileIndex) => fileIndex !== index);
+              syncInputFiles();
+              render();
+            });
+
+            card.appendChild(img);
+            card.appendChild(button);
+            preview.appendChild(card);
+          });
+
+          syncInputFiles();
+        };
+
+        input.addEventListener("change", async () => {
+          const incomingFiles = Array.from(input.files || []);
+          const mergedFiles = [...selectedFiles];
+
+          for (const file of incomingFiles) {
+            if (mergedFiles.length >= maxPhotos) break;
+            if (!allowedTypes.has(file.type)) continue;
+            if (file.size > maxRawSize) continue;
+
+            const alreadySelected = mergedFiles.some(
+              (selected) => selected.name === file.name && selected.size === file.size && selected.lastModified === file.lastModified
+            );
+
+            if (!alreadySelected) {
+              const optimisedFile = await compressImageFile(file);
+              mergedFiles.push(optimisedFile);
+            }
+          }
+
+selectedFiles = mergedFiles.slice(0, maxPhotos);
+syncInputFiles();
+render();
+        });
+      })();
+    `,
+  }}
+/>
 
               <div className="flex items-start gap-2 text-[11px] font-bold leading-[1.35] text-[#44506a] lg:text-[13px]">
                 <span className="mt-[1px] text-[#071638]"><LockIcon /></span>

@@ -1,5 +1,3 @@
-
-
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -8,13 +6,13 @@ export const metadata: Metadata = {
   description:
     "Quickola is a UK fair-price discovery and local provider matching platform. Learn what Quickola does, how it helps customers, how providers are reviewed and how the service works.",
   alternates: {
-    canonical: "/About",
+    canonical: "/about",
   },
   openGraph: {
     title: "About Quickola",
     description:
       "Quickola helps people check fair local service prices before booking, then connects them with suitable local providers where available.",
-    url: "/About",
+    url: "/about",
     siteName: "Quickola",
     type: "website",
   },
@@ -100,13 +98,13 @@ const jsonLd = {
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer support",
-        email: "hello@quickola.co.uk",
+        email: "quickolauk@gmail.com",
       },
     },
     {
       "@type": "WebPage",
       name: "About Quickola",
-      url: "https://quickola.co.uk/About",
+      url: "https://quickola.co.uk/about",
       description:
         "About Quickola, a UK fair-price discovery and local provider matching platform.",
       mainEntity: {
@@ -182,12 +180,6 @@ export default function AboutPage() {
                 className="inline-flex h-[58px] items-center justify-center rounded-[14px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-7 text-[17px] font-extrabold text-white shadow-[0_16px_34px_rgba(0,104,47,0.22)] transition hover:-translate-y-0.5"
               >
                 Check a fair price
-              </Link>
-              <Link
-                href="/for-providers"
-                className="inline-flex h-[58px] items-center justify-center rounded-[14px] border border-[#cfd8e4] bg-white px-7 text-[17px] font-extrabold text-[#071638] shadow-[0_12px_28px_rgba(7,22,56,0.06)] transition hover:-translate-y-0.5"
-              >
-                Apply as a provider
               </Link>
             </div>
           </div>
@@ -339,11 +331,7 @@ export default function AboutPage() {
               </div>
               <div className="rounded-[18px] bg-[#f7f9fb] p-4 ring-1 ring-[#e1e8f0]">
                 <p className="text-[12px] font-extrabold uppercase tracking-[0.1em] text-[#657089]">Contact</p>
-                <p className="mt-2 text-[16px] font-black text-[#071638]">hello@quickola.co.uk</p>
-              </div>
-              <div className="rounded-[18px] bg-[#f7f9fb] p-4 ring-1 ring-[#e1e8f0]">
-                <p className="text-[12px] font-extrabold uppercase tracking-[0.1em] text-[#657089]">Provider applications</p>
-                <p className="mt-2 text-[16px] font-black text-[#071638]">/for-providers</p>
+                <p className="mt-2 text-[16px] font-black text-[#071638]">quickolauk@gmail.com</p>
               </div>
               <div className="rounded-[18px] bg-[#f7f9fb] p-4 ring-1 ring-[#e1e8f0]">
                 <p className="text-[12px] font-extrabold uppercase tracking-[0.1em] text-[#657089]">Core promise</p>
@@ -379,15 +367,12 @@ export default function AboutPage() {
           <div>
             <h2 className="text-[30px] font-black tracking-[-0.035em] text-[#071638]">Start with price clarity.</h2>
             <p className="mt-2 max-w-[760px] text-[16px] font-semibold leading-[1.6] text-[#44506a]">
-              Check a fair local price or apply to join the provider network.
+              Check a fair local price before you book.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link href="/check-price" className="inline-flex h-[54px] items-center justify-center rounded-[13px] bg-[#08783f] px-6 text-[16px] font-extrabold text-white">
               Check a price
-            </Link>
-            <Link href="/for-providers" className="inline-flex h-[54px] items-center justify-center rounded-[13px] border border-[#cfd8e4] px-6 text-[16px] font-extrabold text-[#071638]">
-              Apply as provider
             </Link>
           </div>
         </div>

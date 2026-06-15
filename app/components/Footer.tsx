@@ -15,13 +15,13 @@ export default function Footer() {
           </a>
 
           <p className="mt-3 text-[13.5px] font-semibold leading-[1.6] text-[#657089]">
-            Quickola is a UK fair-price discovery and local provider matching platform. We help people check fair local service price ranges before they book, then connect them with suitable providers where available.
+            Quickola helps people check fair local prices before booking home services. If they want help, we can connect them with one suitable local provider where available.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2 text-[12px] font-extrabold text-[#44506a]">
             <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">Fair price first</span>
             <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">No paid ranking</span>
-            <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">Local provider matching</span>
+            <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">One suitable provider</span>
           </div>
         </div>
 
@@ -53,10 +53,9 @@ export default function Footer() {
               Legal
             </p>
             <div className="grid gap-2 text-[14px] font-extrabold text-[#071638]">
-              <a href="/for-providers" className="hover:text-[#08783f]">For Providers</a>
               <a href="/privacy-policy" className="hover:text-[#08783f]">Privacy Policy</a>
               <a href="/terms" className="hover:text-[#08783f]">Terms</a>
-              <a href="mailto:hello@quickola.co.uk" className="hover:text-[#08783f]">hello@quickola.co.uk</a>
+              <a href="quickolauk@gmail.com" className="hover:text-[#08783f]">hello@quickola.co.uk</a>
             </div>
           </div>
         </div>

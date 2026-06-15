@@ -7,11 +7,13 @@ async function login(formData: FormData) {
   const password = String(formData.get("password") || "");
   const next = String(formData.get("next") || "/qk-ops-7f3a");
 
-  if (!process.env.ADMIN_PASSWORD) {
+  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+
+  if (!adminPassword) {
     throw new Error("ADMIN_PASSWORD is missing in .env.local");
   }
 
-  if (password !== process.env.ADMIN_PASSWORD) {
+  if (password.trim() !== adminPassword) {
     redirect(`/qk-ops-7f3a-login?error=1&next=${encodeURIComponent(next)}`);
   }
 

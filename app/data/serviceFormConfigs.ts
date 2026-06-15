@@ -2,7 +2,6 @@ export type ServiceKey =
   | "man-and-van"
   | "removals"
   | "cleaner"
-  | "end-of-tenancy-cleaning"
   | "plumber"
   | "electrician"
   | "locksmith"
@@ -85,24 +84,24 @@ const sloughPostcodeField: ServiceFormField = {
   example: "e.g. SL1 1AA",
 };
 
-const collectionPostcodeField: ServiceFormField = {
+const pickupPostcodeField: ServiceFormField = {
   type: "postcode",
-  name: "collectionPostcode",
+  name: "pickupPostcode",
   label: "Pickup postcode",
-  stage: "match",
-  priority: 30,
+  stage: "price",
+  priority: 2,
   placeholder: "Enter pickup postcode",
   example: "e.g. SL1 1AA",
 };
 
-const deliveryPostcodeField: ServiceFormField = {
-  type: "text",
-  name: "deliveryPostcode",
-  label: "Where is it going?",
+const dropoffPostcodeField: ServiceFormField = {
+  type: "postcode",
+  name: "dropoffPostcode",
+  label: "Drop-off postcode",
   stage: "price",
-  priority: 2,
-  placeholder: "Postcode or area",
-  example: "e.g. SL3, Heathrow, Uxbridge",
+  priority: 3,
+  placeholder: "Enter drop-off postcode",
+  example: "e.g. SL3 8AA",
 };
 
 const stairsOrLiftField: ServiceFormField = {
@@ -158,8 +157,8 @@ export const serviceFormConfigs: Record<ServiceKey, ServiceFormConfig> = {
           { label: "Not sure", value: "not-sure" },
         ],
       },
-      deliveryPostcodeField,
-      collectionPostcodeField,
+      pickupPostcodeField,
+      dropoffPostcodeField,
       localDistanceField,
       stairsOrLiftField,
       urgencyField,
@@ -189,8 +188,8 @@ export const serviceFormConfigs: Record<ServiceKey, ServiceFormConfig> = {
         ],
       },
       localDistanceField,
-      collectionPostcodeField,
-      deliveryPostcodeField,
+      pickupPostcodeField,
+      dropoffPostcodeField,
       stairsOrLiftField,
       urgencyField,
       quoteAmountField,
@@ -258,43 +257,6 @@ export const serviceFormConfigs: Record<ServiceKey, ServiceFormConfig> = {
     ],
   },
 
-  "end-of-tenancy-cleaning": {
-    key: "end-of-tenancy-cleaning",
-    label: "End of Tenancy Cleaning",
-    shortLabel: "End of Tenancy",
-    icon: "home-check",
-    category: "home",
-    intro: "End of tenancy cleaners in Slough",
-    matchingMode: "local-provider",
-    fields: [
-      {
-        type: "chips",
-        name: "bedrooms",
-        label: "How many bedrooms?",
-        options: [
-          { label: "Studio", value: "studio" },
-          { label: "1 bed", value: "1-bed" },
-          { label: "2 bed", value: "2-bed" },
-          { label: "3 bed", value: "3-bed" },
-          { label: "4+ bed", value: "4-bed-plus" },
-        ],
-      },
-      {
-        type: "chips",
-        name: "extras",
-        label: "Any extras?",
-        options: [
-          { label: "Oven", value: "oven" },
-          { label: "Carpet", value: "carpet" },
-          { label: "Windows", value: "windows" },
-          { label: "None", value: "none" },
-        ],
-      },
-      sloughPostcodeField,
-      urgencyField,
-      quoteAmountField,
-    ],
-  },
 
 
   plumber: {
@@ -720,7 +682,6 @@ export const serviceDropdownOrder: ServiceKey[] = [
   "electrician",
   "locksmith",
   "cleaner",
-  "end-of-tenancy-cleaning",
   "man-and-van",
   "removals",
   "painter-decorator",

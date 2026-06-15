@@ -427,10 +427,14 @@ export default function CumarIntakeForm({
     });
     setError(null);
 
-    const answeredPriceField = priceCheckFields.some((field) => field.name === name);
+    const answeredPriceField = priceCheckFields.find((field) => field.name === name);
     const hasValue = String(value ?? "").trim().length > 0;
+    const shouldScrollAfterButtonAnswer =
+      answeredPriceField &&
+      hasValue &&
+      (answeredPriceField.type === "chips" || answeredPriceField.type === "select");
 
-    if (answeredPriceField && hasValue) {
+    if (shouldScrollAfterButtonAnswer) {
       window.setTimeout(() => {
         window.scrollBy({
           top: 120,
@@ -521,9 +525,9 @@ export default function CumarIntakeForm({
         body: JSON.stringify({
           service: selectedService.value,
           service_label: selectedService.label,
-          postcode: cleanedFormValues.postcode || cleanedFormValues.collectionPostcode || "SL1 1AA",
-          collection_postcode: cleanedFormValues.collectionPostcode || "SL1 1AA",
-          delivery_postcode: cleanedFormValues.deliveryPostcode || null,
+          postcode: cleanedFormValues.postcode || cleanedFormValues.pickupPostcode || "SL1 1AA",
+          collection_postcode: cleanedFormValues.pickupPostcode || cleanedFormValues.collectionPostcode || "SL1 1AA",
+          delivery_postcode: cleanedFormValues.dropoffPostcode || cleanedFormValues.deliveryPostcode || null,
           quote_amount: cleanedFormValues.quoteAmount || null,
           service_details: cleanedFormValues,
           price_inputs: priceCheckFields.reduce<Record<string, string>>((acc, field) => {
@@ -587,11 +591,11 @@ export default function CumarIntakeForm({
 
       const params = new URLSearchParams({
         service: selectedService.value,
-        postcode: cleanedFormValues.postcode || cleanedFormValues.collectionPostcode || "SL1 1AA",
+        postcode: cleanedFormValues.postcode || cleanedFormValues.pickupPostcode || "SL1 1AA",
       });
 
-      if (cleanedFormValues.deliveryPostcode) {
-        params.set("delivery_postcode", cleanedFormValues.deliveryPostcode);
+      if (cleanedFormValues.dropoffPostcode || cleanedFormValues.deliveryPostcode) {
+        params.set("delivery_postcode", cleanedFormValues.dropoffPostcode || cleanedFormValues.deliveryPostcode || "");
       }
 
       priceCheckFields.forEach((field) => {
