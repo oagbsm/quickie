@@ -31,8 +31,6 @@ export default function Footer() {
               Quickola
             </p>
             <div className="grid gap-2 text-[14px] font-extrabold text-[#071638]">
-              <a href="/about" className="hover:text-[#08783f]">About</a>
-              <a href="/how-it-works" className="hover:text-[#08783f]">How it works</a>
               <a href="/contact" className="hover:text-[#08783f]">Contact</a>
             </div>
           </div>
@@ -55,7 +53,7 @@ export default function Footer() {
             <div className="grid gap-2 text-[14px] font-extrabold text-[#071638]">
               <a href="/privacy-policy" className="hover:text-[#08783f]">Privacy Policy</a>
               <a href="/terms" className="hover:text-[#08783f]">Terms</a>
-              <a href="quickolauk@gmail.com" className="hover:text-[#08783f]">hello@quickola.co.uk</a>
+              <a href="mailto:quickolauk@gmail.com" className="hover:text-[#08783f]">quickolauk@gmail.com</a>
             </div>
           </div>
         </div>
