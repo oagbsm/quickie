@@ -384,38 +384,11 @@ function FairPriceCard({
         </div>
 
         <p className="mt-1.5 text-[13px] font-extrabold leading-[1.15] text-white/92 sm:text-[14.5px]">
-          Most local jobs near {postcode} should land around here
+          Typical local range in your area
         </p>
       </div>
 
-      <div className="grid grid-cols-3 border-b border-[#edf1f5] bg-[#fbfffc] text-center">
-        <div className="border-r border-[#edf1f5] px-2 py-2">
-          <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#08783f]">
-            Local
-          </p>
-          <p className="mt-0.5 text-[11px] font-extrabold leading-[1.1] text-[#44506a]">
-            SL1 guide
-          </p>
-        </div>
-
-        <div className="border-r border-[#edf1f5] px-2 py-2">
-          <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#08783f]">
-            No bias
-          </p>
-          <p className="mt-0.5 text-[11px] font-extrabold leading-[1.1] text-[#44506a]">
-            Price first
-          </p>
-        </div>
-
-        <div className="px-2 py-2">
-          <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#08783f]">
-            Warning
-          </p>
-          <p className="mt-0.5 text-[11px] font-extrabold leading-[1.1] text-[#44506a]">
-            Avoid overpay
-          </p>
-        </div>
-      </div>
+ 
 
       <div className="px-3.5 py-1 sm:px-4">
         {rows.map((row) => {
@@ -628,26 +601,12 @@ function JustCheckingResult({
         </h1>
 
         <p className="mx-auto mt-1.5 max-w-[520px] text-[12.5px] font-extrabold leading-[1.25] text-[#5d6678] sm:text-[14px]">
-          Based on {config.label.toLowerCase()} prices around {postcode}. Check before you book.
+          Based on local {config.label.toLowerCase()} price checks in Slough and surrounding areas.
         </p>
 
-        <p className="mx-auto mt-1.5 max-w-[500px] rounded-full bg-[#eef9f1] px-3 py-1.5 text-[11.5px] font-black leading-[1.25] text-[#08783f] ring-1 ring-[#dcefe2] sm:text-[12.5px]">
-          Before you book, check Quickola first.
-        </p>
 
-        <div className="mx-auto mt-2 grid max-w-[420px] grid-cols-3 overflow-hidden rounded-[14px] border border-[#d8eddd] bg-[#f6fcf7] text-center">
-          <div className="border-r border-[#d8eddd] px-2 py-1.5">
-            <p className="text-[10px] font-black text-[#08783f]">Fair range</p>
-          </div>
 
-          <div className="border-r border-[#d8eddd] px-2 py-1.5">
-            <p className="text-[10px] font-black text-[#08783f]">Local check</p>
-          </div>
-
-          <div className="px-2 py-1.5">
-            <p className="text-[10px] font-black text-[#08783f]">No pressure</p>
-          </div>
-        </div>
+  
 
         <div className="mt-2.5">
           <FairPriceCard config={config} postcode={postcode} uiCopy={uiCopy} />
@@ -669,8 +628,8 @@ function JustCheckingResult({
               {uiCopy.ctaTitle}
             </h2>
 
-            <p className="mt-0.5 text-[12.5px] font-bold leading-[1.3] text-[#5d6678] sm:text-[14px]">
-              {uiCopy.ctaBody}
+            <p className="mt-1 text-[12.5px] font-bold leading-[1.35] text-[#5d6678] sm:text-[14px]">
+              {uiCopy.ctaBody} No payment required.
             </p>
           </div>
         </div>
@@ -697,7 +656,7 @@ function JustCheckingResult({
           <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#08783f] text-[11px] font-black text-[#08783f]">
             ✓
           </span>
-          Usually takes under 2 minutes. No payment required.
+          Usually takes under 2 minutes.
         </p>
 
         <div className="mt-2.5 border-t border-[#e4ece7] pt-2 text-center">
@@ -758,7 +717,7 @@ function JustCheckingResult({
           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#eef9f1] text-[10px] ring-1 ring-[#dcefe2]">
             ✓
           </span>
-          No payment · No obligation · Usually under 2 minutes
+          No payment · Usually under 2 minutes
         </div>
 
         <a

@@ -89,7 +89,7 @@ export default function PrivacyPage() {
           <section className="rounded-[18px] border border-[#d8eddd] bg-[#f6fcf8] p-4">
             <h2 className="text-[22px] font-extrabold tracking-[-0.025em] text-[#071638]">Contact</h2>
             <p className="mt-2">
-              For privacy questions, contact Quickola at <a className="font-extrabold text-[#08783f]" href="mailto:hello@quickola.com">hello@quickola.com</a>.
+              For privacy questions, contact Quickola at <a className="font-extrabold text-[#08783f]" href="mailto:hello@quickola.com">quickolauk@gmail.com</a>.
             </p>
           </section>
         </div>
