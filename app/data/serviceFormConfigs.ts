@@ -2,6 +2,7 @@ export type ServiceKey =
   | "man-and-van"
   | "removals"
   | "cleaner"
+  | "home-tasks"
   | "plumber"
   | "electrician"
   | "locksmith"
@@ -250,6 +251,61 @@ export const serviceFormConfigs: Record<ServiceKey, ServiceFormConfig> = {
           { label: "Fortnightly", value: "fortnightly" },
           { label: "Not sure", value: "not-sure" },
         ],
+      },
+      sloughPostcodeField,
+      urgencyField,
+      quoteAmountField,
+    ],
+  },
+
+  "home-tasks": {
+    key: "home-tasks",
+    label: "Home Tasks",
+    icon: "handyman",
+    category: "home",
+    intro: "Small home jobs in Slough",
+    matchingMode: "local-provider",
+    ctaLabel: "Check home tasks price",
+    fields: [
+      {
+        type: "chips",
+        name: "taskType",
+        label: "What small job do you need?",
+        stage: "price",
+        priority: 1,
+        options: [
+          { label: "Flat-pack assembly", value: "flat-pack" },
+          { label: "Shelves / curtain pole", value: "shelves-curtains" },
+          { label: "TV mounting", value: "tv-mounting" },
+          { label: "Ring doorbell / camera", value: "ring-doorbell-camera" },
+          { label: "Cupboard fix", value: "cupboard-fix" },
+          { label: "Small repair", value: "small-repair" },
+          { label: "Other task", value: "other" },
+        ],
+      },
+      {
+        type: "chips",
+        name: "taskSize",
+        label: "How big is the job?",
+        stage: "price",
+        priority: 2,
+        options: [
+          { label: "Quick fix", value: "quick-fix" },
+          { label: "1 small item", value: "one-small-item" },
+          { label: "Few items", value: "few-items" },
+          { label: "Half day", value: "half-day" },
+          { label: "Not sure", value: "not-sure" },
+        ],
+      },
+      {
+        type: "text",
+        name: "taskDescription",
+        label: "Describe the task",
+        stage: "match",
+        priority: 30,
+        optional: true,
+        placeholder: "e.g. Assemble IKEA wardrobe, put up 2 shelves, fix cupboard hinge",
+        example: "Optional — photos can be added after submission",
       },
       sloughPostcodeField,
       urgencyField,
@@ -682,6 +738,7 @@ export const serviceDropdownOrder: ServiceKey[] = [
   "electrician",
   "locksmith",
   "cleaner",
+  "home-tasks",
   "man-and-van",
   "removals",
   "painter-decorator",

@@ -1283,6 +1283,107 @@ export async function createAdminRequest(formData: FormData) {
 
   revalidatePath("/qk-ops-7f3a");
 }
+
+export async function createSmallJobRequest(formData: FormData) {
+  const savedRequestId = crypto.randomUUID();
+
+  const taskType = clean(formData.get("taskType"));
+  const postcode = clean(formData.get("postcode")).toUpperCase();
+  const taskDescription = clean(formData.get("taskDescription"));
+  const urgency = clean(formData.get("urgency")) || "this-week";
+  const phone = clean(formData.get("phone"));
+
+  if (!taskType) {
+    throw new Error("Please choose what small job you need.");
+  }
+
+if (!postcode) {
+  throw new Error("Please enter your postcode.");
+}
+
+if (!/^SL[1-7]\s?\d[A-Z]{2}$/.test(postcode)) {
+  throw new Error("Please enter a valid SL1 to SL7 postcode only.");
+}
+  if (!taskDescription) {
+    throw new Error("Please describe the task.");
+  }
+
+  if (!/^\+44\d{10}$/.test(phone)) {
+    throw new Error("Please enter a valid UK mobile number after +44.");
+  }
+
+  let photoPaths: string[] = [];
+
+  try {
+    photoPaths = await uploadRequestPhotos({
+      formData,
+      requestId: savedRequestId,
+    });
+  } catch (error) {
+    console.error("Small job photo upload failed:", {
+      requestId: savedRequestId,
+      error,
+    });
+
+    photoPaths = [];
+  }
+
+  const details = [
+    `Job type: ${taskType}`,
+    `Job detail: ${taskDescription}`,
+    `Postcode: ${postcode}`,
+    `Time needed: ${urgency}`,
+    photoPaths.length ? `Photos uploaded: ${photoPaths.length}` : "Photos uploaded: 0",
+  ].join("\n");
+
+  const { error } = await supabase.from("requests").insert({
+    id: savedRequestId,
+    service: "local-helper",
+    area: "slough",
+    postcode,
+    details,
+    phone,
+    email: null,
+    time_needed: urgency,
+    source: "home-tasks",
+    status: "new",
+    raw_payload: {
+      request_id: savedRequestId,
+      task_type: taskType,
+      task_description: taskDescription,
+      time_needed: urgency,
+      phone,
+      has_photos: photoPaths.length > 0,
+      photo_count: photoPaths.length,
+      photo_paths: photoPaths,
+      photo_bucket: REQUEST_PHOTO_BUCKET,
+    },
+  });
+
+  if (error) {
+    console.error("Failed to save small job request:", error);
+    throw new Error(`Could not save small job request: ${error.message}`);
+  }
+
+  await sendTelegramRequestAlert({
+    requestId: savedRequestId,
+    service: "local-helper",
+    area: "slough",
+    postcode,
+    timeNeeded: urgency,
+    email: null,
+    phone,
+    details,
+    source: "home-tasks",
+    photoCount: photoPaths.length,
+  });
+
+  revalidatePath("/qk-ops-7f3a");
+  revalidatePath("/qk-ops-v2");
+
+  redirect("/tasks-sent");
+}
+
 export async function saveCheckPriceRequest(formData: FormData) {
   const requestId = clean(formData.get("request_id"));
   const service = clean(formData.get("service")) || "cleaner";

@@ -386,6 +386,26 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         <span>•</span>
                         <span className="truncate">{provider?.business_name || "No provider yet"}</span>
                       </div>
+
+                      <details className="group mt-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 open:bg-white open:shadow-sm">
+                        <summary className="cursor-pointer list-none text-[10px] font-black uppercase tracking-wide text-blue-700 marker:hidden">
+                          <span className="group-open:hidden">Tap for details</span>
+                          <span className="hidden group-open:inline">Close details</span>
+                        </summary>
+                        <div className="mt-2 grid gap-1.5 text-[11px] font-bold leading-4 text-slate-700">
+                          <p className="whitespace-pre-line rounded-md bg-white p-2 text-slate-900 ring-1 ring-slate-100">
+                            {request.details || "No description saved."}
+                          </p>
+                          <div className="grid gap-1 sm:grid-cols-2">
+                            <p><span className="font-black text-slate-950">Request:</span> {request.id}</p>
+                            <p><span className="font-black text-slate-950">Email:</span> {request.email || "Not given"}</p>
+                            <p><span className="font-black text-slate-950">Budget:</span> {request.customer_budget || "Not given"}</p>
+                            <p><span className="font-black text-slate-950">Budget note:</span> {request.budget_note || "Not given"}</p>
+                            <p><span className="font-black text-slate-950">Admin notes:</span> {request.admin_notes || "None"}</p>
+                            <p><span className="font-black text-slate-950">Updated:</span> {shortDate(request.updated_at)}</p>
+                          </div>
+                        </div>
+                      </details>
                     </div>
 
                     <div className="grid gap-1">

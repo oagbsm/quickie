@@ -328,6 +328,10 @@ export default function CumarIntakeForm({
       .filter(Boolean) as CumarService[];
   }, []);
 
+  const homeTasksService = useMemo(() => {
+    return cumarServices.find((item) => item.value === "home-tasks") ?? null;
+  }, []);
+
   useEffect(() => {
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
@@ -372,7 +376,9 @@ export default function CumarIntakeForm({
     answeredPriceFieldCount === priceCheckFields.length;
 
   const submitLabel = selectedService
-    ? `Check ${selectedService.label.toLowerCase()} price`
+    ? selectedService.value === "home-tasks"
+      ? "Check home tasks price"
+      : `Check ${selectedService.label.toLowerCase()} price`
     : "Check price";
 
   const hasSelectedValidService = Boolean(selectedService && selectedService.label === serviceSearch);
@@ -390,6 +396,11 @@ export default function CumarIntakeForm({
   }, [hasSelectedValidService, serviceSearch]);
 
   function chooseService(item: CumarService) {
+    if (item.value === "home-tasks") {
+      router.push("/home-tasks");
+      return;
+    }
+
     setService(item.value);
     setServiceSearch(item.label);
     setServiceOpen(false);
@@ -618,8 +629,8 @@ export default function CumarIntakeForm({
   const formId = isMobile ? "mobile-price-check-form" : "desktop-price-check-form";
 
   return (
-    <form id={formId} onSubmit={handleSubmit} className={`mx-auto w-full max-w-[900px] space-y-3 sm:space-y-4 ${className}`}>
-      <div className="space-y-3 sm:space-y-4">
+    <form id={formId} onSubmit={handleSubmit} className={`mx-auto w-full max-w-[900px] space-y-2.5 sm:space-y-3 lg:max-w-[1035px] ${className}`}>
+      <div className="space-y-2.5 sm:space-y-3">
         <div className="flex items-center justify-between gap-3">
           <label className="block text-[15px] font-extrabold tracking-[-0.03em] text-[#071638] sm:text-[17px]">
             Choose a service
@@ -631,7 +642,8 @@ export default function CumarIntakeForm({
           ) : null}
         </div>
 
-        <div className="grid grid-cols-3 gap-2.5 sm:gap-3 lg:grid-cols-6 lg:gap-3">
+
+        <div className="grid grid-cols-3 gap-2 sm:gap-2.5 lg:grid-cols-6 lg:gap-3">
           {popularServices.map((item) => {
             const isSelected = selectedService?.value === item.value;
 
@@ -640,7 +652,7 @@ export default function CumarIntakeForm({
                 key={item.value}
                 type="button"
                 onClick={() => chooseService(item)}
-                className={`relative flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-[14px] border bg-white px-2 py-2.5 text-center shadow-[0_8px_18px_rgba(7,22,56,0.045)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#07833f]/50 hover:shadow-[0_14px_28px_rgba(7,22,56,0.08)] active:translate-y-0 sm:min-h-[112px] sm:rounded-[16px] sm:py-3 lg:min-h-[104px] lg:px-2 lg:py-3 ${
+                className={`relative flex min-h-[84px] flex-col items-center justify-center gap-1.5 rounded-[14px] border bg-white px-2 py-2 text-center shadow-[0_8px_18px_rgba(7,22,56,0.045)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#07833f]/50 hover:shadow-[0_14px_28px_rgba(7,22,56,0.08)] active:translate-y-0 sm:min-h-[102px] sm:rounded-[16px] sm:py-2.5 lg:min-h-[98px] lg:px-2 lg:py-2.5 ${
                   isSelected
                     ? "border-[#07833f] bg-[#f5fff8] shadow-[0_14px_28px_rgba(7,131,63,0.12)]"
                     : "border-[#e4ebf1]"
@@ -655,7 +667,7 @@ export default function CumarIntakeForm({
 
                 <CumarIcon
                   type={item.icon}
-                  className={`h-11 w-11 sm:h-12 sm:w-12 lg:h-11 lg:w-11 ${isSelected ? "text-[#07833f]" : "text-[#071638]"}`}
+                  className={`h-10 w-10 sm:h-11 sm:w-11 lg:h-10 lg:w-10 ${isSelected ? "text-[#07833f]" : "text-[#071638]"}`}
                 />
                 <span className="max-w-[94px] text-[12px] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#071638] sm:text-[14px] lg:max-w-[110px] lg:text-[12px] xl:text-[13px]">
                   {item.label === "Man & Van" ? "Man & Van / Moving" : item.label}
@@ -664,6 +676,55 @@ export default function CumarIntakeForm({
             );
           })}
         </div>
+
+        {homeTasksService ? (
+          <button
+            type="button"
+            onClick={() => router.push("/home-tasks")}
+            className={`group flex w-full items-center gap-2.5 rounded-[16px] border px-3 py-2 text-left shadow-[0_10px_22px_rgba(7,22,56,0.045)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#07833f] hover:shadow-[0_16px_30px_rgba(7,131,63,0.12)] active:translate-y-0 sm:px-4 sm:py-2.5 ${
+              selectedService?.value === homeTasksService.value
+                ? "border-[#07833f] bg-[#f2fff6]"
+                : "border-[#b9e6ca] bg-[#f6fff9]"
+            }`}
+            aria-pressed={selectedService?.value === homeTasksService.value}
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-white text-[#07833f] shadow-[0_8px_18px_rgba(7,22,56,0.06)] sm:h-12 sm:w-12">
+              <CumarIcon type={homeTasksService.icon} className="h-6 w-6 sm:h-7 sm:w-7" />
+            </span>
+
+            <span className="min-w-0 flex-1">
+              <span className="mb-0.5 flex items-center gap-2">
+                <span className="rounded-full bg-[#11a84f] px-2 py-0.5 text-[10px] font-black uppercase tracking-[-0.02em] text-white sm:text-[11px]">
+                  New
+                </span>
+                <span className="text-[15px] font-black tracking-[-0.04em] text-[#071638] sm:text-[18px]">
+                  Home Tasks
+                </span>
+              </span>
+              <span className="block text-[12px] font-extrabold leading-[1.2] tracking-[-0.025em] text-[#071638] sm:text-[14px]">
+                Small jobs. Upload photos.
+              </span>
+              <span className="mt-0.5 block truncate text-[11px] font-semibold text-[#52627a] sm:text-[13px]">
+                Flat-pack, shelves, doorbells & fixes
+              </span>
+            </span>
+
+            <span className="hidden h-12 w-px bg-[#b9e6ca] sm:block" />
+
+            <span className="shrink-0 text-right">
+              <span className="block text-[10px] font-extrabold leading-none text-[#07833f] sm:text-[11px]">
+                Post
+              </span>
+              <span className="block text-[17px] font-black leading-none tracking-[-0.04em] text-[#07833f] sm:text-[22px]">
+                task
+              </span>
+            </span>
+
+            <span className="text-[22px] font-black leading-none text-[#07833f] transition-transform duration-200 group-hover:translate-x-1 sm:text-[28px]">
+              ›
+            </span>
+          </button>
+        ) : null}
 
         <div className="relative">
           <CumarIcon
@@ -678,7 +739,7 @@ export default function CumarIntakeForm({
               setError(null);
             }}
             onFocus={() => setServiceOpen(true)}
-            className="h-[42px] w-full rounded-[14px] border border-[#dfe7ef] bg-white pl-12 pr-4 text-[14px] font-semibold text-[#071638] outline-none transition focus:border-[#07833f] focus:ring-4 focus:ring-[#07833f]/10 placeholder:font-medium placeholder:text-[#7f8ca3] sm:h-[50px] sm:text-[16px] lg:h-[48px]"
+            className="h-[40px] w-full rounded-[14px] border border-[#dfe7ef] bg-white pl-12 pr-4 text-[14px] font-semibold text-[#071638] outline-none transition focus:border-[#07833f] focus:ring-4 focus:ring-[#07833f]/10 placeholder:font-medium placeholder:text-[#7f8ca3] sm:h-[46px] sm:text-[16px] lg:h-[46px]"
             placeholder="Search any service..."
           />
 
@@ -727,7 +788,7 @@ export default function CumarIntakeForm({
       <button
         type="submit"
         disabled={isSubmitting || !canSubmitPriceCheck}
-        className={`group relative flex h-[44px] w-full items-center justify-center overflow-hidden rounded-[14px] px-5 text-[16px] font-extrabold tracking-[-0.02em] transition-all duration-200 active:scale-[0.985] sm:h-[52px] sm:text-[18px] lg:h-[50px] ${
+        className={`group relative flex h-[42px] w-full items-center justify-center overflow-hidden rounded-[14px] px-5 text-[16px] font-extrabold tracking-[-0.02em] transition-all duration-200 active:scale-[0.985] sm:h-[48px] sm:text-[18px] lg:h-[48px] ${
           canSubmitPriceCheck && !isSubmitting
             ? "bg-[#07833f] text-white shadow-[0_14px_28px_rgba(7,131,63,0.24)] hover:-translate-y-0.5 hover:bg-[#066f36]"
             : "cursor-not-allowed bg-[#dcece2] text-[#7f9a8a] shadow-none"
@@ -747,7 +808,7 @@ export default function CumarIntakeForm({
         </span>
       </button>
       {!selectedService ? (
-        <p className="text-center text-[12px] font-semibold text-[#7f8ca3] sm:text-[13px]">
+        <p className="text-center text-[11px] font-semibold text-[#7f8ca3] sm:text-[12px]">
           Please select a service to continue
         </p>
       ) : null}

@@ -140,12 +140,12 @@ export default function Hero() {
       </div>  
 
       <div className="relative z-20 mx-auto -mt-[68px] max-w-[1040px] bg-[#061a3d] px-4 pb-6 sm:px-6 lg:-mt-[123px] lg:max-w-none lg:bg-[linear-gradient(to_bottom,#061a3d_0%,#061a3d_50%,#ffffff_50%,#ffffff_100%)] lg:px-5 lg:pb-8">
-        <div className="mx-auto overflow-hidden rounded-[22px] bg-white p-3 shadow-[0_22px_64px_rgba(7,22,56,0.20)] ring-1 ring-[#edf2f7] sm:rounded-[26px] sm:p-6 lg:max-w-[940px] lg:p-6 xl:max-w-[980px]">
-          <h2 className="text-center text-[18px] font-black tracking-[-0.045em] text-[#071638] sm:text-[22px] lg:text-[24px]">
+        <div className="mx-auto overflow-hidden rounded-[22px] bg-white p-3 shadow-[0_22px_64px_rgba(7,22,56,0.20)] ring-1 ring-[#edf2f7] sm:rounded-[26px] sm:p-6 lg:max-w-[1081px] lg:p-7 xl:max-w-[1127px]">
+          <h2 className="text-center text-[18px] font-black tracking-[-0.045em] text-[#071638] sm:text-[22px] lg:text-[28px]">
             Check your local price
           </h2>
 
-          <CumarIntakeForm variant="desktop" className="mt-3 sm:mt-5 lg:mt-4" />
+          <CumarIntakeForm variant="desktop" className="mt-3 sm:mt-5 lg:mt-5" />
 
           <div className="mt-3 grid grid-cols-3 divide-x divide-[#dde7f2] rounded-[14px] bg-[#fbfdff] px-1.5 py-2 text-center text-[10px] font-black text-[#071638] sm:mt-4 sm:rounded-[16px] sm:px-3 sm:py-3 sm:text-[14px] lg:mt-5 lg:bg-white lg:px-3 lg:py-2 lg:text-[12px]">
             <div className="flex items-center justify-center gap-2 px-2">

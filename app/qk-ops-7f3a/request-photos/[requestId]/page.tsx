@@ -1,6 +1,3 @@
-
-
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -17,6 +14,9 @@ type RequestPhotoPayload = {
   photo_paths?: string[];
   service?: string;
   postcode?: string;
+  task_type?: string;
+  task_description?: string;
+  time_needed?: string;
 };
 
 type RequestRow = {
@@ -24,6 +24,8 @@ type RequestRow = {
   service: string | null;
   postcode: string | null;
   area: string | null;
+  phone: string | null;
+  details: string | null;
   created_at: string | null;
   raw_payload: RequestPhotoPayload | null;
 };
@@ -55,7 +57,7 @@ export default async function RequestPhotosPage({ params }: PageProps) {
 
   const { data: request, error } = await supabase
     .from("requests")
-    .select("id, service, postcode, area, created_at, raw_payload")
+    .select("id, service, postcode, area, phone, details, created_at, raw_payload")
     .eq("id", requestId)
     .single<RequestRow>();
 
@@ -66,6 +68,9 @@ export default async function RequestPhotosPage({ params }: PageProps) {
   const payload = request.raw_payload || {};
   const bucket = payload.photo_bucket || "request-photos";
   const photoPaths = Array.isArray(payload.photo_paths) ? payload.photo_paths : [];
+  const taskType = payload.task_type || request.service || payload.service || null;
+  const taskDescription = payload.task_description || request.details || null;
+  const timeNeeded = payload.time_needed || null;
 
   const signedPhotos = await Promise.all(
     photoPaths.map(async (path, index) => {
@@ -84,14 +89,7 @@ export default async function RequestPhotosPage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-[#eef4ff] px-4 py-6 text-[#071638]">
       <div className="mx-auto w-full max-w-5xl">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <Link
-            href="/qk-ops-7f3a"
-            className="rounded-full border border-[#c8d4ea] bg-white px-4 py-2 text-sm font-black text-[#365076] shadow-sm"
-          >
-            ← Back to admin
-          </Link>
-
+        <div className="mb-4 flex items-center justify-end gap-3">
           <span className="rounded-full bg-[#071638] px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white shadow-sm">
             Request photos
           </span>
@@ -116,6 +114,21 @@ export default async function RequestPhotosPage({ params }: PageProps) {
               <p className="mt-1 break-all">
                 <span className="text-[#071638]">Request:</span> {request.id}
               </p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-[22px] border border-[#d8e1f0] bg-[#f8fbff] p-4 sm:p-5">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#07833f]">Job details</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.04em] text-[#071638]">
+              {formatLabel(taskType)}
+            </h2>
+            <p className="mt-3 whitespace-pre-line text-sm font-bold leading-[1.55] text-[#365076]">
+              {taskDescription || "No description saved."}
+            </p>
+            <div className="mt-4 grid gap-2 text-xs font-black text-[#657089] sm:grid-cols-3">
+              <p>Postcode: {request.postcode || payload.postcode || "Not given"}</p>
+              <p>Phone: {request.phone || "Not given"}</p>
+              <p>Time: {formatLabel(timeNeeded)}</p>
             </div>
           </div>
 
