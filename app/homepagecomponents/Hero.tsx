@@ -122,7 +122,7 @@ export default function Hero() {
               </h1>
 
               <p className="mt-4 max-w-[205px] text-[15px] font-semibold leading-[1.32] tracking-[-0.025em] text-white/90 sm:mt-5 sm:max-w-[520px] sm:text-[21px] lg:mt-4 lg:max-w-[432px] lg:text-[17px]">
-                Kola checks the <span className="font-black text-[#4bd35f]">usual local price</span> — and can help find someone available.
+                Quicko checks the <span className="font-black text-[#4bd35f]">usual local price</span> — and can help find someone available.
               </p>
 
             </div>
