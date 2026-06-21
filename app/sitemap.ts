@@ -1,14 +1,16 @@
 import { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { serviceDropdownOrder } from "./data/serviceFormConfigs";
+import { seoAreaParams } from "./data/seoLocations";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const siteUrl = "https://www.quickola.co.uk";
+  const siteUrl = "https://quickola.co.uk";
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    return [
+    const staticPages: MetadataRoute.Sitemap = [
       {
         url: siteUrl,
         lastModified: new Date(),
@@ -16,6 +18,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 1,
       },
     ];
+
+    const localServicePages: MetadataRoute.Sitemap = seoAreaParams.flatMap(
+      ({ location, area }) =>
+        serviceDropdownOrder.map((service) => ({
+          url: `${siteUrl}/${location}/${area}/${service}`,
+          lastModified: new Date(),
+          changeFrequency: "weekly" as const,
+          priority: 0.85,
+        }))
+    );
+
+    return [...staticPages, ...localServicePages];
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -40,6 +54,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  const localServicePages: MetadataRoute.Sitemap = seoAreaParams.flatMap(
+    ({ location, area }) =>
+      serviceDropdownOrder.map((service) => ({
+        url: `${siteUrl}/${location}/${area}/${service}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly" as const,
+        priority: 0.85,
+      }))
+  );
+
   const seoPages: MetadataRoute.Sitemap =
     pages?.map((page) => ({
       url: `${siteUrl}/${page.slug}`,
@@ -48,5 +72,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     })) ?? [];
 
-  return [...staticPages, ...seoPages];
+  return [...staticPages, ...localServicePages, ...seoPages];
 }
