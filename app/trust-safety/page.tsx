@@ -5,14 +5,14 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Trust & Safety | Quickola",
   description:
-    "Learn how Quickola approaches trust, provider review, fair price guidance, customer safety, request handling and no paid ranking.",
+    "Learn how Quickola approaches trust, early provider review, fair price guidance, customer safety, request handling and no paid ranking during its Slough launch.",
   alternates: {
     canonical: "/trust-safety",
   },
   openGraph: {
     title: "Trust & Safety at Quickola",
     description:
-      "Quickola helps people check fair local prices before booking and uses provider review, clear pricing guidance and safety advice to support better decisions.",
+      "Quickola helps people check fair local prices before booking and uses early provider review, clear pricing guidance and safety advice to support better decisions during its Slough launch.",
     url: "/trust-safety",
     siteName: "Quickola",
     type: "website",
@@ -25,8 +25,8 @@ const trustPrinciples = [
     text: "Quickola starts with guide price ranges so customers have a realistic idea of what a local service may cost before they move forward.",
   },
   {
-    title: "Providers reviewed before visibility",
-    text: "Provider applications are reviewed before being added to the Quickola provider network. This helps reduce random, low-quality or irrelevant listings.",
+    title: "Providers reviewed before referral",
+    text: "Quickola is in early Slough launch mode. When outside providers are used, their details are reviewed before customers are referred to them. This helps reduce random, low-quality or irrelevant referrals.",
   },
   {
     title: "No paid ranking",
@@ -39,11 +39,12 @@ const trustPrinciples = [
 ];
 
 const providerChecks = [
-  "Business name and service category are reviewed for relevance.",
-  "Provider area coverage is checked against the customer request area.",
-  "Starting prices are reviewed for clarity and obvious mismatch.",
-  "WhatsApp/contact details are used to confirm request handling where needed.",
-  "Provider visibility can be adjusted based on responsiveness and customer feedback.",
+  "Quickola is currently in early Slough launch mode, so provider coverage may be limited.",
+  "When an outside provider is used, business name and service category are reviewed for relevance.",
+  "Provider area coverage is checked against the customer request area where possible.",
+  "Starting prices are reviewed for clarity and obvious mismatch where available.",
+  "WhatsApp/contact details may be used to confirm request handling where needed.",
+  "Future provider visibility may be adjusted based on responsiveness and customer feedback.",
 ];
 
 const customerSafety = [
@@ -74,7 +75,7 @@ const faqs = [
   {
     question: "Does Quickola verify every provider?",
     answer:
-      "Quickola reviews provider applications before adding businesses to the network, but customers should still check final provider details, credentials and suitability before booking. Provider review is a safety layer, not a legal guarantee.",
+      "Quickola is in early Slough launch mode, so provider coverage may be limited. When outside providers are used, Quickola reviews available provider details before referral, but customers should still check final provider details, credentials and suitability before booking. Provider review is a safety layer, not a legal guarantee.",
   },
   {
     question: "Does Quickola sell paid ranking?",
@@ -101,7 +102,7 @@ const jsonLd = {
       name: "Trust & Safety at Quickola",
       url: "https://quickola.co.uk/trust-safety",
       description:
-        "How Quickola approaches provider review, fair price guidance, no paid ranking, customer safety and request handling.",
+        "How Quickola approaches early provider review, fair price guidance, no paid ranking, customer safety and request handling during its Slough launch.",
       publisher: {
         "@type": "Organization",
         name: "Quickola",
@@ -169,7 +170,7 @@ export default function TrustSafetyPage() {
             </h1>
 
             <p className="mt-6 max-w-[730px] text-[18px] font-semibold leading-[1.65] text-[#44506a] sm:text-[21px]">
-              Quickola helps people check fair local service price ranges before booking, then helps connect them with suitable providers where available. This page explains how we approach provider review, pricing guidance, customer safety and responsible matching.
+              Quickola helps people check fair local service price ranges before booking, then helps route requests where suitable help is available. Quickola is currently in early Slough launch mode, so provider coverage may be limited. This page explains how we approach provider review, pricing guidance, customer safety and responsible matching.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -194,7 +195,7 @@ export default function TrustSafetyPage() {
               Quickola is not a guarantee. It is a clarity and matching layer.
             </p>
             <p className="mt-4 text-[16px] font-semibold leading-[1.65] text-[#44506a]">
-              We help reduce uncertainty by showing fair guide ranges, reviewing provider applications and encouraging clear pricing before customers commit. Customers should still confirm final details directly before booking.
+              We help reduce uncertainty by showing fair guide ranges, reviewing available provider details where outside providers are used, and encouraging clear pricing before customers commit. Customers should still confirm final details directly before booking.
             </p>
             <div className="mt-6 rounded-[18px] bg-[#071638] p-5 text-white">
               <p className="text-[14px] font-black uppercase tracking-[0.1em] text-white/60">
@@ -215,7 +216,7 @@ export default function TrustSafetyPage() {
             How Quickola builds trust
           </h2>
           <p className="mt-4 text-[17px] font-semibold leading-[1.65] text-[#44506a]">
-            Quickola is designed to reduce the biggest risks in local service booking: unclear prices, irrelevant providers, paid ranking bias and surprise charges.
+            Quickola is designed to reduce the biggest risks in local service booking: unclear prices, irrelevant referrals, paid ranking bias and surprise charges. During the Slough launch, availability may be limited while the provider base is built carefully.
           </p>
         </div>
 
@@ -238,7 +239,7 @@ export default function TrustSafetyPage() {
           <Card>
             <SectionLabel>Provider review</SectionLabel>
             <h2 className="mt-3 text-[32px] font-black leading-[1.05] tracking-[-0.035em]">
-              How providers are considered
+              How outside providers are considered
             </h2>
             <ul className="mt-6 space-y-3">
               {providerChecks.map((check) => (
@@ -321,7 +322,7 @@ export default function TrustSafetyPage() {
             <Card>
               <h3 className="text-[21px] font-black">Matching with purpose</h3>
               <p className="mt-3 text-[15px] font-semibold leading-[1.6] text-[#44506a]">
-                Suitable providers may be contacted when their service and coverage match the customer request.
+                Suitable help may be contacted or suggested when service coverage, availability and request details match. In early launch, this may be limited to a small number of options.
               </p>
             </Card>
             <Card>

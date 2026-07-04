@@ -40,77 +40,12 @@ function getMoneyAmount(value: string | string[] | undefined) {
   return numericValue;
 }
 
-
 function formatPounds(value: number) {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
     maximumFractionDigits: 0,
   }).format(value);
-}
-
-function getFirstParamValue(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function humaniseParamValue(value: string | string[] | undefined) {
-  const rawValue = getFirstParamValue(value);
-  if (!rawValue) return "";
-
-  const knownLabels: Record<string, string> = {
-    "regular-clean": "regular clean",
-    "deep-clean": "deep clean",
-    "end-of-tenancy": "end of tenancy clean",
-    "airbnb-short-let": "Airbnb / short-let clean",
-    "after-builders": "after builders clean",
-    studio: "studio",
-    "1-bed": "1 bedroom",
-    "2-bed": "2 bedroom",
-    "3-bed": "3 bedroom",
-    "4-bed-plus": "4+ bedroom",
-    "not-sure": "not sure",
-    "one-off": "one-off",
-    weekly: "weekly",
-    fortnightly: "fortnightly",
-    "guest-turnover": "guest turnover",
-  };
-
-  return knownLabels[rawValue] ?? rawValue.replace(/-/g, " ").trim();
-}
-
-function buildWhatsAppJobSummary(params: Record<string, string | string[] | undefined>, postcode: string) {
-  const cleanType = humaniseParamValue(params.cleanType);
-  const bedrooms = humaniseParamValue(params.bedrooms);
-  const cleanFrequency = humaniseParamValue(params.cleanFrequency);
-
-  const details = [cleanType, bedrooms, cleanFrequency].filter(Boolean).join(", ");
-
-  return details ? `${details} in ${postcode}` : `cleaner in ${postcode}`;
-}
-
-function buildWhatsAppUrl({
-  serviceLabel,
-  postcode,
-  serviceSlug,
-  quote,
-  jobSummary,
-}: {
-  serviceLabel: string;
-  postcode: string;
-  serviceSlug: string;
-  quote: string;
-  jobSummary: string;
-}) {
-  const phoneNumber = process.env.NEXT_PUBLIC_QUICKOLA_WHATSAPP_NUMBER || "447347962272";
-  const cleanService = jobSummary || `${serviceLabel || serviceSlug || "cleaner"} in ${postcode}`;
-
-  const messageLines = [
-    `Hi Quickola, I need ${cleanService}.`,
-    quote ? `I already have a quote of ${quote}.` : "",
-    "Can you check the price and availability?",
-  ].filter(Boolean);
-
-  return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(messageLines.join("\n"))}`;
 }
 
 function getHighestPriceFromRange(value: string) {
@@ -143,7 +78,7 @@ function Header() {
             href="/"
             className="inline-flex h-9 shrink-0 items-center justify-center rounded-[12px] border border-[#dfe5ee] bg-white px-3.5 text-[13px] font-extrabold text-[#071638] shadow-[0_6px_14px_rgba(7,22,56,0.035)] transition hover:-translate-y-0.5 hover:border-[#b7c2d2] sm:h-10 sm:px-4 sm:text-[14px]"
           >
-            Start again
+            New search
           </a>
         </div>
       </div>
@@ -641,69 +576,137 @@ function JustCheckingResult({
   config,
   postcode,
   serviceSlug,
-  whatsappUrl,
+  bookQueryString,
   quote,
 }: {
   config: PriceConfig;
   postcode: string;
   serviceSlug: string;
-  whatsappUrl: string;
+  bookQueryString: string;
   quote: string;
 }) {
   const uiCopy = getResultUiCopy(config, serviceSlug);
   const resultTitle = getShortResultTitle(config.label, serviceSlug);
 
   return (
-    <div className="mx-auto max-w-[620px] space-y-3 lg:max-w-[760px]">
-      <div className="space-y-3">
-        <section className="rounded-[20px] border border-[#e1e8ef] bg-white p-2.5 text-center shadow-[0_14px_34px_rgba(7,22,56,0.05)] sm:p-3 lg:rounded-[26px] lg:p-6 lg:shadow-[0_24px_70px_rgba(7,22,56,0.08)]">
-          <p className="text-[10.5px] font-black uppercase tracking-[0.17em] text-[#08783f]">
-            Price guide
-          </p>
+    <div className="mx-auto max-w-[620px] space-y-2 lg:max-w-none lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.75fr)] lg:items-start lg:gap-7 lg:space-y-0">
+      <div className="lg:space-y-4">
+      <section className="rounded-[20px] border border-[#e1e8ef] bg-white p-2.5 text-center shadow-[0_14px_34px_rgba(7,22,56,0.05)] sm:p-3 lg:rounded-[26px] lg:p-6 lg:shadow-[0_24px_70px_rgba(7,22,56,0.08)]">
+        <p className="text-[10.5px] font-black uppercase tracking-[0.17em] text-[#08783f]">
+          Price guide
+        </p>
 
-          <h1 className="mx-auto mt-1.5 max-w-[520px] text-[22px] font-black leading-[1] tracking-[-0.055em] text-[#071638] sm:text-[32px]">
-            {resultTitle}
-          </h1>
+        <h1 className="mx-auto mt-1.5 max-w-[520px] text-[22px] font-black leading-[1] tracking-[-0.055em] text-[#071638] sm:text-[32px]">
+          {resultTitle}
+        </h1>
 
-          <p className="mx-auto mt-1.5 max-w-[520px] text-[12.5px] font-extrabold leading-[1.25] text-[#5d6678] sm:text-[14px]">
-            Send this to WhatsApp and we’ll check cleaner availability in Slough.
-          </p>
+        <p className="mx-auto mt-1.5 max-w-[520px] text-[12.5px] font-extrabold leading-[1.25] text-[#5d6678] sm:text-[14px]">
+          Based on local {config.label.toLowerCase()} price checks in Slough and surrounding areas.
+        </p>
 
-          <div className="mt-2.5">
-            <FairPriceCard config={config} postcode={postcode} uiCopy={uiCopy} />
-          </div>
-        </section>
 
-        {quote ? <ExpensiveQuoteCard quote={quote} /> : null}
+
+  
+
+        <div className="mt-2.5">
+          <FairPriceCard config={config} postcode={postcode} uiCopy={uiCopy} />
+        </div>
+      </section>
+
+      {quote ? <ExpensiveQuoteCard quote={quote} /> : null}
       </div>
 
-      <section className="rounded-[20px] border border-[#dcebe1] bg-white p-3 text-center shadow-[0_14px_34px_rgba(7,22,56,0.06)] sm:p-4 lg:p-5">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#eef9f1] text-[#08783f] ring-1 ring-[#dcefe2]">
-          <ShieldCheckIcon className="h-6 w-6" />
+      <aside className="space-y-2 lg:sticky lg:top-[84px] lg:space-y-4">
+      <section className="rounded-[18px] border border-[#dcebe1] bg-[#fbfffc] p-3 shadow-[0_10px_26px_rgba(7,22,56,0.04)] sm:p-4 lg:rounded-[26px] lg:p-6 lg:shadow-[0_18px_48px_rgba(7,22,56,0.07)]">
+        <div className="flex items-start gap-3 text-left">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eef9f1] text-[#08783f] ring-1 ring-[#dcefe2]">
+            <ShieldCheckIcon className="h-5 w-5" />
+          </span>
+
+          <div>
+            <h2 className="text-[18px] font-black leading-[1.05] tracking-[-0.045em] text-[#071638] sm:text-[21px]">
+              {uiCopy.ctaTitle}
+            </h2>
+
+            <p className="mt-1 text-[12.5px] font-bold leading-[1.35] text-[#5d6678] sm:text-[14px]">
+              {uiCopy.ctaBody} No payment required.
+            </p>
+          </div>
         </div>
 
-        <h2 className="mx-auto mt-2 max-w-[460px] text-[22px] font-black leading-[1.02] tracking-[-0.055em] text-[#071638] sm:text-[28px]">
-          Want us to find a cleaner?
-        </h2>
+        <div className="mt-2.5 rounded-[14px] border border-[#edf1f5] bg-white px-3 py-2 text-left">
+          <p className="text-[12px] font-black leading-[1.3] text-[#071638]">
+            Why check first?
+          </p>
 
-        <p className="mx-auto mt-1.5 max-w-[460px] text-[13px] font-bold leading-[1.35] text-[#5d6678] sm:text-[14.5px]">
-          Tap WhatsApp, send the pre-filled message, and Quickola will check availability. No payment required.
-        </p>
+          <p className="mt-0.5 text-[11.5px] font-bold leading-[1.35] text-[#5d6678]">
+            Some quotes can sit far above the normal local range. Quickola helps you spot that before you say yes.
+          </p>
+        </div>
 
         <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-4 flex h-[54px] items-center justify-center gap-2 rounded-[15px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-4 text-center text-[16px] font-black tracking-[-0.03em] text-white shadow-[0_12px_24px_rgba(0,104,47,0.22)] transition hover:-translate-y-0.5"
+          href={`/book?${bookQueryString}`}
+          className="mt-3 flex h-[50px] items-center justify-center gap-2 rounded-[13px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-3.5 text-center text-[13.5px] font-black tracking-[-0.025em] text-white shadow-[0_10px_22px_rgba(0,104,47,0.18)] transition hover:-translate-y-0.5 sm:h-[54px] sm:text-[16px]"
         >
-          Message Quickola on WhatsApp
-          <span aria-hidden="true">→</span>
+          <LocationIcon className="h-5 w-5" />
+          {uiCopy.ctaButton}
         </a>
 
-        <p className="mt-2 text-[11.5px] font-bold leading-[1.3] text-[#657089] sm:text-[12.5px]">
+        <p className="mt-2 flex items-center justify-center gap-1.5 text-[11.5px] font-bold leading-[1.3] text-[#657089] sm:text-[12.5px]">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#08783f] text-[11px] font-black text-[#08783f]">
+            ✓
+          </span>
           Usually takes under 2 minutes.
         </p>
+
+        <div className="mt-2.5 border-t border-[#e4ece7] pt-2 text-center">
+          <a
+            href="/"
+            className="inline-flex items-center justify-center gap-2 rounded-[12px] px-3 py-1.5 text-[13px] font-black text-[#08783f] transition hover:bg-[#f0faf3]"
+          >
+            Check another service
+            <span aria-hidden="true">›</span>
+          </a>
+        </div>
       </section>
+
+      <details className="rounded-[16px] border border-[#e1e6ee] bg-white p-3 shadow-[0_8px_22px_rgba(7,22,56,0.03)] lg:rounded-[22px] lg:p-5 lg:shadow-[0_14px_36px_rgba(7,22,56,0.05)]" open>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left">
+          <span className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eef9f1] text-[#08783f]">
+              <InfoIcon className="h-5 w-5" />
+            </span>
+
+            <span>
+              <span className="block text-[15px] font-black tracking-[-0.03em] text-[#071638]">
+                What affects this price?
+              </span>
+
+              <span className="mt-0.5 block text-[11.5px] font-bold leading-[1.3] text-[#657089]">
+                Price changes based on{" "}
+                {uiCopy.factors.map((factor) => factor.toLowerCase()).join(", ")}.
+              </span>
+            </span>
+          </span>
+
+          <span className="shrink-0 text-[26px] font-black leading-none text-[#08783f]">
+            ⌄
+          </span>
+        </summary>
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {uiCopy.factors.map((factor) => (
+            <div
+              key={factor}
+              className="rounded-[13px] bg-[#f7fafc] px-3 py-2.5 text-center text-[12px] font-black text-[#44506a] ring-1 ring-[#edf0f5]"
+            >
+              {factor}
+            </div>
+          ))}
+        </div>
+      </details>
+
+      </aside>
 
       <div className="lg:col-span-2 lg:mt-7">
         <CostGuideAccordion config={config} />
@@ -714,16 +717,15 @@ function JustCheckingResult({
           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#eef9f1] text-[10px] ring-1 ring-[#dcefe2]">
             ✓
           </span>
-          WhatsApp us · No payment required
+          No payment · Usually under 2 minutes
         </div>
 
         <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={`/book?${bookQueryString}`}
           className="flex h-[54px] items-center justify-center gap-2 rounded-[15px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-3.5 text-center text-[15px] font-black tracking-[-0.03em] text-white shadow-[0_12px_24px_rgba(0,104,47,0.24)] sm:text-[16px]"
         >
-          WhatsApp Quickola now
+          <LocationIcon className="h-5 w-5" />
+          {uiCopy.ctaButton}
         </a>
       </div>
     </div>
@@ -745,28 +747,36 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
     quoteAmount && highestRangePrice && quoteAmount > highestRangePrice
       ? formatPounds(quoteAmount)
       : "";
+  const bookParams = new URLSearchParams();
 
-  const jobSummary = buildWhatsAppJobSummary(params, postcode);
+  Object.entries(params).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (item) bookParams.append(key, item);
+      });
+      return;
+    }
 
-  const whatsappUrl = buildWhatsAppUrl({
-    serviceLabel: config.label,
-    postcode,
-    serviceSlug,
-    quote,
-    jobSummary,
+    if (value) bookParams.set(key, value);
   });
 
-  return (
-    <main className="min-h-screen overflow-x-hidden bg-[#fbfcfd] pb-40 text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] sm:pb-32 lg:pb-0">
+  bookParams.set("service", serviceSlug);
+  bookParams.set("postcode", postcode);
+  bookParams.set("mode", "find-provider");
+
+  const bookQueryString = bookParams.toString();
+
+return (
+  <main className="min-h-screen overflow-x-hidden bg-[#fbfcfd] pb-40 text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif] sm:pb-32 lg:pb-0">
       <Header />
 
-      <section className="mx-auto w-full max-w-[740px] px-3.5 pb-4 pt-1 sm:px-5 sm:pt-2 lg:max-w-[860px] lg:px-8 lg:pb-12 lg:pt-8">
+      <section className="mx-auto w-full max-w-[740px] px-3.5 pb-4 pt-1 sm:px-5 sm:pt-2 lg:max-w-[1180px] lg:px-8 lg:pb-12 lg:pt-8">
         <div>
           <JustCheckingResult
             config={config}
             postcode={postcode}
             serviceSlug={serviceSlug}
-            whatsappUrl={whatsappUrl}
+            bookQueryString={bookQueryString}
             quote={quote}
           />
         </div>

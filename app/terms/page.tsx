@@ -163,7 +163,7 @@ export default function TermsPage() {
                 At launch, users may usually pay providers directly unless Quickola states otherwise. Any payment arrangement should be confirmed clearly before work begins.
               </p>
               <p>
-                Quickola may charge providers for completed jobs, subscriptions, provider tools, priority access, profiles or other services. Any provider fees should be agreed separately.
+                Quickola may charge providers for completed jobs, subscriptions, provider tools, profiles or other services. Any provider fees should be agreed separately.
               </p>
             </Section>
 
@@ -185,8 +185,8 @@ export default function TermsPage() {
             <Section title="13. Contact">
               <p>
                 For questions about these terms, contact Quickola at:{" "}
-                <a href="mailto:quickolauk@gmail.com" className="font-black text-[#08783f] underline underline-offset-4">
-                  quickolauk@gmail.com
+                <a href="mailto:hello@quickola.co.uk" className="font-black text-[#08783f] underline underline-offset-4">
+                  hello@quickola.co.uk
                 </a>
               </p>
             </Section>

@@ -218,7 +218,7 @@ export default function PricingMethodologyPage() {
                 Check a fair price
               </Link>
               <Link
-                href="/Trust%20%26%20Safety"
+                href="/trust-safety"
                 className="inline-flex h-[58px] items-center justify-center rounded-[14px] border border-[#cfd8e4] bg-white px-7 text-[17px] font-extrabold text-[#071638] shadow-[0_12px_28px_rgba(7,22,56,0.06)] transition hover:-translate-y-0.5"
               >
                 Trust & Safety
@@ -401,7 +401,7 @@ export default function PricingMethodologyPage() {
             <Link href="/check-price" className="inline-flex h-[54px] items-center justify-center rounded-[13px] bg-[#08783f] px-6 text-[16px] font-extrabold text-white">
               Check a price
             </Link>
-            <Link href="/Trust%20%26%20Safety" className="inline-flex h-[54px] items-center justify-center rounded-[13px] border border-[#cfd8e4] px-6 text-[16px] font-extrabold text-[#071638]">
+            <Link href="/trust-safety" className="inline-flex h-[54px] items-center justify-center rounded-[13px] border border-[#cfd8e4] px-6 text-[16px] font-extrabold text-[#071638]">
               Trust & Safety
             </Link>
           </div>

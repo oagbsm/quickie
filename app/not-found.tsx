@@ -13,7 +13,7 @@ export default function NotFound() {
         </h1>
 
         <p className="mt-4 max-w-[560px] text-[16px] font-semibold leading-[1.55] text-[#44506a] sm:text-[18px]">
-          The link may be wrong, moved, or not available yet. You can still check fair Slough prices in seconds.
+          The link may be wrong, moved, or not available yet. Quickola is currently focused on cleaning in Slough.
         </p>
 
         <div className="mt-7 grid w-full max-w-[460px] gap-3 sm:grid-cols-2">
@@ -21,7 +21,7 @@ export default function NotFound() {
             href="/"
             className="flex h-[54px] items-center justify-center rounded-[15px] bg-[#075cff] px-5 text-[15px] font-black text-white shadow-[0_16px_30px_rgba(0,92,255,0.22)] transition hover:-translate-y-0.5 hover:bg-[#004fe6]"
           >
-            Check a price
+            Request a cleaner
           </Link>
 
           <Link
@@ -34,17 +34,24 @@ export default function NotFound() {
 
         <div className="mt-8 rounded-[22px] border border-[#dbe8ff] bg-white p-4 shadow-[0_14px_34px_rgba(7,22,56,0.055)]">
           <p className="text-[13px] font-black text-[#071638]">
-            Popular searches
+            Cleaning pages
           </p>
 
           <div className="mt-3 flex flex-wrap justify-center gap-2">
-            {["Man and Van", "Plumbing", "Cleaning"].map((item) => (
+            {[
+              { label: "Cleaners in Slough", href: "/cleaners-slough" },
+              { label: "Regular cleaner", href: "/regular-cleaner-slough" },
+              { label: "Deep cleaning", href: "/deep-cleaning-slough" },
+              { label: "End of tenancy", href: "/end-of-tenancy-cleaning-slough" },
+              { label: "Airbnb cleaning", href: "/airbnb-cleaning-slough" },
+              { label: "After builders", href: "/after-builders-cleaning-slough" },
+            ].map((item) => (
               <Link
-                key={item}
-                href="/"
+                key={item.href}
+                href={item.href}
                 className="rounded-full bg-[#f3f7ff] px-3 py-2 text-[12px] font-black text-[#075cff]"
               >
-                {item}
+                {item.label}
               </Link>
             ))}
           </div>

@@ -8,23 +8,11 @@ type FieldOption = {
 };
 
 const categories: FieldOption[] = [
-  { label: "Man and Van", value: "man-and-van" },
-  { label: "Removals", value: "removals" },
-  { label: "Cleaning", value: "cleaning" },
-  { label: "End of Tenancy Cleaning", value: "end-of-tenancy-cleaning" },
+  { label: "Regular Domestic Cleaning", value: "regular-domestic-cleaning" },
   { label: "Deep Cleaning", value: "deep-cleaning" },
-  { label: "Carpet Cleaning", value: "carpet-cleaning" },
-  { label: "Oven Cleaning", value: "oven-cleaning" },
-  { label: "Handyman", value: "handyman" },
-  { label: "Plumber", value: "plumber" },
-  { label: "Emergency Plumber", value: "emergency-plumber" },
-  { label: "Electrician", value: "electrician" },
-  { label: "Locksmith", value: "locksmith" },
-  { label: "Gardener", value: "gardener" },
-  { label: "Waste Removal", value: "waste-removal" },
-  { label: "Boiler Repair", value: "boiler-repair" },
-  { label: "MOT and Car Repairs", value: "mot-car-repairs" },
-  { label: "Tyres", value: "tyres" },
+  { label: "End of Tenancy Cleaning", value: "end-of-tenancy-cleaning" },
+  { label: "Airbnb / Short-let Cleaning", value: "airbnb-short-let-cleaning" },
+  { label: "After Builders Cleaning", value: "after-builders-cleaning" },
 ];
 
 const areas = ["SL1", "SL2", "SL3", "SL4", "SL5", "SL6", "SL7", "SL8", "SL9"];
@@ -196,16 +184,16 @@ function SignupForm() {
       <div className="flex items-start justify-between gap-4 border-b border-[#edf0f5] pb-5">
         <div>
           <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[#08783f]">Provider applications</p>
-          <h2 className="mt-2 text-[28px] font-extrabold leading-[1.05] tracking-[-0.03em] text-[#071638] sm:text-[34px]">Apply to become a selected Quickola provider in Slough.</h2>
+          <h2 className="mt-2 text-[28px] font-extrabold leading-[1.05] tracking-[-0.03em] text-[#071638] sm:text-[34px]">Apply to be considered for Quickola cleaning requests in Slough.</h2>
         </div>
-        <span className="hidden rounded-full bg-[#f1faf3] px-4 py-2 text-[13px] font-extrabold text-[#08783f] ring-1 ring-[#d8eddd] sm:inline-flex">Selected providers only</span>
+        <span className="hidden rounded-full bg-[#f1faf3] px-4 py-2 text-[13px] font-extrabold text-[#08783f] ring-1 ring-[#d8eddd] sm:inline-flex">Early Slough launch</span>
       </div>
 
-      <input type="hidden" name="source" value="selected-provider-application-slough" />
+      <input type="hidden" name="source" value="early-cleaning-provider-application-slough" />
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field label="Business name">
-          <Input name="businessName" placeholder="e.g. Slough Van Man" autoComplete="organization" required />
+          <Input name="businessName" placeholder="e.g. Slough Cleaning Services" autoComplete="organization" required />
         </Field>
 
         <Field label="Service you offer">
@@ -315,7 +303,7 @@ function SignupForm() {
       </button>
 
       <div className="mt-5 grid gap-3 text-[13px] font-bold text-[#44506a] sm:grid-cols-3">
-        <span className="flex items-center gap-2"><span className="text-[#08783f]"><TickIcon /></span>Manual approval</span>
+        <span className="flex items-center gap-2"><span className="text-[#08783f]"><TickIcon /></span>Details reviewed</span>
         <span className="flex items-center gap-2"><span className="text-[#08783f]"><TickIcon /></span>Free to apply</span>
         <span className="flex items-center gap-2"><span className="text-[#08783f]"><TickIcon /></span>No paid ranking</span>
       </div>
@@ -330,12 +318,12 @@ function ProfilePreview() {
       <div className="absolute -bottom-6 -left-6 h-[140px] w-[140px] rounded-full bg-[#edf3ff] blur-sm" />
       <div className="relative overflow-hidden rounded-[30px] border border-[#dfe5ee] bg-white shadow-[0_28px_80px_rgba(7,22,56,0.16)]">
         <div className="bg-[#071638] p-6 text-white">
-          <p className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-white/60">Example provider profile</p>
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-white/60">Example cleaning profile</p>
           <div className="mt-5 flex items-center gap-4">
             <span className="grid h-[62px] w-[62px] place-items-center rounded-[18px] bg-white text-[28px]">⚡</span>
             <div>
-              <h3 className="text-[24px] font-extrabold leading-none tracking-[-0.025em]">Local Service Provider</h3>
-              <p className="mt-2 text-[14px] font-semibold text-white/70">Slough · Man and Van · Cleaning</p>
+              <h3 className="text-[24px] font-extrabold leading-none tracking-[-0.025em]">Local Cleaning Provider</h3>
+              <p className="mt-2 text-[14px] font-semibold text-white/70">Slough · Domestic cleaning · Deep cleans</p>
             </div>
           </div>
         </div>
@@ -393,22 +381,22 @@ export default function ForProvidersPage() {
           <div className="flex flex-col justify-center">
             <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-4 py-2 text-[12px] font-extrabold uppercase tracking-[0.07em] text-[#08783f] shadow-[0_10px_24px_rgba(7,22,56,0.06)] ring-1 ring-[#d8eddd]">
               <ShieldIcon />
-              Selected Slough providers
+              Early Slough cleaning launch
             </div>
 
             <h1 className="mt-6 max-w-[680px] text-[46px] font-extrabold leading-[0.98] tracking-[-0.04em] text-[#071638] sm:text-[62px] lg:text-[72px]">
-              Become a selected Quickola provider in Slough.
+              Get considered for Quickola cleaning requests in Slough.
             </h1>
 
             <p className="mt-6 max-w-[600px] text-[18px] font-semibold leading-[1.55] text-[#44506a] sm:text-[20px]">
-              Quickola is building a trusted Slough provider network for fair-price customer requests. Apply to be reviewed and considered for suitable WhatsApp request alerts.
+              Quickola is in early Slough launch mode and is starting with cleaning. Apply to have your details reviewed and be considered for suitable WhatsApp cleaning requests where available.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
-              <ProofPill>Slough provider network</ProofPill>
-              <ProofPill>Application reviewed</ProofPill>
+              <ProofPill>Early Slough cleaning list</ProofPill>
+              <ProofPill>Details reviewed</ProofPill>
               <ProofPill>No paid ranking</ProofPill>
-              <ProofPill>WhatsApp request alerts</ProofPill>
+              <ProofPill>WhatsApp requests where available</ProofPill>
             </div>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -431,15 +419,15 @@ export default function ForProvidersPage() {
 
         <div className="flex flex-col justify-center">
           <p className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#08783f]">Why providers join</p>
-          <h2 className="mt-3 text-[36px] font-extrabold leading-[1.05] tracking-[-0.035em] text-[#071638] sm:text-[48px]">Join a curated Slough provider network.</h2>
+          <h2 className="mt-3 text-[36px] font-extrabold leading-[1.05] tracking-[-0.035em] text-[#071638] sm:text-[48px]">Join the early Slough cleaning provider list.</h2>
           <p className="mt-4 max-w-[620px] text-[17px] font-semibold leading-[1.55] text-[#44506a]">
-            Quickola is built around fair local pricing, not messy directories or paid ranking. Providers are reviewed before being added, so the Slough network stays useful, local and trusted.
+            Quickola is built around fair local pricing, not messy directories or paid ranking. During the Slough launch, cleaning provider details are reviewed before any customer referral is made, so the list can grow carefully and honestly.
           </p>
 
           <div className="mt-7 grid gap-4 sm:grid-cols-3">
             <BenefitCard icon={<PriceIcon />} title="Stand out with clear pricing" text="Add a starting price so customers understand your rough range before they decide who to continue with." />
-            <BenefitCard icon={<RequestIcon />} title="Receive suitable Slough requests" text="Approved providers can receive relevant WhatsApp alerts for the services and Slough postcode areas they cover." />
-            <BenefitCard icon={<ShieldIcon />} title="No paid ranking" text="Quickola is not selling top spots. Visibility is based on fit, response speed, clear pricing and customer feedback." />
+            <BenefitCard icon={<RequestIcon />} title="Be considered for suitable requests" text="Reviewed cleaning providers may receive relevant WhatsApp requests for the cleaning types and Slough postcode areas they cover, where availability matches." />
+            <BenefitCard icon={<ShieldIcon />} title="No paid ranking" text="Quickola is not selling top spots. Future visibility is intended to be based on fit, response speed, clear pricing and customer feedback." />
           </div>
         </div>
       </section>
@@ -453,8 +441,8 @@ export default function ForProvidersPage() {
 
           <div className="mt-7 grid gap-4 md:grid-cols-3">
             <HowStep number="1" title="Apply to join" text="Add your business name, main service, WhatsApp number, starting price and the Slough postcode areas you cover." />
-            <HowStep number="2" title="We review your details" text="Quickola reviews provider applications before adding businesses to the Slough network." />
-            <HowStep number="3" title="Receive suitable requests" text="When a Slough customer request fits your service, Quickola can send the details by WhatsApp so you can reply with price and availability." />
+            <HowStep number="2" title="We review your details" text="Quickola reviews available cleaning provider details before any customer referral is made." />
+            <HowStep number="3" title="Be considered for requests" text="When a Slough cleaning request fits your coverage and availability, Quickola may send the details by WhatsApp so you can reply with price and availability." />
           </div>
         </div>
       </section>
@@ -463,8 +451,8 @@ export default function ForProvidersPage() {
         <div className="mx-auto flex max-w-[1320px] flex-col items-center justify-between gap-6 rounded-[28px] bg-[#071638] p-6 text-center text-white shadow-[0_26px_80px_rgba(7,22,56,0.18)] sm:p-8 lg:flex-row lg:text-left">
           <div>
             <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-white/60">Ready when you are</p>
-            <h2 className="mt-3 text-[34px] font-extrabold leading-[1.05] tracking-[-0.035em] sm:text-[46px]">Apply to join the Slough provider network.</h2>
-            <p className="mt-3 max-w-[620px] text-[16px] font-semibold leading-[1.5] text-white/72">Free to apply. No paid ranking. No long contract. Selected Slough providers only.</p>
+            <h2 className="mt-3 text-[34px] font-extrabold leading-[1.05] tracking-[-0.035em] sm:text-[46px]">Apply for the early Slough cleaning list.</h2>
+            <p className="mt-3 max-w-[620px] text-[16px] font-semibold leading-[1.5] text-white/72">Free to apply. No paid ranking. No long contract. Cleaning requests are shared where suitable and available.</p>
           </div>
           <a href="#signup" className="inline-flex h-[58px] shrink-0 items-center justify-center gap-4 rounded-[13px] bg-white px-7 text-[18px] font-extrabold text-[#071638] transition hover:-translate-y-0.5">
             Apply now

@@ -77,12 +77,10 @@ const userBenefits = [
   "Avoid choosing blindly from a long directory.",
   "Request help without being pushed into instant commitment.",
   "Get matched based on fit, availability and price clarity.",
-  "Use one simple flow across home services, moving, cleaning, trades and selected automotive services.",
-];
+"Use one simple flow for regular cleans, deep cleans, end-of-tenancy, Airbnb turnovers and after-builders cleans.",];
 
 const businessBenefits = [
-  "Apply to join a curated local provider network.",
-  "Receive requests that better match your service area and category.",
+"Apply to be considered for the early Slough cleaning list.",  "Receive requests that better match your service area and category.",
   "Stand out with clear starting prices instead of paid ranking.",
   "Avoid competing only on who pays most for visibility.",
   "Build trust through responsiveness, clear pricing and customer feedback.",
@@ -91,20 +89,12 @@ const businessBenefits = [
 
 const serviceGroups = [
   {
-    title: "Moving and transport",
-    items: ["Man and Van", "Removals"],
+    title: "Core cleaning now",
+    items: ["Regular Domestic Cleaning", "Deep Cleaning", "End of Tenancy Cleaning"],
   },
   {
-    title: "Cleaning",
-    items: ["Cleaning", "End of Tenancy Cleaning", "Deep Cleaning", "Carpet Cleaning", "Oven Cleaning"],
-  },
-  {
-    title: "Trades and home services",
-    items: ["Handyman", "Plumber", "Emergency Plumber", "Electrician", "Locksmith", "Gardener", "Waste Removal", "Boiler Repair"],
-  },
-  {
-    title: "Automotive",
-    items: ["MOT and Car Repairs", "Tyres"],
+    title: "Useful launch add-ons",
+    items: ["Airbnb / Short-let Cleaning", "After Builders Cleaning"],
   },
 ];
 
@@ -276,8 +266,7 @@ export default function QuickolaComparisonPage() {
           <Card>
             <h3 className="text-[22px] font-black tracking-[-0.02em]">Provider promise</h3>
             <p className="mt-3 text-[15px] font-semibold leading-[1.6] text-[#44506a]">
-              Join a curated provider network where suitable requests are matched by service fit, area, pricing clarity and responsiveness.
-            </p>
+Apply to be considered for the early Slough cleaning list, where suitable requests may be shared based on service fit, area, pricing clarity and responsiveness.            </p>
           </Card>
         </div>
       </section>
@@ -346,17 +335,13 @@ export default function QuickolaComparisonPage() {
       <section className="border-y border-[#e1e8f0] bg-white">
         <div className="mx-auto max-w-[1240px] px-5 py-14 sm:px-8 lg:px-10">
           <div className="max-w-[760px]">
-            <SectionLabel>Services covered</SectionLabel>
-            <h2 className="mt-3 text-[34px] font-black leading-[1.05] tracking-[-0.035em] sm:text-[48px]">
-              Built for service categories where fair price matters.
-            </h2>
+<SectionLabel>Cleaning covered now</SectionLabel>            <h2 className="mt-3 text-[34px] font-black leading-[1.05] tracking-[-0.035em] sm:text-[48px]">
+Built for cleaning jobs where fair price matters.            </h2>
             <p className="mt-4 text-[17px] font-semibold leading-[1.65] text-[#44506a]">
-              Quickola is designed for categories where customers often worry about overpaying, call-out charges, unclear quotes, urgency, access issues or confusing add-ons.
-            </p>
+Quickola is starting with cleaning in Slough: regular domestic cleans, deep cleans, end-of-tenancy cleans, Airbnb turnovers and after-builders cleans. Other categories may be added later when provider coverage is ready.            </p>
           </div>
 
-          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-            {serviceGroups.map((group) => (
+<div className="mt-8 grid gap-5 md:grid-cols-2">            {serviceGroups.map((group) => (
               <Card key={group.title}>
                 <h3 className="text-[20px] font-black tracking-[-0.02em]">{group.title}</h3>
                 <div className="mt-4 flex flex-wrap gap-2">

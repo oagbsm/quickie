@@ -78,9 +78,9 @@ const quoteAmountField: ServiceFormField = {
 const sloughPostcodeField: ServiceFormField = {
   type: "postcode",
   name: "postcode",
-  label: "Where in Slough?",
-  stage: "price",
-  priority: 3,
+  label: "Where is it needed?",
+  stage: "match",
+  priority: 90,
   placeholder: "Enter Slough postcode",
   example: "e.g. SL1 1AA",
 };
@@ -215,8 +215,6 @@ export const serviceFormConfigs: Record<ServiceKey, ServiceFormConfig> = {
           { label: "Regular clean", value: "regular-clean" },
           { label: "Deep clean", value: "deep-clean" },
           { label: "End of tenancy", value: "end-of-tenancy" },
-          { label: "Airbnb / short-let", value: "airbnb-short-let" },
-          { label: "After builders", value: "after-builders" },
         ],
       },
       {
@@ -227,7 +225,7 @@ export const serviceFormConfigs: Record<ServiceKey, ServiceFormConfig> = {
         priority: 2,
         dependsOn: {
           field: "cleanType",
-          values: ["regular-clean", "deep-clean", "end-of-tenancy", "airbnb-short-let", "after-builders"],
+          values: ["regular-clean", "deep-clean", "end-of-tenancy"],
         },
         options: [
           { label: "Studio", value: "studio" },
@@ -235,7 +233,6 @@ export const serviceFormConfigs: Record<ServiceKey, ServiceFormConfig> = {
           { label: "2 bed", value: "2-bed" },
           { label: "3 bed", value: "3-bed" },
           { label: "4+ bed", value: "4-bed-plus" },
-          { label: "Not sure", value: "not-sure" },
         ],
       },
       {
@@ -246,13 +243,12 @@ export const serviceFormConfigs: Record<ServiceKey, ServiceFormConfig> = {
         priority: 30,
         dependsOn: {
           field: "cleanType",
-          values: ["regular-clean", "airbnb-short-let"],
+          values: ["regular-clean"],
         },
         options: [
           { label: "One-off", value: "one-off" },
           { label: "Weekly", value: "weekly" },
           { label: "Fortnightly", value: "fortnightly" },
-          { label: "Guest turnover", value: "guest-turnover" },
           { label: "Not sure", value: "not-sure" },
         ],
       },
@@ -723,16 +719,32 @@ export const serviceFormConfigs: Record<ServiceKey, ServiceFormConfig> = {
 
 };
 
-export const launchServiceKeys: ServiceKey[] = ["cleaner"];
-
-export const popularServiceKeys: ServiceKey[] = launchServiceKeys;
+export const popularServiceKeys: ServiceKey[] = [
+  "plumber",
+  "electrician",
+  "locksmith",
+  "cleaner",
+  "man-and-van",
+  "painter-decorator",
+];
 
 
 export const getServiceFormConfig = (serviceKey: ServiceKey) => {
   return serviceFormConfigs[serviceKey];
 };
 
-export const serviceDropdownOrder: ServiceKey[] = launchServiceKeys;
+export const serviceDropdownOrder: ServiceKey[] = [
+  "plumber",
+  "electrician",
+  "locksmith",
+  "cleaner",
+  "home-tasks",
+  "man-and-van",
+  "removals",
+  "painter-decorator",
+  "gardener",
+  "waste-removal",
+];
 
 export const serviceOptions = serviceDropdownOrder.map((serviceKey) => {
   const service = serviceFormConfigs[serviceKey];

@@ -1,25 +1,20 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import DynamicServiceFields from "./DynamicServiceFields";
 import {
   getServiceFormConfig,
+  serviceOptions,
   type ServiceFormField,
 } from "../data/serviceFormConfigs";
 
-const cleanerConfig = getServiceFormConfig("cleaner");
+export const cumarServices = serviceOptions.map((service) => ({
+  ...service,
+  description: getServiceFormConfig(service.value).intro,
+}));
 
-export const cumarServices = [
-  {
-    label: cleanerConfig.shortLabel ?? cleanerConfig.label,
-    value: cleanerConfig.key,
-    icon: cleanerConfig.icon,
-    category: cleanerConfig.category,
-    matchingMode: cleanerConfig.matchingMode,
-    description: cleanerConfig.intro,
-  },
-];
+type CumarService = (typeof cumarServices)[number];
 
 function normalisePostcode(value: string) {
   return value.toUpperCase().replace(/\s+/g, "").trim();
@@ -37,7 +32,7 @@ function isValidUkPostcode(value: string) {
 
 function isSupportedSloughPostcode(value: string) {
   const clean = normalisePostcode(value);
-  return /^SL[1-6][A-Z]?\d[A-Z]{2}$/.test(clean);
+  return /^SL[123][A-Z]?\d[A-Z]{2}$/.test(clean);
 }
 
 export function CumarIcon({
@@ -298,8 +293,11 @@ export default function CumarIntakeForm({
   const router = useRouter();
 
   const dynamicFieldsRef = useRef<HTMLDivElement | null>(null);
+  const hasMountedRef = useRef(false);
 
-  const [service] = useState("cleaner");
+  const [service, setService] = useState("");
+  const [serviceSearch, setServiceSearch] = useState("");
+  const [serviceOpen, setServiceOpen] = useState(false);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -315,6 +313,31 @@ export default function CumarIntakeForm({
     return getServiceFormConfig(selectedService.value);
   }, [selectedService]);
 
+  const popularServices = useMemo(() => {
+    const popularValues = [
+      "man-and-van",
+      "cleaner",
+      "plumber",
+      "locksmith",
+      "electrician",
+      "waste-removal",
+    ];
+
+    return popularValues
+      .map((value) => cumarServices.find((item) => item.value === value))
+      .filter(Boolean) as CumarService[];
+  }, []);
+
+  const homeTasksService = useMemo(() => {
+    return cumarServices.find((item) => item.value === "home-tasks") ?? null;
+  }, []);
+
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+    }
+  }, [selectedServiceConfig]);
+
   const dynamicFields = selectedServiceConfig?.fields ?? [];
 
   const visibleDynamicFields = useMemo(() => {
@@ -329,7 +352,7 @@ export default function CumarIntakeForm({
     return visibleDynamicFields
       .filter((field) => field.stage === "price")
       .sort((firstField, secondField) => (firstField.priority ?? 99) - (secondField.priority ?? 99))
-      .slice(0, 3);
+      .slice(0, 2);
   }, [visibleDynamicFields]);
 
   const quoteFields = useMemo(
@@ -341,48 +364,96 @@ export default function CumarIntakeForm({
     String(formValues[field.name] ?? "").trim()
   ).length;
 
+  const priceProgressPercent = selectedServiceConfig
+    ? answeredPriceFieldCount === 0
+      ? 12
+      : Math.round((answeredPriceFieldCount / Math.max(priceCheckFields.length, 1)) * 100)
+    : 12;
+
   const isPriceReady =
     Boolean(selectedServiceConfig) &&
     priceCheckFields.length > 0 &&
     answeredPriceFieldCount === priceCheckFields.length;
 
-  const submitLabel = "Check cleaner price";
+  const submitLabel = selectedService
+    ? selectedService.value === "home-tasks"
+      ? "Check home tasks price"
+      : `Check ${selectedService.label.toLowerCase()} price`
+    : "Check price";
+
+  const hasSelectedValidService = Boolean(selectedService && selectedService.label === serviceSearch);
   const canSubmitPriceCheck = Boolean(selectedService) && (priceCheckFields.length === 0 || isPriceReady);
 
-function updateFormValue(name: string, value: string) {
-  const previousValue = String(formValues[name] ?? "").trim();
+  const filteredServices = useMemo(() => {
+    const query = serviceSearch.trim().toLowerCase();
 
-  setFormValues((current) => {
-    const next = { ...current, [name]: value };
+    if (!query || hasSelectedValidService) return cumarServices;
 
-    dynamicFields.forEach((field) => {
-      if (field.dependsOn?.field === name && !field.dependsOn.values.includes(value)) {
-        delete next[field.name];
-      }
+    return cumarServices.filter((item) => {
+      const searchableText = `${item.label} ${item.description}`.toLowerCase();
+      return searchableText.includes(query);
     });
+  }, [hasSelectedValidService, serviceSearch]);
 
-    return next;
-  });
-  setError(null);
+  function chooseService(item: CumarService) {
+    if (item.value === "home-tasks") {
+      router.push("/home-tasks");
+      return;
+    }
 
-  const answeredPriceField = priceCheckFields.find((field) => field.name === name);
-  const hasValue = String(value ?? "").trim().length > 0;
-  const isFirstAnswerForField = previousValue.length === 0 && hasValue;
+    setService(item.value);
+    setServiceSearch(item.label);
+    setServiceOpen(false);
+    setFormValues({});
+    setShowQuoteInput(false);
+    setError(null);
 
-  const shouldScrollAfterButtonAnswer =
-    answeredPriceField &&
-    isFirstAnswerForField &&
-    (answeredPriceField.type === "chips" || answeredPriceField.type === "select");
-
-  if (shouldScrollAfterButtonAnswer) {
     window.setTimeout(() => {
-      window.scrollBy({
-        top: 120,
-        behavior: "smooth",
-      });
-    }, 90);
+      const target = dynamicFieldsRef.current;
+      if (!target) return;
+
+      const targetRect = target.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+
+      if (targetRect.top > viewportHeight * 0.62) {
+        window.scrollBy({
+          top: 200,
+          behavior: "smooth",
+        });
+      }
+    }, 100);
   }
-}
+
+  function updateFormValue(name: string, value: string) {
+    setFormValues((current) => {
+      const next = { ...current, [name]: value };
+
+      dynamicFields.forEach((field) => {
+        if (field.dependsOn?.field === name && !field.dependsOn.values.includes(value)) {
+          delete next[field.name];
+        }
+      });
+
+      return next;
+    });
+    setError(null);
+
+    const answeredPriceField = priceCheckFields.find((field) => field.name === name);
+    const hasValue = String(value ?? "").trim().length > 0;
+    const shouldScrollAfterButtonAnswer =
+      answeredPriceField &&
+      hasValue &&
+      (answeredPriceField.type === "chips" || answeredPriceField.type === "select");
+
+    if (shouldScrollAfterButtonAnswer) {
+      window.setTimeout(() => {
+        window.scrollBy({
+          top: 120,
+          behavior: "smooth",
+        });
+      }, 90);
+    }
+  }
 
   function getRequiredMissingField(fields: ServiceFormField[]) {
     return fields.find((field) => {
@@ -401,8 +472,13 @@ function updateFormValue(name: string, value: string) {
       return;
     }
 
+    if (!hasSelectedValidService) {
+      setError("Choose a service from the list or search results.");
+      return;
+    }
+
     if (!selectedServiceConfig) {
-      setError("Cleaner price check is not available right now.");
+      setError("Choose a service from the dropdown.");
       return;
     }
 
@@ -436,15 +512,15 @@ function updateFormValue(name: string, value: string) {
     });
 
     if (sloughOnlyField) {
-      setError("Quickola is only covering Slough and nearby SL postcodes right now. Use an SL1–SL6 postcode.");
+      setError("Quickola only supports Slough postcodes right now. Use an SL1, SL2 or SL3 postcode.");
       return;
     }
 
-    const cleanedFormValues: Record<string, string> = {
-      ...formValues,
-      ...formattedPostcodes,
-      quoteAmount: formValues.quoteAmount?.replace(/[^0-9.]/g, "") || "",
-    };
+ const cleanedFormValues: Record<string, string> = {
+  ...formValues,
+  ...formattedPostcodes,
+  quoteAmount: formValues.quoteAmount?.replace(/[^0-9.]/g, "") || "",
+};
 
     setError(null);
     setFormValues(cleanedFormValues);
@@ -458,11 +534,11 @@ function updateFormValue(name: string, value: string) {
           Accept: "application/json",
         },
         body: JSON.stringify({
-          service: "cleaner",
-          service_label: "Cleaner",
-          postcode: cleanedFormValues.postcode,
-          collection_postcode: cleanedFormValues.postcode,
-          delivery_postcode: null,
+          service: selectedService.value,
+          service_label: selectedService.label,
+          postcode: cleanedFormValues.postcode || cleanedFormValues.pickupPostcode || "SL1 1AA",
+          collection_postcode: cleanedFormValues.pickupPostcode || cleanedFormValues.collectionPostcode || "SL1 1AA",
+          delivery_postcode: cleanedFormValues.dropoffPostcode || cleanedFormValues.deliveryPostcode || null,
           quote_amount: cleanedFormValues.quoteAmount || null,
           service_details: cleanedFormValues,
           price_inputs: priceCheckFields.reduce<Record<string, string>>((acc, field) => {
@@ -485,11 +561,28 @@ function updateFormValue(name: string, value: string) {
           needs_followup: priceCheckFields.some((field) => cleanedFormValues[field.name] === "not-sure"),
           source: "homepage_cumar",
           cumar_mode: process.env.NEXT_PUBLIC_CUMAR_MODE || "rules",
-          provider_lane: "cleaning",
-          clean_type: cleanedFormValues.cleanType || null,
-          clean_frequency: cleanedFormValues.cleanFrequency || null,
-          job_size: cleanedFormValues.bedrooms || "normal",
-          job_risk: "low",
+          provider_lane:
+            selectedServiceConfig.matchingMode === "local-provider"
+              ? "local_business"
+              : selectedServiceConfig.matchingMode,
+          job_size:
+            cleanedFormValues.loadSize ||
+            cleanedFormValues.propertySize ||
+            cleanedFormValues.bedrooms ||
+            cleanedFormValues.carpetRooms ||
+            cleanedFormValues.windowPropertySize ||
+            cleanedFormValues.ovenType ||
+            cleanedFormValues.roomCount ||
+            cleanedFormValues.exteriorSize ||
+            cleanedFormValues.gardenSize ||
+            cleanedFormValues.jobCount ||
+            cleanedFormValues.scope ||
+            cleanedFormValues.severity ||
+            cleanedFormValues.access ||
+            cleanedFormValues.greenWaste ||
+            cleanedFormValues.gardenCondition ||
+            "normal",
+          job_risk: selectedServiceConfig.matchingMode === "local-provider" ? "medium" : "low",
         }),
       });
 
@@ -504,13 +597,17 @@ function updateFormValue(name: string, value: string) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error || "Could not save your cleaner price check.");
+        throw new Error(data?.error || "Could not save your price check.");
       }
 
       const params = new URLSearchParams({
-        service: "cleaner",
-        postcode: cleanedFormValues.postcode,
+        service: selectedService.value,
+        postcode: cleanedFormValues.postcode || cleanedFormValues.pickupPostcode || "SL1 1AA",
       });
+
+      if (cleanedFormValues.dropoffPostcode || cleanedFormValues.deliveryPostcode) {
+        params.set("delivery_postcode", cleanedFormValues.dropoffPostcode || cleanedFormValues.deliveryPostcode || "");
+      }
 
       priceCheckFields.forEach((field) => {
         const value = cleanedFormValues[field.name];
@@ -534,21 +631,121 @@ function updateFormValue(name: string, value: string) {
   return (
     <form id={formId} onSubmit={handleSubmit} className={`mx-auto w-full max-w-[900px] space-y-2.5 sm:space-y-3 lg:max-w-[1035px] ${className}`}>
       <div className="space-y-2.5 sm:space-y-3">
-        <div className="rounded-[18px] border border-[#dff0e6] bg-[#f6fff9] px-4 py-3 shadow-[0_10px_22px_rgba(7,22,56,0.045)]">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-white text-[#07833f] shadow-[0_8px_18px_rgba(7,22,56,0.06)]">
-              <CumarIcon type="spray-can" className="h-7 w-7" />
+        <div className="flex items-center justify-between gap-3">
+          <label className="block text-[15px] font-extrabold tracking-[-0.03em] text-[#071638] sm:text-[17px]">
+            Choose a service
+          </label>
+          {selectedService ? (
+            <span className="rounded-full bg-[#e8f8ee] px-3 py-1 text-[11px] font-extrabold text-[#07833f]">
+              Selected
+            </span>
+          ) : null}
+        </div>
+
+
+        <div className="grid grid-cols-3 gap-2 sm:gap-2.5 lg:grid-cols-6 lg:gap-3">
+          {popularServices.map((item) => {
+            const isSelected = selectedService?.value === item.value;
+
+            return (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => chooseService(item)}
+                className={`relative flex min-h-[84px] flex-col items-center justify-center gap-1.5 rounded-[14px] border bg-white px-2 py-2 text-center shadow-[0_8px_18px_rgba(7,22,56,0.045)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#07833f]/50 hover:shadow-[0_14px_28px_rgba(7,22,56,0.08)] active:translate-y-0 sm:min-h-[102px] sm:rounded-[16px] sm:py-2.5 lg:min-h-[98px] lg:px-2 lg:py-2.5 ${
+                  isSelected
+                    ? "border-[#07833f] bg-[#f5fff8] shadow-[0_14px_28px_rgba(7,131,63,0.12)]"
+                    : "border-[#e4ebf1]"
+                }`}
+                aria-pressed={isSelected}
+              >
+                {isSelected ? (
+                  <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#07833f] text-[14px] font-extrabold leading-none text-white shadow-[0_6px_14px_rgba(7,131,63,0.24)] sm:right-2.5 sm:top-2.5 sm:h-6 sm:w-6 sm:text-[16px] lg:h-5 lg:w-5 lg:text-[13px]">
+                    ✓
+                  </span>
+                ) : null}
+
+                <CumarIcon
+                  type={item.icon}
+                  className={`h-10 w-10 sm:h-11 sm:w-11 lg:h-10 lg:w-10 ${isSelected ? "text-[#07833f]" : "text-[#071638]"}`}
+                />
+                <span className="max-w-[94px] text-[12px] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#071638] sm:text-[14px] lg:max-w-[110px] lg:text-[12px] xl:text-[13px]">
+                  {item.label === "Man & Van" ? "Man & Van / Moving" : item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {homeTasksService ? (
+          <button
+            type="button"
+            onClick={() => router.push("/home-tasks")}
+            className={`group flex w-full items-center gap-2.5 rounded-[16px] border px-3 py-2 text-left shadow-[0_10px_22px_rgba(7,22,56,0.045)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#07833f] hover:shadow-[0_16px_30px_rgba(7,131,63,0.12)] active:translate-y-0 sm:px-4 sm:py-2.5 ${
+              selectedService?.value === homeTasksService.value
+                ? "border-[#07833f] bg-[#f2fff6]"
+                : "border-[#b9e6ca] bg-[#f6fff9]"
+            }`}
+            aria-pressed={selectedService?.value === homeTasksService.value}
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-white text-[#07833f] shadow-[0_8px_18px_rgba(7,22,56,0.06)] sm:h-12 sm:w-12">
+              <CumarIcon type={homeTasksService.icon} className="h-6 w-6 sm:h-7 sm:w-7" />
             </span>
 
-            <div className="min-w-0">
-              <p className="text-[18px] font-black tracking-[-0.04em] text-[#071638] sm:text-[21px]">
-                Need a cleaner in Slough?
-              </p>
-              <p className="text-[12.5px] font-bold leading-[1.25] text-[#52627a] sm:text-[14px]">
-                Regular, deep and end-of-tenancy cleans.
-              </p>
-            </div>
-          </div>
+            <span className="min-w-0 flex-1">
+              <span className="mb-0.5 flex items-center gap-2">
+                <span className="rounded-full bg-[#11a84f] px-2 py-0.5 text-[10px] font-black uppercase tracking-[-0.02em] text-white sm:text-[11px]">
+                  New
+                </span>
+                <span className="text-[15px] font-black tracking-[-0.04em] text-[#071638] sm:text-[18px]">
+                  Home Tasks
+                </span>
+              </span>
+              <span className="block text-[12px] font-extrabold leading-[1.2] tracking-[-0.025em] text-[#071638] sm:text-[14px]">
+                Small jobs. Upload photos.
+              </span>
+              <span className="mt-0.5 block truncate text-[11px] font-semibold text-[#52627a] sm:text-[13px]">
+                Flat-pack, shelves, doorbells & fixes
+              </span>
+            </span>
+
+            <span className="hidden h-12 w-px bg-[#b9e6ca] sm:block" />
+
+            <span className="shrink-0 text-right">
+              <span className="block text-[10px] font-extrabold leading-none text-[#07833f] sm:text-[11px]">
+                Post
+              </span>
+              <span className="block text-[17px] font-black leading-none tracking-[-0.04em] text-[#07833f] sm:text-[22px]">
+                task
+              </span>
+            </span>
+
+            <span className="text-[22px] font-black leading-none text-[#07833f] transition-transform duration-200 group-hover:translate-x-1 sm:text-[28px]">
+              ›
+            </span>
+          </button>
+        ) : null}
+
+        <div className="relative">
+          <CumarIcon
+            type="search"
+            className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#071638]"
+          />
+          <input
+            value={hasSelectedValidService ? "" : serviceSearch}
+            onChange={(event) => {
+              setServiceSearch(event.target.value);
+              setServiceOpen(true);
+              setError(null);
+            }}
+            onFocus={() => setServiceOpen(true)}
+            className="h-[40px] w-full rounded-[14px] border border-[#dfe7ef] bg-white pl-12 pr-4 text-[14px] font-semibold text-[#071638] outline-none transition focus:border-[#07833f] focus:ring-4 focus:ring-[#07833f]/10 placeholder:font-medium placeholder:text-[#7f8ca3] sm:h-[46px] sm:text-[16px] lg:h-[46px]"
+            placeholder="Search any service..."
+          />
+
+          {serviceOpen && serviceSearch.trim() && !hasSelectedValidService ? (
+            <ServiceDropdown services={filteredServices} onChoose={chooseService} />
+          ) : null}
         </div>
       </div>
 
@@ -587,6 +784,7 @@ function updateFormValue(name: string, value: string) {
         </div>
       ) : null}
 
+
       <button
         type="submit"
         disabled={isSubmitting || !canSubmitPriceCheck}
@@ -609,10 +807,41 @@ function updateFormValue(name: string, value: string) {
           </span>
         </span>
       </button>
-
-      <p className="text-center text-[11px] font-semibold text-[#7f8ca3] sm:text-[12px]">
-        Covering Slough and nearby SL postcodes only.
-      </p>
+      {!selectedService ? (
+        <p className="text-center text-[11px] font-semibold text-[#7f8ca3] sm:text-[12px]">
+          Please select a service to continue
+        </p>
+      ) : null}
     </form>
+  );
+}
+
+function ServiceDropdown({
+  services,
+  onChoose,
+}: {
+  services: CumarService[];
+  onChoose: (item: CumarService) => void;
+}) {
+  return (
+    <div className="absolute left-0 right-0 z-[120] mt-2 max-h-[320px] overflow-y-auto rounded-[14px] border border-[#e7edf3] bg-white p-2 shadow-[0_16px_34px_rgba(7,22,56,0.14)] lg:max-h-[360px]">
+      {services.length ? (
+        services.map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            onClick={() => onChoose(item)}
+            className="flex w-full items-center gap-3 rounded-[10px] px-3 py-1.5 text-left hover:bg-[#f3f8f5]"
+          >
+            <CumarIcon type={item.icon} className="h-[26px] w-[26px] text-[#07833f]" />
+            <span className="text-[13px] font-extrabold text-[#071638]">{item.label}</span>
+          </button>
+        ))
+      ) : (
+        <div className="px-3 py-3 text-[13px] font-bold text-[#d93025]">
+          No matching service found. Try another search.
+        </div>
+      )}
+    </div>
   );
 }
