@@ -269,17 +269,20 @@ function getResultUiCopy(config: PriceConfig, serviceSlug: string): ResultUiCopy
 
   const withConfigRows = (
     fallbackRows: { label: string; icon: typeof LockIcon }[]
-  ) =>
-    (configWithRows.resultRows?.length
-      ? configWithRows.resultRows.map((row, index) => ({
-          label: row.label,
-          price: row.price,
-          icon: fallbackRows[index]?.icon ?? LockIcon,
-        }))
-      : fallbackRows.map((row) => ({
-          ...row,
-          price: config.from,
-        })));
+  ) => {
+    if (configWithRows.resultRows?.length) {
+      return configWithRows.resultRows.map((row, index) => ({
+        label: row.label,
+        price: index === 0 ? config.from : row.price,
+        icon: fallbackRows[index]?.icon ?? LockIcon,
+      }));
+    }
+
+    return fallbackRows.map((row) => ({
+      ...row,
+      price: config.from,
+    }));
+  };
 
   if (lowerLabel.includes("locksmith") || lowerSlug.includes("locksmith")) {
     return {
@@ -342,6 +345,22 @@ function getResultUiCopy(config: PriceConfig, serviceSlug: string): ResultUiCopy
       ]),
       finalNote: "Final price depends on room count, stains, carpet type, access and drying time.",
       factors: ["Room count", "Stains", "Carpet type", "Access"],
+    };
+  }
+
+  if (lowerLabel.includes("deep clean") || lowerSlug.includes("deep-clean")) {
+    return {
+      actionName: "deep cleaner",
+      ctaTitle: "Need a deep cleaner?",
+      ctaBody: "We’ll connect you with an available local cleaner who can help.",
+      ctaButton: "Find a deep cleaner near me",
+      priceRows: withConfigRows([
+        { label: "Deep clean", icon: LockIcon },
+        { label: "Heavy condition", icon: KeyIcon },
+        { label: "Extras", icon: AlertIcon },
+      ]),
+      finalNote: "Final price is confirmed after a quick assessment of property size, condition, bathrooms and extras.",
+      factors: ["Property size", "Condition", "Bathrooms", "Extras"],
     };
   }
 
@@ -449,7 +468,7 @@ function FairPriceCard({
         </div>
 
         <p className="mt-1.5 text-[13px] font-extrabold leading-[1.15] text-white/92 sm:text-[14.5px]">
-          Typical local range in your area
+          Selected clean type guide range
         </p>
       </div>
 

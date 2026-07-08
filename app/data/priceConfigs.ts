@@ -327,7 +327,7 @@ const cleanerCostGuide: PriceConfig["costGuide"] = {
         { label: "Independent cleaner", price: "£20 – £30 / hour", average: "Around £25", included: "Regular domestic cleaning, usually paid hourly." },
         { label: "Cleaning agency", price: "£25 – £35 / hour", average: "Around £30", included: "Agency cleaner with wider availability and admin support." },
         { label: "Weekly cleaner", price: "£60 – £90", average: "Around £75", included: "Typical 3-hour weekly clean." },
-        { label: "One-off deep clean", price: "£100 – £300+", average: "Around £180", included: "More detailed clean for kitchens, bathrooms, skirting and build-up." },
+        { label: "One-off deep clean", price: "£100 – £300", average: "Around £180", included: "More detailed clean for kitchens, bathrooms, skirting and build-up. Final price confirmed after a quick assessment." },
         { label: "End of tenancy clean", price: "£140 – £500+", average: "Around £300", included: "Move-out clean, often more detailed and property-size dependent." },
       ],
     },
@@ -336,7 +336,7 @@ const cleanerCostGuide: PriceConfig["costGuide"] = {
       intro: "These are common cleaning jobs around Slough. Specialist tasks such as carpets, windows or post-building work may be priced separately.",
       rows: [
         { label: "Regular house clean", price: "£45 – £90", average: "Around £75", included: "Usually 2–3 hours depending on rooms and condition." },
-        { label: "Deep clean", price: "£100 – £300+", average: "Around £180", included: "A more detailed one-off clean for a property that needs more work." },
+        { label: "Deep clean", price: "£100 – £300", average: "Around £180", included: "A more detailed one-off clean for a property that needs more work. Final price confirmed after a quick assessment." },
         { label: "Post-building clean", price: "£30 – £40 / hour", average: "Around £35", included: "Dust, debris and after-renovation clean-up." },
         { label: "Carpet cleaning small room", price: "£50 – £80", average: "Around £65", included: "Usually charged separately from general house cleaning." },
         { label: "Window cleaning", price: "£20 – £70", average: "Around £45", included: "Depends on window count, access and inside/outside cleaning." },
@@ -1069,7 +1069,7 @@ const basePriceConfigs: Record<string, PriceConfig> = {
     note: "Final price depends on property size, clean type, condition and extras.",
     resultRows: [
       { label: "Regular clean", price: "£45 – £90" },
-      { label: "Deep clean", price: "£100 – £300+" },
+      { label: "Deep clean", price: "£100 – £300" },
       { label: "Weekly cleaner", price: "£60 – £90" },
     ],
     headline: "Avoid overpaying for a cleaner",
@@ -1182,6 +1182,7 @@ const getCleanerPriceConfig = (params: PriceSearchParams): PriceConfig => {
 
   const range = bedroomCleaningRanges[cleanType]?.[bedrooms] ?? bedroomCleaningRanges["regular-clean"][bedrooms] ?? bedroomCleaningRanges["regular-clean"]["1-bed"];
   const label = cleanType === "deep-clean" ? "Deep Clean" : cleanType === "end-of-tenancy" ? "End of Tenancy Cleaning" : "Cleaner";
+  const isDeepClean = cleanType === "deep-clean";
   const isEndOfTenancy = cleanType === "end-of-tenancy";
 
   return {
@@ -1194,13 +1195,19 @@ const getCleanerPriceConfig = (params: PriceSearchParams): PriceConfig => {
         ]
       : [
           { label: "Regular clean", price: "£45 – £90" },
-          { label: "Deep clean", price: "£100 – £300+" },
+          { label: "Deep clean", price: "£100 – £300" },
           { label: "Weekly cleaner", price: "£60 – £90" },
         ],
-    headline: isEndOfTenancy ? "Avoid overpaying for end of tenancy cleaning" : "Avoid overpaying for a cleaner",
+    headline: isEndOfTenancy
+      ? "Avoid overpaying for end of tenancy cleaning"
+      : isDeepClean
+        ? "Avoid overpaying for deep cleaning"
+        : "Avoid overpaying for a cleaner",
     subheadline: isEndOfTenancy
       ? "Based on end of tenancy cleaning prices around Slough. Check the fair local price before you book."
-      : "Based on cleaner prices around Slough. Check the fair local price before you book.",
+      : isDeepClean
+        ? "Based on deep cleaning prices around Slough. Final price is confirmed after a quick assessment."
+        : "Based on cleaner prices around Slough. Check the fair local price before you book.",
     costGuide: cleanerCostGuide,
   };
 };
