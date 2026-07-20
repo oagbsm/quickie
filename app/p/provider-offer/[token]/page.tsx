@@ -99,7 +99,7 @@ async function getOffer(token: string) {
     return null;
   }
 
-  return match as any;
+  return match;
 }
 
 export default async function ProviderOfferPage({ params, searchParams }: ProviderOfferPageProps) {
@@ -195,13 +195,6 @@ export default async function ProviderOfferPage({ params, searchParams }: Provid
                       >
                         <span>Phone</span>
                         <span className="text-[#075cff]">{request?.phone || "Not provided"}</span>
-                      </a>
-                      <a
-                        className="flex items-center justify-between rounded-[14px] bg-white px-3 py-3 text-[14px] font-black text-[#071638] ring-1 ring-[#dfe7f2]"
-                        href={request?.email ? `mailto:${request.email}` : undefined}
-                      >
-                        <span>Email</span>
-                        <span className="truncate pl-3 text-[#075cff]">{request?.email || "Not provided"}</span>
                       </a>
                     </div>
                   </div>

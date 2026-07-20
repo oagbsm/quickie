@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+import Link from "next/link";
 
 type CompletePageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -237,21 +238,21 @@ export default async function CompletePage({ searchParams }: CompletePageProps) 
         <Confetti />
 
         <header className="relative z-10 flex h-[34px] items-center justify-center lg:h-[54px] lg:justify-between">
-          <a href="/" aria-label="Back home" className="absolute left-[-6px] grid h-9 w-9 place-items-center rounded-full text-[#071638] lg:static lg:h-11 lg:w-11 lg:bg-white lg:shadow-[0_10px_24px_rgba(7,22,56,0.08)] lg:ring-1 lg:ring-[#edf2f7]">
+          <Link href="/" aria-label="Back home" className="absolute left-[-6px] grid h-9 w-9 place-items-center rounded-full text-[#071638] lg:static lg:h-11 lg:w-11 lg:bg-white lg:shadow-[0_10px_24px_rgba(7,22,56,0.08)] lg:ring-1 lg:ring-[#edf2f7]">
             <BackIcon />
-          </a>
+          </Link>
 
-          <a href="/" className="flex items-center gap-[7px] lg:absolute lg:left-1/2 lg:-translate-x-1/2 lg:gap-2" aria-label="Quickola homepage">
+          <Link href="/" className="flex items-center gap-[7px] lg:absolute lg:left-1/2 lg:-translate-x-1/2 lg:gap-2" aria-label="Quickola homepage">
             <LogoMark />
             <span className="text-[15px] font-black uppercase leading-none tracking-[-0.055em] text-[#071638] lg:text-[20px]">
               QUICKOLA
             </span>
-          </a>
+          </Link>
 
-          <a href="/" className="hidden h-11 items-center justify-center gap-2 rounded-[12px] border border-[#dfe6ef] bg-white px-5 text-[14px] font-black text-[#071638] shadow-[0_10px_24px_rgba(7,22,56,0.06)] transition hover:-translate-y-0.5 hover:border-[#07833f]/35 lg:flex">
+          <Link href="/" className="hidden h-11 items-center justify-center gap-2 rounded-[12px] border border-[#dfe6ef] bg-white px-5 text-[14px] font-black text-[#071638] shadow-[0_10px_24px_rgba(7,22,56,0.06)] transition hover:-translate-y-0.5 hover:border-[#07833f]/35 lg:flex">
             <SearchIcon />
             New search
-          </a>
+          </Link>
         </header>
 
         <div className="relative z-10 flex flex-1 flex-col pt-7 text-center lg:pt-8">
@@ -312,20 +313,20 @@ export default async function CompletePage({ searchParams }: CompletePageProps) 
           </div>
 
           <div className="mt-auto grid gap-2 pt-5 lg:mx-auto lg:mt-8 lg:grid-cols-2 lg:gap-8 lg:pt-0">
-            <a
+            <Link
               href="/"
               className="flex h-[48px] items-center justify-center gap-2 rounded-[8px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-5 text-[14px] font-black uppercase tracking-[0.035em] text-white shadow-[0_12px_24px_rgba(0,104,47,0.18)] transition hover:-translate-y-0.5 lg:h-[58px] lg:w-[260px] lg:rounded-[12px]"
             >
               <HomeIcon />
               Back to home
-            </a>
-            <a
+            </Link>
+            <Link
               href="/"
               className="flex h-[42px] items-center justify-center gap-2 rounded-[8px] border border-[#d8eddd] bg-white px-5 text-[14px] font-black text-[#07833f] transition hover:-translate-y-0.5 hover:border-[#07833f]/50 lg:h-[58px] lg:w-[280px] lg:rounded-[12px] lg:border-2"
             >
               <SearchIcon />
               Check another price
-            </a>
+            </Link>
           </div>
 
           <p className="mt-3 flex items-center justify-center gap-2 text-[12px] font-black text-[#657089] lg:mt-4 lg:text-[14px]">

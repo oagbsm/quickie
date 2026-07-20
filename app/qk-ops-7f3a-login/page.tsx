@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { createHash } from "crypto";
+import Image from "next/image";
 
 async function login(formData: FormData) {
   "use server";
@@ -19,7 +21,7 @@ async function login(formData: FormData) {
 
   const cookieStore = await cookies();
 
-  cookieStore.set("quickola_admin", "true", {
+  cookieStore.set("quickola_admin", createHash("sha256").update(adminPassword).digest("hex"), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -43,9 +45,11 @@ export default async function AdminLoginPage({
     <main className="min-h-screen bg-[#fbfcfd] px-4 py-10 text-[#071638] [font-family:'Nunito_Sans','Nunito','Inter',system-ui,sans-serif]">
       <section className="mx-auto mt-20 max-w-[420px] rounded-[24px] border border-[#e1e6ee] bg-white p-6 shadow-[0_18px_50px_rgba(7,22,56,0.08)]">
         <div className="flex items-center gap-3">
-          <img
+          <Image
             src="/quickola/logo-mark.png"
             alt="Quickola"
+            width={48}
+            height={48}
             className="h-12 w-12 object-contain"
           />
           <div>

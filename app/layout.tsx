@@ -11,11 +11,11 @@ const nunito = Nunito_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.quickola.co.uk"),
   title: {
-    default: "Quickola | Check Fair Local Service Prices Before You Book",
+    default: "Quickola Property Services | Professional Cleaning in Slough",
     template: "%s",
   },
   description:
-    "Check fair local service prices before you book. Compare guide prices for cleaning, removals, plumbers, locksmiths and more, then request a match only if useful.",
+    "Professional domestic, Airbnb and commercial cleaning across Slough. Get an instant price, choose a time and book online.",
   applicationName: "Quickola",
   authors: [{ name: "Quickola" }],
   creator: "Quickola",
@@ -32,23 +32,23 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://www.quickola.co.uk",
     siteName: "Quickola",
-    title: "Quickola | Check Fair Local Service Prices Before You Book",
+    title: "Quickola Property Services | Professional Cleaning in Slough",
     description:
-      "Check fair local service prices before you book. Compare cleaning, removals, plumbers, locksmiths and more.",
+      "Professional domestic, Airbnb and commercial cleaning across Slough. Get an instant price and book online.",
     images: [
       {
         url: "/quickola/logo-mark.png",
         width: 1200,
         height: 630,
-        alt: "Quickola local service price guide",
+        alt: "Quickola Property Services",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Quickola | Check Fair Local Service Prices Before You Book",
+    title: "Quickola Property Services | Professional Cleaning in Slough",
     description:
-      "Check fair local service prices before you book. Compare cleaning, removals, plumbers, locksmiths and more.",
+      "Professional domestic, Airbnb and commercial cleaning across Slough.",
     images: ["/quickola/logo-mark.png"],
   },
   robots: {
@@ -63,7 +63,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={nunito.variable}>
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth" className={nunito.variable}>
       <head>
         <link rel="icon" href="/quickola/favicon.png" type="image/png" sizes="32x32" />
         <link rel="shortcut icon" href="/quickola/favicon.png" />

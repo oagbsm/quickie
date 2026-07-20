@@ -4,13 +4,17 @@ const SITE_URL = "https://quickola.co.uk";
 
 const pages = [
   "/",
-  "/slough",
   "/cleaners-slough",
   "/regular-cleaner-slough",
   "/deep-cleaning-slough",
   "/end-of-tenancy-cleaning-slough",
   "/airbnb-cleaning-slough",
   "/after-builders-cleaning-slough",
+  "/commercial-cleaning",
+  "/about",
+  "/trust-safety",
+  "/pricing-methodology",
+  "/contact",
   "/slough/burnham/cleaner",
   "/slough/chalvey/cleaner",
   "/slough/cippenham/cleaner",

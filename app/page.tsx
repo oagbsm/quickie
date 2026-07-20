@@ -1,5 +1,3 @@
-import BusinessCTA from "./homepagecomponents/BusinessCTA";
-import Categories from "./homepagecomponents/Categories";
 import Header from "./homepagecomponents/Header";
 import Hero from "./homepagecomponents/Hero";
 import HowItWorks from "./homepagecomponents/HowItWorks";
@@ -11,7 +9,6 @@ export default function Home() {
       <Header />
       <Hero />
       <HowItWorks />
-
       <Footer/>
     </main>
   );

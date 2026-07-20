@@ -4,7 +4,6 @@ import crypto from "crypto";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
@@ -212,7 +211,31 @@ function getProviderJobOutcomeNote(outcome: string) {
   return "Provider job outcome update received.";
 }
 
-function sortProvidersForPol(providers: any[]) {
+type ProviderSortRecord = {
+  id?: string | number | null;
+  starting_price?: number | string | null;
+  callout_fee?: number | string | null;
+  minimum_charge?: number | string | null;
+  provider_score?: number | string | null;
+  trust_score?: number | string | null;
+  average_response_minutes?: number | string | null;
+  completed_jobs?: number | string | null;
+};
+
+type ProviderOfferRequest = {
+  service?: string | null;
+  details?: string | null;
+  postcode?: string | null;
+  area?: string | null;
+  time_needed?: string | null;
+};
+
+type ProviderOfferMatch = {
+  rough_range?: string | null;
+  minimum_charge?: number | string | null;
+};
+
+function sortProvidersForPol(providers: ProviderSortRecord[]) {
   return [...providers].sort((a, b) => {
     const aScore = Number(a.provider_score ?? a.trust_score ?? 0);
     const bScore = Number(b.provider_score ?? b.trust_score ?? 0);
@@ -254,64 +277,6 @@ function normaliseWhatsappForWaMe(value: string | null | undefined) {
   if (digits.startsWith("0")) return `44${digits.slice(1)}`;
 
   return digits;
-}
-
-function buildPolProviderMessage({
-  request,
-  provider,
-  match,
-}: {
-  request: any;
-  provider: any;
-  match: any;
-}) {
-  const service = formatPolText(request.service);
-  const jobType = extractDetailValue(request.details, "Job type") || service;
-  const jobDetail = extractDetailValue(request.details, "Job detail") || formatPolText(request.job_size);
-  const needed = formatPolText(request.time_needed);
-  const postcode = request.postcode || "Not provided";
-  const guide = match.rough_range || (request.customer_budget ? `Customer budget around £${request.customer_budget}` : "Guide price not provided");
-  const minimum = match.minimum_charge ? `Minimum: £${match.minimum_charge}` : "";
-  const callout = match.callout_fee ? `Call-out: £${match.callout_fee}` : "";
-  const isLocalHelper = request.provider_lane === "local_helper" || request.service === "local-helper";
-
-  if (isLocalHelper) {
-    return `Quickola small job.
-
-Task: ${formatPolText(jobType)}
-Postcode: ${postcode}
-Size: ${formatPolText(jobDetail)}
-Needed: ${needed}
-Guide: ${guide}${minimum ? `\n${minimum}` : ""}
-
-Reply:
-YES £__ TIME __
-
-Example:
-YES £40 TODAY 5PM
-
-Or reply:
-NO`;
-  }
-
-  return `Quickola lead.
-
-Service: ${service}
-Issue: ${formatPolText(jobType)}
-Postcode: ${postcode}
-Needed: ${needed}
-${callout ? `${callout}\n` : ""}${minimum ? `${minimum}\n` : ""}Guide: ${guide}
-
-Reply:
-YES £CALL_OUT TIME
-
-Example:
-YES £80 TODAY 6PM
-
-Or reply:
-NO
-
-Final price is confirmed by you after diagnosis, parts, access and job details.`;
 }
 
 function buildWhatsappLink(whatsapp: string | null | undefined, message: string) {
@@ -357,8 +322,8 @@ function buildShortProviderOfferMessage({
   providerOfferUrl,
   expiryMinutes,
 }: {
-  request: any;
-  match: any;
+  request: ProviderOfferRequest;
+  match: ProviderOfferMatch;
   providerOfferUrl: string;
   expiryMinutes: number;
 }) {
@@ -450,37 +415,6 @@ function parseProviderReplyText(rawReply: string): ParsedProviderReply {
   };
 }
 
-function buildCustomerOptionMessageFromReply({
-  request,
-  parsedReply,
-}: {
-  request: any;
-  parsedReply: ParsedProviderReply;
-}) {
-  const service = formatPolText(request.service);
-  const postcode = request.postcode || request.area || "your area";
-  const priceText = parsedReply.quotedPrice !== null ? ` for about £${parsedReply.quotedPrice}` : "";
-  const timeText = parsedReply.availability ? ` ${parsedReply.availability}` : "";
-  const isLocalHelper = request.provider_lane === "local_helper" || request.service === "local-helper";
-
-  if (isLocalHelper) {
-    return `A local helper is available${timeText}${priceText}. Reply YES if you want to continue. Final price depends on exact details and provider confirmation.`;
-  }
-
-  return `A ${service} provider is available for ${postcode}${timeText}${priceText}. Reply YES if you want to continue. Final price is confirmed by the provider after diagnosis, parts, access and job details.`;
-}
-
-function getAdminAlertEmails() {
-  return [
-    process.env.ADMIN_ALERT_EMAIL,
-    process.env.ADMIN_EMAIL,
-    process.env.CONTACT_EMAIL,
-  ]
-    .filter(Boolean)
-    .join(",");
-}
-
-
 async function sendEmailOrLog({
   subject,
   text,
@@ -488,47 +422,8 @@ async function sendEmailOrLog({
   subject: string;
   text: string;
 }) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const adminEmail = getAdminAlertEmails();
-  const fromEmail = process.env.FROM_EMAIL || "Quickola <onboarding@resend.dev>";
-
-  if (!apiKey || !adminEmail) {
-    console.error("Quickola email skipped: missing email env vars.", {
-      hasResendApiKey: Boolean(apiKey),
-      adminEmail,
-      hasAdminAlertEmail: Boolean(process.env.ADMIN_ALERT_EMAIL),
-      hasAdminEmail: Boolean(process.env.ADMIN_EMAIL),
-      hasContactEmail: Boolean(process.env.CONTACT_EMAIL),
-      fromEmail,
-      subject,
-    });
-    return;
-  }
-
-  const resend = new Resend(apiKey);
-
-  const result = await resend.emails.send({
-    from: fromEmail,
-    to: adminEmail,
-    subject,
-    text,
-  });
-
-  if (result.error) {
-    console.error("Quickola email failed:", {
-      subject,
-      to: adminEmail,
-      from: fromEmail,
-      error: result.error,
-    });
-    return;
-  }
-
-  console.log("Quickola email sent:", {
-    subject,
-    to: adminEmail,
-    id: result.data?.id,
-  });
+  void subject;
+  void text;
 }
 
 async function sendProviderEmailOrLog({
@@ -540,45 +435,10 @@ async function sendProviderEmailOrLog({
   subject: string;
   text: string;
 }) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.FROM_EMAIL || "Quickola <onboarding@resend.dev>";
-
-  if (!apiKey || !to) {
-    console.error("Quickola provider email skipped: missing email env vars or provider email.", {
-      hasResendApiKey: Boolean(apiKey),
-      to,
-      fromEmail,
-      subject,
-    });
-    return false;
-  }
-
-  const resend = new Resend(apiKey);
-
-  const result = await resend.emails.send({
-    from: fromEmail,
-    to,
-    subject,
-    text,
-  });
-
-  if (result.error) {
-    console.error("Quickola provider email failed:", {
-      subject,
-      to,
-      from: fromEmail,
-      error: result.error,
-    });
-    return false;
-  }
-
-  console.log("Quickola provider email sent:", {
-    subject,
-    to,
-    id: result.data?.id,
-  });
-
-  return true;
+  void to;
+  void subject;
+  void text;
+  return false;
 }
 
 async function sendAdminRequestAlert({
@@ -813,6 +673,7 @@ export async function createRequest(formData: FormData) {
 
   if (error && error.message.toLowerCase().includes("email")) {
     const { email: _email, ...requestPayloadWithoutEmail } = requestPayload;
+    void _email;
     const retry = await supabase.from("requests").insert(requestPayloadWithoutEmail);
     error = retry.error;
   }
@@ -2439,7 +2300,7 @@ export async function recordProviderReply(formData: FormData) {
       ? `Provider accepted. Customer contact shown to provider: ${customerContact}. Provider should contact the customer directly. Zayn should follow up afterwards to confirm contact, booking, completion and rating.`
       : null;
 
-  const matchUpdate: Record<string, any> = {
+  const matchUpdate: Record<string, string | number | null> = {
     status: parsedReply.status,
     provider_reply_raw: rawReply,
     provider_reply: parsedReply.note,
@@ -2474,7 +2335,7 @@ export async function recordProviderReply(formData: FormData) {
     throw new Error(`Pol could not update provider reply: ${updateMatchError.message}`);
   }
 
-  const requestUpdate: Record<string, any> = {
+  const requestUpdate: Record<string, string | number | null> = {
     updated_at: new Date().toISOString(),
   };
 

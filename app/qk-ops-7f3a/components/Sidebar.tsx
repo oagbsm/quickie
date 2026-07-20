@@ -1,4 +1,6 @@
 import type { AdminTab } from "../types";
+import Image from "next/image";
+import Link from "next/link";
 
 function NavButton({
   active,
@@ -90,17 +92,19 @@ export default function Sidebar({
 }) {
   return (
     <aside className="w-full border-b border-[#dfe5ee] bg-[#f7f9fb] px-4 py-4 lg:sticky lg:top-0 lg:h-screen lg:w-[280px] lg:shrink-0 lg:border-b-0 lg:border-r lg:px-5 lg:py-5">
-      <a href="/" className="flex items-center gap-3" aria-label="Quickola homepage">
-        <img
+      <Link href="/" className="flex items-center gap-3" aria-label="Quickola homepage">
+        <Image
           src="/quickola/logo-mark.png"
           alt="Quickola"
+          width={40}
+          height={40}
           className="h-10 w-10 shrink-0 object-contain"
         />
         <div className="min-w-0">
           <p className="text-[24px] font-black leading-none tracking-[-0.05em] text-[#071638]">Quickola</p>
           <p className="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-[#08783f]">Ops panel</p>
         </div>
-      </a>
+      </Link>
 
       <nav className="mt-5 grid gap-2">
         <NavButton active={activeTab === "requests"} label="Requests" count={requestCount} href="/qk-ops-7f3a?tab=requests" />

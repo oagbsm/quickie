@@ -3,9 +3,9 @@ import CleaningSeoPage from "../components/CleaningSeoPage";
 
 const pageData = {
   "title": "Regular Cleaner in Slough | Weekly & Fortnightly Cleaning",
-  "description": "Check fair local prices for regular domestic cleaning in Slough. Weekly, fortnightly and one-off cleaner requests across nearby SL postcodes.",
+  "description": "Book professional regular domestic cleaning in Slough. Weekly, fortnightly and one-off cleaner requests across nearby SL postcodes.",
   "h1": "Regular cleaner in Slough",
-  "intro": "Quickola helps you check a fair local price for regular domestic cleaning in Slough before booking. Regular cleaning is usually best for weekly, fortnightly or one-off maintenance cleans.",
+  "intro": "Book regular domestic cleaning in Slough directly with Quickola. Choose weekly, fortnightly or one-off cleaning and see your time-based price online.",
   "localNote": "Regular cleaning in Slough is often used by busy households, shared homes, families and people who want help keeping the property maintained. Frequency, rooms, bathrooms and whether products are supplied can affect the price.",
   "priceTitle": "Regular cleaning guide price",
   "priceRange": "from £35+",
@@ -24,19 +24,19 @@ const pageData = {
   "faqs": [
     {
       "question": "Are Quickola cleaning prices final quotes?",
-      "answer": "No. Quickola prices are guide ranges. Final prices depend on property size, condition, access, extras, urgency and availability."
+      "answer": "No. Quickola calculates your visit price from recommended cleaning time, property condition, access and selected extras."
     },
     {
       "question": "Is Quickola available across Slough?",
-      "answer": "Quickola is starting with cleaning requests across Slough and nearby SL postcodes. Availability may be limited during the early launch."
+      "answer": "Quickola provides online cleaning booking across supported Slough and nearby SL postcodes."
     },
     {
-      "question": "Does Quickola sell paid ranking?",
-      "answer": "No. Quickola is not built around selling top placement. Requests are intended to be handled based on fit, availability, price clarity and customer feedback."
+      "question": "Who manages my cleaning booking?",
+      "answer": "Your booking is with Quickola, which manages the customer experience and service quality."
     },
     {
       "question": "What should I confirm before booking a cleaner?",
-      "answer": "Confirm the final price, what is included, arrival time, cancellation terms, whether products are included and whether extras such as oven or fridge cleaning cost more."
+      "answer": "Confirm the final price, what is included, arrival time, cancellation terms, whether extras such as oven or fridge cleaning cost more."
     }
   ],
   "canonical": "/regular-cleaner-slough",

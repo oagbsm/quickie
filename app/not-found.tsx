@@ -9,7 +9,7 @@ export default function NotFound() {
         </div>
 
         <h1 className="mt-5 text-[42px] font-black leading-[1.02] tracking-[-0.065em] text-[#071638] sm:text-[64px]">
-          This price check page doesn’t exist.
+          We couldn’t find that page.
         </h1>
 
         <p className="mt-4 max-w-[560px] text-[16px] font-semibold leading-[1.55] text-[#44506a] sm:text-[18px]">
@@ -21,7 +21,7 @@ export default function NotFound() {
             href="/"
             className="flex h-[54px] items-center justify-center rounded-[15px] bg-[#075cff] px-5 text-[15px] font-black text-white shadow-[0_16px_30px_rgba(0,92,255,0.22)] transition hover:-translate-y-0.5 hover:bg-[#004fe6]"
           >
-            Request a cleaner
+            Book cleaning
           </Link>
 
           <Link

@@ -1,10 +1,23 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { escapeHtml, sendAdminNotifications } from "@/lib/server/notifications";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
-const telegramChatId = process.env.TELEGRAM_CHAT_ID;
+const requestBuckets = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_MAX = 8;
+
+function isRateLimited(key: string) {
+  const now = Date.now();
+  const current = requestBuckets.get(key);
+  if (!current || current.resetAt <= now) {
+    requestBuckets.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+  current.count += 1;
+  return current.count > RATE_LIMIT_MAX;
+}
 
 function normalisePostcode(value: string) {
   return value.toUpperCase().replace(/\s+/g, "").trim();
@@ -70,40 +83,12 @@ function humaniseValue(value: string) {
   return knownLabels[value] ?? value.replace(/-/g, " ");
 }
 
-function escapeTelegramHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-async function sendTelegramMessage(message: string) {
-  if (!telegramBotToken || !telegramChatId) {
-    console.warn("Telegram env vars missing: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID");
-    return;
-  }
-
-  const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      chat_id: telegramChatId,
-      text: message,
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Telegram send failed: ${response.status} ${text}`);
-  }
-}
-
 export async function POST(request: Request) {
   try {
+    const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    if (isRateLimited(forwardedFor || "unknown")) {
+      return NextResponse.json({ error: "Too many requests. Please wait a few minutes and try again." }, { status: 429 });
+    }
     if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json(
         { error: "Supabase environment variables are missing." },
@@ -112,6 +97,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+
+    if (String(body.website || "").trim()) {
+      return NextResponse.json({ error: "Request blocked." }, { status: 400 });
+    }
 
     const service = String(body.service || "").trim();
     const serviceLabel = String(body.service_label || service).trim();
@@ -146,6 +135,36 @@ export async function POST(request: Request) {
     const bedrooms = getFirstString(body.job_size, (serviceDetails as Record<string, unknown>).bedrooms);
     const notes = getFirstString(body.notes, (serviceDetails as Record<string, unknown>).notes);
     const sourcePage = getFirstString(body.source_page, (serviceDetails as Record<string, unknown>).sourcePage);
+    const customerName = getFirstString(body.customer_name, (serviceDetails as Record<string, unknown>).name);
+    const customerEmail = getFirstString(body.customer_email, (serviceDetails as Record<string, unknown>).email);
+    const businessName = getFirstString((serviceDetails as Record<string, unknown>).business);
+    const bookingAddress = getFirstString((serviceDetails as Record<string, unknown>).address);
+    const requestedDate = getFirstString((serviceDetails as Record<string, unknown>).date, (serviceDetails as Record<string, unknown>).startDate);
+    const requestedTime = getFirstString((serviceDetails as Record<string, unknown>).time);
+    const quoteStage = getFirstString(body.quote_stage);
+
+    if (customerPhone && !/^(?:\+44|0)(?:7\d{9}|\d{9,10})$/.test(customerPhone)) {
+      return NextResponse.json({ error: "Enter a valid UK contact number." }, { status: 400 });
+    }
+
+    if (customerEmail && !/^\S+@\S+\.\S+$/.test(customerEmail)) {
+      return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
+    }
+
+    if (notes.length > 3000) {
+      return NextResponse.json({ error: "Please shorten the notes to 3,000 characters or fewer." }, { status: 400 });
+    }
+
+    if (quoteStage === "booking_requested" && (!customerName || !customerEmail || !customerPhone || !bookingAddress || !requestedDate || !requestedTime)) {
+      return NextResponse.json({ error: "Complete all required booking details." }, { status: 400 });
+    }
+
+    if (quoteStage === "commercial_contract_enquiry") {
+      const units = Number((serviceDetails as Record<string, unknown>).sites || 0);
+      if (!customerName || !customerEmail || !customerPhone || !businessName || !requestedDate || units < 1 || notes.length < 20) {
+        return NextResponse.json({ error: "Complete all required contract enquiry details." }, { status: 400 });
+      }
+    }
 
     if (!service) {
       return NextResponse.json(
@@ -195,10 +214,14 @@ export async function POST(request: Request) {
         postcode,
         status: customerPhone ? "new_cleaner_enquiry" : "price_check_started",
         source,
-        time_needed: "not_given_yet",
-        details: customerPhone
-          ? `Cleaner enquiry for ${serviceLabel} in ${postcode}. Phone: ${customerPhone}.`
-          : `Cumar price check started for ${serviceLabel} in ${postcode}.`,
+        phone: customerPhone || null,
+        email: customerEmail || null,
+        time_needed: requestedDate ? [requestedDate, requestedTime].filter(Boolean).join(" · ") : "not_given_yet",
+        details: [
+          `${serviceLabel} in ${postcode}.`,
+          bookingAddress ? `Address: ${bookingAddress}` : "",
+          notes ? `Notes: ${notes}` : "",
+        ].filter(Boolean).join("\n"),
         cumar_mode: cumarMode,
         cumar_status: "captured",
         provider_lane: providerLane,
@@ -208,7 +231,7 @@ export async function POST(request: Request) {
         budget_note: budgetNote || null,
         ready_for_pol: false,
         missing_fields: customerPhone
-          ? ["time_needed"]
+          ? requestedDate ? [] : ["time_needed"]
           : isLocalHelper
             ? ["task_details", "time_needed", "contact"]
             : ["job_details", "time_needed", "contact"],
@@ -244,22 +267,28 @@ export async function POST(request: Request) {
       );
     }
 
+    const isCommercial = service === "commercial-cleaning";
     const telegramLines = [
-      "🧼 <b>New Quickola cleaner request</b>",
-      `Request ID: <code>${escapeTelegramHtml(String(data.id))}</code>`,
-      `Service: <b>${escapeTelegramHtml(serviceLabel || service)}</b>`,
-      cleanType ? `Clean type: <b>${escapeTelegramHtml(humaniseValue(cleanType))}</b>` : "",
-      bedrooms ? `Property size: <b>${escapeTelegramHtml(humaniseValue(bedrooms))}</b>` : "",
-      `Postcode: <b>${escapeTelegramHtml(postcode)}</b>`,
-      customerPhone ? `Phone: <a href="tel:${escapeTelegramHtml(customerPhone)}">${escapeTelegramHtml(customerPhone)}</a>` : "Phone: not provided",
-      notes ? `Notes: ${escapeTelegramHtml(notes)}` : "",
-      sourcePage ? `Page: ${escapeTelegramHtml(sourcePage)}` : `Source: ${escapeTelegramHtml(source)}`,
+      isCommercial ? "🏢 <b>New Quickola contract enquiry</b>" : "🧼 <b>New Quickola cleaning booking</b>",
+      `Request ID: <code>${escapeHtml(String(data.id))}</code>`,
+      `Service: <b>${escapeHtml(serviceLabel || service)}</b>`,
+      cleanType ? `Clean type: <b>${escapeHtml(humaniseValue(cleanType))}</b>` : "",
+      bedrooms ? `Property size: <b>${escapeHtml(humaniseValue(bedrooms))}</b>` : "",
+      `Postcode: <b>${escapeHtml(postcode)}</b>`,
+      customerPhone ? `Phone: ${escapeHtml(customerPhone)}` : "Phone: not provided",
+      customerName ? `Name: <b>${escapeHtml(customerName)}</b>` : "",
+      businessName ? `Business: <b>${escapeHtml(businessName)}</b>` : "",
+      customerEmail ? `Email: ${escapeHtml(customerEmail)}` : "",
+      notes ? `Notes: ${escapeHtml(notes)}` : "",
+      sourcePage ? `Page: ${escapeHtml(sourcePage)}` : `Source: ${escapeHtml(source)}`,
     ].filter(Boolean);
 
-    try {
-      await sendTelegramMessage(telegramLines.join("\n"));
-    } catch (telegramError) {
-      console.error("Cumar Telegram alert error:", telegramError);
+    const notificationResult = await sendAdminNotifications({
+      telegramHtml: telegramLines.join("\n"),
+    });
+
+    if (!notificationResult.telegramSent) {
+      console.error("Intake notification delivery failed:", notificationResult.errors);
     }
 
     return NextResponse.json({
@@ -274,6 +303,7 @@ export async function POST(request: Request) {
       job_risk: jobRisk,
       ready_for_pol: false,
       customer_phone_captured: Boolean(customerPhone),
+      notification_sent: notificationResult.telegramSent,
     });
   } catch (error) {
     console.error("Cumar intake route error:", error);

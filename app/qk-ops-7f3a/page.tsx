@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { createHash } from "crypto";
 import { supabase } from "@/lib/supabase";;
 import {
   matchRequestToBusiness,
@@ -202,7 +203,10 @@ async function assignProvider(formData: FormData) {
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const cookieStore = await cookies();
-  const isAdmin = cookieStore.get("quickola_admin")?.value === "true";
+  const expectedAdminCookie = process.env.ADMIN_PASSWORD
+    ? createHash("sha256").update(process.env.ADMIN_PASSWORD).digest("hex")
+    : "";
+  const isAdmin = Boolean(expectedAdminCookie) && cookieStore.get("quickola_admin")?.value === expectedAdminCookie;
 
   if (!isAdmin) {
     redirect("/qk-ops-7f3a-login?next=/qk-ops-7f3a");

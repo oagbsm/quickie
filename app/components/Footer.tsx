@@ -1,27 +1,32 @@
+import Image from "next/image";
+import Link from "next/link";
+
 export default function Footer() {
   return (
     <footer className="border-t border-[#e1e6ee] bg-white px-4 py-8 text-[#071638] sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-[1220px] flex-col gap-7 sm:flex-row sm:items-start sm:justify-between">
         <div className="max-w-[560px]">
-          <a href="/" className="flex items-center gap-3" aria-label="Quickola homepage">
-            <img
+          <Link href="/" className="flex items-center gap-3" aria-label="Quickola homepage">
+            <Image
               src="/quickola/logo-mark.png"
               alt="Quickola"
+              width={40}
+              height={40}
               className="h-10 w-10 rounded-full object-contain"
             />
             <p className="text-[23px] font-bold tracking-[0.025em]">
               Quickola
             </p>
-          </a>
+          </Link>
 
           <p className="mt-3 text-[13.5px] font-semibold leading-[1.6] text-[#657089]">
-            Quickola helps people check fair local prices before booking home services. If they want help, we can connect them with one suitable local provider where available.
+            Professional domestic, Airbnb and commercial cleaning across Slough. Clear pricing, flexible times and secure online booking.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2 text-[12px] font-extrabold text-[#44506a]">
-            <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">Fair price first</span>
-            <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">No paid ranking</span>
-            <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">One suitable provider</span>
+            <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">Instant price</span>
+            <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">Secure booking</span>
+            <span className="rounded-full border border-[#e1e6ee] bg-[#fbfcfd] px-3 py-1.5">Flexible times</span>
           </div>
         </div>
 
@@ -32,6 +37,7 @@ export default function Footer() {
             </p>
             <div className="grid gap-2 text-[14px] font-extrabold text-[#071638]">
               <a href="/contact" className="hover:text-[#08783f]">Contact</a>
+              <a href="/commercial-cleaning" className="hover:text-[#08783f]">Commercial cleaning</a>
             </div>
           </div>
 
@@ -41,8 +47,6 @@ export default function Footer() {
             </p>
             <div className="grid gap-2 text-[14px] font-extrabold text-[#071638]">
               <a href="/trust-safety" className="hover:text-[#08783f]">Trust & Safety</a>
-              <a href="/pricing-methodology" className="hover:text-[#08783f]">Pricing Methodology</a>
-              <a href="/quickola-vs-checkatrade-bark-taskrabbit" className="hover:text-[#08783f]">Quickola vs Competitors</a>
             </div>
           </div>
 
@@ -53,7 +57,7 @@ export default function Footer() {
             <div className="grid gap-2 text-[14px] font-extrabold text-[#071638]">
               <a href="/privacy-policy" className="hover:text-[#08783f]">Privacy Policy</a>
               <a href="/terms" className="hover:text-[#08783f]">Terms</a>
-              <a href="mailto:quickolauk@gmail.com" className="hover:text-[#08783f]">hello@quickola.com</a>
+              <a href="/contact" className="hover:text-[#08783f]">Contact form</a>
             </div>
           </div>
         </div>
@@ -61,7 +65,7 @@ export default function Footer() {
 
       <div className="mx-auto mt-7 flex max-w-[1220px] flex-col gap-2 border-t border-[#edf0f5] pt-5 text-[12px] font-semibold text-[#8b94a7] sm:flex-row sm:items-center sm:justify-between">
         <p>© {new Date().getFullYear()} Quickola. All rights reserved.</p>
-        <p>Fair local price checks before booking.</p>
+        <p>Property services, delivered by Quickola.</p>
       </div>
     </footer>
   );

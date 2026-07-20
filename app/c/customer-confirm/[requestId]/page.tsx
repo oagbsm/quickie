@@ -63,7 +63,7 @@ async function getRequest(requestId: string) {
     return null;
   }
 
-  return request as any;
+  return request;
 }
 
 export default async function CustomerConfirmPage({ params, searchParams }: CustomerConfirmPageProps) {

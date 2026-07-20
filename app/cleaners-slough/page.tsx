@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import CleaningSeoPage from "../components/CleaningSeoPage";
 
 const pageData = {
-  "title": "Cleaners in Slough | Check Fair Cleaning Prices",
-  "description": "Need a cleaner in Slough? Check fair prices for regular cleaning, deep cleaning, end-of-tenancy, Airbnb and after-builders cleaning before booking.",
+  "title": "Cleaners in Slough | Professional Cleaning",
+  "description": "Book domestic, deep, end-of-tenancy, Airbnb and after-builders cleaning in Slough with transparent time-based pricing.",
   "h1": "Cleaners in Slough",
-  "intro": "Need a cleaner in Slough? Quickola helps you check a fair local cleaning price before booking. We are starting with cleaning requests across Slough and nearby SL postcodes.",
+  "intro": "Need a cleaner in Slough? Quickola helps you book professional cleaning directly. We are starting with cleaning requests across Slough and nearby SL postcodes.",
   "localNote": "Slough cleaning requests can include regular domestic cleans, deep cleans, rental move-outs, short-let turnovers and after-builders cleans. The final price can depend on property size, condition, access, parking, extras and availability.",
   "priceTitle": "Typical Slough cleaning guide prices",
   "priceRange": "from £35+",
@@ -24,19 +24,19 @@ const pageData = {
   "faqs": [
     {
       "question": "Are Quickola cleaning prices final quotes?",
-      "answer": "No. Quickola prices are guide ranges. Final prices depend on property size, condition, access, extras, urgency and availability."
+      "answer": "No. Quickola calculates your visit price from recommended cleaning time, property condition, access and selected extras."
     },
     {
       "question": "Is Quickola available across Slough?",
-      "answer": "Quickola is starting with cleaning requests across Slough and nearby SL postcodes. Availability may be limited during the early launch."
+      "answer": "Quickola provides online cleaning booking across supported Slough and nearby SL postcodes."
     },
     {
-      "question": "Does Quickola sell paid ranking?",
-      "answer": "No. Quickola is not built around selling top placement. Requests are intended to be handled based on fit, availability, price clarity and customer feedback."
+      "question": "Who manages my cleaning booking?",
+      "answer": "Your booking is with Quickola, which manages the customer experience and service quality."
     },
     {
       "question": "What should I confirm before booking a cleaner?",
-      "answer": "Confirm the final price, what is included, arrival time, cancellation terms, whether products are included and whether extras such as oven or fridge cleaning cost more."
+      "answer": "Confirm the final price, what is included, arrival time, cancellation terms, whether extras such as oven or fridge cleaning cost more."
     }
   ],
   "canonical": "/cleaners-slough",

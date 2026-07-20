@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import CleaningSeoPage from "../../../components/CleaningSeoPage";
 
 const pageData = {
-  "title": "Cleaner in Farnham Royal | Fair Cleaning Prices",
+  "title": "Cleaner in Farnham Royal | Professional Cleaning",
   "description": "Looking for a cleaner in Farnham Royal? Check fair local cleaning prices for regular cleans, deep cleans, end-of-tenancy and more before booking.",
   "h1": "Cleaner in Farnham Royal",
-  "intro": "Looking for a cleaner in Farnham Royal? Quickola helps local residents check fair cleaning prices before booking. We are currently focused on cleaning requests in Slough and nearby SL postcodes.",
+  "intro": "Looking for a cleaner in Farnham Royal? Quickola helps local residents book directly with Quickola. We are currently focused on cleaning requests in Slough and nearby SL postcodes.",
   "localNote": "Farnham Royal cleaning requests may include larger homes, regular cleaning, deep cleans and move-out cleans. Property size, condition, access and extras can affect the final quote.",
   "priceTitle": "Farnham Royal cleaner guide price",
   "priceRange": "from £35+",
@@ -24,19 +24,19 @@ const pageData = {
   "faqs": [
     {
       "question": "Are Quickola cleaning prices final quotes?",
-      "answer": "No. Quickola prices are guide ranges. Final prices depend on property size, condition, access, extras, urgency and availability."
+      "answer": "No. Quickola calculates your visit price from property size, condition and selected extras."
     },
     {
       "question": "Is Quickola available across Slough?",
-      "answer": "Quickola is starting with cleaning requests across Slough and nearby SL postcodes. Availability may be limited during the early launch."
+      "answer": "Quickola provides online cleaning booking across supported Slough and nearby SL postcodes."
     },
     {
-      "question": "Does Quickola sell paid ranking?",
-      "answer": "No. Quickola is not built around selling top placement. Requests are intended to be handled based on fit, availability, price clarity and customer feedback."
+      "question": "Who manages my cleaning booking?",
+      "answer": "Your booking is with Quickola, which manages the customer experience and service quality."
     },
     {
       "question": "What should I confirm before booking a cleaner?",
-      "answer": "Confirm the final price, what is included, arrival time, cancellation terms, whether products are included and whether extras such as oven or fridge cleaning cost more."
+      "answer": "Confirm the final price, what is included, arrival time, cancellation terms, whether extras such as oven or fridge cleaning cost more."
     }
   ],
   "canonical": "/slough/farnham-royal/cleaner",

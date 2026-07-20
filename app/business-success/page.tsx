@@ -1,15 +1,19 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import Footer from "../components/Footer";
 function Logo() {
   return (
-    <a href="/" className="flex items-center justify-center gap-3" aria-label="Quickola home">
-      <img
+    <Link href="/" className="flex items-center justify-center gap-3" aria-label="Quickola home">
+      <Image
         src="/quickola/logo-mark.png"
         alt="Quickola"
+        width={42}
+        height={42}
         className="h-[42px] w-[42px] rounded-full object-contain"
       />
       <span className="text-[32px] font-extrabold leading-none tracking-[-0.018em] text-[#071638]">Quickola</span>
-    </a>
+    </Link>
   );
 }
 
@@ -65,19 +69,19 @@ export default function Page() {
             </div>
 
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-              <a
+              <Link
                 href="/for-businesses"
                 className="inline-flex h-[54px] items-center justify-center rounded-[13px] border border-[#cfd6e2] bg-white px-7 text-[16px] font-extrabold text-[#071638] shadow-[0_10px_22px_rgba(7,22,56,0.04)] transition hover:-translate-y-0.5"
               >
                 Add another business
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/"
                 className="inline-flex h-[54px] items-center justify-center gap-4 rounded-[13px] bg-[linear-gradient(180deg,#079940_0%,#00672e_100%)] px-7 text-[16px] font-extrabold text-white shadow-[0_16px_34px_rgba(0,104,47,0.22)] transition hover:-translate-y-0.5"
               >
                 Back to Quickola
                 <span className="text-[26px] leading-none">→</span>
-              </a>
+              </Link>
             </div>
           </div>
         </section>
