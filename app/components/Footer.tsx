@@ -20,7 +20,7 @@ export default function Footer() {
           </Link>
 
           <p className="mt-3 text-[13.5px] font-semibold leading-[1.6] text-[#657089]">
-            Professional domestic, Airbnb and commercial cleaning across Slough. Clear pricing, flexible times and secure online booking.
+            Professional cleaning for one property or an entire portfolio across Slough. Clear pricing, flexible times and secure online booking.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2 text-[12px] font-extrabold text-[#44506a]">
@@ -37,7 +37,7 @@ export default function Footer() {
             </p>
             <div className="grid gap-2 text-[14px] font-extrabold text-[#071638]">
               <a href="/contact" className="hover:text-[#08783f]">Contact</a>
-              <a href="/commercial-cleaning" className="hover:text-[#08783f]">Commercial cleaning</a>
+              <a href="/business" className="hover:text-[#08783f]">Manage properties</a>
             </div>
           </div>
 

@@ -36,13 +36,16 @@ export default function Header() {
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-10 text-[14px] font-bold tracking-[-0.015em] text-[#071638] lg:flex">
+        <nav className="hidden items-center gap-7 text-[14px] font-bold tracking-[-0.015em] text-[#071638] lg:flex">
+          <button type="button" onClick={() => scrollToSection("booking")} className="transition hover:text-[#079448]">Book a clean</button>
+          <Link href="/business" className="transition hover:text-[#079448]">Manage properties</Link>
           <button type="button" onClick={() => scrollToSection("how")} className="transition hover:text-[#079448]">
             How it works
           </button>
           <button type="button" onClick={() => scrollToSection("services")} className="transition hover:text-[#079448]">
             Services
           </button>
+          <Link href="/business/sign-in" className="transition hover:text-[#079448]">Sign in</Link>
         </nav>
 
         <div className="hidden items-center lg:flex">

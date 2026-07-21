@@ -1,0 +1,1 @@
+import Link from "next/link";import PropertyForm from "../../components/PropertyForm";export default function Page(){return <div className="mx-auto max-w-3xl"><Link href="/business/properties" className="text-sm font-black text-[#657089]">← Properties</Link><h1 className="mt-4 mb-6 text-3xl font-black">Add a property</h1><PropertyForm onboarding={false}/></div>}

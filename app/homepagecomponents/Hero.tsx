@@ -15,14 +15,14 @@ export default function Hero() {
               Professional cleaning, <span className="text-[#4bd35f]">booked in minutes.</span>
             </h1>
             <p className="mt-5 max-w-[570px] text-[17px] font-semibold leading-[1.55] text-white/80 sm:text-[19px]">
-              Reliable domestic, Airbnb and commercial cleaning across Slough. Get your price, choose a time and book online.
+              Book reliable cleaning for your home, rental or entire property portfolio.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <a href="#booking" className="inline-flex h-13 items-center justify-center rounded-xl bg-[#4bd35f] px-7 text-[15px] font-black text-[#061a3d] shadow-[0_14px_30px_rgba(75,211,95,.2)] transition hover:-translate-y-0.5 hover:bg-[#5ce46e]">
                 Get instant price <span className="ml-2">→</span>
               </a>
-              <a href="/commercial-cleaning" className="inline-flex h-13 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-7 text-[15px] font-black text-white backdrop-blur-sm transition hover:bg-white/15">
-                Commercial contracts
+              <a href="/business" className="inline-flex h-13 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-7 text-[15px] font-black text-white backdrop-blur-sm transition hover:bg-white/15">
+                Manage properties
               </a>
             </div>
           </div>

@@ -1,7 +1,5 @@
-import Header from "../homepagecomponents/Header";
-import Footer from "../components/Footer";
-import CommercialQuoteForm from "./CommercialQuoteForm";
+import { redirect } from "next/navigation";
 
 export default function CommercialCleaningPage(){
-  return <main className="min-h-screen bg-white text-[#071638]"><Header/><section className="relative overflow-hidden bg-[#061a3d] px-5 pb-14 pt-24 text-white sm:px-8 sm:pt-28 lg:px-10 lg:pb-20 lg:pt-32"><div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(75,211,95,.12),transparent_32%)]"/><div className="relative mx-auto grid max-w-[1120px] gap-9 lg:grid-cols-[minmax(0,0.8fr)_minmax(520px,1.2fr)] lg:items-start lg:gap-12"><div className="lg:sticky lg:top-28 lg:pt-8"><p className="text-[11px] font-black uppercase tracking-[.16em] text-[#4bd35f]">Commercial cleaning</p><h1 className="mt-4 max-w-[620px] text-[42px] font-black leading-[.98] tracking-[-.05em] sm:text-[58px] lg:text-[62px]">A reliable cleaning partner for your properties.</h1><p className="mt-5 max-w-[560px] text-[16px] font-semibold leading-7 text-white/75 sm:text-[18px]">Tailored cleaning for offices, managed properties, Airbnb portfolios and recurring contracts across Slough.</p><div className="mt-7 grid gap-3 text-[13px] font-black text-white/85 sm:grid-cols-3 lg:grid-cols-1"><span>✓ One point of contact</span><span>✓ Flexible schedules</span><span>✓ Tailored contract quote</span></div><p className="mt-7 max-w-[450px] text-[12px] font-semibold leading-5 text-white/50">Complete the form and our contracts manager will contact you to discuss scope, access and the best service plan.</p></div><CommercialQuoteForm/></div></section><Footer/></main>
+  redirect("/business");
 }

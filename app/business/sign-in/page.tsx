@@ -1,0 +1,1 @@
+import PublicHeader from "../components/PublicHeader";import SignInForm from "./SignInForm";export default function Page(){return <main className="min-h-screen bg-[#f3f6f8]"><PublicHeader/><div className="mx-auto max-w-lg px-5 py-16"><SignInForm/></div></main>}

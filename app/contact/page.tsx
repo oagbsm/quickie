@@ -79,7 +79,7 @@ function StatusMessage({ status }: { status?: string }) {
 export const metadata = {
   title: "Contact Quickola Property Services",
   description:
-    "Contact Quickola about cleaning bookings, commercial contracts or property service support in Slough.",
+    "Contact Quickola about cleaning bookings, managed properties or property service support in Slough.",
 };
 
 export default async function ContactPage({

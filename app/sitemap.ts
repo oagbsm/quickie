@@ -10,7 +10,7 @@ const pages = [
   "/end-of-tenancy-cleaning-slough",
   "/airbnb-cleaning-slough",
   "/after-builders-cleaning-slough",
-  "/commercial-cleaning",
+  "/business",
   "/about",
   "/trust-safety",
   "/pricing-methodology",
