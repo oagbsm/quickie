@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim();
 function refresh(id?: string) {
   revalidatePath("/admin");
@@ -82,16 +83,72 @@ export async function createProvider(f: FormData) {
     email = value(f, "email"),
     phone = value(f, "phone");
   if (name.length < 2) redirect("/admin/providers?error=name");
-  const { error } = await supabase
-    .from("service_providers")
-    .insert({
-      name,
-      email: email || null,
-      phone: phone || null,
-      status: "active",
-    });
+  const { error } = await supabase.from("service_providers").insert({
+    name,
+    email: email || null,
+    phone: phone || null,
+    status: "active",
+  });
   if (error)
     redirect(`/admin/providers?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/admin/providers");
   redirect("/admin/providers?success=created");
+}
+export async function inviteBusiness(f: FormData) {
+  const { supabase, user } = await requireAdmin();
+  const enquiryId = value(f, "enquiryId"),
+    email = value(f, "email").toLowerCase(),
+    businessName = value(f, "businessName"),
+    fullName = value(f, "fullName"),
+    phone = value(f, "phone"),
+    customerType = value(f, "customerType");
+  if (
+    !/^\S+@\S+\.\S+$/.test(email) ||
+    businessName.length < 2 ||
+    fullName.length < 2 ||
+    ![
+      "landlord",
+      "airbnb_operator",
+      "letting_agent",
+      "property_manager",
+      "office_business",
+      "block_manager",
+      "other",
+    ].includes(customerType)
+  )
+    redirect("/admin/enquiries?error=invalid_invitation");
+  const site = (
+    process.env.NEXT_PUBLIC_SITE_URL || "https://www.quickola.co.uk"
+  ).replace(/\/$/, "");
+  const { error } =
+    await createSupabaseAdminClient().auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${site}/auth/callback?next=/business/continue`,
+      data: {
+        account_kind: "quickola_business",
+        business_name: businessName,
+        full_name: fullName,
+        phone,
+        customer_type: customerType,
+      },
+    });
+  if (error) {
+    console.error("business_invitation_failed", {
+      code: error.code,
+      adminUserId: user.id,
+    });
+    redirect("/admin/enquiries?error=invitation_failed");
+  }
+  if (enquiryId)
+    await supabase
+      .from("business_enquiries")
+      .update({
+        status: "invited",
+        reviewed_by: user.id,
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", enquiryId);
+  revalidatePath("/admin/enquiries");
+  revalidatePath("/admin/customers");
+  redirect("/admin/enquiries?success=invited");
 }

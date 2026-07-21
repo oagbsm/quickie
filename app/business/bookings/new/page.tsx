@@ -25,7 +25,7 @@ export default async function Page({
       >
         ← Bookings
       </Link>
-      <h1 className="mt-4 text-3xl font-black">Book a clean</h1>
+      <h1 className="mt-4 text-3xl font-black">Request a clean</h1>
       <p className="mt-2 mb-6 text-[#657089]">
         See your estimated price before confirming. Managed cleaning is
         currently available in Slough.

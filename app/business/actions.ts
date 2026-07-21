@@ -4,8 +4,13 @@ import { redirect } from "next/navigation";
 import { requireBusinessUser } from "@/lib/business/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { calculatePilotQuote, isPilotExtra, isPilotFrequency, isPilotService } from "@/lib/business/pricing";
-import { isPracticalBookingTime, londonLocalToUtc } from "@/lib/business/time";
+import {
+  calculatePilotQuote,
+  isPilotExtra,
+  isPilotFrequency,
+  isPilotService,
+} from "@/lib/business/pricing";
+import { validatePilotSchedule } from "@/lib/business/time";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim(),
   optional = (f: FormData, n: string) => value(f, n) || null;
 const numberOrNull = (f: FormData, n: string) => {
@@ -92,7 +97,13 @@ export async function setPropertyStatus(f: FormData) {
       .select("id", { count: "exact", head: true })
       .eq("property_id", id)
       .eq("account_id", accountId)
-      .in("status", ["requested", "under_review", "confirmed", "assigned", "in_progress"]);
+      .in("status", [
+        "requested",
+        "under_review",
+        "confirmed",
+        "assigned",
+        "in_progress",
+      ]);
     if ((count || 0) > 0 && value(f, "confirmActiveBookings") !== "1")
       redirect(`/business/properties/${id}?error=active_bookings`);
   }
@@ -128,16 +139,36 @@ export async function joinServiceAreaWaitlist(f: FormData) {
   revalidatePath("/business/properties");
   revalidatePath(`/business/properties/${p.id}`);
 }
-export async function createBooking(f: FormData) {
-  const { supabase, accountId } = await requireBusinessUser(),
+export type BookingActionState = { message: string; code?: string };
+export async function createBooking(
+  _previousState: BookingActionState,
+  f: FormData,
+): Promise<BookingActionState> {
+  const { supabase, accountId, user } = await requireBusinessUser(),
     propertyId = value(f, "propertyId"),
     service = value(f, "service"),
     date = value(f, "date"),
-    time = value(f, "time");
+    time = value(f, "time"),
+    idempotencyKey = value(f, "idempotencyKey");
   if (!propertyId || !service || !date || !time)
-    redirect("/business/bookings/new?error=required");
-  if (!isPilotService(service) || !isPracticalBookingTime(time))
-    redirect("/business/bookings/new?error=invalid_service");
+    return {
+      message: "Complete the property, service and schedule before submitting.",
+      code: "required",
+    };
+  if (!isPilotService(service))
+    return {
+      message: "Choose one of the available cleaning services.",
+      code: "invalid_service",
+    };
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      idempotencyKey,
+    )
+  )
+    return {
+      message: "Refresh this page before trying again.",
+      code: "invalid_request",
+    };
   const { data: p } = await supabase
     .from("properties")
     .select("id,service_area_status,property_type,bedrooms,bathrooms")
@@ -145,50 +176,98 @@ export async function createBooking(f: FormData) {
     .eq("account_id", accountId)
     .eq("status", "active")
     .maybeSingle();
-  if (!p) redirect("/business/bookings/new?error=property");
-  if (p.service_area_status !== "eligible")
-    redirect(
-      `/business/bookings/new?property=${propertyId}&error=outside_area`,
-    );
-  const frequency = value(f, "recurrence") || "one_off";
-  if (!isPilotFrequency(frequency)) redirect("/business/bookings/new?error=invalid_frequency");
-  const extras = f.getAll("extras").map(String).filter(isPilotExtra);
-  const quote = calculatePilotQuote({ service, frequency, propertyType: p.property_type, bedrooms: Number(p.bedrooms || 0), bathrooms: Number(p.bathrooms || 1), extras, serviceAreaStatus: p.service_area_status });
-  const
-    payload: Record<string, unknown> = {
-      account_id: accountId,
-      property_id: propertyId,
-      service,
-      scheduled_start: londonLocalToUtc(date, time).toISOString(),
-      requirements: optional(f, "requirements"),
-      recurrence: frequency,
-      extras,
-      status: quote.requiresManualReview ? "under_review" : "requested",
-      pricing_version: quote.pricingVersion,
-      pricing_mode: quote.pricingMode,
-      pricing_breakdown: quote.breakdown,
-      estimated_price_pence: quote.estimatedPricePence,
-      estimated_price_max_pence: quote.estimatedPriceMaxPence,
-      duration_minutes: quote.estimatedDurationMinutes,
-      requires_manual_review: quote.requiresManualReview,
-      customer_price_accepted: !quote.requiresManualReview,
-      customer_price_accepted_at: !quote.requiresManualReview ? new Date().toISOString() : null,
+  if (!p)
+    return {
+      message:
+        "That property is unavailable or does not belong to this account.",
+      code: "property",
     };
-  const { error } = await createSupabaseAdminClient().from("business_bookings").insert(payload);
-  if (error) {
+  if (p.service_area_status !== "eligible")
+    return {
+      message:
+        "Cleaning is not currently available for this property's postcode.",
+      code: "outside_area",
+    };
+  const frequency = value(f, "recurrence") || "one_off";
+  if (!isPilotFrequency(frequency))
+    return {
+      message: "Choose a valid cleaning frequency.",
+      code: "invalid_frequency",
+    };
+  const extras = f.getAll("extras").map(String).filter(isPilotExtra);
+  const quote = calculatePilotQuote({
+    service,
+    frequency,
+    propertyType: p.property_type,
+    bedrooms: Number(p.bedrooms || 0),
+    bathrooms: Number(p.bathrooms || 1),
+    extras,
+    serviceAreaStatus: p.service_area_status,
+  });
+  const schedule = validatePilotSchedule(
+    date,
+    time,
+    quote.estimatedDurationMinutes,
+  );
+  if (!schedule.ok)
+    return {
+      message:
+        schedule.reason === "lead_time"
+          ? "Choose a start time at least 24 hours from now."
+          : schedule.reason === "closed_day"
+            ? "Quickola currently accepts cleaning requests Monday to Saturday."
+            : "Choose an available start time that allows the clean to finish within operating hours.",
+      code: schedule.reason,
+    };
+  const payload: Record<string, unknown> = {
+    account_id: accountId,
+    property_id: propertyId,
+    service,
+    scheduled_start: schedule.scheduledStart.toISOString(),
+    requirements: optional(f, "requirements"),
+    recurrence: frequency,
+    extras,
+    status: quote.requiresManualReview ? "under_review" : "requested",
+    pricing_version: quote.pricingVersion,
+    pricing_mode: quote.pricingMode,
+    pricing_breakdown: quote.breakdown,
+    estimated_price_pence: quote.estimatedPricePence,
+    estimated_price_max_pence: quote.estimatedPriceMaxPence,
+    duration_minutes: quote.estimatedDurationMinutes,
+    requires_manual_review: quote.requiresManualReview,
+    customer_price_accepted: !quote.requiresManualReview,
+    customer_price_accepted_at: !quote.requiresManualReview
+      ? new Date().toISOString()
+      : null,
+    idempotency_key: idempotencyKey,
+    actor_user_id: user.id,
+  };
+  const { data: booking, error } = await createSupabaseAdminClient().rpc(
+    "server_create_business_booking",
+    { payload },
+  );
+  if (error || !booking?.id) {
     console.error("business_booking_request_failed", {
       accountId,
       propertyId,
-      code: error.code,
+      code: error?.code || "missing_booking",
     });
-    redirect("/business/bookings/new?error=save");
+    return {
+      message:
+        "We could not submit the request. Your selections are still here—please try again.",
+      code: "save",
+    };
   }
-  redirect("/business/bookings?created=1");
+  revalidatePath("/business/dashboard");
+  revalidatePath("/business/bookings");
+  revalidatePath("/admin");
+  revalidatePath("/admin/bookings");
+  redirect(`/business/bookings/${booking.id}/confirmation`);
 }
 export async function acceptTerms(f: FormData) {
   const { supabase, user, accountId } = await requireBusinessUser(),
     version = value(f, "termsVersion");
-  if (version !== "business-draft-2026-07")
+  if (version !== "business-pilot-2026-07-22")
     redirect("/business/onboarding?error=terms");
   await supabase
     .from("terms_acceptances")

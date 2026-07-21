@@ -7,8 +7,10 @@ import {
 } from "../lib/business/booking-status.ts";
 import {
   formatBusinessDateTime,
+  getPilotStartTimes,
   isPracticalBookingTime,
   londonLocalToUtc,
+  validatePilotSchedule,
 } from "../lib/business/time.ts";
 const base = {
   frequency: "one_off",
@@ -71,10 +73,37 @@ test("canonical transitions reject invalid lifecycle changes", () => {
 test("London time formatting handles winter and summer DST", () => {
   assert.match(formatBusinessDateTime("2026-01-15T12:00:00Z"), /12:00/);
   assert.match(formatBusinessDateTime("2026-07-15T12:00:00Z"), /13:00/);
-  assert.equal(isPracticalBookingTime("10:30"), true);
+  assert.equal(isPracticalBookingTime("10:00"), true);
+  assert.equal(isPracticalBookingTime("10:30"), false);
   assert.equal(isPracticalBookingTime("10:13"), false);
 });
 test("London local selections persist as the correct UTC instant", () => {
-  assert.equal(londonLocalToUtc("2026-01-15", "10:00").toISOString(), "2026-01-15T10:00:00.000Z");
-  assert.equal(londonLocalToUtc("2026-07-15", "10:00").toISOString(), "2026-07-15T09:00:00.000Z");
+  assert.equal(
+    londonLocalToUtc("2026-01-15", "10:00").toISOString(),
+    "2026-01-15T10:00:00.000Z",
+  );
+  assert.equal(
+    londonLocalToUtc("2026-07-15", "10:00").toISOString(),
+    "2026-07-15T09:00:00.000Z",
+  );
+});
+test("pilot scheduling rejects Sundays, short lead times and duration overflow", () => {
+  const now = new Date("2026-07-20T07:00:00Z");
+  assert.equal(
+    validatePilotSchedule("2026-07-26", "10:00", 120, now).ok,
+    false,
+  );
+  assert.equal(
+    validatePilotSchedule("2026-07-20", "16:00", 120, now).ok,
+    false,
+  );
+  assert.equal(validatePilotSchedule("2026-07-22", "08:00", 120, now).ok, true);
+  assert.deepEqual(getPilotStartTimes(300), [
+    "08:00",
+    "09:00",
+    "10:00",
+    "11:00",
+    "12:00",
+    "13:00",
+  ]);
 });

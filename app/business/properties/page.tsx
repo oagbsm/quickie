@@ -31,8 +31,14 @@ export default async function Page() {
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {data?.length ? (
           data.map((p) => {
-            const bookings = (p.business_bookings || []).filter(
-                (b) => b.status !== "cancelled",
+            const bookings = (p.business_bookings || []).filter((b) =>
+                [
+                  "requested",
+                  "under_review",
+                  "confirmed",
+                  "assigned",
+                  "in_progress",
+                ].includes(b.status),
               ),
               next = bookings
                 .filter((b) => new Date(b.scheduled_start) > new Date())
@@ -131,7 +137,7 @@ export default async function Page() {
                         href={`/business/bookings/new?property=${p.id}`}
                         className="inline-flex min-h-11 items-center rounded-xl bg-[#edf7f1] px-4 text-sm font-black text-[#079448]"
                       >
-                        Book a clean
+                        Request a clean
                       </Link>
                     )}
                 </div>
@@ -142,7 +148,7 @@ export default async function Page() {
           <div className="rounded-2xl border border-dashed bg-white p-10 text-center md:col-span-2">
             <h2 className="text-xl font-black">No properties yet</h2>
             <p className="mt-2 text-[#657089]">
-              Add your first property to book and manage cleaning.
+              Add your first property to request and manage cleaning.
             </p>
             <Link
               href="/business/properties/new"

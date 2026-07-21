@@ -90,13 +90,13 @@ export default async function Page({
           <div className="rounded-2xl border border-dashed bg-white p-10 text-center">
             <h2 className="text-xl font-black">No bookings yet</h2>
             <p className="mt-2 text-[#657089]">
-              Book a clean for one of your properties.
+              Request cleaning for one of your properties.
             </p>
             <Link
               href="/business/bookings/new"
               className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-[#079448] px-5 font-black text-white"
             >
-              Book a clean
+              Request a clean
             </Link>
           </div>
         )}

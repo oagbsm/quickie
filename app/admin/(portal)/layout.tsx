@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { adminSignOut } from "@/app/admin/actions";
 const nav = [
   ["Overview", "/admin"],
+  ["Enquiries", "/admin/enquiries"],
   ["Bookings", "/admin/bookings"],
   ["Properties", "/admin/properties"],
   ["Customers", "/admin/customers"],
@@ -33,7 +34,7 @@ export default async function Layout({
             <span className="hidden text-sm font-bold text-[#657089] sm:block">
               {user.email}
             </span>
-          <form action={adminSignOut}>
+            <form action={adminSignOut}>
               <button className="text-sm font-black">Sign out</button>
             </form>
           </div>

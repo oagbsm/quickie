@@ -19,7 +19,13 @@ async function sendContactMessage(formData: FormData) {
 
   if (website) redirect("/contact?status=sent");
 
-  if (!name || !email || !topic || message.length < 10 || !/^\S+@\S+\.\S+$/.test(email)) {
+  if (
+    !name ||
+    !email ||
+    !topic ||
+    message.length < 10 ||
+    !/^\S+@\S+\.\S+$/.test(email)
+  ) {
     redirect("/contact?status=missing-fields");
   }
 
@@ -29,15 +35,15 @@ async function sendContactMessage(formData: FormData) {
   const safeTopic = escapeHtml(topic);
   const safeMessage = escapeHtml(message);
   const result = await sendAdminNotifications({
-      telegramHtml: [
-        "📩 <b>New Quickola contact message</b>",
-        `Topic: <b>${safeTopic}</b>`,
-        `Name: <b>${safeName}</b>`,
-        `Email: ${safeEmail}`,
-        phone ? `Phone: ${safePhone}` : "Phone: not provided",
-        "",
-        `<b>Message</b>\n${safeMessage}`,
-      ].join("\n"),
+    telegramHtml: [
+      "📩 <b>New Quickola contact message</b>",
+      `Topic: <b>${safeTopic}</b>`,
+      `Name: <b>${safeName}</b>`,
+      `Email: ${safeEmail}`,
+      phone ? `Phone: ${safePhone}` : "Phone: not provided",
+      "",
+      `<b>Message</b>\n${safeMessage}`,
+    ].join("\n"),
   });
 
   if (!result.telegramSent) {
@@ -96,26 +102,38 @@ export default async function ContactPage({
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(63,196,118,0.25),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(54,124,255,0.22),transparent_36%)]" />
         <div className="relative mx-auto grid max-w-[1120px] gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div>
-            <Link href="/" className="mb-7 inline-flex items-center gap-2 text-[13px] font-black text-white/75 transition hover:text-white">
+            <Link
+              href="/"
+              className="mb-7 inline-flex items-center gap-2 text-[13px] font-black text-white/75 transition hover:text-white"
+            >
               <span aria-hidden="true">←</span> Back to homepage
             </Link>
             <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[12px] font-black uppercase tracking-[0.14em] text-white/85">
               Contact Quickola
             </div>
             <h1 className="mt-6 max-w-[760px] text-[44px] font-black leading-[0.96] tracking-[-0.065em] sm:text-[64px]">
-              How can we help with your cleaning?
+              How can we help your business?
             </h1>
             <p className="mt-5 max-w-[620px] text-[18px] font-medium leading-[1.65] text-white/76">
-              Message us about a booking, your property, commercial cleaning or anything Quickola-related.
+              Contact Quickola about an existing business booking, managed
+              property or cleaning requirement.
             </p>
           </div>
 
           <div className="rounded-[30px] border border-white/12 bg-white p-5 text-[#071638] shadow-[0_30px_80px_rgba(0,0,0,0.22)] sm:p-6">
             <StatusMessage status={status} />
             <form action={sendContactMessage} className="grid gap-4">
-              <input name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
+              <input
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                className="hidden"
+              />
               <label className="block">
-                <span className="mb-2 block text-[14px] font-extrabold">Your name</span>
+                <span className="mb-2 block text-[14px] font-extrabold">
+                  Your name
+                </span>
                 <input
                   name="name"
                   required
@@ -126,7 +144,9 @@ export default async function ContactPage({
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-[14px] font-extrabold">Email</span>
+                <span className="mb-2 block text-[14px] font-extrabold">
+                  Email
+                </span>
                 <input
                   name="email"
                   type="email"
@@ -138,7 +158,9 @@ export default async function ContactPage({
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-[14px] font-extrabold">Phone / WhatsApp optional</span>
+                <span className="mb-2 block text-[14px] font-extrabold">
+                  Phone / WhatsApp optional
+                </span>
                 <input
                   name="phone"
                   inputMode="tel"
@@ -149,7 +171,9 @@ export default async function ContactPage({
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-[14px] font-extrabold">What is this about?</span>
+                <span className="mb-2 block text-[14px] font-extrabold">
+                  What is this about?
+                </span>
                 <select
                   name="topic"
                   required
@@ -161,13 +185,17 @@ export default async function ContactPage({
                   </option>
                   <option value="Cleaning booking">Cleaning booking</option>
                   <option value="Pricing question">Pricing question</option>
-                  <option value="Commercial contract">Commercial contract</option>
+                  <option value="Commercial contract">
+                    Commercial contract
+                  </option>
                   <option value="General question">General question</option>
                 </select>
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-[14px] font-extrabold">Message</span>
+                <span className="mb-2 block text-[14px] font-extrabold">
+                  Message
+                </span>
                 <textarea
                   name="message"
                   required
@@ -191,26 +219,41 @@ export default async function ContactPage({
       <section className="px-4 py-14 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-[1120px] gap-5 md:grid-cols-3">
           <div className="rounded-[24px] border border-[#dfe8ef] bg-white p-6 shadow-[0_12px_30px_rgba(7,22,56,0.04)]">
-            <p className="text-[13px] font-black uppercase tracking-[0.14em] text-[#0b8f41]">Customers</p>
-            <h2 className="mt-3 text-[24px] font-black tracking-[-0.035em]">Booking support</h2>
+            <p className="text-[13px] font-black uppercase tracking-[0.14em] text-[#0b8f41]">
+              Customers
+            </p>
+            <h2 className="mt-3 text-[24px] font-black tracking-[-0.035em]">
+              Booking support
+            </h2>
             <p className="mt-3 text-[15px] font-semibold leading-[1.6] text-[#556177]">
-              Ask about an existing booking, property details or what is included in a Quickola clean.
+              Ask about an existing booking, property details or what is
+              included in a Quickola clean.
             </p>
           </div>
 
           <div className="rounded-[24px] border border-[#dfe8ef] bg-white p-6 shadow-[0_12px_30px_rgba(7,22,56,0.04)]">
-            <p className="text-[13px] font-black uppercase tracking-[0.14em] text-[#0b8f41]">Support</p>
-            <h2 className="mt-3 text-[24px] font-black tracking-[-0.035em]">General questions</h2>
+            <p className="text-[13px] font-black uppercase tracking-[0.14em] text-[#0b8f41]">
+              Support
+            </p>
+            <h2 className="mt-3 text-[24px] font-black tracking-[-0.035em]">
+              General questions
+            </h2>
             <p className="mt-3 text-[15px] font-semibold leading-[1.6] text-[#556177]">
-              Message us about Quickola Property Services, accessibility or general support.
+              Message us about Quickola Property Services, accessibility or
+              general support.
             </p>
           </div>
 
           <div className="rounded-[24px] border border-[#dfe8ef] bg-white p-6 shadow-[0_12px_30px_rgba(7,22,56,0.04)]">
-            <p className="text-[13px] font-black uppercase tracking-[0.14em] text-[#0b8f41]">Contracts</p>
-            <h2 className="mt-3 text-[24px] font-black tracking-[-0.035em]">Commercial enquiries</h2>
+            <p className="text-[13px] font-black uppercase tracking-[0.14em] text-[#0b8f41]">
+              Contracts
+            </p>
+            <h2 className="mt-3 text-[24px] font-black tracking-[-0.035em]">
+              Commercial enquiries
+            </h2>
             <p className="mt-3 text-[15px] font-semibold leading-[1.6] text-[#556177]">
-              Property managers and businesses can request a tailored cleaning or maintenance plan.
+              Property managers and businesses can discuss a tailored
+              managed-cleaning setup.
             </p>
           </div>
         </div>

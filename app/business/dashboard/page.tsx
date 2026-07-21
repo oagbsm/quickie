@@ -31,7 +31,13 @@ export default async function Page() {
       .select("id,service,scheduled_start,status,properties(nickname)")
       .eq("account_id", accountId)
       .gte("scheduled_start", now.toISOString())
-      .neq("status", "cancelled")
+      .in("status", [
+        "requested",
+        "under_review",
+        "confirmed",
+        "assigned",
+        "in_progress",
+      ])
       .order("scheduled_start")
       .limit(6),
     supabase
@@ -46,7 +52,18 @@ export default async function Page() {
       .select("id", { count: "exact", head: true })
       .eq("account_id", accountId)
       .in("status", ["requested", "under_review", "confirmed"]),
-    supabase.from("business_bookings").select("id",{count:"exact",head:true}).eq("account_id",accountId).lt("scheduled_start",now.toISOString()).in("status",["requested","under_review","confirmed","assigned","in_progress"]),
+    supabase
+      .from("business_bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("account_id", accountId)
+      .lt("scheduled_start", now.toISOString())
+      .in("status", [
+        "requested",
+        "under_review",
+        "confirmed",
+        "assigned",
+        "in_progress",
+      ]),
     supabase
       .from("properties")
       .select("id,nickname,service_area_status")
@@ -61,21 +78,26 @@ export default async function Page() {
       .order("sent_at", { ascending: false })
       .limit(4),
   ]);
-  const danger=(overdue||0)>0,warning=(attention||0)>0;
+  const danger = (overdue || 0) > 0,
+    warning = (attention || 0) > 0;
   return (
     <div>
       <div
-        className={`rounded-2xl p-5 ${danger?"bg-red-50 text-red-900":warning ? "bg-amber-50 text-amber-950" : "bg-[#eaf7ef] text-[#075d35]"}`}
+        className={`rounded-2xl p-5 ${danger ? "bg-red-50 text-red-900" : warning ? "bg-amber-50 text-amber-950" : "bg-[#eaf7ef] text-[#075d35]"}`}
       >
         <p className="text-xl font-black">
-          {danger?`Action required on ${overdue} booking${overdue===1?"":"s"}`:warning
-            ? `${attention} booking${attention === 1 ? "" : "s"} need confirmation`
-            : "Everything is on track"}
+          {danger
+            ? `Action required on ${overdue} booking${overdue === 1 ? "" : "s"}`
+            : warning
+              ? `${attention} booking${attention === 1 ? "" : "s"} need confirmation`
+              : "Everything is on track"}
         </p>
         <p className="mt-1 text-sm font-semibold">
-          {danger?"A booking is past its requested time and needs review.":warning
-            ? "Open the booking to see the latest status."
-            : "Your upcoming bookings are confirmed or assigned."}
+          {danger
+            ? "A booking is past its requested time and needs review."
+            : warning
+              ? "Open the booking to see the latest status."
+              : "Your upcoming bookings are confirmed or assigned."}
         </p>
       </div>
       <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
@@ -89,7 +111,7 @@ export default async function Page() {
           href="/business/bookings/new"
           className="rounded-xl bg-[#079448] px-5 py-3 font-black text-white"
         >
-          Book a clean
+          Request a clean
         </Link>
       </div>
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -118,7 +140,7 @@ export default async function Page() {
       <Section
         title="Upcoming bookings"
         empty="No bookings yet"
-        emptyText="Book a clean for one of your properties."
+        emptyText="Request cleaning for one of your properties."
       >
         {(upcoming as Job[] | null)?.map((j) => (
           <JobCard key={j.id} job={j} />
@@ -191,7 +213,7 @@ function JobCard({ job, ready = false }: { job: Job; ready?: boolean }) {
         )}
         <p className="font-black">{p?.nickname || "Property"}</p>
         <p className="text-sm font-semibold text-[#657089]">
-          {job.service.replaceAll("_"," ")} ·{" "}
+          {job.service.replaceAll("_", " ")} ·{" "}
           {formatBusinessDateTime(
             job.scheduled_start ||
               (job as unknown as { completed_at: string }).completed_at,

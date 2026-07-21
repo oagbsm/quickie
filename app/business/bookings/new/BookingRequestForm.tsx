@@ -1,6 +1,6 @@
 "use client";
-import { useMemo, useState } from "react";
-import { createBooking } from "../../actions";
+import { useActionState, useMemo, useState } from "react";
+import { createBooking, type BookingActionState } from "../../actions";
 import {
   calculatePilotQuote,
   formatDuration,
@@ -10,6 +10,7 @@ import {
   type PilotFrequency,
   type PilotService,
 } from "@/lib/business/pricing";
+import { getPilotStartTimes } from "@/lib/business/time";
 type Property = {
   id: string;
   nickname: string;
@@ -35,7 +36,12 @@ export default function BookingRequestForm({
     [frequency, setFrequency] = useState<PilotFrequency>("one_off"),
     [extras, setExtras] = useState<PilotExtra[]>([]),
     [date, setDate] = useState(""),
-    [time, setTime] = useState("");
+    [time, setTime] = useState(""),
+    [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [submission, formAction, pending] = useActionState<
+    BookingActionState,
+    FormData
+  >(createBooking, { message: "" });
   const property = properties.find((p) => p.id === propertyId),
     outside = property && property.service_area_status !== "eligible",
     quote = useMemo(
@@ -53,6 +59,9 @@ export default function BookingRequestForm({
           : null,
       [property, service, frequency, extras],
     ),
+    availableTimes = quote
+      ? getPilotStartTimes(quote.estimatedDurationMinutes)
+      : [],
     c =
       "mt-2 min-h-11 w-full rounded-xl border border-[#dbe1ea] bg-white px-4 py-3 outline-none focus:border-[#079448] focus:ring-4 focus:ring-[#079448]/10";
   function toggle(extra: PilotExtra) {
@@ -69,9 +78,10 @@ export default function BookingRequestForm({
   }
   return (
     <form
-      action={createBooking}
+      action={formAction}
       className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"
     >
+      <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       <div className="rounded-2xl border bg-white p-5 sm:p-7">
         <div className="mb-7 flex gap-2" aria-label={`Step ${step} of 4`}>
           {[1, 2, 3, 4].map((n) => (
@@ -204,19 +214,25 @@ export default function BookingRequestForm({
             </label>
             <label className="font-bold">
               Preferred start time
-              <input
+              <select
                 name="time"
-                type="time"
-                min="07:00"
-                max="20:00"
-                step="1800"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
                 className={c}
                 required
-              />
+              >
+                <option value="" disabled>
+                  Select a start time
+                </option>
+                {availableTimes.map((slot) => (
+                  <option key={slot} value={slot}>
+                    {slot}
+                  </option>
+                ))}
+              </select>
               <span className="mt-1 block text-xs text-[#657089]">
-                Choose a 30-minute slot.
+                Monday–Saturday. Times shown are UK local time and allow the
+                clean to finish by 18:00.
               </span>
             </label>
           </div>
@@ -290,14 +306,15 @@ export default function BookingRequestForm({
             </div>
           )}
         </section>
-        {error && (
+        {(error || submission.message) && (
           <p
             role="alert"
             className="mt-5 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800"
           >
-            {error === "outside_area"
-              ? "This property is outside the current Slough service area."
-              : "Please check the booking details and try again."}
+            {submission.message ||
+              (error === "outside_area"
+                ? "This property is outside the current Slough service area."
+                : "Please check the booking details and try again.")}
           </p>
         )}
         <div className="mt-7 flex gap-3">
@@ -325,12 +342,16 @@ export default function BookingRequestForm({
             </button>
           ) : (
             <button
-              disabled={!quote || Boolean(outside)}
+              disabled={
+                !quote || Boolean(outside) || pending || !idempotencyKey
+              }
               className="min-h-11 flex-1 rounded-xl bg-[#079448] px-5 font-black text-white disabled:opacity-40"
             >
-              {quote?.requiresManualReview
-                ? "Send request for price review"
-                : `Book clean for ${formatMoney(quote?.estimatedPricePence || 0)}`}
+              {pending
+                ? "Submitting request…"
+                : quote?.requiresManualReview
+                  ? "Send request for price review"
+                  : `Request clean for ${formatMoney(quote?.estimatedPricePence || 0)}`}
             </button>
           )}
         </div>

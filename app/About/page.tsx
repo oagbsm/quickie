@@ -1,5 +1,63 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import Header from "../homepagecomponents/Header";
 import Footer from "../components/Footer";
-export const metadata: Metadata = { title: "About Quickola Property Services", description: "Quickola delivers professional domestic, Airbnb and commercial cleaning across Slough." };
-export default function AboutPage(){return <main className="min-h-screen bg-white text-[#071638]"><Header/><section className="bg-[#061a3d] px-5 pb-20 pt-28 text-white sm:px-8 lg:pt-40"><div className="mx-auto max-w-[1080px]"><p className="text-[11px] font-black uppercase tracking-[.16em] text-[#4bd35f]">About Quickola</p><h1 className="mt-4 max-w-[820px] text-[44px] font-black leading-[.98] tracking-[-.05em] sm:text-[66px]">Property care, made refreshingly straightforward.</h1><p className="mt-5 max-w-[650px] text-[17px] font-semibold leading-7 text-white/72">Quickola is a Slough property services company. We currently deliver professional cleaning for homes, Airbnb properties and businesses, with broader property maintenance to follow.</p></div></section><section className="px-5 py-16 sm:px-8 lg:py-24"><div className="mx-auto grid max-w-[1080px] gap-5 md:grid-cols-3">{[["Book directly","Customers book with Quickola. We take responsibility for the experience from pricing through completion."],["Know the cost","Time-based pricing uses the property, condition and tasks you select—so the price reflects the work."],["Built around property","Domestic cleaning is only the beginning. Our service is designed to support complete property care over time."]].map(([title,text])=><article key={title} className="rounded-[22px] border border-[#e1e8ef] p-7"><h2 className="text-[22px] font-black">{title}</h2><p className="mt-3 text-[15px] font-semibold leading-7 text-[#667188]">{text}</p></article>)}</div></section><Footer/></main>}
+export const metadata: Metadata = {
+  title: "About Quickola | Managed business cleaning",
+  description:
+    "Quickola coordinates managed cleaning for property professionals and businesses in the Slough area.",
+};
+export default function Page() {
+  return (
+    <main className="min-h-screen bg-white text-[#071638]">
+      <Header />
+      <section className="bg-[#061a3d] px-5 py-20 text-white sm:px-8">
+        <div className="mx-auto max-w-[1080px]">
+          <p className="text-xs font-black uppercase tracking-[.16em] text-[#4bd35f]">
+            About Quickola
+          </p>
+          <h1 className="mt-4 max-w-4xl text-5xl font-black leading-none tracking-[-.05em] sm:text-6xl">
+            Cleaning operations should not depend on scattered messages.
+          </h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-white/72">
+            Quickola coordinates cleaning for organisations managing properties,
+            accommodation and business premises. The controlled pilot begins in
+            Slough.
+          </p>
+        </div>
+      </section>
+      <section className="px-5 py-18 sm:px-8">
+        <div className="mx-auto grid max-w-[1080px] gap-10 lg:grid-cols-3">
+          {[
+            [
+              "One accountable service",
+              "Customers request work from Quickola. We coordinate the operational response rather than acting as a public cleaner directory.",
+            ],
+            [
+              "Clear requested and confirmed states",
+              "A requested time is not presented as confirmed until availability has actually been reviewed.",
+            ],
+            [
+              "A focused cleaning platform",
+              "The account keeps properties, cleaning requests and service history together without pretending to be a general property CRM.",
+            ],
+          ].map(([h, p]) => (
+            <article key={h} className="border-t-2 border-[#071638] pt-5">
+              <h2 className="text-xl font-black">{h}</h2>
+              <p className="mt-3 leading-7 text-[#657089]">{p}</p>
+            </article>
+          ))}
+        </div>
+        <div className="mx-auto mt-14 max-w-[1080px]">
+          <Link
+            href="/business/enquire"
+            className="inline-flex rounded-xl bg-[#079448] px-6 py-4 font-black text-white"
+          >
+            Discuss your cleaning requirements
+          </Link>
+        </div>
+      </section>
+      <Footer />
+    </main>
+  );
+}

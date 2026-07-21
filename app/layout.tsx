@@ -11,11 +11,11 @@ const nunito = Nunito_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.quickola.co.uk"),
   title: {
-    default: "Quickola Property Services | Professional Cleaning in Slough",
+    default: "Quickola | Managed cleaning for properties and businesses",
     template: "%s",
   },
   description:
-    "Professional domestic, Airbnb and commercial cleaning across Slough. Get an instant price, choose a time and book online.",
+    "Managed cleaning for property professionals, accommodation operators, offices and businesses in the Slough area.",
   applicationName: "Quickola",
   authors: [{ name: "Quickola" }],
   creator: "Quickola",
@@ -26,15 +26,19 @@ export const metadata: Metadata = {
       { url: "/quickola/logo-mark.png", type: "image/png" },
     ],
     shortcut: "/quickola/favicon.png",
-    apple: { url: "/quickola/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    apple: {
+      url: "/quickola/apple-touch-icon.png",
+      sizes: "180x180",
+      type: "image/png",
+    },
   },
   openGraph: {
     type: "website",
     url: "https://www.quickola.co.uk",
     siteName: "Quickola",
-    title: "Quickola Property Services | Professional Cleaning in Slough",
+    title: "Quickola | Managed cleaning for properties and businesses",
     description:
-      "Professional domestic, Airbnb and commercial cleaning across Slough. Get an instant price and book online.",
+      "Organise and track managed cleaning for properties, portfolios and business premises in the Slough area.",
     images: [
       {
         url: "/quickola/logo-mark.png",
@@ -46,9 +50,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Quickola Property Services | Professional Cleaning in Slough",
+    title: "Quickola | Managed cleaning for properties and businesses",
     description:
-      "Professional domestic, Airbnb and commercial cleaning across Slough.",
+      "Managed cleaning for property professionals and businesses in the Slough area.",
     images: ["/quickola/logo-mark.png"],
   },
   robots: {
@@ -63,15 +67,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth" className={nunito.variable}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      data-scroll-behavior="smooth"
+      className={nunito.variable}
+    >
       <head>
-        <link rel="icon" href="/quickola/favicon.png" type="image/png" sizes="32x32" />
+        <link
+          rel="icon"
+          href="/quickola/favicon.png"
+          type="image/png"
+          sizes="32x32"
+        />
         <link rel="shortcut icon" href="/quickola/favicon.png" />
-        <link rel="apple-touch-icon" href="/quickola/apple-touch-icon.png" sizes="180x180" />
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5953875387948501"
-          crossOrigin="anonymous"
+        <link
+          rel="apple-touch-icon"
+          href="/quickola/apple-touch-icon.png"
+          sizes="180x180"
         />
       </head>
       <body suppressHydrationWarning className="min-h-full font-sans">
