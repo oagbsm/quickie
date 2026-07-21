@@ -109,6 +109,7 @@ export default function Sidebar({
       <nav className="mt-5 grid gap-2">
         <NavButton active={activeTab === "requests"} label="Requests" count={requestCount} href="/qk-ops-7f3a?tab=requests" />
         <NavButton active={activeTab === "businesses"} label="Providers" count={businessCount} href="/qk-ops-7f3a?tab=businesses" />
+        <a href="/qk-ops-7f3a/business-portal" className="flex h-11 items-center rounded-[13px] bg-white px-4 text-[14px] font-black text-[#44506a] ring-1 ring-[#e1e6ee] hover:text-[#071638]">Business portal</a>
       </nav>
 
       {activeTab === "requests" ? (

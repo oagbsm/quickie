@@ -57,6 +57,9 @@ export default function Footer() {
             <div className="grid gap-2 text-[14px] font-extrabold text-[#071638]">
               <a href="/privacy-policy" className="hover:text-[#08783f]">Privacy Policy</a>
               <a href="/terms" className="hover:text-[#08783f]">Terms</a>
+              <a href="/business/legal/terms" className="hover:text-[#08783f]">Business Terms</a>
+              <a href="/business/legal/cancellation" className="hover:text-[#08783f]">Cancellations</a>
+              <a href="/cookies" className="hover:text-[#08783f]">Cookies</a>
               <a href="/contact" className="hover:text-[#08783f]">Contact form</a>
             </div>
           </div>

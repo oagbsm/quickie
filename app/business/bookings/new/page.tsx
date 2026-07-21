@@ -1,2 +1,55 @@
-import Link from "next/link";import {requireBusinessUser} from "@/lib/business/auth";import {createBooking} from "../../actions";
-export default async function Page({searchParams}:{searchParams:Promise<{property?:string,error?:string}>}){const q=await searchParams;const{supabase,accountId}=await requireBusinessUser();const{data:properties}=await supabase.from("properties").select("id,nickname").eq("account_id",accountId).eq("status","active").order("nickname");const c="mt-1.5 w-full rounded-xl border border-[#dbe1ea] bg-white px-4 py-3";return <div className="mx-auto max-w-3xl"><Link href="/business/bookings" className="text-sm font-black text-[#657089]">← Bookings</Link><h1 className="mt-4 text-3xl font-black">Book a service</h1><p className="mt-2 mb-6 text-[#657089]">Choose the property, service and preferred time. We’ll confirm availability.</p>{!properties?.length?<div className="rounded-2xl border bg-white p-7"><p className="font-black">Add a property before booking.</p><Link href="/business/properties/new" className="mt-3 inline-block text-[#079448] font-black">Add property</Link></div>:<form action={createBooking} className="grid gap-5 rounded-2xl border bg-white p-6"><label className="font-bold">Property<select name="propertyId" className={c} defaultValue={q.property||""} required><option value="" disabled>Select a property</option>{properties.map(p=><option key={p.id} value={p.id}>{p.nickname}</option>)}</select></label><label className="font-bold">Service<select name="service" className={c} required defaultValue="regular_cleaning"><option value="regular_cleaning">Regular cleaning</option><option value="deep_cleaning">Deep cleaning</option><option value="airbnb_turnover">Airbnb turnover</option><option value="end_of_tenancy">End-of-tenancy cleaning</option><option value="after_builders">After-builders cleaning</option></select></label><div className="grid gap-4 sm:grid-cols-2"><label className="font-bold">Preferred date<input className={c} name="date" type="date" min={new Date().toISOString().slice(0,10)} required/></label><label className="font-bold">Preferred time<input className={c} name="time" type="time" required/></label></div><label className="font-bold">Frequency<select name="recurrence" className={c}><option value="one_off">One-off</option><option value="weekly">Weekly</option><option value="fortnightly">Fortnightly</option><option value="monthly">Monthly</option></select></label><fieldset className="rounded-xl bg-[#f5f7fa] p-4"><legend className="px-1 font-black">Airbnb turnover details (if applicable)</legend><div className="mt-2 grid gap-4 sm:grid-cols-2"><label className="font-bold">Checkout time<input className={c} name="checkoutTime" type="time"/></label><label className="font-bold">Next check-in<input className={c} name="nextCheckin" type="datetime-local"/></label></div><div className="mt-4 grid gap-2 sm:grid-cols-2">{[["linenRequired","Linen change"],["laundryRequired","Laundry"],["restockingRequired","Restocking"],["damageCheckRequired","Damage check"]].map(([n,l])=><label key={n} className="flex gap-2 font-bold"><input type="checkbox" name={n}/>{l}</label>)}</div></fieldset><label className="font-bold">Cleaning requirements<textarea className={c} name="requirements" rows={4}/></label><div className="rounded-xl bg-[#edf7f1] p-4 text-sm font-semibold">Standard services receive confirmation after availability is checked. End-of-tenancy and after-builders jobs are reviewed before the price and booking become active.</div>{q.error&&<p className="text-sm font-bold text-red-700">Please check the form and try again.</p>}<button className="rounded-xl bg-[#079448] p-3.5 font-black text-white">Request booking</button></form>}</div>}
+import Link from "next/link";
+import { requireBusinessUser } from "@/lib/business/auth";
+import BookingRequestForm from "./BookingRequestForm";
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ property?: string; error?: string }>;
+}) {
+  const q = await searchParams,
+    { supabase, accountId } = await requireBusinessUser(),
+    { data } = await supabase
+      .from("properties")
+      .select(
+        "id,nickname,address_line_1,postcode,property_type,bedrooms,bathrooms,service_area_status",
+      )
+      .eq("account_id", accountId)
+      .eq("status", "active")
+      .order("nickname"),
+    properties = data || [];
+  return (
+    <div>
+      <Link
+        href="/business/bookings"
+        className="text-sm font-black text-[#657089]"
+      >
+        ← Bookings
+      </Link>
+      <h1 className="mt-4 text-3xl font-black">Book a clean</h1>
+      <p className="mt-2 mb-6 text-[#657089]">
+        See your estimated price before confirming. Managed cleaning is
+        currently available in Slough.
+      </p>
+      {properties.length ? (
+        <BookingRequestForm
+          properties={properties}
+          selected={q.property}
+          error={q.error}
+        />
+      ) : (
+        <div className="rounded-2xl border border-dashed bg-white p-8 text-center">
+          <h2 className="text-xl font-black">No properties yet</h2>
+          <p className="mt-2 text-[#657089]">
+            Add your first property to book and manage cleaning.
+          </p>
+          <Link
+            href="/business/properties/new"
+            className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-[#079448] px-5 font-black text-white"
+          >
+            Add property
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}

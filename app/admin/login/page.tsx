@@ -1,0 +1,1 @@
+import AdminLoginForm from"./AdminLoginForm";export const metadata={title:"Admin sign in | Quickola"};export default function Page(){return <main className="grid min-h-screen place-items-center bg-[#eef2f5] p-5"><div className="w-full max-w-md"><AdminLoginForm/></div></main>}

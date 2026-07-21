@@ -42,5 +42,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/business/:path*", "/qk-ops-7f3a/:path*", "/.2SADXWEDX@%3E%23@%232/:path*"],
+  matcher: ["/admin/:path*", "/business/:path*", "/qk-ops-7f3a/:path*", "/.2SADXWEDX@%3E%23@%232/:path*"],
 };

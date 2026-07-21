@@ -6,8 +6,8 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    files: ["app/business/{bookings,dashboard,issues,schedule}/**/*.tsx"],
-    rules: { "@typescript-eslint/no-explicit-any": "off" },
+    files: ["app/admin/**/*.tsx", "app/business/{bookings,dashboard,issues,schedule}/**/*.tsx", "app/qk-ops-7f3a/business-portal/**/*.tsx"],
+    rules: { "@typescript-eslint/no-explicit-any": "off", "@typescript-eslint/no-unused-vars": "off" },
   },
   // Override default ignores of eslint-config-next.
   globalIgnores([

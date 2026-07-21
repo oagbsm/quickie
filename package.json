@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
+    ,"test:phase1": "node --experimental-strip-types --experimental-default-type=module --test tests/phase1.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
