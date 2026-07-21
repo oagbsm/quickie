@@ -57,16 +57,19 @@ export function validatePilotSchedule(
   const requested = londonLocalToUtc(date, time);
   if (Number.isNaN(requested.getTime()))
     return { ok: false as const, reason: "invalid_slot" };
-  const londonWeekday = Number(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone: BUSINESS_TIME_ZONE,
-      weekday: "short",
-    })
-      .format(requested)
-      .replace(/.*/, (day) =>
-        String(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(day)),
-      ),
-  );
+  const dayName = new Intl.DateTimeFormat("en-GB", {
+    timeZone: BUSINESS_TIME_ZONE,
+    weekday: "short",
+  }).format(requested);
+  const londonWeekday = [
+    "Sun",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+  ].indexOf(dayName);
   if (
     !PILOT_SCHEDULE.operatingDays.includes(
       londonWeekday as 1 | 2 | 3 | 4 | 5 | 6,
