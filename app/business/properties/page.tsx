@@ -3,6 +3,7 @@ import { requireBusinessUser } from "@/lib/business/auth";
 import { joinServiceAreaWaitlist } from "../actions";
 import ArchivePropertyForm from "./ArchivePropertyForm";
 import { formatBusinessDateTime } from "@/lib/business/time";
+import { activeBookingStatuses, isBookingStatus } from "@/lib/business/booking-status";
 export default async function Page() {
   const { supabase, accountId } = await requireBusinessUser(),
     { data } = await supabase
@@ -31,35 +32,15 @@ export default async function Page() {
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {data?.length ? (
           data.map((p) => {
-            const bookings = (p.business_bookings || []).filter((b) =>
-                [
-                  "requested",
-                  "under_review",
-                  "confirmed",
-                  "awaiting_customer_confirmation",
-                  "provider_assigned",
-                  "on_the_way",
-                  "arrived",
-                  "in_progress",
-                ].includes(b.status),
+            const bookings = (p.business_bookings || []).filter(
+                (b) => isBookingStatus(b.status) && activeBookingStatuses.includes(b.status),
               ),
               next = bookings
                 .filter((b) => new Date(b.scheduled_start) > new Date())
                 .sort((a, b) =>
                   a.scheduled_start.localeCompare(b.scheduled_start),
                 )[0],
-              active = bookings.some((b) =>
-                [
-                  "requested",
-                  "under_review",
-                  "confirmed",
-                  "awaiting_customer_confirmation",
-                  "provider_assigned",
-                  "on_the_way",
-                  "arrived",
-                  "in_progress",
-                ].includes(b.status),
-              );
+              active = bookings.length > 0;
             return (
               <article
                 key={p.id}

@@ -33,7 +33,7 @@ export default async function Layout({
         </div>
       </header>
       <div className="mx-auto grid max-w-[1400px] lg:grid-cols-[220px_1fr]">
-        <aside className="border-b bg-white p-3 lg:min-h-[calc(100vh-4rem)] lg:border-b-0 lg:border-r lg:p-5">
+        <aside className="min-w-0 overflow-hidden border-b bg-white p-3 lg:min-h-[calc(100vh-4rem)] lg:border-b-0 lg:border-r lg:p-5">
           <PortalNav />
         </aside>
         <main className="min-w-0 p-4 sm:p-7 lg:p-9">{children}</main>

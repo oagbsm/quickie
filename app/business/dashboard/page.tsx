@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { requireBusinessUser } from "@/lib/business/auth";
-import { activeBookingStatuses, customerActionStatuses, getBookingStatus } from "@/lib/business/booking-status";
+import { activeBookingStatuses, getDashboardBanner, formatServiceLabel } from "@/lib/business/booking-status";
+import { BookingStatusBadge } from "@/app/business/components/BookingPresentation";
 import { formatBusinessDateTime } from "@/lib/business/time";
 type Job = {
   id: string;
   service: string;
   scheduled_start: string;
   status: string;
+  completed_at?: string | null;
   properties: { nickname: string } | { nickname: string }[] | null;
 };
 export default async function Page() {
@@ -15,9 +17,9 @@ export default async function Page() {
   const [
     { count: properties },
     { data: upcoming },
+    { count: upcomingCount },
     { data: completed },
-    { count: attention },
-    { count: overdue },
+    { data: attentionBookings },
     { data: outside },
     { data: notifications },
   ] = await Promise.all([
@@ -36,21 +38,21 @@ export default async function Page() {
       .limit(6),
     supabase
       .from("business_bookings")
-      .select("id,service,completed_at,status,properties(nickname)")
+      .select("id", { count: "exact", head: true })
+      .eq("account_id", accountId)
+      .gte("scheduled_start", now.toISOString())
+      .in("status", [...activeBookingStatuses]),
+    supabase
+      .from("business_bookings")
+      .select("id,service,scheduled_start,completed_at,status,properties(nickname)")
       .eq("account_id", accountId)
       .eq("status", "completed")
       .order("completed_at", { ascending: false })
       .limit(4),
     supabase
       .from("business_bookings")
-      .select("id", { count: "exact", head: true })
+      .select("id,status")
       .eq("account_id", accountId)
-      .in("status", [...customerActionStatuses]),
-    supabase
-      .from("business_bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("account_id", accountId)
-      .lt("scheduled_start", now.toISOString())
       .in("status", [...activeBookingStatuses]),
     supabase
       .from("properties")
@@ -66,26 +68,17 @@ export default async function Page() {
       .order("sent_at", { ascending: false })
       .limit(4),
   ]);
-  const danger = (overdue || 0) > 0,
-    warning = (attention || 0) > 0;
+  const banner = getDashboardBanner((attentionBookings || []).map((booking) => booking.status));
   return (
     <div>
       <div
-        className={`rounded-2xl p-5 ${danger ? "bg-red-50 text-red-900" : warning ? "bg-amber-50 text-amber-950" : "bg-[#eaf7ef] text-[#075d35]"}`}
+        className={`rounded-2xl p-5 ${banner.actionRequired ? "bg-amber-50 text-amber-950" : "bg-[#eaf7ef] text-[#075d35]"}`}
       >
         <p className="text-xl font-black">
-          {danger
-            ? `Action required on ${overdue} booking${overdue === 1 ? "" : "s"}`
-            : warning
-              ? `${attention} price change${attention === 1 ? "" : "s"} need${attention === 1 ? "s" : ""} your approval`
-              : "Everything is on track"}
+          {banner.title}
         </p>
         <p className="mt-1 text-sm font-semibold">
-          {danger
-            ? "A booking is past its requested time and needs review."
-            : warning
-              ? "Open the booking to review and accept the updated price."
-              : "No action is needed from you."}
+          {banner.copy}
         </p>
       </div>
       <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
@@ -104,8 +97,8 @@ export default async function Page() {
       </div>
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <Stat label="Properties" value={properties || 0} />
-        <Stat label="Upcoming bookings" value={upcoming?.length || 0} />
-        <Stat label="Need attention" value={attention || 0} />
+        <Stat label="Upcoming bookings" value={upcomingCount || 0} />
+        <Stat label="Need attention" value={(attentionBookings || []).filter((booking) => booking.status === "awaiting_customer_confirmation").length} />
       </div>
       {outside?.length ? (
         <section className="mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-5">
@@ -137,7 +130,7 @@ export default async function Page() {
       <Section
         title="Recently completed"
         empty="No completed cleans yet"
-        emptyText="Completed cleans will appear here."
+        emptyText="Completed services and their recorded completion details will appear here."
       >
         {(completed as Job[] | null)?.map((j) => (
           <JobCard
@@ -201,16 +194,13 @@ function JobCard({ job, ready = false }: { job: Job; ready?: boolean }) {
         )}
         <p className="font-black">{p?.nickname || "Property"}</p>
         <p className="text-sm font-semibold text-[#657089]">
-          {job.service.replaceAll("_", " ")} ·{" "}
+          {formatServiceLabel(job.service)} ·{" "}
           {formatBusinessDateTime(
-            job.scheduled_start ||
-              (job as unknown as { completed_at: string }).completed_at,
+            job.completed_at || job.scheduled_start,
           )}
         </p>
       </div>
-      <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-black text-[#08783f]">
-        {getBookingStatus(job.status).customerLabel}
-      </span>
+      <BookingStatusBadge status={job.status} />
     </Link>
   );
 }

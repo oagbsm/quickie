@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireBusinessUser } from "@/lib/business/auth";
-import { getBookingStatus } from "@/lib/business/booking-status";
+import { formatServiceLabel, getPricePresentation } from "@/lib/business/booking-status";
+import { BookingStatusBadge } from "@/app/business/components/BookingPresentation";
 import { formatBusinessDateTime } from "@/lib/business/time";
 import { formatMoney } from "@/lib/business/pricing";
 export default async function Page({
@@ -30,14 +31,14 @@ export default async function Page({
           href="/business/bookings/new"
           className="inline-flex min-h-11 items-center rounded-xl bg-[#079448] px-4 font-black text-white"
         >
-          New booking
+          Request a clean
         </Link>
       </div>
       {q.created && (
         <div className="mt-5 rounded-xl bg-emerald-50 p-4 text-emerald-900">
-          <p className="font-black">Booking requested</p>
+          <p className="font-black">Booking received</p>
           <p className="mt-1 text-sm">
-            Quickola will review the requested appointment. Open the booking to see the price and next step.
+            We’ve received your booking. Open it to see the current status and next step.
           </p>
         </div>
       )}
@@ -50,8 +51,7 @@ export default async function Page({
               provider = Array.isArray(b.service_providers)
                 ? b.service_providers[0]
                 : b.service_providers,
-              status = getBookingStatus(b.status),
-              price = b.agreed_price_pence ?? b.estimated_price_pence;
+              price = getPricePresentation(b);
             return (
               <Link
                 href={`/business/bookings/${b.id}`}
@@ -63,7 +63,7 @@ export default async function Page({
                     Booking {b.id.slice(0, 8).toUpperCase()}
                   </p>
                   <h2 className="mt-1 text-lg font-black">
-                    {p?.nickname} · {b.service.replaceAll("_", " ")}
+                    {p?.nickname || "Property"} · {formatServiceLabel(b.service)}
                   </h2>
                   <p className="mt-1 text-sm text-[#657089]">
                     {formatBusinessDateTime(b.scheduled_start)} · {p?.postcode}
@@ -71,13 +71,11 @@ export default async function Page({
                   {provider && <p className="mt-2 text-sm font-bold">Cleaning team: {provider.name}</p>}
                 </div>
                 <div className="sm:text-right">
-                  <span className="inline-flex rounded-full bg-[#eef3f0] px-3 py-1 text-xs font-black text-[#075d35]">
-                    {status.customerLabel}
-                  </span>
+                  <BookingStatusBadge status={b.status} />
                   <p className="mt-3 font-black">
-                    {price == null
-                      ? "Awaiting price"
-                      : `${b.agreed_price_pence != null ? "Agreed" : "Estimated"}: ${formatMoney(price)}`}
+                    {price.amountPence == null
+                      ? price.label
+                      : `${price.label}: ${formatMoney(price.amountPence)}`}
                   </p>
                 </div>
               </Link>

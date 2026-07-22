@@ -293,7 +293,7 @@ export default function BookingRequestForm({
                   <span>
                     {quote.requiresManualReview
                       ? "Estimated range"
-                      : "Estimated total"}
+                      : "Booking total"}
                   </span>
                   <span>
                     {quote.requiresManualReview
@@ -305,13 +305,13 @@ export default function BookingRequestForm({
               <div className="rounded-xl bg-[#edf7f1] p-4 text-sm">
                 <p className="font-black">
                   {quote.requiresManualReview
-                    ? "Request received for review"
-                    : "Booking requested"}
+                    ? "Non-standard request"
+                    : "Calculated booking total"}
                 </p>
                 <p className="mt-1">
                   {quote.requiresManualReview
                     ? "We will confirm your final price before work begins."
-                    : "Quickola will review your requested appointment. You will not be charged more without agreement."}
+                    : "This total is calculated from the property, service, frequency and extras shown above. Your appointment is confirmed separately."}
                 </p>
               </div>
             </div>

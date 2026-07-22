@@ -11,7 +11,7 @@ export default function PortalNav() {
   const path = usePathname();
   return (
     <nav
-      className="flex gap-2 overflow-x-auto lg:grid"
+      className="flex w-full min-w-0 gap-2 overflow-x-auto lg:grid"
       aria-label="Business account navigation"
     >
       {items.map(([label, href]) => {

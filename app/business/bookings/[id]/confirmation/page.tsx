@@ -4,6 +4,7 @@ import { requireBusinessUser } from "@/lib/business/auth";
 import { formatMoney, formatDuration } from "@/lib/business/pricing";
 import { formatBusinessDateTime } from "@/lib/business/time";
 import { getBookingStatus } from "@/lib/business/booking-status";
+import { formatRecurrenceLabel, formatServiceLabel, getPricePresentation } from "@/lib/business/booking-status";
 
 export default async function BookingConfirmationPage({
   params,
@@ -15,7 +16,7 @@ export default async function BookingConfirmationPage({
   const { data: booking } = await supabase
     .from("business_bookings")
     .select(
-      "id,service,recurrence,scheduled_start,duration_minutes,status,estimated_price_pence,estimated_price_max_pence,pricing_mode,payment_status,properties(nickname,address_line_1,postcode)",
+      "id,service,recurrence,scheduled_start,duration_minutes,status,estimated_price_pence,estimated_price_max_pence,agreed_price_pence,pricing_mode,payment_status,properties(nickname,address_line_1,postcode)",
     )
     .eq("id", id)
     .eq("account_id", accountId)
@@ -24,7 +25,8 @@ export default async function BookingConfirmationPage({
   const property = Array.isArray(booking.properties)
     ? booking.properties[0]
     : booking.properties;
-  const manual = booking.pricing_mode === "manual_review";
+  const presentation = getBookingStatus(booking.status);
+  const price = getPricePresentation(booking);
   return (
     <div className="mx-auto max-w-3xl">
       <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-10">
@@ -35,14 +37,13 @@ export default async function BookingConfirmationPage({
           ✓
         </div>
         <p className="mt-6 text-xs font-black uppercase tracking-[.14em] text-[#08783f]">
-          Booking received
+          {presentation.customerLabel}
         </p>
         <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
-          Your cleaning request has been submitted.
+          {presentation.customerTitle}
         </h1>
         <p className="mt-4 leading-7 text-[#657089]">
-          Quickola will review the appointment details and confirm the next step. This
-          request is not yet a confirmed appointment.
+          {presentation.customerCopy} {presentation.actionCopy}
         </p>
         <dl className="mt-8 grid gap-4 rounded-2xl bg-[#f4f6f9] p-5 sm:grid-cols-2">
           <Item
@@ -51,36 +52,36 @@ export default async function BookingConfirmationPage({
           />
           <Item
             label="Status"
-            value={getBookingStatus(booking.status).customerLabel}
+            value={presentation.customerLabel}
           />
           <Item
             label="Property"
             value={`${property?.nickname || "Property"}, ${property?.postcode || ""}`}
           />
-          <Item label="Service" value={booking.service.replaceAll("_", " ")} />
+          <Item label="Service" value={formatServiceLabel(booking.service)} />
           <Item
             label="Requested start"
             value={formatBusinessDateTime(booking.scheduled_start)}
           />
           <Item
             label="Frequency"
-            value={booking.recurrence.replaceAll("_", " ")}
+            value={formatRecurrenceLabel(booking.recurrence)}
           />
           <Item
             label="Estimated duration"
             value={formatDuration(booking.duration_minutes || 0)}
           />
           <Item
-            label={manual ? "Estimated range" : "Estimated price"}
+            label={price.label}
             value={
-              manual
-                ? `${formatMoney(booking.estimated_price_pence)}–${formatMoney(booking.estimated_price_max_pence || booking.estimated_price_pence)}`
-                : formatMoney(booking.estimated_price_pence)
+              price.amountPence == null ? "To be confirmed" : price.maximumPence
+                ? `${formatMoney(price.amountPence)}–${formatMoney(price.maximumPence)}`
+                : formatMoney(price.amountPence)
             }
           />
           <Item
             label="Payment"
-            value="No payment is due until the booking is confirmed."
+            value={booking.payment_status === "paid" ? "Payment received" : "No payment has been collected."}
           />
         </dl>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
