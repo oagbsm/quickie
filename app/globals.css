@@ -3,6 +3,16 @@
 :root {
   --background: #ffffff;
   --foreground: #071638;
+  --public-navy: #06172f;
+  --public-green: #08783f;
+  --public-mint: #eaf4ed;
+  --public-surface: #f5f7f6;
+  --public-muted: #526078;
+  --public-border: #dfe6e3;
+  --public-container: 1120px;
+  --public-display: clamp(2.5rem, 5vw, 4rem);
+  --public-page-title: clamp(2.35rem, 4.5vw, 3.5rem);
+  --public-section-title: clamp(1.85rem, 3vw, 2.65rem);
 }
 
 @theme inline {
@@ -22,42 +32,58 @@
   top: 1rem;
   z-index: 100;
   transform: translateY(-180%);
-  border-radius: .5rem;
+  border-radius: 0.5rem;
   background: #fff;
-  padding: .75rem 1rem;
-  font-weight: 900;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-weight: 700;
   color: #071638;
 }
 
-.skip-link:focus { transform: translateY(0); }
+.skip-link:focus {
+  transform: translateY(0);
+}
 
 .button-primary {
   display: inline-flex;
   min-height: 2.75rem;
   align-items: center;
   justify-content: center;
-  border-radius: .65rem;
+  border-radius: 0.65rem;
   background: #08783f;
-  padding: .7rem 1rem;
+  padding: 0.7rem 1rem;
   font-weight: 900;
   color: white;
 }
 
-.button-primary:hover { background: #075f31; }
+.button-primary:hover {
+  background: #075f31;
+}
 
 .eyebrow {
   color: #08783f;
-  font-size: .75rem;
-  font-weight: 900;
-  letter-spacing: .16em;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.public-menu[open] summary { background: #f2f7f4; }
+.public-menu[open] summary {
+  background: #f2f7f4;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 html {
@@ -70,6 +96,106 @@ body {
   font-family: var(--font-nunito), Arial, Helvetica, sans-serif;
 }
 
+.public-shell {
+  min-width: 320px;
+  background: #fff;
+  color: var(--public-navy);
+}
+.public-container {
+  width: min(var(--public-container), calc(100% - 2.5rem));
+  margin-inline: auto;
+}
+.public-section {
+  padding-block: clamp(4.5rem, 8vw, 7rem);
+}
+.public-hero {
+  background: var(--public-navy);
+  color: #fff;
+  padding-block: clamp(4.75rem, 8vw, 7rem);
+}
+.public-display,
+.public-page-title,
+.public-section-title {
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.public-display {
+  font-size: var(--public-display);
+  line-height: 1.03;
+}
+.public-page-title {
+  font-size: var(--public-page-title);
+  line-height: 1.05;
+}
+.public-section-title {
+  font-size: var(--public-section-title);
+  line-height: 1.1;
+}
+.public-card-title {
+  font-size: clamp(1.2rem, 2vw, 1.4rem);
+  line-height: 1.25;
+  font-weight: 700;
+}
+.public-body-lg {
+  font-size: clamp(1.0625rem, 1.7vw, 1.18rem);
+  line-height: 1.65;
+}
+.public-body {
+  font-size: 1rem;
+  line-height: 1.65;
+}
+.public-muted {
+  color: var(--public-muted);
+}
+.public-button {
+  display: inline-flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.65rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.public-button-primary {
+  background: var(--public-green);
+  color: #fff;
+}
+.public-button-primary:hover {
+  background: #066633;
+}
+.public-button-secondary {
+  border: 1px solid #cbd6d0;
+  color: var(--public-navy);
+  background: transparent;
+}
+.public-hero .public-button-primary {
+  background: #21b652;
+  color: #04172e;
+}
+.public-hero .public-button-secondary {
+  border-color: rgb(255 255 255 / 0.38);
+  color: #fff;
+}
+.public-note {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--public-muted);
+}
+.public-hero .public-note {
+  color: rgb(255 255 255 / 0.66);
+}
+
+@media (max-width: 640px) {
+  .public-container {
+    width: min(var(--public-container), calc(100% - 2rem));
+  }
+  .public-section {
+    padding-block: 4rem;
+  }
+}
+
 input,
 button,
 select,
@@ -78,7 +204,8 @@ textarea {
 }
 
 @keyframes quickolaPriceReadyPulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0) scale(1);
     box-shadow: 0 12px 24px rgba(7, 131, 63, 0.2);
   }
@@ -89,7 +216,8 @@ textarea {
 }
 
 @keyframes quickolaPriceReadyArrow {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0);
   }
   50% {

@@ -13,7 +13,7 @@
 
 .imagePreview {
   min-height: 0;
-  max-height: 610px;
+  max-height: 560px;
   overflow: hidden;
   padding: 12px;
   background: #fff;
@@ -23,9 +23,10 @@
   display: block;
   width: 100%;
   height: auto;
-  max-height: 586px;
+  max-height: 536px;
   border-radius: 10px;
-  object-fit: contain;
+  object-fit: cover;
+  object-position: top;
 }
 
 .headerCta,

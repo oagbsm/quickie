@@ -2,6 +2,91 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Header from "@/app/homepagecomponents/Header";
 import Footer from "@/app/components/Footer";
-export const metadata:Metadata={title:"How Quickola managed cleaning works",description:"Learn how businesses add properties, request cleans, receive managed cleaner assignment and track completion in Slough.",alternates:{canonical:"/how-it-works"}};
-const steps=[["1","Add your properties","Approved customers save the address, property detail, access method and cleaning instructions in their secure account.","The next request starts with an accurate reusable brief."],["2","Request one-off or recurring cleans","Choose the property, cleaning requirement, date and recurrence. The account records the request without presenting it as confirmed.","Quickola receives one complete operational request."],["3","Quickola reviews and assigns","We check service-area eligibility, requirements and operational suitability before confirmation and assignment.","You are not sent a public list of cleaners to contact."],["4","Track the booking through completion","The customer account shows the booking lifecycle, arrival information when available and the completed service record.","The history stays attached to the property."]];
-export default function Page(){return <div className="min-h-screen bg-white text-[#071638]"><Header/><main id="main-content"><section className="bg-[#071a3b] px-5 py-18 text-white sm:px-8"><div className="mx-auto max-w-[1100px]"><p className="eyebrow !text-[#66dd78]">How it works</p><h1 className="mt-4 max-w-4xl text-5xl font-black leading-none tracking-[-.05em] sm:text-6xl">One managed process for every property clean.</h1><p className="mt-6 max-w-2xl text-lg leading-8 text-white/75">Quickola combines a secure customer account with human operational oversight from request to completion.</p></div></section><section className="px-5 py-18 sm:px-8"><ol className="mx-auto max-w-[1100px]">{steps.map(([n,h,p,o])=><li key={n} className="grid gap-5 border-t border-[#bdc9d0] py-8 sm:grid-cols-[4rem_1fr] lg:grid-cols-[4rem_.8fr_1.2fr]"><span className="text-sm font-black text-[#08783f]">0{n}</span><h2 className="text-2xl font-black">{h}</h2><div><p className="leading-7 text-[#526078]">{p}</p><p className="mt-3 font-bold">{o}</p></div></li>)}</ol></section><section className="bg-[#eaf4ed] px-5 py-14 sm:px-8"><div className="mx-auto flex max-w-[1100px] flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-3xl font-black">What happens after an enquiry?</h2><p className="mt-2 max-w-2xl text-[#526078]">We review the service area and operational fit. Submitting does not guarantee acceptance, and public self-registration is not open.</p></div><Link href="/business/enquire" className="button-primary shrink-0 px-6">Request business access</Link></div></section></main><Footer/></div>}
+
+export const metadata: Metadata = {
+  title: "How Quickola managed cleaning works",
+  description:
+    "Learn how businesses add properties, request cleans, receive managed cleaner assignment and track completion in Slough.",
+  alternates: { canonical: "/how-it-works" },
+};
+const steps = [
+  [
+    "01",
+    "Add your properties",
+    "Save addresses, property details and access instructions.",
+  ],
+  [
+    "02",
+    "Request a clean",
+    "Choose the property, service, date and frequency.",
+  ],
+  [
+    "03",
+    "Quickola arranges the service",
+    "We review the request, then assign and manage the cleaner for the booking.",
+  ],
+  [
+    "04",
+    "Follow the progress",
+    "Track the booking from receipt through confirmation and completion.",
+  ],
+];
+
+export default function Page() {
+  return (
+    <div className="public-shell">
+      <Header />
+      <main id="main-content">
+        <section className="public-hero">
+          <div className="public-container">
+            <p className="eyebrow !text-[#67dc79]">How it works</p>
+            <h1 className="public-page-title mt-5 max-w-[780px]">
+              One clear process from property details to a completed clean.
+            </h1>
+            <p className="public-body-lg mt-6 max-w-[650px] text-white/75">
+              You organise the property and request. Quickola reviews the
+              requirements, coordinates the cleaner and keeps the booking status
+              visible.
+            </p>
+          </div>
+        </section>
+        <section className="public-section">
+          <ol className="public-container">
+            {steps.map(([number, title, copy]) => (
+              <li
+                key={number}
+                className="grid gap-4 border-t border-[#cdd8d2] py-8 sm:grid-cols-[5rem_1fr] lg:grid-cols-[5rem_.8fr_1.2fr] lg:items-start"
+              >
+                <span className="text-sm font-extrabold tracking-[.12em] text-[#08783f]">
+                  {number}
+                </span>
+                <h2 className="public-card-title">{title}</h2>
+                <p className="public-body public-muted max-w-[560px]">{copy}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+        <section className="bg-[#eaf4ed] py-12">
+          <div className="public-container flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-[clamp(1.65rem,3vw,2.1rem)] font-extrabold tracking-[-.03em]">
+                What happens after an enquiry?
+              </h2>
+              <p className="public-body public-muted mt-2 max-w-[650px]">
+                We review your locations, requirements and preferred schedule,
+                then contact you about service coverage and the next step.
+              </p>
+            </div>
+            <Link
+              href="/business/enquire"
+              className="public-button public-button-primary shrink-0"
+            >
+              Request business access
+            </Link>
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </div>
+  );
+}

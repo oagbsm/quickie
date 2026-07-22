@@ -1,4 +1,46 @@
 import type { Metadata } from "next";
 import SolutionPage from "@/app/components/public/SolutionPage";
-export const metadata:Metadata={title:"Managed office and commercial cleaning in Slough | Quickola",description:"Coordinate regular cleaning, site instructions and booking history for offices and commercial premises in Slough.",alternates:{canonical:"/solutions/offices"}};
-export default function Page(){return <SolutionPage eyebrow="Offices & commercial properties" title="A clearer way to manage routine site cleaning." intro="Define the site, access notes and cleaning schedule once, then keep each request and its status in one operational account." problem="Regular site cleaning still needs dependable coordination. Access arrangements, operating hours and site-specific instructions can easily become disconnected from the booked work." uses={["Regular cleaning requirements","Defined site and access instructions","Requested dates and arrival windows","Managed cleaner assignment","Central booking history"]} capabilities={[["Site records","Keep the premises and essential access information in one protected place."],["Recurring requirements","Record the intended frequency while each arrangement remains subject to operational confirmation."],["Managed assignment","Quickola checks the service area and assigns suitable fulfilment."],["Visible progress","Track confirmed, assigned, underway and completed work from the customer account."]]} schedule="Discuss a regular cleaning pattern around how the premises operates. Quickola does not advertise unsupported contract-management, invoicing or compliance software."/>}
+export const metadata: Metadata = {
+  title: "Managed office and commercial cleaning in Slough | Quickola",
+  description:
+    "Coordinate regular cleaning, site instructions and booking history for offices and commercial premises in Slough.",
+  alternates: { canonical: "/solutions/offices" },
+};
+export default function Page() {
+  return (
+    <SolutionPage
+      eyebrow="Offices & commercial properties"
+      title="Keep routine workplace cleaning on a clear schedule."
+      intro="Store site instructions, request recurring cleans and follow each booking while Quickola coordinates the cleaner."
+      sectionTitle="Cleaning that works around your premises."
+      sectionIntro="Keep access windows, communal-area priorities and operating hours with the site so routine cleaning is easier to coordinate."
+      uses={[
+        "Recurring cleaning schedules",
+        "Fixed site and access instructions",
+        "Cleaning around operating hours",
+        "Communal-area requirements",
+        "Booking progress across locations",
+      ]}
+      capabilities={[
+        [
+          "Site records",
+          "Keep entry details, operating hours and cleaning priorities with each workplace.",
+        ],
+        [
+          "Recurring schedules",
+          "Share the frequency and access window that suits how the premises operates.",
+        ],
+        [
+          "Managed assignment",
+          "Quickola coordinates cleaner assignment and the operational handover.",
+        ],
+        [
+          "Multi-site visibility",
+          "Follow current and completed bookings for each saved office location.",
+        ],
+      ]}
+      scheduleTitle="A routine shaped around your working day."
+      schedule="Tell us when the site is accessible and which areas need attention. We review the practical requirements before agreeing a recurring arrangement."
+    />
+  );
+}

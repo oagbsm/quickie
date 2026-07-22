@@ -2,13 +2,122 @@ import Link from "next/link";
 import Header from "@/app/homepagecomponents/Header";
 import Footer from "@/app/components/Footer";
 
-type Props = { eyebrow:string; title:string; intro:string; problem:string; uses:string[]; capabilities:[string,string][]; schedule:string };
-export default function SolutionPage({eyebrow,title,intro,problem,uses,capabilities,schedule}:Props) {
-  return <div className="min-h-screen bg-white text-[#071638]"><Header/><main id="main-content">
-    <section className="bg-[#071a3b] px-5 py-16 text-white sm:px-8 lg:py-22"><div className="mx-auto max-w-[1100px]"><p className="eyebrow !text-[#66dd78]">{eyebrow}</p><h1 className="mt-4 max-w-4xl text-5xl font-black leading-[1] tracking-[-.05em] sm:text-6xl">{title}</h1><p className="mt-6 max-w-2xl text-lg leading-8 text-white/75">{intro}</p><Link href="/business/enquire" className="mt-8 inline-flex min-h-12 items-center rounded-[.65rem] bg-[#66dd78] px-6 font-black text-[#071a3b]">Request business access</Link><p className="mt-4 text-sm font-bold text-white/60">Controlled service currently available in Slough.</p></div></section>
-    <section className="px-5 py-18 sm:px-8"><div className="mx-auto grid max-w-[1100px] gap-10 lg:grid-cols-2"><div><p className="eyebrow">The challenge</p><h2 className="mt-3 text-4xl font-black tracking-[-.04em]">Keep the brief with the property.</h2><p className="mt-5 text-lg leading-8 text-[#526078]">{problem}</p></div><div className="border-y border-[#d8e0e5]">{uses.map(x=><p key={x} className="border-b border-[#d8e0e5] py-4 font-bold last:border-0"><span className="mr-3 text-[#08783f]" aria-hidden="true">✓</span>{x}</p>)}</div></div></section>
-    <section className="bg-[#f2f5f3] px-5 py-18 sm:px-8"><div className="mx-auto max-w-[1100px]"><p className="eyebrow">How Quickola supports the work</p><h2 className="mt-3 max-w-3xl text-4xl font-black tracking-[-.04em]">Managed fulfilment with a clear customer record.</h2><div className="mt-9 grid gap-5 md:grid-cols-2">{capabilities.map(([h,p])=><article key={h} className="border-t-2 border-[#071638] pt-5"><h3 className="text-xl font-black">{h}</h3><p className="mt-2 leading-7 text-[#526078]">{p}</p></article>)}</div></div></section>
-    <section className="px-5 py-18 sm:px-8"><div className="mx-auto max-w-[1100px]"><p className="eyebrow">Scheduling</p><h2 className="mt-3 text-3xl font-black">Requirements that can be reviewed and repeated.</h2><p className="mt-4 max-w-3xl leading-7 text-[#526078]">{schedule}</p><p className="mt-5 max-w-3xl leading-7 text-[#526078]">Quickola reviews service area, requirements and availability before confirming work. It does not pass you a list of cleaners to choose from.</p></div></section>
-    <section className="bg-[#eaf4ed] px-5 py-14 sm:px-8"><div className="mx-auto flex max-w-[1100px] flex-col gap-6 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-3xl font-black">See whether Quickola fits your operation.</h2><p className="mt-2 text-[#526078]">Share your sites and requirements for the controlled Slough service.</p></div><Link href="/business/enquire" className="button-primary shrink-0 px-6">Request business access</Link></div></section>
-  </main><Footer/></div>;
+type Props = {
+  eyebrow: string;
+  title: string;
+  intro: string;
+  sectionTitle: string;
+  sectionIntro: string;
+  uses: string[];
+  capabilities: [string, string][];
+  scheduleTitle: string;
+  schedule: string;
+};
+
+export default function SolutionPage(props: Props) {
+  return (
+    <div className="public-shell">
+      <Header />
+      <main id="main-content">
+        <section className="public-hero">
+          <div className="public-container">
+            <p className="eyebrow !text-[#67dc79]">{props.eyebrow}</p>
+            <h1 className="public-page-title mt-5 max-w-[820px]">
+              {props.title}
+            </h1>
+            <p className="public-body-lg mt-6 max-w-[660px] text-white/75">
+              {props.intro}
+            </p>
+            <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+              <Link
+                href="/business/enquire"
+                className="public-button public-button-primary"
+              >
+                Request business access
+              </Link>
+              <p className="public-note">Serving businesses in Slough.</p>
+            </div>
+          </div>
+        </section>
+        <section className="public-section">
+          <div className="public-container grid gap-12 lg:grid-cols-[.9fr_1.1fr] lg:gap-20">
+            <div>
+              <p className="eyebrow">Built for your workflow</p>
+              <h2 className="public-section-title mt-4">
+                {props.sectionTitle}
+              </h2>
+              <p className="public-body-lg public-muted mt-5">
+                {props.sectionIntro}
+              </p>
+            </div>
+            <ul className="border-t border-[#dbe3df]">
+              {props.uses.map((item) => (
+                <li
+                  key={item}
+                  className="flex gap-3 border-b border-[#dbe3df] py-4 text-[1.02rem] font-semibold"
+                >
+                  <span className="text-[#08783f]" aria-hidden="true">
+                    ✓
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+        <section className="public-section bg-[#f5f7f6]">
+          <div className="public-container">
+            <p className="eyebrow">What stays organised</p>
+            <h2 className="public-section-title mt-4 max-w-[720px]">
+              One clear record for the work that matters.
+            </h2>
+            <div className="mt-10 grid gap-x-10 gap-y-9 md:grid-cols-2">
+              {props.capabilities.map(([heading, copy]) => (
+                <article
+                  key={heading}
+                  className="border-t border-[#9eafa6] pt-5"
+                >
+                  <h3 className="public-card-title">{heading}</h3>
+                  <p className="public-body public-muted mt-3 max-w-[520px]">
+                    {copy}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+        <section className="public-section">
+          <div className="public-container grid gap-6 lg:grid-cols-[.8fr_1.2fr] lg:gap-20">
+            <h2 className="public-section-title">{props.scheduleTitle}</h2>
+            <div>
+              <p className="public-body-lg public-muted">{props.schedule}</p>
+              <p className="public-note mt-5 border-l-2 border-[#08783f] pl-4">
+                We review your locations, cleaning requirements and preferred
+                schedule before confirming service.
+              </p>
+            </div>
+          </div>
+        </section>
+        <section className="bg-[#eaf4ed] py-12">
+          <div className="public-container flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-[clamp(1.65rem,3vw,2.1rem)] font-extrabold tracking-[-.03em]">
+                Ready to discuss your cleaning requirements?
+              </h2>
+              <p className="public-body public-muted mt-2">
+                Tell us about your locations and the service you need.
+              </p>
+            </div>
+            <Link
+              href="/business/enquire"
+              className="public-button public-button-primary shrink-0"
+            >
+              Request business access
+            </Link>
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </div>
+  );
 }

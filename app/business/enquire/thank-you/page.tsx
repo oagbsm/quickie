@@ -1,7 +1,10 @@
 import Link from "next/link";
 import PublicHeader from "@/app/business/components/PublicHeader";
 import type { Metadata } from "next";
-export const metadata:Metadata={title:"Enquiry received | Quickola",robots:{index:false,follow:false}};
+export const metadata: Metadata = {
+  title: "Enquiry received | Quickola",
+  robots: { index: false, follow: false },
+};
 export default async function Page({
   searchParams,
 }: {
@@ -16,16 +19,12 @@ export default async function Page({
           <div className="grid h-12 w-12 place-items-center rounded-full bg-[#eaf7ef] text-2xl font-black text-[#079448]">
             ✓
           </div>
-          <p className="mt-6 text-xs font-black uppercase tracking-[.14em] text-[#079448]">
-            Enquiry received
-          </p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight">
-            Thank you. We have received your cleaning enquiry.
-          </h1>
+          <p className="mt-6 eyebrow">Request received</p>
+          <h1 className="public-section-title mt-2">Request received</h1>
           <p className="mt-5 leading-7 text-[#657089]">
-            Quickola will review your requirements and contact you regarding
-            coverage and the next step. No cleaning service has been confirmed
-            yet.
+            We’ve received your details and will review service coverage and
+            requirements. We’ll contact you about the next step. You do not need
+            to do anything else now.
           </p>
           {reference && (
             <p className="mt-5 rounded-xl bg-[#f4f6f9] p-4 text-sm font-bold">

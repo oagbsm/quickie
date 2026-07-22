@@ -14,7 +14,7 @@ export default function BusinessEnquiryForm() {
     <form
       action={action}
       aria-describedby="enquiry-guidance"
-      className="grid gap-5 rounded-3xl bg-white p-5 shadow-[0_24px_70px_rgba(7,22,56,.12)] sm:p-8"
+      className="grid gap-5 rounded-2xl border border-[#e0e7e3] bg-white p-5 shadow-[0_18px_48px_rgba(7,22,56,.08)] sm:p-8"
     >
       <input type="hidden" name="idempotencyKey" value={key} />
       <input
@@ -25,15 +25,15 @@ export default function BusinessEnquiryForm() {
         aria-hidden="true"
       />
       <div>
-        <p className="text-xs font-black uppercase tracking-[.14em] text-[#079448]">
-          Access request
-        </p>
-        <h1 className="mt-2 text-3xl font-black tracking-tight">
-          Tell us about your operation.
-        </h1>
-        <p id="enquiry-guidance" className="mt-2 text-sm leading-6 text-[#657089]">
-          We will review your requirements and contact you about coverage and
-          the next step. Submission does not confirm a cleaning service.
+        <p className="eyebrow">Access request</p>
+        <h2 className="mt-2 text-[1.75rem] font-extrabold tracking-[-.03em]">
+          Your business details
+        </h2>
+        <p
+          id="enquiry-guidance"
+          className="mt-2 text-sm leading-6 text-[#657089]"
+        >
+          Required fields are marked. Everything else can be discussed later.
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -57,34 +57,19 @@ export default function BusinessEnquiryForm() {
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Your role">
-          <input
-            className={input}
-            name="role"
-            autoComplete="organization-title"
-            required
-          />
-        </Field>
-        <Field label="Work email">
+        <Field label="Work email" hint="Provide an email or phone number">
           <input
             className={input}
             name="email"
             type="email"
             autoComplete="email"
-            required
           />
+        </Field>
+        <Field label="Phone" hint="Provide an email or phone number">
+          <input className={input} name="phone" type="tel" autoComplete="tel" />
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Phone">
-          <input
-            className={input}
-            name="phone"
-            type="tel"
-            autoComplete="tel"
-            required
-          />
-        </Field>
         <Field label="Organisation type">
           <select
             className={input}
@@ -110,17 +95,6 @@ export default function BusinessEnquiryForm() {
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Number of properties or sites">
-          <input
-            className={input}
-            name="siteCount"
-            type="number"
-            min={1}
-            max={10000}
-            inputMode="numeric"
-            required
-          />
-        </Field>
         <Field label="Main postcode or operating area">
           <input
             className={input}
@@ -130,8 +104,6 @@ export default function BusinessEnquiryForm() {
             placeholder="e.g. SL1 or Slough"
           />
         </Field>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Cleaning required">
           <select
             className={input}
@@ -154,32 +126,8 @@ export default function BusinessEnquiryForm() {
             <option value="mixed">Several cleaning types</option>
           </select>
         </Field>
-        <Field label="Expected frequency">
-          <select className={input} name="frequency" required defaultValue="">
-            <option value="" disabled>
-              Select one
-            </option>
-            <option value="one_off_managed">One managed-property job</option>
-            <option value="weekly">Weekly</option>
-            <option value="fortnightly">Fortnightly</option>
-            <option value="monthly">Monthly</option>
-            <option value="multiple_weekly">Several times per week</option>
-            <option value="to_discuss">To discuss</option>
-          </select>
-        </Field>
       </div>
-      <Field label="Preferred start timeframe">
-        <select className={input} name="timeframe" required defaultValue="">
-          <option value="" disabled>
-            Select one
-          </option>
-          <option value="within_2_weeks">Within two weeks</option>
-          <option value="within_1_month">Within one month</option>
-          <option value="within_3_months">Within three months</option>
-          <option value="planning">Planning ahead</option>
-        </select>
-      </Field>
-      <Field label="Operational notes (optional)">
+      <Field label="Operational notes" optional>
         <textarea
           className={input}
           name="notes"
@@ -189,8 +137,12 @@ export default function BusinessEnquiryForm() {
       </Field>
       <p className="text-xs leading-5 text-[#657089]">
         By submitting, you agree that Quickola may contact you about this
-        enquiry. Submission does not guarantee acceptance. See our{" "}
-        <a href="/privacy-policy" className="font-bold underline">privacy policy</a>.
+        enquiry. We’ll review your service area and requirements before
+        confirming any work. See our{" "}
+        <a href="/privacy-policy" className="font-bold underline">
+          privacy policy
+        </a>
+        .
       </p>
       {state.message && (
         <p
@@ -207,19 +159,34 @@ export default function BusinessEnquiryForm() {
       >
         {pending ? "Sending request…" : "Request business access"}
       </button>
+      <p className="text-center text-sm font-semibold text-[#526078]">
+        We usually respond within one business day.
+      </p>
     </form>
   );
 }
 function Field({
   label,
+  optional = false,
+  hint,
   children,
 }: {
   label: string;
+  optional?: boolean;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="block text-sm font-extrabold">
-      {label}
+    <label className="block text-sm font-bold">
+      {label}{" "}
+      {optional && (
+        <span className="font-normal text-[#657089]">(optional)</span>
+      )}
+      {hint && (
+        <span className="mt-1 block text-xs font-normal text-[#657089]">
+          {hint}
+        </span>
+      )}
       {children}
     </label>
   );

@@ -56,24 +56,22 @@ export async function submitBusinessEnquiry(
     idempotency_key: text(form, "idempotencyKey"),
     contact_name: text(form, "name"),
     organisation_name: text(form, "organisation"),
-    role_title: text(form, "role"),
+    role_title: text(form, "role") || "Not provided",
     email: text(form, "email").toLowerCase(),
     phone: text(form, "phone"),
     customer_type: text(form, "customerType"),
-    site_count: Number(text(form, "siteCount")),
+    site_count: Number(text(form, "siteCount")) || 1,
     operating_area: text(form, "area"),
     cleaning_type: text(form, "cleaningType"),
-    expected_frequency: text(form, "frequency"),
-    start_timeframe: text(form, "timeframe"),
+    expected_frequency: text(form, "frequency") || "to_discuss",
+    start_timeframe: text(form, "timeframe") || "planning",
     notes: text(form, "notes") || null,
   };
   if (
     !/^[0-9a-f-]{36}$/i.test(payload.idempotency_key) ||
     payload.contact_name.length < 2 ||
     payload.organisation_name.length < 2 ||
-    payload.role_title.length < 2 ||
-    !/^\S+@\S+\.\S+$/.test(payload.email) ||
-    payload.phone.length < 7 ||
+    (!/^\S+@\S+\.\S+$/.test(payload.email) && payload.phone.length < 7) ||
     !Number.isInteger(payload.site_count) ||
     payload.site_count < 1 ||
     payload.operating_area.length < 2 ||
@@ -84,20 +82,41 @@ export async function submitBusinessEnquiry(
   ) {
     return {
       message:
-        "Check the highlighted details and complete every required field.",
+        "Check the required details and provide an email or phone number.",
       code: "validation",
     };
   }
   const db = createSupabaseAdminClient();
   const requestHeaders = await headers();
-  const forwarded = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const sourceHash = createHash("sha256").update(`${forwarded}:${process.env.SUPABASE_SERVICE_ROLE_KEY || "quickola"}`).digest("hex");
+  const forwarded =
+    requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const sourceHash = createHash("sha256")
+    .update(
+      `${forwarded}:${process.env.SUPABASE_SERVICE_ROLE_KEY || "quickola"}`,
+    )
+    .digest("hex");
   const windowStart = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const emailRateCheck = payload.email
+    ? db
+        .from("business_enquiries")
+        .select("id", { count: "exact", head: true })
+        .eq("email", payload.email)
+        .gte("created_at", windowStart)
+    : Promise.resolve({ count: 0 });
   const [{ count: emailAttempts }, { count: ipAttempts }] = await Promise.all([
-    db.from("business_enquiries").select("id", { count: "exact", head: true }).eq("email", payload.email).gte("created_at", windowStart),
-    db.from("business_enquiries").select("id", { count: "exact", head: true }).eq("source_ip_hash", sourceHash).gte("created_at", windowStart),
+    emailRateCheck,
+    db
+      .from("business_enquiries")
+      .select("id", { count: "exact", head: true })
+      .eq("source_ip_hash", sourceHash)
+      .gte("created_at", windowStart),
   ]);
-  if ((emailAttempts || 0) >= 3 || (ipAttempts || 0) >= 8) return { message: "Too many enquiries were submitted recently. Please try again later.", code: "rate_limit" };
+  if ((emailAttempts || 0) >= 3 || (ipAttempts || 0) >= 8)
+    return {
+      message:
+        "Too many enquiries were submitted recently. Please try again later.",
+      code: "rate_limit",
+    };
   const { data: existing } = await db
     .from("business_enquiries")
     .select("id")
