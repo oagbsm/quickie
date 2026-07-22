@@ -1,48 +1,37 @@
 import Image from "next/image";
 import Link from "next/link";
+
+const links = [
+  ["Product", "/product"],
+  ["Solutions", "/solutions/letting-agents"],
+  ["How it works", "/how-it-works"],
+  ["Service area", "/service-area"],
+];
+
 export default function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-[#dfe6eb] bg-white/95 text-[#071638] backdrop-blur">
+      <a href="#main-content" className="skip-link">Skip to content</a>
       <div className="mx-auto flex min-h-18 max-w-[1200px] items-center justify-between gap-4 px-5 sm:px-8">
-        <Link
-          href="/"
-          className="flex items-center gap-2.5"
-          aria-label="Quickola homepage"
-        >
-          <Image src="/quickola/logo-mark.png" alt="" width={40} height={40} />
+        <Link href="/" className="flex items-center gap-2.5" aria-label="Quickola homepage">
+          <Image src="/quickola/logo-mark.png" alt="" width={40} height={40} priority />
           <span className="text-2xl font-black tracking-tight">Quickola</span>
         </Link>
-        <nav
-          className="hidden items-center gap-6 text-sm font-extrabold lg:flex"
-          aria-label="Primary navigation"
-        >
-          <Link href="/#services" className="hover:text-[#08783f]">
-            Services
-          </Link>
-          <Link href="/#how-it-works" className="hover:text-[#08783f]">
-            How it works
-          </Link>
-          <Link href="/#who-we-serve" className="hover:text-[#08783f]">
-            Who we serve
-          </Link>
-          <Link href="/#service-area" className="hover:text-[#08783f]">
-            Service area
-          </Link>
+        <nav className="hidden items-center gap-6 text-sm font-extrabold lg:flex" aria-label="Primary navigation">
+          {links.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
         </nav>
-        <div className="flex items-center gap-2 sm:gap-4">
-          <Link
-            href="/business/sign-in"
-            className="text-sm font-black hover:text-[#08783f]"
-          >
-            Business login
-          </Link>
-          <Link
-            href="/business/enquire"
-            className="rounded-xl bg-[#08783f] px-4 py-3 text-center text-sm font-black text-white hover:bg-[#075f31]"
-          >
-            Request cleaning
-          </Link>
+        <div className="hidden items-center gap-4 lg:flex">
+          <Link href="/business/sign-in" className="text-sm font-black">Sign in</Link>
+          <Link href="/business/enquire" className="button-primary text-sm">Request access</Link>
         </div>
+        <details className="public-menu relative lg:hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-lg border border-[#ccd6df] px-3 font-black [&::-webkit-details-marker]:hidden">Menu</summary>
+          <nav className="absolute right-0 top-13 grid w-[min(19rem,calc(100vw-2.5rem))] gap-1 rounded-xl border border-[#dfe6eb] bg-white p-3 shadow-xl" aria-label="Mobile navigation">
+            {links.map(([label, href]) => <Link key={href} href={href} className="rounded-lg px-3 py-3 font-bold">{label}</Link>)}
+            <Link href="/business/sign-in" className="rounded-lg px-3 py-3 font-bold">Sign in</Link>
+            <Link href="/business/enquire" className="button-primary mt-1 text-center">Request access</Link>
+          </nav>
+        </details>
       </div>
     </header>
   );

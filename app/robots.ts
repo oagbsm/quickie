@@ -28,6 +28,7 @@ export default function robots(): MetadataRoute.Robots {
         "/SEOMAYBELATER",
       ],
     },
-    sitemap: "https://quickola.co.uk/sitemap.xml",
+    sitemap: "https://www.quickola.co.uk/sitemap.xml",
+    host: "https://www.quickola.co.uk",
   };
 }

@@ -13,6 +13,7 @@ export default function BusinessEnquiryForm() {
   return (
     <form
       action={action}
+      aria-describedby="enquiry-guidance"
       className="grid gap-5 rounded-3xl bg-white p-5 shadow-[0_24px_70px_rgba(7,22,56,.12)] sm:p-8"
     >
       <input type="hidden" name="idempotencyKey" value={key} />
@@ -25,12 +26,12 @@ export default function BusinessEnquiryForm() {
       />
       <div>
         <p className="text-xs font-black uppercase tracking-[.14em] text-[#079448]">
-          Business enquiry
+          Access request
         </p>
         <h1 className="mt-2 text-3xl font-black tracking-tight">
-          Tell us what you manage.
+          Tell us about your operation.
         </h1>
-        <p className="mt-2 text-sm leading-6 text-[#657089]">
+        <p id="enquiry-guidance" className="mt-2 text-sm leading-6 text-[#657089]">
           We will review your requirements and contact you about coverage and
           the next step. Submission does not confirm a cleaning service.
         </p>
@@ -188,7 +189,8 @@ export default function BusinessEnquiryForm() {
       </Field>
       <p className="text-xs leading-5 text-[#657089]">
         By submitting, you agree that Quickola may contact you about this
-        enquiry. See our privacy policy for how we handle your information.
+        enquiry. Submission does not guarantee acceptance. See our{" "}
+        <a href="/privacy-policy" className="font-bold underline">privacy policy</a>.
       </p>
       {state.message && (
         <p
@@ -203,7 +205,7 @@ export default function BusinessEnquiryForm() {
         disabled={pending || !key}
         className="min-h-12 rounded-xl bg-[#079448] px-6 font-black text-white transition hover:bg-[#087f40] focus:outline-none focus:ring-4 focus:ring-[#079448]/25 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {pending ? "Sending enquiry…" : "Request business cleaning"}
+        {pending ? "Sending request…" : "Request business access"}
       </button>
     </form>
   );

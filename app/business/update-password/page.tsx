@@ -1,10 +1,14 @@
 "use client";
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export default function Page() {
+  return <Suspense fallback={<main className="grid min-h-screen place-items-center bg-[#061a3d] p-5 text-white">Loading…</main>}><UpdatePasswordForm /></Suspense>;
+}
+
+function UpdatePasswordForm() {
   const params = useSearchParams(), admin = params.get("admin") === "1";
   const [message,setMessage]=useState(""),[done,setDone]=useState(false),[pending,setPending]=useState(false);
   async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const p=String(new FormData(e.currentTarget).get("password")||"");if(p.length<10){setMessage("Use at least 10 characters.");return}setPending(true);const client=createSupabaseBrowserClient(),{error}=await client.auth.updateUser({password:p});if(error){setMessage(error.message);setPending(false);return}await client.auth.signOut();setDone(true);setPending(false)}

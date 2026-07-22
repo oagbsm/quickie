@@ -1,5 +1,7 @@
 import Link from "next/link";
 import PublicHeader from "@/app/business/components/PublicHeader";
+import type { Metadata } from "next";
+export const metadata:Metadata={title:"Enquiry received | Quickola",robots:{index:false,follow:false}};
 export default async function Page({
   searchParams,
 }: {

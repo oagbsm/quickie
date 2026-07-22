@@ -36,6 +36,10 @@ const nextConfig: NextConfig = {
       "/airbnb-cleaning-slough",
       "/after-builders-cleaning-slough",
       "/commercial-cleaning",
+      "/business-success",
+      "/quickola-price-index",
+      "/quickola-vs-checkatrade-bark-taskrabbit",
+      "/pricing-methodology",
       "/slough/:area/cleaner",
     ];
     return [
@@ -51,6 +55,7 @@ const nextConfig: NextConfig = {
       },
       { source: "/business", destination: "/", permanent: true },
       { source: "/for-providers", destination: "/", permanent: false },
+      { source: "/privacy", destination: "/privacy-policy", permanent: true },
       {
         source: "/terms",
         destination: "/business/legal/terms",
