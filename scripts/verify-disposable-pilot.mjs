@@ -39,17 +39,20 @@ try{
   assert.ok(forbiddenCreate.error,"customer A cannot create a booking in customer B account");
 
   const key1=crypto.randomUUID(), first=await booking(a.accountId,pa.id,key1,"2026-08-10T09:00:00Z");assert.ifError(first.error);
-  const repeat=await booking(a.accountId,pa.id,key1,"2026-08-10T09:00:00Z");assert.equal(repeat.data.id,first.data.id,"idempotency returns the original booking");
+  const repeated=await Promise.all(Array.from({length:5},()=>booking(a.accountId,pa.id,key1,"2026-08-10T09:00:00Z")));assert.ok(repeated.every(result=>!result.error&&result.data.id===first.data.id),"concurrent idempotent submissions return the original booking");
   const key2=crypto.randomUUID(), once=await booking(a.accountId,pa.id,key2,"2026-08-11T09:00:00Z"), twice=await booking(a.accountId,pa.id,key2,"2026-08-11T09:00:00Z");assert.ifError(once.error);assert.equal(once.data.id,twice.data.id,"repeat submission creates one booking");
-  const overlap=await booking(a.accountId,pa.id,crypto.randomUUID(),"2026-08-11T10:00:00Z");assert.match(overlap.error?.message||"",/booking_time_conflict/);
+  const concurrentOverlap=await Promise.all([booking(a.accountId,pa.id,crypto.randomUUID(),"2026-08-13T09:00:00Z"),booking(a.accountId,pa.id,crypto.randomUUID(),"2026-08-13T09:00:00Z")]);assert.equal(concurrentOverlap.filter(result=>!result.error).length,1,"one concurrent request wins the slot");assert.equal(concurrentOverlap.filter(result=>/booking_time_conflict/.test(result.error?.message||"")).length,1,"the competing overlapping request is rejected");
   const nonOverlap=await booking(a.accountId,pa.id,crypto.randomUUID(),"2026-08-11T12:00:00Z");assert.ifError(nonOverlap.error);
 
-  const {data:crossBooking}=await b.client.from("business_bookings").select("id").eq("id",once.data.id);assert.equal(crossBooking.length,0,"customer B cannot read customer A booking");
+  const {data:crossBooking}=await b.client.from("business_bookings").select("id,requirements,assigned_provider_id").eq("id",once.data.id);assert.equal(crossBooking.length,0,"customer B cannot read customer A booking, notes or provider id");
   await b.client.from("business_bookings").update({requirements:"cross-account mutation"}).eq("id",once.data.id);
   const {data:unchangedBooking}=await root.from("business_bookings").select("requirements,status,price_pence").eq("id",once.data.id).single();assert.equal(unchangedBooking.requirements,null,"customer B cannot alter customer A booking");
   await a.client.from("business_bookings").update({status:"completed",price_pence:1}).eq("id",once.data.id);
   const {data:customerProtected}=await root.from("business_bookings").select("status,price_pence").eq("id",once.data.id).single();assert.equal(customerProtected.status,"requested");assert.notEqual(customerProtected.price_pence,1);
+  await b.client.from("business_bookings").update({status:"cancelled",cancel_reason:"cross-account cancellation"}).eq("id",once.data.id);
+  const {data:notCancelled}=await root.from("business_bookings").select("status,cancel_reason").eq("id",once.data.id).single();assert.equal(notCancelled.status,"requested","customer B cannot cancel customer A booking");assert.equal(notCancelled.cancel_reason,null);
   const unauthorized=await a.client.rpc("admin_transition_booking",{target_booking:once.data.id,next_status:"under_review",reason:null,completion_note:null});assert.ok(unauthorized.error);
+  const anonymous=createClient(url,anonKey,{auth:{persistSession:false}});const {data:anonymousBookings}=await anonymous.from("business_bookings").select("id").eq("id",once.data.id);assert.equal(anonymousBookings.length,0,"unauthenticated booking read fails");
   const {data:hiddenProviders}=await a.client.from("service_providers").select("id,name,email,phone");assert.equal(hiddenProviders.length,0,"provider directory and contacts are not customer-readable");
   const {data:preAssignment}=await a.client.from("business_bookings").select("assigned_provider_id,service_providers:assigned_provider_id(name)").eq("id",once.data.id).single();assert.equal(preAssignment.assigned_provider_id,null);assert.equal(preAssignment.service_providers,null,"no provider details are exposed before assignment");
 
@@ -57,11 +60,13 @@ try{
   let action=await admin.client.rpc("admin_confirm_booking_price",{target_booking:once.data.id,price_pence:5500,override_reason:null});assert.ifError(action.error);
   action=await admin.client.rpc("admin_assign_provider",{target_booking:once.data.id,target_provider:providers[1].id});assert.ok(action.error,"inactive provider cannot be assigned");
   action=await admin.client.rpc("admin_assign_provider",{target_booking:once.data.id,target_provider:providers[0].id});assert.ifError(action.error);
+  const {data:assignedProvider}=await a.client.from("service_providers").select("id,name").eq("id",providers[0].id).single();assert.equal(assignedProvider.id,providers[0].id,"customer can read the provider assigned to their own visible-stage booking");
+  const {data:crossAssignedProvider}=await b.client.from("service_providers").select("id,name").eq("id",providers[0].id);assert.equal(crossAssignedProvider.length,0,"customer B cannot access provider information belonging to customer A");
   for(const state of ["on_the_way","arrived","in_progress","completed"]){action=await admin.client.rpc("admin_transition_booking",{target_booking:once.data.id,next_status:state,reason:null,completion_note:state==="completed"?"Disposable verification complete":null});assert.ifError(action.error)}
   assert.ok(action.data.completed_at);assert.equal(action.data.completed_by,admin.user.id);
   const invalidAfterCompletion=await admin.client.rpc("admin_transition_booking",{target_booking:once.data.id,next_status:"confirmed",reason:null,completion_note:null});assert.ok(invalidAfterCompletion.error,"completed lifecycle cannot move backwards");
   const {count}=await root.from("business_bookings").select("id",{count:"exact",head:true}).eq("account_id",a.accountId).eq("idempotency_key",key2);assert.equal(count,1);
-  console.log("Disposable cross-account RLS, protected fields, idempotency, overlap, assignment and lifecycle checks passed.");
+  console.log("Disposable cross-account RLS, unauthenticated access, protected notes/provider fields, cancellation, concurrent idempotency/overlap, assignment and lifecycle checks passed.");
 } finally {
   for(const accountId of createdAccounts){
     const {data:jobs}=await root.from("business_bookings").select("id").eq("account_id",accountId);const ids=jobs?.map(job=>job.id)||[];

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireBusinessUser } from "@/lib/business/auth";
-import { formatServiceLabel, getPricePresentation } from "@/lib/business/booking-status";
+import { canShowAssignedProvider, formatServiceLabel, getPricePresentation } from "@/lib/business/booking-status";
 import { BookingStatusBadge } from "@/app/business/components/BookingPresentation";
 import { formatBusinessDateTime } from "@/lib/business/time";
 import { formatMoney } from "@/lib/business/pricing";
@@ -68,7 +68,7 @@ export default async function Page({
                   <p className="mt-1 text-sm text-[#657089]">
                     {formatBusinessDateTime(b.scheduled_start)} · {p?.postcode}
                   </p>
-                  {provider && <p className="mt-2 text-sm font-bold">Cleaning team: {provider.name}</p>}
+                  {provider && canShowAssignedProvider(b.status) && <p className="mt-2 text-sm font-bold">Cleaning team: {provider.name}</p>}
                 </div>
                 <div className="sm:text-right">
                   <BookingStatusBadge status={b.status} />

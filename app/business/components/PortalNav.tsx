@@ -11,7 +11,7 @@ export default function PortalNav() {
   const path = usePathname();
   return (
     <nav
-      className="flex w-full min-w-0 gap-2 overflow-x-auto lg:grid"
+      className="grid w-full min-w-0 grid-cols-4 gap-1 lg:grid-cols-1 lg:gap-2"
       aria-label="Business account navigation"
     >
       {items.map(([label, href]) => {
@@ -21,7 +21,7 @@ export default function PortalNav() {
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`min-h-11 whitespace-nowrap rounded-xl px-4 py-3 text-sm font-extrabold outline-none focus:ring-4 focus:ring-[#079448]/20 ${active ? "bg-[#071638] text-white" : "hover:bg-[#edf7f1] hover:text-[#079448]"}`}
+            className={`min-h-11 min-w-0 rounded-xl px-1 py-3 text-center text-xs font-extrabold outline-none focus:ring-4 focus:ring-[#079448]/20 sm:px-2 sm:text-sm lg:px-4 lg:text-left ${active ? "bg-[#071638] text-white" : "hover:bg-[#edf7f1] hover:text-[#079448]"}`}
           >
             {label}
           </Link>
