@@ -3,7 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 
 test("homepage communicates managed business cleaning and passes a basic accessibility scan", async ({page}) => {
   await page.goto("/");
-  await expect(page.getByRole("heading",{level:1})).toHaveText("Manage every property clean in one place.");
+  await expect(page.getByRole("heading",{level:1})).toHaveText("The smarter way to manage every clean, every time.");
   await expect(page.getByRole("link",{name:"Request business access"}).first()).toBeVisible();
   await expect(page.getByText(/controlled service currently available in Slough/i)).toBeVisible();
   await expect(page.getByText(/book a cleaner for your home/i)).toHaveCount(0);

@@ -1,121 +1,116 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import Header from "./homepagecomponents/Header";
-import Footer from "./components/Footer";
+import styles from "./home.module.css";
 
 export const metadata: Metadata = {
   title: "Managed business cleaning platform in Slough | Quickola",
-  description: "Add properties, request one-off or recurring cleans and track every booking. Quickola manages cleaner assignment and coordination across Slough.",
+  description:
+    "Add properties, request one-off or recurring cleans and track every booking. Quickola manages cleaner assignment and coordination across Slough.",
   alternates: { canonical: "/" },
 };
 
-const capabilities = [
-  ["Property records", "Keep addresses, access notes and cleaning instructions ready for the next request."],
-  ["Flexible requests", "Request one-off or recurring cleans with the date, arrival window and requirements in one brief."],
-  ["Managed assignment", "Quickola checks suitability and assigns fulfilment; customers do not browse a cleaner directory."],
-  ["Booking visibility", "Follow requested, confirmed, assigned, in-progress and completed work from your account."],
-  ["Operational detail", "See assignment and arrival information when available, without chasing separate message threads."],
-  ["Central history", "Review past and upcoming cleans against the property they belong to."],
-];
+const features = [
+  ["building", "Centralised Dashboard", "See all your properties and bookings at a glance."],
+  ["calendar", "Smart Scheduling", "Request one-off or recurring cleans in just a few clicks."],
+  ["pin", "Real-Time Updates", "Track progress and get instant status updates."],
+  ["document", "Full Transparency", "Access records, invoices, and audit history anytime."],
+  ["star", "Quality You Can Trust", "Vetted professionals. Consistent results."],
+  ["scale", "Built for Scale", "From 1 site to 100+, we grow with your business."],
+] as const;
+
+const steps = [
+  ["building", "01", "Add your properties", "Tell us about your sites and cleaning needs."],
+  ["calendar", "02", "Request a clean", "Choose one-off or recurring cleans in seconds."],
+  ["clean", "03", "We get it done", "Our professional team handles the rest."],
+  ["chart", "04", "You stay informed", "Track progress and access reports in real time."],
+] as const;
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white text-[#071638]">
-      <Header />
-      <main id="main-content">
-        <section className="overflow-hidden bg-[#071a3b] px-5 py-16 text-white sm:px-8 lg:py-24">
-          <div className="mx-auto grid max-w-[1200px] gap-12 lg:grid-cols-[1.02fr_.98fr] lg:items-center">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[.18em] text-[#66dd78]">Managed business cleaning</p>
-              <h1 className="mt-5 max-w-3xl text-[clamp(2.8rem,7vw,4.75rem)] font-black leading-[.98] tracking-[-.055em]">Manage every property clean in one place.</h1>
-              <p className="mt-6 max-w-2xl text-lg font-semibold leading-8 text-white/78">Add your properties, request one-off or recurring cleans and follow every booking from request to completion. Quickola handles cleaner assignment and operational coordination.</p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link href="/business/enquire" className="inline-flex min-h-12 items-center justify-center rounded-[.65rem] bg-[#66dd78] px-6 font-black text-[#071a3b]">Request business access</Link>
-                <Link href="/how-it-works" className="inline-flex min-h-12 items-center justify-center rounded-[.65rem] border border-white/35 px-6 font-black">See how it works</Link>
+    <div className={styles.page}>
+      <a href="#main-content" className="skip-link">Skip to content</a>
+      <section className={styles.heroShell}>
+        <HomeHeader />
+        <main id="main-content">
+          <div className={styles.hero}>
+            <div className={styles.heroCopy}>
+              <p className={styles.eyebrow}>Managed business cleaning</p>
+              <h1>The smarter way to{" "}<br />manage every clean,{" "}<br /><span>every time.</span></h1>
+              <div className={styles.stroke} aria-hidden="true"><i /><i /></div>
+              <p className={styles.intro}>Add properties, request one-off or recurring cleans, and<br className={styles.desktopBreak} /> track every booking in one powerful platform.<br className={styles.desktopBreak} /> Quickola handles the cleaning. You stay in control.</p>
+              <div className={styles.heroActions}>
+                <Link href="/business/enquire" className={styles.primaryButton}>Request business access <span>→</span></Link>
+                <Link href="/how-it-works" className={styles.darkButton}>See how it works <PlayIcon /></Link>
               </div>
-              <p className="mt-5 text-sm font-bold text-white/66">Controlled service currently available in Slough. Every enquiry is reviewed for operational fit.</p>
-            </div>
-            <ProductPreview />
-          </div>
-        </section>
-
-        <section aria-label="Service principles" className="border-b border-[#dfe6eb] px-5 py-6 sm:px-8">
-          <div className="mx-auto grid max-w-[1200px] gap-3 text-sm font-extrabold sm:grid-cols-3">
-            <p>Managed assignment by Quickola</p><p>Secure business accounts</p><p>Focused Slough service area</p>
-          </div>
-        </section>
-
-        <section className="px-5 py-18 sm:px-8 lg:py-24">
-          <div className="mx-auto max-w-[1200px]">
-            <p className="eyebrow">The operational problem</p>
-            <div className="mt-4 grid gap-7 lg:grid-cols-2">
-              <h2 className="text-4xl font-black tracking-[-.04em] sm:text-5xl">Cleaning coordination gets harder with every address.</h2>
-              <div className="grid gap-4 text-base leading-7 text-[#526078]">
-                <p>Bookings spread across messages and spreadsheets. Property details have to be explained again. Teams chase assignment, arrival and completion updates.</p>
-                <p>Quickola keeps the operational record together and manages fulfilment around it.</p>
+              <div className={styles.heroBenefits}>
+                <Benefit icon="clock" title="Save time" text="Automate requests" />
+                <Benefit icon="target" title="Stay updated" text="Real-time tracking" />
+                <Benefit icon="shield" title="Insured & compliant" text="Registered UK company" />
               </div>
+              <p className={styles.srOnly}>Controlled service currently available in Slough.</p>
             </div>
+            <DashboardPreview />
           </div>
-        </section>
+          <div className={styles.onboarding}><Icon name="people" /><span>Now onboarding property managers and Airbnb operators across Slough.</span></div>
+        </main>
+      </section>
 
-        <section className="bg-[#f2f5f3] px-5 py-18 sm:px-8 lg:py-24">
-          <div className="mx-auto max-w-[1200px]">
-            <p className="eyebrow">How it works</p>
-            <h2 className="mt-3 max-w-3xl text-4xl font-black tracking-[-.04em] sm:text-5xl">One clear route from property details to completion.</h2>
-            <ol className="mt-10 grid gap-7 md:grid-cols-2 lg:grid-cols-4">
-              {[["01","Add properties","Save each address, access notes and cleaning instructions."],["02","Request cleans","Choose a one-off or recurring requirement and send the operational brief."],["03","Quickola assigns","We review the request and assign a suitable cleaner when confirmed."],["04","Track completion","Follow the booking status and retain a central service history."]].map(([n,h,p]) => <li key={n} className="border-t-2 border-[#071638] pt-5"><p className="text-xs font-black text-[#08783f]">{n}</p><h3 className="mt-4 text-xl font-black">{h}</h3><p className="mt-2 text-sm leading-6 text-[#526078]">{p}</p></li>)}
-            </ol>
-            <Link href="/how-it-works" className="mt-9 inline-flex font-black text-[#08783f] underline decoration-2 underline-offset-4">Understand the full process</Link>
+      <section className={styles.featuresSection}>
+        <div className={styles.featuresWrap}>
+          <div className={styles.featuresLead}>
+            <p className={styles.greenLabel}>Built for businesses that expect more</p>
+            <h2>Everything you need to manage<br />cleaning — in one place.</h2>
           </div>
-        </section>
+          <p className={styles.featuresIntro}>Quickola brings all your cleaning operations<br />together in a simple, powerful platform built<br />for busy teams.</p>
+          <div className={styles.featureGrid}>
+            {features.map(([icon, title, text], index) => <Feature key={title} icon={icon} title={title} text={text} index={index} />)}
+          </div>
+          <MiniDashboard />
+        </div>
+      </section>
 
-        <section className="px-5 py-18 sm:px-8 lg:py-24">
-          <div className="mx-auto max-w-[1200px]">
-            <p className="eyebrow">The platform</p>
-            <h2 className="mt-3 max-w-3xl text-4xl font-black tracking-[-.04em] sm:text-5xl">The working detail stays with the booking.</h2>
-            <div className="mt-10 grid border-y border-[#d8e0e5] md:grid-cols-2">
-              {capabilities.map(([h,p],i) => <article key={h} className={`py-6 md:px-7 ${i%2===0?"md:border-r":""} ${i<4?"border-b border-[#d8e0e5]":""}`}><h3 className="text-xl font-black">{h}</h3><p className="mt-2 max-w-xl text-sm leading-6 text-[#526078]">{p}</p></article>)}
-            </div>
-            <Link href="/product" className="mt-9 inline-flex font-black text-[#08783f] underline decoration-2 underline-offset-4">Explore the managed cleaning platform</Link>
+      <section className={styles.processSection}>
+        <div className={styles.processWrap}>
+          <div className={styles.processHeading}><p className={styles.greenLabel}>How it works</p><h2>Simple steps.<br />Powerful results.</h2></div>
+          <ol className={styles.steps}>
+            {steps.map(([icon, number, title, text], index) => <Step key={number} icon={icon} number={number} title={title} text={text} index={index} />)}
+          </ol>
+          <div className={styles.ctaPanel}>
+            <div><h2>Ready for a cleaner,<br />smarter workspace?</h2><p>Be one of the first businesses in Slough to simplify<br />cleaning operations with Quickola.</p></div>
+            <div className={styles.ctaActions}><Link href="/how-it-works" className={styles.ctaDark}>See how it works <PlayIcon /></Link><Link href="/business/enquire" className={styles.ctaLight}>Request business access <span>→</span></Link></div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="bg-[#071a3b] px-5 py-18 text-white sm:px-8 lg:py-24">
-          <div className="mx-auto max-w-[1200px]">
-            <p className="eyebrow !text-[#66dd78]">Solutions</p>
-            <h2 className="mt-3 max-w-3xl text-4xl font-black tracking-[-.04em] sm:text-5xl">Built for teams responsible for places, not household browsing.</h2>
-            <div className="mt-10 grid gap-px overflow-hidden rounded-xl bg-white/15 lg:grid-cols-3">
-              {[["Letting agents & property managers","Coordinate move-in, move-out and repeat cleaning across multiple addresses.","/solutions/letting-agents"],["Airbnb & serviced accommodation","Keep turnaround requirements and timing visible for repeat properties.","/solutions/airbnb"],["Offices & commercial properties","Set regular schedules, site instructions and access notes in one operational record.","/solutions/offices"]].map(([h,p,href]) => <article key={h} className="bg-[#0b244c] p-7"><h3 className="text-2xl font-black">{h}</h3><p className="mt-3 leading-7 text-white/72">{p}</p><Link href={href} className="mt-6 inline-flex font-black text-[#66dd78]">View solution <span aria-hidden="true">&nbsp;→</span></Link></article>)}
-            </div>
-          </div>
-        </section>
-
-        <section className="px-5 py-18 sm:px-8 lg:py-24">
-          <div className="mx-auto grid max-w-[1200px] gap-10 lg:grid-cols-[.85fr_1.15fr]">
-            <div><p className="eyebrow">Operational trust</p><h2 className="mt-3 text-4xl font-black tracking-[-.04em]">Clear controls, not invented promises.</h2></div>
-            <dl className="grid gap-6 sm:grid-cols-2">{[["Managed assignment","Quickola checks service area and suitability before assignment."],["Controlled availability","A request is not described as confirmed until it has been reviewed."],["Central instructions","Property and access information stays in the protected customer account."],["Human oversight","Quickola remains responsible for operational coordination through the booking lifecycle."]].map(([t,d])=><div key={t} className="border-t border-[#bfcbd2] pt-4"><dt className="font-black">{t}</dt><dd className="mt-2 text-sm leading-6 text-[#526078]">{d}</dd></div>)}</dl>
-          </div>
-        </section>
-
-        <section className="bg-[#eaf4ed] px-5 py-16 sm:px-8">
-          <div className="mx-auto flex max-w-[1200px] flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
-            <div><h2 className="text-4xl font-black tracking-[-.04em]">Request business access.</h2><p className="mt-3 max-w-2xl leading-7 text-[#526078]">Tell us about your properties and cleaning requirements. We will review whether the controlled Slough service is suitable.</p></div>
-            <Link href="/business/enquire" className="button-primary shrink-0 px-6">Request business access</Link>
-          </div>
-        </section>
-      </main>
-      <Footer />
+      <footer className={styles.trustStrip}>
+        <Trust icon="contract" title="No contracts" text="Flexible, cancel anytime" />
+        <Trust icon="phone" title="UK-based support" text="Here when you need us" />
+        <Trust icon="shield" title="Insured & compliant" text="Registered UK company" />
+        <Trust icon="building" title="Company number 16330743" text="Mato Ltd" />
+      </footer>
     </div>
   );
 }
 
-function ProductPreview() {
-  return <figure className="rounded-[1.5rem] bg-white p-3 text-[#071638] shadow-[0_28px_70px_rgba(0,0,0,.3)]" aria-label="Illustration of the Quickola customer platform">
-    <div className="rounded-xl border border-[#dbe3e8]">
-      <div className="flex items-center justify-between border-b border-[#dbe3e8] p-4"><div><p className="text-[.68rem] font-black tracking-[.14em] text-[#08783f]">PRODUCT PREVIEW</p><p className="mt-1 font-black">Cleaning overview</p></div><span className="rounded-md bg-[#eaf4ed] px-2.5 py-2 text-xs font-black text-[#08783f]">Demo</span></div>
-      <div className="grid gap-3 p-4 sm:grid-cols-3"><Preview label="Properties" value="Saved records"/><Preview label="Upcoming" value="Requested cleans"/><Preview label="Attention" value="Clear next steps"/></div>
-      <div className="mx-4 mb-4 overflow-hidden rounded-lg border border-[#dbe3e8]"><div className="grid grid-cols-[1fr_auto] gap-4 bg-[#f5f7f6] px-4 py-3 text-xs font-black text-[#526078]"><span>Booking</span><span>Status</span></div>{[["Property turnaround","Assignment managed"],["Recurring site clean","Request received"],["Completed clean","History retained"]].map(([a,b])=><div key={a} className="grid grid-cols-[1fr_auto] gap-4 border-t border-[#e5eaed] px-4 py-3 text-sm"><span className="font-bold">{a}</span><span className="text-right text-xs font-black text-[#08783f]">{b}</span></div>)}</div>
-    </div><figcaption className="px-2 pt-2 text-xs text-[#6b7588]">Illustrative interface using neutral demonstration content.</figcaption>
-  </figure>;
+function HomeHeader() {
+  const links = [["Product", "/product"], ["Solutions", "/solutions/letting-agents"], ["How it works", "/how-it-works"], ["Service area", "/service-area"], ["Pricing", "/pricing-methodology"]];
+  return <header className={styles.header}><Link href="/" className={styles.logo} aria-label="Quickola homepage"><Image src="/quickola/logo-mark.png" alt="" width={30} height={31} priority /><span>Quickola</span></Link><nav aria-label="Primary navigation">{links.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}</nav><div className={styles.headerActions}><Link href="/business/sign-in">Sign in</Link><Link href="/business/enquire">Request business access <span>→</span></Link></div><details className={styles.mobileMenu}><summary>Menu</summary><nav aria-label="Mobile navigation">{links.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}<Link href="/business/sign-in">Sign in</Link><Link href="/business/enquire">Request business access</Link></nav></details></header>;
 }
-function Preview({label,value}:{label:string;value:string}) { return <div className="rounded-lg bg-[#f2f5f3] p-3"><p className="text-xs font-bold text-[#657089]">{label}</p><p className="mt-1 text-sm font-black">{value}</p></div>; }
+
+function DashboardPreview() {
+  return <div className={styles.dashboard}>
+    <div className={styles.dashTop}><div><h2>Welcome back</h2><p>Here&apos;s what&apos;s happening with your properties</p></div><button type="button">New cleaning request</button></div>
+    <div className={styles.dashRule} /><p className={styles.overview}>Overview</p>
+    <div className={styles.stats}><DashStat label="Properties" value="1" /><DashStat label="Upcoming cleans" value="0" /><DashStat label="Completed (all time)" value="0" /></div>
+    <div className={styles.dashEmpty}><span><Icon name="trend" /></span><h3>Your properties, bookings, and completions —<br />all in one dashboard.</h3><p>Use the menu to add properties and request cleans.</p></div>
+  </div>;
+}
+function DashStat({label, value}:{label:string;value:string}) { return <div><p>{label}</p><strong>{value}</strong></div>; }
+function Benefit({icon,title,text}:{icon:string;title:string;text:string}) { return <div><span><Icon name={icon} /></span><p><strong>{title}</strong><small>{text}</small></p></div>; }
+function Feature({icon,title,text,index}:{icon:string;title:string;text:string;index:number}) { return <article><span className={styles[`featureIcon${index}`]}><Icon name={icon} /></span><div><h3>{title}</h3><p>{text}</p></div></article>; }
+function Step({icon,number,title,text,index}:{icon:string;number:string;title:string;text:string;index:number}) { return <li className={styles[`step${index}`]}>{index>0&&<span className={styles.connector} aria-hidden="true">⟷</span>}<span className={styles.stepIcon}><Icon name={icon} /></span><b>{number}</b><h3>{title}</h3><p>{text}</p></li>; }
+function Trust({icon,title,text}:{icon:string;title:string;text:string}) { return <div><Icon name={icon} /><p><strong>{title}</strong><span>{text}</span></p></div>; }
+function MiniDashboard() { return <figure className={styles.miniDash}><div className={styles.miniScreen}><aside><span>◈ Quickola</span><i /><i /><i /><i /><i /></aside><div><header><b>Dashboard</b><small>Here&apos;s what&apos;s happening</small></header><button>New cleaning request</button><p>Overview</p><section><i /><i /><i /></section><article><Icon name="trend" /><b>Your properties, bookings, and completions —<br />all in one dashboard.</b><small>Use the menu to add properties and request cleans.</small></article></div></div><figcaption>See Quickola in action</figcaption></figure>; }
+function PlayIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4Z"/></svg>}
+function Icon({name}:{name:string}) { const common={fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round" as const,strokeLinejoin:"round" as const}; const paths:Record<string,React.ReactNode>={clock:<><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2M9 2h6"/></>,target:<><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></>,shield:<><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></>,people:<><circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3 19c.5-4 2.6-6 6-6s5.5 2 6 6M14 14c3-.7 5.5 1.3 6 4"/></>,trend:<><path d="m4 16 5-5 4 3 6-7"/><path d="M15 7h4v4"/></>,building:<><path d="M5 21V4h10v17M15 9h4v12M8 8h2M8 12h2M8 16h2M13 13h2M11 21v-3h2"/></>,calendar:<><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></>,pin:<><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></>,document:<><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h4M8 16h3M15 14v5M13 17h4"/></>,star:<><path d="m12 3 2.7 5.4 6 .9-4.4 4.2 1 6-5.3-2.8-5.3 2.8 1-6-4.4-4.2 6-.9Z"/></>,scale:<><path d="M12 4v17M7 21h10M5 7h14M7 7l-3 6h6Zm10 0-3 6h6Z"/></>,clean:<><path d="M7 20h10M9 20l1-8h4l1 8M11 12V7h2v5M17 5l1-2M19 8h2M17 10l2 2M6 5 4 3"/></>,chart:<><path d="M4 20V10M9 20V5M14 20v-8M19 20V3"/></>,contract:<><path d="M4 4h8v4M4 4v16h16v-8M11 13l9-9M15 4h5v5"/></>,phone:<><path d="M7 3 4 5c-1 7 8 16 15 15l2-3-5-3-2 2c-3-1-5-3-6-6l2-2Z"/></>};return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}>{paths[name]}</svg>}
