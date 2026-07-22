@@ -96,14 +96,17 @@ function HomeHeader() {
 }
 
 function DashboardPreview() {
-  return <div className={`${styles.dashboard} ${refinements.dashboard}`}>
-    <div className={styles.dashTop}><div><h2>Welcome back</h2><p>Here&apos;s what&apos;s happening with your properties</p></div><button type="button">New cleaning request</button></div>
-    <div className={styles.dashRule} /><p className={styles.overview}>Overview</p>
-    <div className={styles.stats}><DashStat label="Properties" value="1" /><DashStat label="Upcoming cleans" value="0" /><DashStat label="Completed (all time)" value="0" /></div>
-    <div className={styles.upcomingCard}><div><p>Upcoming clean</p><h3>16B Quinbrookes</h3><span>Saturday, 25 July · 10:00</span></div><b>Booking received</b></div>
-  </div>;
+  return <figure className={`${styles.dashboard} ${refinements.dashboard} ${refinements.imagePreview}`}>
+    <Image
+      src="/quickola/106.png"
+      alt="Quickola fair-price promotional artwork"
+      width={1024}
+      height={1536}
+      className={refinements.previewImage}
+      priority
+    />
+  </figure>;
 }
-function DashStat({label, value}:{label:string;value:string}) { return <div><p>{label}</p><strong>{value}</strong></div>; }
 function Benefit({icon,title,text}:{icon:string;title:string;text:string}) { return <div><span><Icon name={icon} /></span><p><strong>{title}</strong><small>{text}</small></p></div>; }
 function Feature({icon,title,text,index}:{icon:string;title:string;text:string;index:number}) { return <article><span className={styles[`featureIcon${index}`]}><Icon name={icon} /></span><div><h3>{title}</h3><p>{text}</p></div></article>; }
 function Step({icon,number,title,text,index}:{icon:string;number:string;title:string;text:string;index:number}) { return <li className={styles[`step${index}`]}>{index>0&&<span className={styles.connector} aria-hidden="true">⟷</span>}<span className={styles.stepIcon}><Icon name={icon} /></span><b>{number}</b><h3>{title}</h3><p>{text}</p></li>; }

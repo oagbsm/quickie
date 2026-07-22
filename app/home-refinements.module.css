@@ -11,6 +11,23 @@
   align-self: start;
 }
 
+.imagePreview {
+  min-height: 0;
+  max-height: 610px;
+  overflow: hidden;
+  padding: 12px;
+  background: #fff;
+}
+
+.previewImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 586px;
+  border-radius: 10px;
+  object-fit: contain;
+}
+
 .headerCta,
 .primaryCta,
 .ctaPanel {
@@ -20,5 +37,12 @@
 @media (min-width: 1121px) {
   .heroLine {
     font-size: 0.94em;
+  }
+}
+
+@media (max-width: 800px) {
+  .imagePreview,
+  .previewImage {
+    max-height: none;
   }
 }
