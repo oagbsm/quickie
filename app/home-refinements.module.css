@@ -1,0 +1,24 @@
+.heroLine {
+  color: #fff !important;
+  white-space: nowrap;
+}
+
+.greenText {
+  color: #20bf50;
+}
+
+.dashboard {
+  align-self: start;
+}
+
+.headerCta,
+.primaryCta,
+.ctaPanel {
+  background: #08783f !important;
+}
+
+@media (min-width: 1121px) {
+  .heroLine {
+    font-size: 0.94em;
+  }
+}

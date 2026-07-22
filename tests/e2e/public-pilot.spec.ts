@@ -14,8 +14,35 @@ test("homepage communicates managed business cleaning and passes a basic accessi
 test("desktop and mobile navigation expose the public architecture",async({page},testInfo)=>{
   await page.goto("/");
   if(testInfo.project.name==="mobile") await page.getByText("Menu",{exact:true}).click();
-  await expect(page.getByRole("navigation",{name:testInfo.project.name==="mobile"?"Mobile navigation":"Primary navigation"}).getByRole("link",{name:"Product"})).toBeVisible();
+  const navigation=page.getByRole("navigation",{name:testInfo.project.name==="mobile"?"Mobile navigation":"Primary navigation"});
+  await expect(navigation.getByRole("link",{name:"How it works"})).toBeVisible();
+  await expect(navigation.getByRole("link",{name:"For businesses"})).toBeVisible();
+  for(const removed of ["Product","Solutions","Pricing","Service area"]) await expect(navigation.getByRole("link",{name:removed,exact:true})).toHaveCount(0);
   await expect(page.getByRole("link",{name:"Sign in"}).first()).toBeVisible();
+  await expect(page.getByRole("link",{name:"Request business access"}).first()).toBeVisible();
+});
+
+test("landing page uses truthful capability, legal and CTA copy",async({page})=>{
+  await page.goto("/");
+  await expect(page.getByRole("heading",{name:"Everything you need to organise property cleaning in one place."})).toBeVisible();
+  for(const title of ["Manage every property","Request cleans quickly","Follow every booking"]) await expect(page.getByRole("heading",{name:title})).toBeVisible();
+  await expect(page.getByText("16B Quinbrookes")).toBeVisible();
+  await expect(page.getByText("Booking received",{exact:true})).toBeVisible();
+  await expect(page.getByText("MATO GROUP LTD",{exact:true})).toBeVisible();
+  await expect(page.getByText("Company number 17327292",{exact:true})).toBeVisible();
+  for(const unsupported of ["No contracts","cancel anytime","Real-Time Updates","audit history","100+","Consistent results","Vetted professionals","Insured & compliant"]) await expect(page.getByText(new RegExp(unsupported,"i"))).toHaveCount(0);
+  await expect(page.getByRole("heading",{name:"Ready to simplify your property cleaning?"})).toBeVisible();
+});
+
+test("landing section links target real sections and hero mock-up is readable",async({page},testInfo)=>{
+  await page.goto("/");
+  await expect(page.locator('#for-businesses')).toBeVisible();
+  await expect(page.locator('#how-it-works')).toBeVisible();
+  if(testInfo.project.name==="mobile") await page.getByText("Menu",{exact:true}).click();
+  const navigation=page.getByRole("navigation",{name:testInfo.project.name==="mobile"?"Mobile navigation":"Primary navigation"});
+  await expect(navigation.getByRole("link",{name:"For businesses"})).toHaveAttribute("href","#for-businesses");
+  await expect(navigation.getByRole("link",{name:"How it works"})).toHaveAttribute("href","#how-it-works");
+  await expect(page.getByText("Saturday, 25 July · 10:00")).toBeVisible();
 });
 
 test("solution, product, process and service-area routes render",async({page})=>{
