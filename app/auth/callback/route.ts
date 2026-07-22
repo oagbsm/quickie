@@ -8,7 +8,9 @@ export async function GET(request: Request) {
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type") as EmailOtpType | null;
   const requestedNext = url.searchParams.get("next") || "/business/continue";
-  const next = requestedNext.startsWith("/business/") ? requestedNext : "/business/continue";
+  const next = requestedNext.startsWith("/business/") || requestedNext === "/admin"
+    ? requestedNext
+    : "/business/continue";
   const supabase = await createSupabaseServerClient();
   let error: { message: string } | null = null;
 
