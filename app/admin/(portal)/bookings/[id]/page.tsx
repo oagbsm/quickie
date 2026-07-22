@@ -7,6 +7,7 @@ import {
   confirmPrice,
   transitionBooking,
   unassignProvider,
+  updateBookingOperations,
 } from "@/app/admin/actions";
 import StatusBadge from "@/app/admin/components/StatusBadge";
 import {
@@ -42,7 +43,7 @@ export default async function Page({
       .maybeSingle(),
     db
       .from("service_providers")
-      .select("id,name,email,phone,status")
+      .select("id,name,email,phone,status,service_area")
       .eq("status", "active")
       .order("name"),
     db
@@ -76,6 +77,8 @@ export default async function Page({
   } = member
     ? await db.auth.admin.getUserById(member.user_id)
     : { data: { user: null } };
+  const outward = String(p?.postcode || "").toUpperCase().match(/^[A-Z]+\d+/)?.[0];
+  const suitableProviders = providers?.filter((x) => outward && x.service_area?.includes(outward)) || [];
   const currentStatus = String(b.status);
   const transitions = isBookingStatus(currentStatus)
     ? allowedBookingTransitions[currentStatus]
@@ -220,12 +223,16 @@ export default async function Page({
             </div>
           </Panel>
           <Panel title="Operations">
-            <label className="text-sm font-bold text-[#657089]">
-              Internal notes
-            </label>
-            <p className="mt-2 whitespace-pre-wrap">
-              {b.internal_notes || "No internal notes."}
-            </p>
+            <form action={updateBookingOperations} className="grid gap-4">
+              <input type="hidden" name="bookingId" value={b.id} />
+              <label className="font-bold">Internal notes<textarea name="internalNotes" defaultValue={b.internal_notes || ""} rows={3} className="mt-2 w-full rounded-xl border p-3" /></label>
+              <label className="font-bold">Customer update<textarea name="customerUpdate" defaultValue={b.customer_update || ""} rows={3} className="mt-2 w-full rounded-xl border p-3" /></label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="font-bold">Arrival from<input type="datetime-local" name="arrivalStart" className="mt-2 w-full rounded-xl border p-3" /></label>
+                <label className="font-bold">Arrival to<input type="datetime-local" name="arrivalEnd" className="mt-2 w-full rounded-xl border p-3" /></label>
+              </div>
+              <button className="min-h-11 rounded-xl bg-[#071638] px-4 font-black text-white">Save operational details</button>
+            </form>
           </Panel>
           <Panel title="Audit timeline">
             {audit?.length ? (
@@ -339,18 +346,19 @@ export default async function Page({
                 <option value="" disabled>
                   {provider ? "Change provider" : "Select provider"}
                 </option>
-                {providers?.map((x) => (
+                {suitableProviders.map((x) => (
                   <option key={x.id} value={x.id}>
                     {x.name}
                   </option>
                 ))}
               </select>
               <button
-                disabled={!["confirmed", "assigned"].includes(b.status)}
+                disabled={!["confirmed", "provider_assigned"].includes(b.status) || !suitableProviders.length}
                 className="min-h-11 rounded-xl bg-[#071638] px-4 font-black text-white disabled:opacity-40"
               >
                 {provider ? "Change provider" : "Assign provider"}
               </button>
+              {!suitableProviders.length && <p className="text-sm font-bold text-amber-800">No active provider covers {outward || "this postcode"}. Update provider service areas first.</p>}
             </form>
           </Panel>
           <Panel title="Booking actions">
@@ -359,6 +367,8 @@ export default async function Page({
                 <form action={transitionBooking} key={status}>
                   <input type="hidden" name="bookingId" value={b.id} />
                   <input type="hidden" name="status" value={status} />
+                  {(status === "cancelled" || status === "unable_to_fulfil") && <input name="reason" required minLength={5} placeholder="Reason (required)" className="mb-2 min-h-11 w-full rounded-xl border px-3" />}
+                  {status === "completed" && <textarea name="completionNote" placeholder="Optional factual completion note" className="mb-2 w-full rounded-xl border p-3" />}
                   <button
                     className={`min-h-11 w-full rounded-xl px-4 font-black ${status === "cancelled" ? "border border-red-200 text-red-700" : "bg-[#071638] text-white"}`}
                   >

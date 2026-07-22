@@ -67,8 +67,11 @@ test("large and outside-area jobs require manual review", () => {
 test("canonical transitions reject invalid lifecycle changes", () => {
   assert.equal(canTransitionBooking("requested", "under_review"), true);
   assert.equal(canTransitionBooking("completed", "requested"), false);
-  assert.equal(canTransitionBooking("cancelled", "assigned"), false);
-  assert.equal(getBookingStatus("assigned").customerLabel, "Cleaner assigned");
+  assert.equal(canTransitionBooking("cancelled", "provider_assigned"), false);
+  assert.equal(canTransitionBooking("provider_assigned", "on_the_way"), true);
+  assert.equal(canTransitionBooking("on_the_way", "arrived"), true);
+  assert.equal(canTransitionBooking("arrived", "in_progress"), true);
+  assert.equal(getBookingStatus("confirmed").customerLabel, "Appointment confirmed");
 });
 test("London time formatting handles winter and summer DST", () => {
   assert.match(formatBusinessDateTime("2026-01-15T12:00:00Z"), /12:00/);

@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { createHash } from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { escapeHtml, sendAdminNotifications } from "@/lib/server/notifications";
 
@@ -87,6 +89,15 @@ export async function submitBusinessEnquiry(
     };
   }
   const db = createSupabaseAdminClient();
+  const requestHeaders = await headers();
+  const forwarded = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const sourceHash = createHash("sha256").update(`${forwarded}:${process.env.SUPABASE_SERVICE_ROLE_KEY || "quickola"}`).digest("hex");
+  const windowStart = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const [{ count: emailAttempts }, { count: ipAttempts }] = await Promise.all([
+    db.from("business_enquiries").select("id", { count: "exact", head: true }).eq("email", payload.email).gte("created_at", windowStart),
+    db.from("business_enquiries").select("id", { count: "exact", head: true }).eq("source_ip_hash", sourceHash).gte("created_at", windowStart),
+  ]);
+  if ((emailAttempts || 0) >= 3 || (ipAttempts || 0) >= 8) return { message: "Too many enquiries were submitted recently. Please try again later.", code: "rate_limit" };
   const { data: existing } = await db
     .from("business_enquiries")
     .select("id")
@@ -98,7 +109,7 @@ export async function submitBusinessEnquiry(
     );
   const { data: enquiry, error } = await db
     .from("business_enquiries")
-    .insert(payload)
+    .insert({ ...payload, source_ip_hash: sourceHash })
     .select("id")
     .single();
   if (error || !enquiry) {

@@ -62,7 +62,10 @@ export default async function Page({
           ["requested", "Requested"],
           ["under_review", "Under review"],
           ["confirmed", "Unassigned"],
-          ["assigned", "Assigned"],
+          ["awaiting_customer_confirmation", "Customer approval"],
+          ["provider_assigned", "Assigned"],
+          ["on_the_way", "On the way"],
+          ["arrived", "Arrived"],
           ["in_progress", "In progress"],
           ["completed", "Completed"],
         ].map(([v, l]) => (
@@ -122,7 +125,7 @@ export default async function Page({
                   <td className="p-4 font-black">
                     {price == null ? "Awaiting price" : formatMoney(price)}
                   </td>
-                  <td className="p-4">{provider?.name || "Being arranged"}</td>
+                  <td className="p-4">{provider?.name || "Unassigned"}</td>
                   <td className="p-4">
                     <StatusBadge status={b.status} />
                   </td>

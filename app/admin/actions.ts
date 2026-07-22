@@ -22,6 +22,8 @@ export async function transitionBooking(f: FormData) {
     { error } = await supabase.rpc("admin_transition_booking", {
       target_booking: id,
       next_status: status,
+      reason: value(f, "reason") || null,
+      completion_note: value(f, "completionNote") || null,
     });
   if (error)
     redirect(
@@ -29,6 +31,17 @@ export async function transitionBooking(f: FormData) {
     );
   refresh(id);
   redirect(`/admin/bookings/${id}?success=status`);
+}
+export async function updateBookingOperations(f: FormData) {
+  const { supabase } = await requireAdmin(), id = value(f, "bookingId");
+  const localToIso = (name: string) => { const raw = value(f, name); return raw ? new Date(raw).toISOString() : null; };
+  const { error } = await supabase.rpc("admin_update_booking_operations", {
+    target_booking: id, note_internal: value(f, "internalNotes") || null,
+    note_customer: value(f, "customerUpdate") || null,
+    arrival_start: localToIso("arrivalStart"), arrival_end: localToIso("arrivalEnd"),
+  });
+  if (error) redirect(`/admin/bookings/${id}?error=${encodeURIComponent(error.message)}`);
+  refresh(id); redirect(`/admin/bookings/${id}?success=operations`);
 }
 export async function assignProvider(f: FormData) {
   const { supabase } = await requireAdmin(),
@@ -81,18 +94,30 @@ export async function createProvider(f: FormData) {
   const { supabase } = await requireAdmin(),
     name = value(f, "name"),
     email = value(f, "email"),
-    phone = value(f, "phone");
+    phone = value(f, "phone"),
+    areas = value(f, "serviceArea").toUpperCase().split(/[,\s]+/).filter(Boolean),
+    notes = value(f, "internalNotes");
   if (name.length < 2) redirect("/admin/providers?error=name");
   const { error } = await supabase.from("service_providers").insert({
     name,
     email: email || null,
     phone: phone || null,
+    service_area: areas.length ? areas : ["SL1", "SL2", "SL3"],
+    internal_notes: notes || null,
     status: "active",
   });
   if (error)
     redirect(`/admin/providers?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/admin/providers");
   redirect("/admin/providers?success=created");
+}
+export async function updateProvider(f: FormData) {
+  const { supabase } = await requireAdmin(), id = value(f, "providerId"), status = value(f, "status"), name = value(f, "name"),
+    areas = value(f, "serviceArea").toUpperCase().split(/[,\s]+/).filter(Boolean);
+  if (!id || name.length < 2 || !["active", "paused", "archived"].includes(status) || !areas.length) redirect("/admin/providers?error=invalid_provider");
+  const { error } = await supabase.from("service_providers").update({ name, email: value(f, "email") || null, phone: value(f, "phone") || null, status, service_area: areas, internal_notes: value(f, "internalNotes") || null, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) redirect(`/admin/providers?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/admin/providers"); redirect("/admin/providers?success=updated");
 }
 export async function inviteBusiness(f: FormData) {
   const { supabase, user } = await requireAdmin();

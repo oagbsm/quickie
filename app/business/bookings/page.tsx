@@ -37,8 +37,7 @@ export default async function Page({
         <div className="mt-5 rounded-xl bg-emerald-50 p-4 text-emerald-900">
           <p className="font-black">Booking requested</p>
           <p className="mt-1 text-sm">
-            Quickola is confirming cleaner availability. Open the booking to see
-            the price and next step.
+            Quickola will review the requested appointment. Open the booking to see the price and next step.
           </p>
         </div>
       )}
@@ -69,9 +68,7 @@ export default async function Page({
                   <p className="mt-1 text-sm text-[#657089]">
                     {formatBusinessDateTime(b.scheduled_start)} · {p?.postcode}
                   </p>
-                  <p className="mt-2 text-sm font-bold">
-                    Cleaner: {provider?.name || "Being arranged"}
-                  </p>
+                  {provider && <p className="mt-2 text-sm font-bold">Cleaning team: {provider.name}</p>}
                 </div>
                 <div className="sm:text-right">
                   <span className="inline-flex rounded-full bg-[#eef3f0] px-3 py-1 text-xs font-black text-[#075d35]">

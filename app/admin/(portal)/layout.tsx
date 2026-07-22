@@ -16,7 +16,7 @@ export default async function Layout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user } = await requireAdmin();
+  await requireAdmin();
   return (
     <div className="min-h-screen bg-[#f2f5f7] text-[#071638]">
       <header className="sticky top-0 z-30 border-b bg-white">
@@ -31,9 +31,6 @@ export default async function Layout({
             Quickola Operations
           </Link>
           <div className="flex items-center gap-4">
-            <span className="hidden text-sm font-bold text-[#657089] sm:block">
-              {user.email}
-            </span>
             <form action={adminSignOut}>
               <button className="text-sm font-black">Sign out</button>
             </form>

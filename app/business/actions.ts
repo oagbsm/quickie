@@ -11,6 +11,7 @@ import {
   isPilotService,
 } from "@/lib/business/pricing";
 import { validatePilotSchedule } from "@/lib/business/time";
+import { sendBookingReceivedEmail } from "@/lib/server/business-notifications";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim(),
   optional = (f: FormData, n: string) => value(f, n) || null;
 const numberOrNull = (f: FormData, n: string) => {
@@ -101,7 +102,10 @@ export async function setPropertyStatus(f: FormData) {
         "requested",
         "under_review",
         "confirmed",
-        "assigned",
+        "awaiting_customer_confirmation",
+        "provider_assigned",
+        "on_the_way",
+        "arrived",
         "in_progress",
       ]);
     if ((count || 0) > 0 && value(f, "confirmActiveBookings") !== "1")
@@ -140,6 +144,16 @@ export async function joinServiceAreaWaitlist(f: FormData) {
   revalidatePath(`/business/properties/${p.id}`);
 }
 export type BookingActionState = { message: string; code?: string };
+
+export async function acceptBookingChange(f: FormData) {
+  const { supabase } = await requireBusinessUser();
+  const id = value(f, "bookingId");
+  const { error } = await supabase.rpc("customer_accept_booking_change", { target_booking: id });
+  if (error) redirect(`/business/bookings/${id}?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/business/dashboard");
+  revalidatePath(`/business/bookings/${id}`);
+  redirect(`/business/bookings/${id}?accepted=1`);
+}
 export async function createBooking(
   _previousState: BookingActionState,
   f: FormData,
@@ -252,12 +266,9 @@ export async function createBooking(
       propertyId,
       code: error?.code || "missing_booking",
     });
-    return {
-      message:
-        "We could not submit the request. Your selections are still here—please try again.",
-      code: "save",
-    };
+    return error?.message?.includes("booking_time_conflict") ? {message:"This time overlaps another active booking for this property. Choose a different time.",code:"conflict"} : {message:"We could not submit the request. Your selections are still here—please try again.",code:"save"};
   }
+  await sendBookingReceivedEmail({accountId,bookingId:booking.id,propertyId,service,scheduledStart:schedule.scheduledStart.toISOString()});
   revalidatePath("/business/dashboard");
   revalidatePath("/business/bookings");
   revalidatePath("/admin");

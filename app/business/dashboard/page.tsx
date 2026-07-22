@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireBusinessUser } from "@/lib/business/auth";
-import { getBookingStatus } from "@/lib/business/booking-status";
+import { activeBookingStatuses, customerActionStatuses, getBookingStatus } from "@/lib/business/booking-status";
 import { formatBusinessDateTime } from "@/lib/business/time";
 type Job = {
   id: string;
@@ -31,13 +31,7 @@ export default async function Page() {
       .select("id,service,scheduled_start,status,properties(nickname)")
       .eq("account_id", accountId)
       .gte("scheduled_start", now.toISOString())
-      .in("status", [
-        "requested",
-        "under_review",
-        "confirmed",
-        "assigned",
-        "in_progress",
-      ])
+      .in("status", [...activeBookingStatuses])
       .order("scheduled_start")
       .limit(6),
     supabase
@@ -51,19 +45,13 @@ export default async function Page() {
       .from("business_bookings")
       .select("id", { count: "exact", head: true })
       .eq("account_id", accountId)
-      .in("status", ["requested", "under_review", "confirmed"]),
+      .in("status", [...customerActionStatuses]),
     supabase
       .from("business_bookings")
       .select("id", { count: "exact", head: true })
       .eq("account_id", accountId)
       .lt("scheduled_start", now.toISOString())
-      .in("status", [
-        "requested",
-        "under_review",
-        "confirmed",
-        "assigned",
-        "in_progress",
-      ]),
+      .in("status", [...activeBookingStatuses]),
     supabase
       .from("properties")
       .select("id,nickname,service_area_status")
@@ -89,15 +77,15 @@ export default async function Page() {
           {danger
             ? `Action required on ${overdue} booking${overdue === 1 ? "" : "s"}`
             : warning
-              ? `${attention} booking${attention === 1 ? "" : "s"} need confirmation`
+              ? `${attention} price change${attention === 1 ? "" : "s"} need${attention === 1 ? "s" : ""} your approval`
               : "Everything is on track"}
         </p>
         <p className="mt-1 text-sm font-semibold">
           {danger
             ? "A booking is past its requested time and needs review."
             : warning
-              ? "Open the booking to see the latest status."
-              : "Your upcoming bookings are confirmed or assigned."}
+              ? "Open the booking to review and accept the updated price."
+              : "No action is needed from you."}
         </p>
       </div>
       <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
@@ -149,7 +137,7 @@ export default async function Page() {
       <Section
         title="Recently completed"
         empty="No completed cleans yet"
-        emptyText="Completion reports will appear here."
+        emptyText="Completed cleans will appear here."
       >
         {(completed as Job[] | null)?.map((j) => (
           <JobCard

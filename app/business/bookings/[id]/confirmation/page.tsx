@@ -41,7 +41,7 @@ export default async function BookingConfirmationPage({
           Your cleaning request has been submitted.
         </h1>
         <p className="mt-4 leading-7 text-[#657089]">
-          Quickola will review availability and confirm the next step. This
+          Quickola will review the appointment details and confirm the next step. This
           request is not yet a confirmed appointment.
         </p>
         <dl className="mt-8 grid gap-4 rounded-2xl bg-[#f4f6f9] p-5 sm:grid-cols-2">

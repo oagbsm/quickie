@@ -1,10 +1,10 @@
 import { requireAdmin } from "@/lib/admin/auth";
-import { createProvider } from "@/app/admin/actions";
+import { createProvider, updateProvider } from "@/app/admin/actions";
 export default async function Page() {
   const { supabase } = await requireAdmin(),
     { data } = await supabase
       .from("service_providers")
-      .select("id,name,email,phone,status,service_area")
+      .select("id,name,email,phone,status,service_area,internal_notes")
       .order("name");
   const c = "min-h-11 rounded-xl border px-3";
   return (
@@ -17,18 +17,27 @@ export default async function Page() {
         <div className="overflow-hidden rounded-2xl border bg-white">
           {data?.length ? (
             data.map((p) => (
-              <div
+              <details
                 key={p.id}
-                className="flex justify-between gap-4 border-b p-4 last:border-0"
+                className="border-b p-4 last:border-0"
               >
-                <div>
+                <summary className="flex cursor-pointer justify-between gap-4"><div>
                   <p className="font-black">{p.name}</p>
                   <p className="text-sm text-[#657089]">
-                    {p.phone || p.email || "No contact details"}
+                    {p.phone || p.email || "No contact details"} · {p.service_area.join(", ")}
                   </p>
                 </div>
                 <span className="text-sm font-bold">{p.status}</span>
-              </div>
+                </summary>
+                <form action={updateProvider} className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-2">
+                  <input type="hidden" name="providerId" value={p.id}/>
+                  <input name="name" defaultValue={p.name} required className={c}/><input name="phone" defaultValue={p.phone||""} className={c}/>
+                  <input name="email" type="email" defaultValue={p.email||""} className={c}/><input name="serviceArea" defaultValue={p.service_area.join(", ")} required className={c}/>
+                  <textarea name="internalNotes" defaultValue={p.internal_notes||""} placeholder="Internal notes" className="rounded-xl border p-3"/>
+                  <select name="status" defaultValue={p.status} className={c}><option value="active">Active</option><option value="paused">Paused</option><option value="archived">Archived</option></select>
+                  <button className="min-h-11 rounded-xl bg-[#071638] font-black text-white sm:col-span-2">Save provider</button>
+                </form>
+              </details>
             ))
           ) : (
             <p className="p-8 text-center text-[#657089]">
@@ -53,6 +62,8 @@ export default async function Page() {
             Email
             <input name="email" type="email" className={`mt-2 w-full ${c}`} />
           </label>
+          <label className="font-bold">Service areas<input name="serviceArea" defaultValue="SL1, SL2, SL3" required className={`mt-2 w-full ${c}`} /></label>
+          <label className="font-bold">Internal notes<textarea name="internalNotes" rows={3} className="mt-2 w-full rounded-xl border p-3" /></label>
           <button className="min-h-11 rounded-xl bg-[#079448] font-black text-white">
             Add provider
           </button>

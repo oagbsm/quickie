@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/admin/auth";
+import Link from "next/link";
 export default async function Page() {
   const { supabase } = await requireAdmin(),
     { data } = await supabase
@@ -33,7 +34,7 @@ export default async function Page() {
               return (
                 <tr key={p.id} className="border-t">
                   <td className="p-4">
-                    <p className="font-black">{p.nickname}</p>
+                    <Link href={`/admin/properties/${p.id}`} className="font-black underline">{p.nickname}</Link>
                     <p className="text-[#657089]">
                       {p.address_line_1}, {p.city}, {p.postcode}
                     </p>

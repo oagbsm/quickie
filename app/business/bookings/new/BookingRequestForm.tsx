@@ -79,6 +79,17 @@ export default function BookingRequestForm({
   return (
     <form
       action={formAction}
+      onSubmit={(event) => {
+        if (step !== 4) {
+          event.preventDefault();
+          next();
+        }
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && step !== 4 && event.target instanceof HTMLInputElement) {
+          event.preventDefault();
+        }
+      }}
       className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"
     >
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
@@ -300,7 +311,7 @@ export default function BookingRequestForm({
                 <p className="mt-1">
                   {quote.requiresManualReview
                     ? "We will confirm your final price before work begins."
-                    : "Quickola will confirm cleaner availability. You will not be charged more without agreement."}
+                    : "Quickola will review your requested appointment. You will not be charged more without agreement."}
                 </p>
               </div>
             </div>
@@ -342,6 +353,7 @@ export default function BookingRequestForm({
             </button>
           ) : (
             <button
+              type="submit"
               disabled={
                 !quote || Boolean(outside) || pending || !idempotencyKey
               }
@@ -351,7 +363,7 @@ export default function BookingRequestForm({
                 ? "Submitting request…"
                 : quote?.requiresManualReview
                   ? "Send request for price review"
-                  : `Request clean for ${formatMoney(quote?.estimatedPricePence || 0)}`}
+                  : `Submit booking request for ${formatMoney(quote?.estimatedPricePence || 0)}`}
             </button>
           )}
         </div>

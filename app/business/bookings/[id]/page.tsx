@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { requireBusinessUser } from "@/lib/business/auth";
 import {
@@ -9,6 +8,7 @@ import {
 } from "@/lib/business/booking-status";
 import { formatBusinessDateTime } from "@/lib/business/time";
 import { formatDuration, formatMoney } from "@/lib/business/pricing";
+import { acceptBookingChange } from "@/app/business/actions";
 export default async function Page({
   params,
 }: {
@@ -16,11 +16,11 @@ export default async function Page({
 }) {
   const { id } = await params,
     { supabase, accountId } = await requireBusinessUser();
-  const [{ data: b }, { data: report }, { data: photos }] = await Promise.all([
+  const [{ data: b }, { data: report }] = await Promise.all([
     supabase
       .from("business_bookings")
       .select(
-        "id,service,scheduled_start,status,requirements,recurrence,extras,duration_minutes,pricing_breakdown,pricing_mode,estimated_price_pence,estimated_price_max_pence,agreed_price_pence,completed_at,check_in_at,assigned_at,provider_acceptance,properties(nickname,address_line_1,address_line_2,city,postcode,access_method),service_providers:assigned_provider_id(name)",
+        "id,service,scheduled_start,status,requirements,recurrence,extras,duration_minutes,pricing_breakdown,pricing_mode,estimated_price_pence,estimated_price_max_pence,agreed_price_pence,completed_at,completion_notes,check_in_at,assigned_at,provider_acceptance,estimated_arrival_start,estimated_arrival_end,customer_update,cancel_reason,unable_to_fulfil_reason,properties(nickname,address_line_1,address_line_2,city,postcode,access_method),service_providers:assigned_provider_id(name)",
       )
       .eq("id", id)
       .eq("account_id", accountId)
@@ -31,27 +31,14 @@ export default async function Page({
       .eq("booking_id", id)
       .eq("account_id", accountId)
       .maybeSingle(),
-    supabase
-      .from("booking_photos")
-      .select("id,storage_path")
-      .eq("booking_id", id)
-      .eq("account_id", accountId),
   ]);
   if (!b) notFound();
-  const signed = photos?.length
-      ? (
-          await supabase.storage.from("business-evidence").createSignedUrls(
-            photos.map((p) => p.storage_path),
-            3600,
-          )
-        ).data || []
-      : [],
-    p = Array.isArray(b.properties) ? b.properties[0] : b.properties,
+  const p = Array.isArray(b.properties) ? b.properties[0] : b.properties,
     provider = Array.isArray(b.service_providers)
       ? b.service_providers[0]
       : b.service_providers,
     status = getBookingStatus(b.status),
-    completed = b.status === "completed" && report,
+    completed = b.status === "completed",
     currentOrder = isBookingStatus(b.status)
       ? bookingStatusConfig[b.status].order
       : 1;
@@ -123,16 +110,10 @@ export default async function Page({
         <div className="grid gap-5">
           <Panel title="What happens next">
             <p className="font-bold">{status.customerCopy}</p>
-            {b.status === "requested" && (
-              <p className="mt-2 text-sm text-[#657089]">
-                Quickola is confirming cleaner availability.
-              </p>
-            )}
-            {b.status === "under_review" && (
-              <p className="mt-2 text-sm text-[#657089]">
-                We will confirm your final price before work begins.
-              </p>
-            )}
+            {b.customer_update && <p className="mt-2 text-sm text-[#657089]">{b.customer_update}</p>}
+            {b.cancel_reason && <p className="mt-2 text-sm text-red-800">Reason: {b.cancel_reason}</p>}
+            {b.unable_to_fulfil_reason && <p className="mt-2 text-sm text-red-800">Reason: {b.unable_to_fulfil_reason}</p>}
+            {b.status === "awaiting_customer_confirmation" && <form action={acceptBookingChange} className="mt-4"><input type="hidden" name="bookingId" value={b.id}/><button className="min-h-11 rounded-xl bg-[#079448] px-5 font-black text-white">Accept updated price</button></form>}
           </Panel>
           <Panel title="Booking progress">
             <ol className="grid gap-4">
@@ -194,67 +175,21 @@ export default async function Page({
             />
           </Panel>
           {completed && (
-            <>
-              <Panel title="Completion report">
+              <Panel title="Completion">
                 <Details
                   rows={[
-                    ["Completed", formatBusinessDateTime(report.completed_at)],
-                    ["Cleaner", provider?.name || "Quickola cleaner"],
-                    ["Notes", report.notes || "No additional notes"],
-                    ["Issues", report.issues_found || "None reported"],
+                    ["Completed", formatBusinessDateTime(b.completed_at)],
+                    ["Notes", b.completion_notes || report?.notes || "No additional notes"],
                   ]}
                 />
-                <ul className="mt-5 grid gap-2">
-                  {Array.isArray(report.checklist) &&
-                    report.checklist.map(
-                      (x: { label: string; complete: boolean }) => (
-                        <li key={x.label} className="flex gap-2 font-bold">
-                          <span className="text-[#079448]">✓</span>
-                          {x.label}
-                        </li>
-                      ),
-                    )}
-                </ul>
               </Panel>
-              <Panel title="Completion photos">
-                {signed.length ? (
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {signed.map((x, i) =>
-                      x.signedUrl ? (
-                        <Image
-                          key={x.signedUrl}
-                          src={x.signedUrl}
-                          alt={`Completion photo ${i + 1}`}
-                          width={600}
-                          height={450}
-                          className="aspect-[4/3] rounded-xl object-cover"
-                        />
-                      ) : null,
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-[#657089]">
-                    No completion photos available.
-                  </p>
-                )}
-              </Panel>
-            </>
           )}
         </div>
         <aside className="grid h-fit gap-5 lg:sticky lg:top-24">
           <Panel title="Price">
             <Price booking={b} />
           </Panel>
-          <Panel title="Cleaner">
-            <p className="font-black">{provider?.name || "Being arranged"}</p>
-            <p className="mt-2 text-sm text-[#657089]">
-              {provider
-                ? b.provider_acceptance === "accepted"
-                  ? "Cleaner accepted"
-                  : "Assignment in progress"
-                : "Quickola will update this booking when a cleaner is assigned."}
-            </p>
-          </Panel>
+          {provider && <Panel title="Cleaning team"><p className="font-black">{provider.name}</p>{b.estimated_arrival_start && <p className="mt-2 text-sm text-[#657089]">Expected arrival: {formatBusinessDateTime(b.estimated_arrival_start,{timeStyle:"short"})}{b.estimated_arrival_end ? `–${new Intl.DateTimeFormat("en-GB",{timeStyle:"short",timeZone:"Europe/London"}).format(new Date(b.estimated_arrival_end))}`:""}</p>}</Panel>}
           <Panel title="Need help?">
             <p className="text-sm text-[#657089]">
               Questions or changes can be sent securely through the Quickola
@@ -316,7 +251,7 @@ function Price({ booking: b }: { booking: any }) {
             ? "This is your confirmed total."
             : manual
               ? "Final price will be confirmed before work begins."
-              : "Quickola is confirming cleaner availability."}
+              : "Quickola will review your requested appointment."}
         </p>
       </div>
     </div>

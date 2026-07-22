@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/admin/auth";
+import Link from "next/link";
 export default async function Page() {
   const { supabase } = await requireAdmin(),
     { data } = await supabase
@@ -16,7 +17,7 @@ export default async function Page() {
       <div className="mt-6 grid gap-3">
         {data?.length ? (
           data.map((a: any) => (
-            <article
+            <Link href={`/admin/customers/${a.id}`}
               key={a.id}
               className="grid gap-3 rounded-2xl border bg-white p-5 sm:grid-cols-[1fr_auto] sm:items-center"
             >
@@ -30,7 +31,7 @@ export default async function Page() {
               <span className="rounded-full bg-[#f1f3f6] px-3 py-1 text-xs font-black">
                 {a.status}
               </span>
-            </article>
+            </Link>
           ))
         ) : (
           <p className="rounded-2xl border border-dashed bg-white p-8 text-center text-[#657089]">
