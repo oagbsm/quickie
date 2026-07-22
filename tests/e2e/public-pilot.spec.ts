@@ -26,7 +26,7 @@ test("landing page uses truthful capability, legal and CTA copy",async({page})=>
   await page.goto("/");
   await expect(page.getByRole("heading",{name:"Everything you need to organise property cleaning in one place."})).toBeVisible();
   for(const title of ["Manage every property","Request cleans quickly","Follow every booking"]) await expect(page.getByRole("heading",{name:title})).toBeVisible();
-  await expect(page.getByRole("img",{name:"Quickola fair-price promotional artwork"})).toBeVisible();
+  await expect(page.getByRole("img",{name:"Quickola business dashboard preview"})).toBeVisible();
   await expect(page.getByText("MATO GROUP LTD",{exact:true})).toBeVisible();
   await expect(page.getByText("Company number 17327292",{exact:true})).toBeVisible();
   for(const unsupported of ["No contracts","cancel anytime","Real-Time Updates","audit history","100+","Consistent results","Vetted professionals","Insured & compliant"]) await expect(page.getByText(new RegExp(unsupported,"i"))).toHaveCount(0);
@@ -41,7 +41,7 @@ test("landing section links target real sections and hero mock-up is readable",a
   const navigation=page.getByRole("navigation",{name:testInfo.project.name==="mobile"?"Mobile navigation":"Primary navigation"});
   await expect(navigation.getByRole("link",{name:"For businesses"})).toHaveAttribute("href","#for-businesses");
   await expect(navigation.getByRole("link",{name:"How it works"})).toHaveAttribute("href","#how-it-works");
-  await expect(page.getByRole("img",{name:"Quickola fair-price promotional artwork"})).toHaveAttribute("src",/106\.png/);
+  await expect(page.getByRole("img",{name:"Quickola business dashboard preview"})).toHaveAttribute("src",/106\.png/);
 });
 
 test("solution, product, process and service-area routes render",async({page})=>{

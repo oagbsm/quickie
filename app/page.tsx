@@ -98,10 +98,10 @@ function HomeHeader() {
 function DashboardPreview() {
   return <figure className={`${styles.dashboard} ${refinements.dashboard} ${refinements.imagePreview}`}>
     <Image
-      src="/quickola/106.png"
-      alt="Quickola fair-price promotional artwork"
-      width={1024}
-      height={1536}
+      src="/106.png"
+      alt="Quickola business dashboard preview"
+      width={1536}
+      height={1024}
       className={refinements.previewImage}
       priority
     />
