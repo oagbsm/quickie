@@ -86,10 +86,10 @@ export default function Home() {
               </p>
               <div className={styles.heroActions}>
                 <Link
-                  href="/business/enquire"
+                  href="/business/sign-up"
                   className={`${styles.primaryButton} ${refinements.primaryCta}`}
                 >
-                  Request business access <span>→</span>
+                  Create account <span>→</span>
                 </Link>
                 <Link href="/how-it-works" className={styles.darkButton}>
                   See how it works <PlayIcon />
@@ -185,8 +185,8 @@ export default function Home() {
               </p>
             </div>
             <div className={styles.ctaActions}>
-              <Link href="/business/enquire" className={styles.ctaLight}>
-                Request business access <span>→</span>
+              <Link href="/business/sign-up" className={styles.ctaLight}>
+                Create account <span>→</span>
               </Link>
               <Link href="#how-it-works" className={styles.ctaDark}>
                 See how it works <PlayIcon />
@@ -245,8 +245,8 @@ function HomeHeader() {
       </nav>
       <div className={styles.headerActions}>
         <Link href="/business/sign-in">Sign in</Link>
-        <Link href="/business/enquire" className={refinements.headerCta}>
-          Request business access <span>→</span>
+        <Link href="/business/sign-up" className={refinements.headerCta}>
+          Create account <span>→</span>
         </Link>
       </div>
       <details className={styles.mobileMenu}>
@@ -258,7 +258,7 @@ function HomeHeader() {
             </Link>
           ))}
           <Link href="/business/sign-in">Sign in</Link>
-          <Link href="/business/enquire">Request business access</Link>
+          <Link href="/business/sign-up">Create account</Link>
         </nav>
       </details>
     </header>

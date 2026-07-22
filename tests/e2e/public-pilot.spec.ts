@@ -9,7 +9,7 @@ test("homepage communicates managed business cleaning and passes a basic accessi
     "The smarter way to manage every clean, every time.",
   );
   await expect(
-    page.getByRole("link", { name: "Request business access" }).first(),
+    page.getByRole("link", { name: "Create account" }).first(),
   ).toBeVisible();
   await expect(
     page.getByText(/controlled service currently available in Slough/i),
@@ -49,7 +49,7 @@ test("desktop and mobile navigation expose the public architecture", async ({
     page.getByRole("link", { name: "Sign in" }).first(),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Request business access" }).first(),
+    page.getByRole("link", { name: "Create account" }).first(),
   ).toBeVisible();
 });
 
@@ -132,9 +132,27 @@ test("solution, product, process and service-area routes render", async ({
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 }), path).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "Request business access" }).first(),
+      page.getByRole("link", { name: "Create account" }).first(),
     ).toBeVisible();
   }
+});
+
+test("self-service registration is available without an invitation", async ({
+  page,
+}) => {
+  const response = await page.goto("/business/sign-up");
+  expect(response?.status()).toBe(200);
+  await expect(page).toHaveURL(/\/business\/sign-up$/);
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "Create your business account",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/no sales call or administrator invitation is required/i),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue" })).toBeVisible();
 });
 
 test("business enquiry validates and is clearly non-confirming", async ({

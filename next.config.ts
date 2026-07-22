@@ -48,11 +48,6 @@ const nextConfig: NextConfig = {
         destination: "/business/enquire",
         permanent: true,
       })),
-      {
-        source: "/business/sign-up",
-        destination: "/business/enquire",
-        permanent: false,
-      },
       { source: "/business", destination: "/", permanent: true },
       { source: "/for-providers", destination: "/", permanent: false },
       { source: "/privacy", destination: "/privacy-policy", permanent: true },

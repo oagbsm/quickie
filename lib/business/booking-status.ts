@@ -34,7 +34,8 @@ export const bookingStatusConfig: Record<BookingStatus, BookingPresentation> = {
     customerLabel: "Booking received",
     customerTitle: "Booking received",
     adminLabel: "Requested",
-    customerCopy: "We’ve received your booking and are arranging the service.",
+    customerCopy:
+      "Your request has been received. We’ll confirm availability, timing and final pricing shortly.",
     actionCopy: "No action is required from you.",
     actionRequired: false,
     tone: "neutral",
@@ -43,10 +44,11 @@ export const bookingStatusConfig: Record<BookingStatus, BookingPresentation> = {
     terminalException: false,
   },
   under_review: {
-    customerLabel: "Under review",
+    customerLabel: "Awaiting confirmation",
     customerTitle: "Request under review",
     adminLabel: "Under review",
-    customerCopy: "We’re checking the details of this non-standard request and will confirm the final price and appointment.",
+    customerCopy:
+      "We’re checking the details of this non-standard request and will confirm the final price and appointment.",
     actionCopy: "No action is required from you while we review the request.",
     actionRequired: false,
     tone: "warning",
@@ -55,7 +57,7 @@ export const bookingStatusConfig: Record<BookingStatus, BookingPresentation> = {
     terminalException: false,
   },
   awaiting_customer_confirmation: {
-    customerLabel: "Approval needed",
+    customerLabel: "Awaiting confirmation",
     customerTitle: "Your approval is needed",
     adminLabel: "Awaiting customer",
     customerCopy: "The booking details or price changed during review.",
@@ -67,10 +69,11 @@ export const bookingStatusConfig: Record<BookingStatus, BookingPresentation> = {
     terminalException: false,
   },
   confirmed: {
-    customerLabel: "Booking confirmed",
+    customerLabel: "Confirmed",
     customerTitle: "Booking confirmed",
     adminLabel: "Confirmed · unassigned",
-    customerCopy: "Your appointment is confirmed. We’ll notify you when your cleaner is assigned.",
+    customerCopy:
+      "Your appointment is confirmed. We’ll notify you when your cleaner is assigned.",
     actionCopy: "No action is required from you.",
     actionRequired: false,
     tone: "success",
@@ -79,10 +82,11 @@ export const bookingStatusConfig: Record<BookingStatus, BookingPresentation> = {
     terminalException: false,
   },
   provider_assigned: {
-    customerLabel: "Cleaner assigned",
-    customerTitle: "Cleaner assigned",
+    customerLabel: "Cleaner arranged",
+    customerTitle: "Cleaner arranged",
     adminLabel: "Provider assigned",
-    customerCopy: "Your cleaner has been assigned. The arrival window is shown when available.",
+    customerCopy:
+      "Your cleaner has been assigned. The arrival window is shown when available.",
     actionCopy: "No action is required from you.",
     actionRequired: false,
     tone: "success",
@@ -130,7 +134,8 @@ export const bookingStatusConfig: Record<BookingStatus, BookingPresentation> = {
     customerLabel: "Cleaning completed",
     customerTitle: "Cleaning completed",
     adminLabel: "Completed",
-    customerCopy: "The clean has been completed. Recorded completion details are shown below.",
+    customerCopy:
+      "The clean has been completed. Recorded completion details are shown below.",
     actionCopy: "No action is required from you.",
     actionRequired: false,
     tone: "success",
@@ -142,7 +147,8 @@ export const bookingStatusConfig: Record<BookingStatus, BookingPresentation> = {
     customerLabel: "Booking cancelled",
     customerTitle: "Booking cancelled",
     adminLabel: "Cancelled",
-    customerCopy: "This booking has been cancelled and will not progress further.",
+    customerCopy:
+      "This booking has been cancelled and will not progress further.",
     actionCopy: "Contact Quickola if you need help arranging another clean.",
     actionRequired: false,
     tone: "danger",
@@ -154,7 +160,8 @@ export const bookingStatusConfig: Record<BookingStatus, BookingPresentation> = {
     customerLabel: "Unable to fulfil",
     customerTitle: "We couldn’t fulfil this booking",
     adminLabel: "Unable to fulfil",
-    customerCopy: "Quickola was unable to fulfil this booking and it will not progress further.",
+    customerCopy:
+      "Quickola was unable to fulfil this booking and it will not progress further.",
     actionCopy: "Contact Quickola if you need help with another arrangement.",
     actionRequired: false,
     tone: "danger",
@@ -164,12 +171,20 @@ export const bookingStatusConfig: Record<BookingStatus, BookingPresentation> = {
   },
 };
 
-export const allowedBookingTransitions: Record<BookingStatus, readonly BookingStatus[]> = {
+export const allowedBookingTransitions: Record<
+  BookingStatus,
+  readonly BookingStatus[]
+> = {
   requested: ["under_review", "confirmed", "cancelled", "unable_to_fulfil"],
   under_review: ["confirmed", "cancelled", "unable_to_fulfil"],
   awaiting_customer_confirmation: ["cancelled", "unable_to_fulfil"],
   confirmed: ["cancelled", "unable_to_fulfil"],
-  provider_assigned: ["on_the_way", "confirmed", "cancelled", "unable_to_fulfil"],
+  provider_assigned: [
+    "on_the_way",
+    "confirmed",
+    "cancelled",
+    "unable_to_fulfil",
+  ],
   on_the_way: ["arrived", "cancelled", "unable_to_fulfil"],
   arrived: ["in_progress", "cancelled", "unable_to_fulfil"],
   in_progress: ["completed", "cancelled"],
@@ -178,10 +193,14 @@ export const allowedBookingTransitions: Record<BookingStatus, readonly BookingSt
   unable_to_fulfil: [],
 };
 
-export const customerActionStatuses: readonly BookingStatus[] = ["awaiting_customer_confirmation"];
-export const activeBookingStatuses: readonly BookingStatus[] = BOOKING_STATUSES.filter(
-  (status) => !["completed", "cancelled", "unable_to_fulfil"].includes(status),
-);
+export const customerActionStatuses: readonly BookingStatus[] = [
+  "awaiting_customer_confirmation",
+];
+export const activeBookingStatuses: readonly BookingStatus[] =
+  BOOKING_STATUSES.filter(
+    (status) =>
+      !["completed", "cancelled", "unable_to_fulfil"].includes(status),
+  );
 
 export const CUSTOMER_TIMELINE = [
   "Booking received",
@@ -192,7 +211,10 @@ export const CUSTOMER_TIMELINE = [
 ] as const;
 
 export type TimelineState = "complete" | "current" | "future";
-export type TimelineItem = { label: (typeof CUSTOMER_TIMELINE)[number]; state: TimelineState };
+export type TimelineItem = {
+  label: (typeof CUSTOMER_TIMELINE)[number];
+  state: TimelineState;
+};
 
 export function isBookingStatus(value: string): value is BookingStatus {
   return BOOKING_STATUSES.includes(value as BookingStatus);
@@ -201,7 +223,9 @@ export function canTransitionBooking(from: BookingStatus, to: BookingStatus) {
   return allowedBookingTransitions[from].includes(to);
 }
 export function getBookingStatus(value: string): BookingPresentation {
-  return isBookingStatus(value) ? bookingStatusConfig[value] : bookingStatusConfig.requested;
+  return isBookingStatus(value)
+    ? bookingStatusConfig[value]
+    : bookingStatusConfig.requested;
 }
 export function needsCustomerAction(value: string) {
   return getBookingStatus(value).actionRequired;
@@ -211,7 +235,12 @@ export function getBookingTimeline(value: string): TimelineItem[] {
   if (presentation.terminalException) return [];
   return CUSTOMER_TIMELINE.map((label, index) => ({
     label,
-    state: index < presentation.timelineStep ? "complete" : index === presentation.timelineStep ? "current" : "future",
+    state:
+      index < presentation.timelineStep
+        ? "complete"
+        : index === presentation.timelineStep
+          ? "current"
+          : "future",
   }));
 }
 
@@ -223,7 +252,12 @@ export type PriceInput = {
   status?: string | null;
 };
 export type PricePresentation = {
-  label: "Booking total" | "Estimated total" | "Revised total" | "Recorded price" | "Price pending";
+  label:
+    | "Booking total"
+    | "Estimated total"
+    | "Revised total"
+    | "Recorded price"
+    | "Price pending";
   certainty: PriceCertainty;
   amountPence: number | null;
   maximumPence: number | null;
@@ -231,38 +265,108 @@ export type PricePresentation = {
 };
 export function getPricePresentation(booking: PriceInput): PricePresentation {
   const status = getBookingStatus(booking.status || "requested");
-  if (booking.status === "awaiting_customer_confirmation") return {label:"Revised total",certainty:"provisional",amountPence:booking.agreed_price_pence ?? booking.estimated_price_pence ?? null,maximumPence:null,explanation:"This revised total needs your approval before the appointment can be confirmed."};
-  if (booking.pricing_mode === "manual_review" && booking.agreed_price_pence == null) return {label:"Estimated total",certainty:"provisional",amountPence:booking.estimated_price_pence ?? null,maximumPence:booking.estimated_price_max_pence ?? null,explanation:"This non-standard request is under review. We’ll confirm the final total before work begins."};
-  const amount = booking.agreed_price_pence ?? booking.estimated_price_pence ?? null;
-  if (amount == null) return {label:"Price pending",certainty:"provisional",amountPence:null,maximumPence:null,explanation:"Quickola is confirming the price for this request."};
-  const exception = booking.status === "cancelled" || booking.status === "unable_to_fulfil";
-  return {label:exception ? "Recorded price" : "Booking total",certainty:status.priceCertainty,amountPence:amount,maximumPence:null,explanation:booking.agreed_price_pence != null ? "This is the agreed total for the booking." : "This total was calculated from the property and service details submitted."};
+  if (booking.status === "awaiting_customer_confirmation")
+    return {
+      label: "Revised total",
+      certainty: "provisional",
+      amountPence:
+        booking.agreed_price_pence ?? booking.estimated_price_pence ?? null,
+      maximumPence: null,
+      explanation:
+        "This revised total needs your approval before the appointment can be confirmed.",
+    };
+  if (
+    booking.pricing_mode === "manual_review" &&
+    booking.agreed_price_pence == null
+  )
+    return {
+      label: "Estimated total",
+      certainty: "provisional",
+      amountPence: booking.estimated_price_pence ?? null,
+      maximumPence: booking.estimated_price_max_pence ?? null,
+      explanation:
+        "This non-standard request is under review. We’ll confirm the final total before work begins.",
+    };
+  const amount =
+    booking.agreed_price_pence ?? booking.estimated_price_pence ?? null;
+  if (amount == null)
+    return {
+      label: "Price pending",
+      certainty: "provisional",
+      amountPence: null,
+      maximumPence: null,
+      explanation: "Quickola is confirming the price for this request.",
+    };
+  const exception =
+    booking.status === "cancelled" || booking.status === "unable_to_fulfil";
+  return {
+    label: exception ? "Recorded price" : "Booking total",
+    certainty: status.priceCertainty,
+    amountPence: amount,
+    maximumPence: null,
+    explanation:
+      booking.agreed_price_pence != null
+        ? "This is the agreed total for the booking."
+        : "This total was calculated from the property and service details submitted.",
+  };
 }
 
 export function cleanOptionalText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 export function formatServiceLabel(value: string) {
-  const labels: Record<string, string> = {regular_cleaning:"Regular clean",deep_cleaning:"Deep clean",end_of_tenancy:"End-of-tenancy clean"};
-  return labels[value] || value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
+  const labels: Record<string, string> = {
+    regular_cleaning: "Regular clean",
+    deep_cleaning: "Deep clean",
+    end_of_tenancy: "End-of-tenancy clean",
+  };
+  return (
+    labels[value] ||
+    value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase())
+  );
 }
 export function formatRecurrenceLabel(value: string) {
-  const labels: Record<string, string> = {one_off:"One-off",weekly:"Weekly",fortnightly:"Fortnightly",monthly:"Monthly"};
-  return labels[value] || value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
+  const labels: Record<string, string> = {
+    one_off: "One-off",
+    weekly: "Weekly",
+    fortnightly: "Fortnightly",
+    monthly: "Monthly",
+  };
+  return (
+    labels[value] ||
+    value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase())
+  );
 }
 export function getDashboardBanner(statuses: readonly string[]) {
   const actionCount = statuses.filter(needsCustomerAction).length;
   return actionCount
-    ? { actionRequired: true, title: `${actionCount} booking${actionCount === 1 ? "" : "s"} need${actionCount === 1 ? "s" : ""} your approval`, copy: "Open the booking to review and approve the revised details." }
-    : { actionRequired: false, title: "Everything is on track", copy: "No action is required from you." };
+    ? {
+        actionRequired: true,
+        title: `${actionCount} booking${actionCount === 1 ? "" : "s"} need${actionCount === 1 ? "s" : ""} your approval`,
+        copy: "Open the booking to review and approve the revised details.",
+      }
+    : {
+        actionRequired: false,
+        title: "You’re all caught up",
+        copy: "Everything is running smoothly. We’ll notify you if anything needs your input.",
+      };
 }
 export function getDashboardStatusCounts(statuses: readonly string[]) {
   return {
-    active: statuses.filter((status) => isBookingStatus(status) && activeBookingStatuses.includes(status)).length,
+    active: statuses.filter(
+      (status) =>
+        isBookingStatus(status) && activeBookingStatuses.includes(status),
+    ).length,
     needAttention: statuses.filter(needsCustomerAction).length,
     completed: statuses.filter((status) => status === "completed").length,
   };
 }
 export function canShowAssignedProvider(value: string) {
-  return ["provider_assigned", "on_the_way", "arrived", "in_progress", "completed"].includes(value);
+  return [
+    "provider_assigned",
+    "on_the_way",
+    "arrived",
+    "in_progress",
+    "completed",
+  ].includes(value);
 }

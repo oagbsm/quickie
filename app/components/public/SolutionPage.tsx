@@ -30,10 +30,10 @@ export default function SolutionPage(props: Props) {
             </p>
             <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
               <Link
-                href="/business/enquire"
+                href="/business/sign-up"
                 className="public-button public-button-primary"
               >
-                Request business access
+                Create account
               </Link>
               <p className="public-note">Serving businesses in Slough.</p>
             </div>
@@ -109,10 +109,10 @@ export default function SolutionPage(props: Props) {
               </p>
             </div>
             <Link
-              href="/business/enquire"
+              href="/business/sign-up"
               className="public-button public-button-primary shrink-0"
             >
-              Request business access
+              Create account
             </Link>
           </div>
         </section>

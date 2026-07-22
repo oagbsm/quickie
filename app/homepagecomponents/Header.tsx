@@ -44,10 +44,10 @@ export default function Header() {
             Sign in
           </Link>
           <Link
-            href="/business/enquire"
+            href="/business/sign-up"
             className="button-primary text-[.9375rem]"
           >
-            Request business access
+            Create account
           </Link>
         </div>
         <details className="public-menu relative lg:hidden">
@@ -74,10 +74,10 @@ export default function Header() {
               Sign in
             </Link>
             <Link
-              href="/business/enquire"
+              href="/business/sign-up"
               className="button-primary mt-1 text-center"
             >
-              Request business access
+              Create account
             </Link>
           </nav>
         </details>

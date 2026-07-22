@@ -78,10 +78,10 @@ export default function Page() {
               </p>
             </div>
             <Link
-              href="/business/enquire"
+              href="/business/sign-up"
               className="public-button public-button-primary shrink-0"
             >
-              Request business access
+              Create account
             </Link>
           </div>
         </section>

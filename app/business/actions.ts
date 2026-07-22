@@ -12,17 +12,13 @@ import {
 } from "@/lib/business/pricing";
 import { validatePilotSchedule } from "@/lib/business/time";
 import { sendBookingReceivedEmail } from "@/lib/server/business-notifications";
+import { getServiceAreaStatus } from "@/lib/business/service-area";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim(),
   optional = (f: FormData, n: string) => value(f, n) || null;
 const numberOrNull = (f: FormData, n: string) => {
   const v = value(f, n);
   return v ? Number(v) : null;
 };
-function getServiceAreaStatus(postcode: string) {
-  return /^(SL1|SL2|SL3)/.test(postcode.toUpperCase().replace(/\s+/g, ""))
-    ? "eligible"
-    : "outside_area";
-}
 function propertyPayload(f: FormData) {
   const postcode = value(f, "postcode").toUpperCase();
   return {
@@ -148,8 +144,13 @@ export type BookingActionState = { message: string; code?: string };
 export async function acceptBookingChange(f: FormData) {
   const { supabase } = await requireBusinessUser();
   const id = value(f, "bookingId");
-  const { error } = await supabase.rpc("customer_accept_booking_change", { target_booking: id });
-  if (error) redirect(`/business/bookings/${id}?error=${encodeURIComponent(error.message)}`);
+  const { error } = await supabase.rpc("customer_accept_booking_change", {
+    target_booking: id,
+  });
+  if (error)
+    redirect(
+      `/business/bookings/${id}?error=${encodeURIComponent(error.message)}`,
+    );
   revalidatePath("/business/dashboard");
   revalidatePath(`/business/bookings/${id}`);
   redirect(`/business/bookings/${id}?accepted=1`);
@@ -199,7 +200,7 @@ export async function createBooking(
   if (p.service_area_status !== "eligible")
     return {
       message:
-        "Cleaning is not currently available for this property's postcode.",
+        "We’re not yet fulfilling cleans in this postcode. You can still manage the property here, and we’ll let you know when Quickola becomes available in your area.",
       code: "outside_area",
     };
   const frequency = value(f, "recurrence") || "one_off";
@@ -266,9 +267,25 @@ export async function createBooking(
       propertyId,
       code: error?.code || "missing_booking",
     });
-    return error?.message?.includes("booking_time_conflict") ? {message:"This time overlaps another active booking for this property. Choose a different time.",code:"conflict"} : {message:"We could not submit the request. Your selections are still here—please try again.",code:"save"};
+    return error?.message?.includes("booking_time_conflict")
+      ? {
+          message:
+            "This time overlaps another active booking for this property. Choose a different time.",
+          code: "conflict",
+        }
+      : {
+          message:
+            "We could not submit the request. Your selections are still here—please try again.",
+          code: "save",
+        };
   }
-  await sendBookingReceivedEmail({accountId,bookingId:booking.id,propertyId,service,scheduledStart:schedule.scheduledStart.toISOString()});
+  await sendBookingReceivedEmail({
+    accountId,
+    bookingId: booking.id,
+    propertyId,
+    service,
+    scheduledStart: schedule.scheduledStart.toISOString(),
+  });
   revalidatePath("/business/dashboard");
   revalidatePath("/business/bookings");
   revalidatePath("/admin");

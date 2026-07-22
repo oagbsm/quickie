@@ -1,6 +1,10 @@
 "use client";
 import { useActionState, useMemo, useState } from "react";
-import { createBooking, type BookingActionState } from "../../actions";
+import {
+  createBooking,
+  joinServiceAreaWaitlist,
+  type BookingActionState,
+} from "../../actions";
 import {
   calculatePilotQuote,
   formatDuration,
@@ -86,7 +90,11 @@ export default function BookingRequestForm({
         }
       }}
       onKeyDown={(event) => {
-        if (event.key === "Enter" && step !== 4 && event.target instanceof HTMLInputElement) {
+        if (
+          event.key === "Enter" &&
+          step !== 4 &&
+          event.target instanceof HTMLInputElement
+        ) {
           event.preventDefault();
         }
       }}
@@ -134,12 +142,20 @@ export default function BookingRequestForm({
           {outside && (
             <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm">
               <p className="font-black text-amber-950">
-                Cleaning is not yet available in this area.
+                We’re not yet fulfilling cleans in this postcode.
               </p>
               <p className="mt-1 text-amber-900">
-                This property can remain in your portfolio, but a booking cannot
-                be confirmed.
+                You can still manage the property here, and we’ll let you know
+                when Quickola becomes available in your area.
               </p>
+              <button
+                formAction={joinServiceAreaWaitlist}
+                name="propertyId"
+                value={property.id}
+                className="mt-3 min-h-11 font-bold text-amber-950 underline"
+              >
+                Join the service-area waitlist
+              </button>
             </div>
           )}
           <fieldset className="mt-6">
@@ -324,7 +340,7 @@ export default function BookingRequestForm({
           >
             {submission.message ||
               (error === "outside_area"
-                ? "This property is outside the current Slough service area."
+                ? "We’re not yet fulfilling cleans in this postcode. You can still manage the property here, and we’ll let you know when Quickola becomes available in your area."
                 : "Please check the booking details and try again.")}
           </p>
         )}

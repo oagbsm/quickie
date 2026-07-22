@@ -50,10 +50,10 @@ export default function Page() {
         </div>
         <div className="mx-auto mt-14 max-w-[1080px]">
           <Link
-            href="/business/enquire"
+            href="/business/sign-up"
             className="inline-flex rounded-xl bg-[#079448] px-6 py-4 font-black text-white"
           >
-            Discuss your cleaning requirements
+            Create account
           </Link>
         </div>
       </section>
