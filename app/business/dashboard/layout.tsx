@@ -3,9 +3,9 @@ import Image from "next/image";
 import { requireBusinessUser } from "@/lib/business/auth";
 import { signOut } from "../actions";
 import PortalNav from "../components/PortalNav";
-import NotificationMenu from "../components/NotificationMenu";
 import { formatDisplayName } from "@/lib/display-name";
 import MobilePortalShell from "../components/MobilePortalShell";
+import "../portal.css";
 
 export default async function Layout({
   children,
@@ -39,35 +39,33 @@ export default async function Layout({
     "Business account";
   const displayInitial = displayName.trim().charAt(0).toUpperCase() || "B";
   return (
-    <div className="min-h-screen bg-[#f7f8fa] text-[#071638] lg:grid lg:grid-cols-[236px_1fr]">
+    <div className="min-h-screen bg-[#f7f9fc] text-[#071638] lg:grid lg:grid-cols-[216px_1fr]">
       <MobilePortalShell notifications={notifications || []} displayName={displayName} />
-      <aside className="sticky top-0 z-40 hidden border-b border-white/10 bg-[linear-gradient(160deg,#061b40,#031a36)] text-white lg:block lg:h-screen lg:border-b-0 lg:border-r lg:border-white/10">
-        <div className="flex h-16 items-center justify-between px-4 lg:h-auto lg:px-7 lg:py-8">
+      <aside className="sticky top-0 z-40 hidden bg-[linear-gradient(165deg,#061d46,#021a38)] text-white lg:flex lg:h-screen lg:min-h-0 lg:flex-col">
+        <div className="px-5 pt-6">
           <Link
             href="/business/dashboard"
-            className="flex items-center gap-3 text-xl font-extrabold tracking-[-.02em]"
+            className="flex items-center gap-2.5 text-xl font-extrabold tracking-[-.02em]"
             aria-label="Quickola business dashboard"
           >
             <Image
               src="/quickola/logo-mark.png"
               alt=""
-              width={40}
-              height={40}
+              width={36}
+              height={36}
               priority
             />
             Quickola
           </Link>
+          <p className="ml-[46px] mt-1 max-w-[125px] text-[10px] font-semibold leading-4 text-white/62">Managed cleaning for STR properties</p>
         </div>
-        <div className="hidden border-t border-white/10 p-2 lg:block lg:border-0 lg:px-4 lg:pt-10">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-5">
           <PortalNav />
         </div>
-        <div className="absolute inset-x-0 bottom-0 hidden min-w-0 border-t border-white/10 p-5 lg:block">
-          <div className="mb-4 flex justify-end">
-            <NotificationMenu notifications={notifications || []} />
-          </div>
+        <div className="min-w-0 shrink-0 border-t border-white/10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="flex min-w-0 items-center gap-3">
             <span
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#25ae5c] text-sm font-extrabold text-white"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#2d67b2] text-sm font-extrabold text-white"
               aria-hidden="true"
             >
               {displayInitial}
@@ -80,13 +78,13 @@ export default async function Layout({
             </div>
           </div>
           <form action={signOut}>
-            <button className="mt-4 inline-flex min-h-11 w-full items-center rounded-lg border border-white/15 px-3 text-left text-sm font-bold text-white/72 hover:bg-white/10">
+            <button className="mt-4 inline-flex min-h-11 w-full items-center rounded-lg border border-white/12 px-3 text-left text-sm font-bold text-white/80 hover:bg-white/10">
               Sign out
             </button>
           </form>
         </div>
       </aside>
-      <main className="min-w-0 p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-8 xl:p-10">{children}</main>
+      <main className="min-w-0 p-4 pb-28 sm:p-6 sm:pb-28 lg:p-7 lg:pb-8 xl:p-8">{children}</main>
     </div>
   );
 }

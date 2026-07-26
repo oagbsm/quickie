@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { requireBusinessUser } from "@/lib/business/auth";
 import ArchivePropertyForm from "./ArchivePropertyForm";
-import TurnoverStatus from "../components/TurnoverStatus";
 import { formatDisplayName } from "@/lib/display-name";
 import {
   currentAssignment,
@@ -17,7 +16,7 @@ export default async function Page({
   let query = supabase
     .from("properties")
     .select(
-      "id,nickname,address_line_1,city,postcode,property_type,bedrooms,bathrooms,status,work_items(id,status,turnover_date,access_start_at,next_checkin_at,ready_at,assignments(status,assigned_at,workers(display_name)))",
+      "id,nickname,address_line_1,city,postcode,property_type,bedrooms,bathrooms,status,default_checkout_time,default_checkin_time,work_items(id,status,turnover_date,access_start_at,next_checkin_at,ready_at,assignments(status,assigned_at,workers(display_name)))",
     )
     .eq("account_id", accountId)
     .order("created_at", { ascending: false });
@@ -26,22 +25,19 @@ export default async function Page({
   const { data, error } = await query;
   if (error) throw new Error(`properties_query_failed:${error.code}`);
   return (
-    <div className="mx-auto max-w-[1240px]">
-      <header className="flex items-end justify-between gap-4">
+    <div className="portal-page">
+      <header className="portal-header">
         <div>
-          <p className="hidden text-sm font-extrabold text-[#2d67b2] sm:block">
-            PORTFOLIO
-          </p>
-          <h1 className="text-[28px] font-extrabold leading-[34px] tracking-[-.03em] sm:mt-1 sm:text-4xl">
+          <h1 className="portal-title">
             Properties
           </h1>
-          <p className="mt-2 hidden text-[#657089] sm:block">
-            Property-specific turnover standards, readiness and history.
+          <p className="portal-subtitle hidden sm:block">
+            Manage property details and turnover standards.
           </p>
         </div>
         <Link
           href="/business/properties/new"
-          className="inline-flex min-h-12 items-center justify-center rounded-lg bg-[#071f49] px-4 font-extrabold text-white sm:px-5"
+          className="portal-action"
         >
           <span className="sm:hidden">+ Add</span>
           <span className="hidden sm:inline">Add property</span>
@@ -87,9 +83,6 @@ export default async function Page({
               .sort((a, b) =>
                 a.access_start_at.localeCompare(b.access_start_at),
               )[0];
-            const latest = [...(p.work_items || [])].sort((a, b) =>
-              b.turnover_date.localeCompare(a.turnover_date),
-            )[0];
             const lastReady = [...(p.work_items || [])]
               .filter((w) => w.status === "ready")
               .sort((a, b) =>
@@ -108,7 +101,7 @@ export default async function Page({
             return (
               <article
                 key={p.id}
-                className={`rounded-xl border bg-white p-4 sm:p-5 ${p.status === "archived" ? "opacity-65" : ""}`}
+                className={`portal-card p-4 ${p.status === "archived" ? "opacity-65" : ""}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -135,9 +128,9 @@ export default async function Page({
                     </div>
                   </details>
                 </div>
-                <div className="mt-5 border-t pt-4">
-                  <p className="text-xs font-bold text-[#748096]">NEXT GUEST</p>
-                  <p className="mt-1 text-lg font-extrabold">
+                <div className="mt-4 border-t pt-4">
+                  <div className="flex items-center justify-between gap-3"><p className="portal-label">Next turnover</p><span className="portal-pill border border-slate-200 bg-slate-50 text-slate-700">{p.status === "active" ? "Active" : "Inactive"}</span></div>
+                  <p className="mt-1 font-extrabold">
                     {upcoming
                       ? new Intl.DateTimeFormat("en-GB", {
                           dateStyle: "medium",
@@ -146,61 +139,39 @@ export default async function Page({
                         }).format(new Date(upcoming.next_checkin_at))
                       : "None scheduled"}
                   </p>
+                  <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                    <div><dt className="portal-label">Cleaning window</dt><dd className="mt-1 font-bold">{String(p.default_checkout_time).slice(0,5)}–{String(p.default_checkin_time).slice(0,5)}</dd></div>
+                    <div><dt className="portal-label">Cleaner</dt><dd className="mt-1 font-bold">{formatDisplayName(cleaner?.display_name)||"Not assigned"}</dd></div>
+                  </dl>
                   {upcoming ? (
-                    <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <dt className="text-xs font-bold text-[#748096]">
-                          CLEANER
-                        </dt>
-                        <dd className="mt-1 font-extrabold">
-                          {formatDisplayName(cleaner?.display_name) ||
-                            "Not assigned"}
-                        </dd>
-                        <dd className="mt-0.5 text-xs capitalize text-[#657089]">
-                          {assignment?.status || "Needs assignment"}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs font-bold text-[#748096]">
-                          READINESS
-                        </dt>
-                        <dd className="mt-1">
-                          <TurnoverStatus status={upcoming.status} />
-                        </dd>
-                        <dd className="mt-1 text-xs font-bold text-[#657089]">
-                          {turnoverActionReason(upcoming)}
-                        </dd>
-                      </div>
-                    </dl>
+                    <div className="mt-3 text-xs text-[#657089]">
+                      {turnoverActionReason(upcoming)}
+                    </div>
                   ) : (
-                    latest && (
-                      <div className="mt-3">
-                        <TurnoverStatus status={latest.status} />
-                      </div>
-                    )
+                    <p className="mt-3 text-xs text-[#657089]">No upcoming turnover</p>
                   )}
                   <p className="mt-4 text-xs text-[#657089]">
-                    Last ready:{" "}
+                    {lastReady?.ready_at ? "Last ready: " : "No completed turnovers yet."}
                     {lastReady?.ready_at
                       ? new Intl.DateTimeFormat("en-GB", {
                           dateStyle: "medium",
                         }).format(new Date(lastReady.ready_at))
-                      : "No completed readiness yet"}
+                      : ""}
                   </p>
                 </div>
                 <div className="mt-4 flex gap-2">
                   <Link
                     href={`/business/properties/${p.id}`}
-                    className="inline-flex min-h-12 flex-1 items-center justify-center rounded-lg border px-4 text-sm font-extrabold"
+                    className="portal-action-secondary flex-1"
                   >
                     View property
                   </Link>
                   {p.status === "active" && (
                     <Link
                       href={`/business/turnovers/new?property=${p.id}`}
-                      className="hidden min-h-11 items-center rounded-lg bg-[#071f49] px-4 text-sm font-extrabold text-white sm:inline-flex"
+                      className="portal-action"
                     >
-                      Add arrival
+                      Add turnover
                     </Link>
                   )}
                 </div>

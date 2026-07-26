@@ -1,20 +1,20 @@
 import { turnoverStatusLabels, type TurnoverStatus } from "@/lib/turnovers/status";
 
 const tones: Record<string, string> = {
-  ready: "border-emerald-700 bg-emerald-700 text-white",
-  action_required: "border-red-700 bg-red-700 text-white",
-  declined: "border-red-700 bg-red-700 text-white",
-  unassigned: "border-amber-500 bg-amber-400 text-amber-950",
-  awaiting_response: "border-amber-500 bg-amber-400 text-amber-950",
-  accepted: "border-blue-700 bg-blue-700 text-white",
-  en_route: "border-blue-700 bg-blue-700 text-white",
-  arrived: "border-blue-700 bg-blue-700 text-white",
-  in_progress: "border-blue-700 bg-blue-700 text-white",
+  ready: "border-emerald-100 bg-emerald-50 text-emerald-800",
+  action_required: "border-red-100 bg-red-50 text-red-800",
+  declined: "border-red-100 bg-red-50 text-red-800",
+  unassigned: "border-amber-100 bg-amber-50 text-amber-900",
+  awaiting_response: "border-amber-100 bg-amber-50 text-amber-900",
+  accepted: "border-blue-100 bg-blue-50 text-blue-800",
+  en_route: "border-blue-100 bg-blue-50 text-blue-800",
+  arrived: "border-blue-100 bg-blue-50 text-blue-800",
+  in_progress: "border-blue-100 bg-blue-50 text-blue-800",
   cancelled: "border-slate-200 bg-slate-50 text-slate-600",
 };
 
 export default function TurnoverStatus({ status }: { status: string }) {
-  return <span className={`inline-flex min-h-7 items-center rounded-full border px-2.5 py-1 text-xs font-extrabold ${tones[status] || "border-blue-200 bg-blue-50 text-blue-800"}`}>
+  return <span className={`portal-pill border ${tones[status] || "border-blue-100 bg-blue-50 text-blue-800"}`}>
     {turnoverStatusLabels[status as TurnoverStatus] || status.replaceAll("_", " ")}
   </span>;
 }

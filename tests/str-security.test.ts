@@ -37,7 +37,10 @@ const accessExpiry = readFileSync(
   ),
   "utf8",
 );
-const sql = `${core}\n${hardening}\n${atomic}\n${ownerChecklist}\n${accessExpiry}`;
+const invitationEmailGuard = readFileSync(new URL("../supabase/migrations/202607260008_invitation_email_guard.sql", import.meta.url), "utf8");
+const invitationActions = readFileSync(new URL("../app/business/str-actions.ts", import.meta.url), "utf8");
+const cleanerPage = readFileSync(new URL("../app/business/cleaners/[id]/page.tsx", import.meta.url), "utf8");
+const sql = `${core}\n${hardening}\n${atomic}\n${ownerChecklist}\n${accessExpiry}\n${invitationEmailGuard}`;
 
 test("neutral reusable core objects avoid Airbnb-specific table names", () => {
   for (const table of [
@@ -119,6 +122,22 @@ test("invitation acceptance enforces expiry, revocation and one worker identity"
   assert.match(hardening, /user_already_linked_to_worker/);
   assert.match(hardening, /confirmed_name text/);
   assert.match(hardening, /display_name=trim\(confirmed_name\)/);
+});
+test("invitation acceptance is single-use and bound to the invited email", () => {
+  assert.match(invitationEmailGuard, /lower\(worker\.email\)<>signed_in_email/);
+  assert.match(invitationEmailGuard, /invitation_already_accepted/);
+  assert.match(invitationEmailGuard, /for update/);
+  assert.match(invitationEmailGuard, /worker_already_linked/);
+});
+test("manual invite links rotate hashed tokens and stay out of redirect URLs", () => {
+  assert.match(invitationActions, /generateWorkerInviteLink/);
+  assert.match(invitationActions, /invitation_status !== "pending"/);
+  assert.match(invitationActions, /token_hash: tokenHash, expires_at: expiresAt/);
+  assert.match(invitationActions, /httpOnly: true/);
+  assert.match(invitationActions, /sameSite: "strict"/);
+  assert.doesNotMatch(invitationActions, /\?[^`]*token=/);
+  assert.match(cleanerPage, /role === "owner"/);
+  assert.match(cleanerPage, /CopyInviteLink/);
 });
 
 test("property images stay private and account-scoped", () => {

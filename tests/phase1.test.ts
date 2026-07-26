@@ -39,6 +39,8 @@ import {
   getPasswordRecoveryRedirect,
   getSignUpConfirmationRedirect,
 } from "../lib/auth-redirects.ts";
+import { normaliseUkPostcode, UK_POSTCODE_PATTERN } from "../lib/uk-address.ts";
+import { resolveResendFromEmail } from "../lib/email-config.ts";
 const base = {
   frequency: "one_off",
   propertyType: "flat",
@@ -50,21 +52,21 @@ const base = {
 test("application origins are canonical and never local in production", () => {
   assert.equal(
     resolveAppOrigin({
-      siteUrl: "https://www.quickola.co.uk/",
+      siteUrl: "https://quickola.co.uk/",
       nodeEnv: "production",
     }),
-    "https://www.quickola.co.uk",
+    "https://quickola.co.uk",
   );
   assert.equal(
     resolveAppOrigin({
       siteUrl: "http://localhost:3000",
       nodeEnv: "production",
     }),
-    "https://www.quickola.co.uk",
+    "https://quickola.co.uk",
   );
   assert.equal(
     resolveAppOrigin({ siteUrl: "not a URL", nodeEnv: "production" }),
-    "https://www.quickola.co.uk",
+    "https://quickola.co.uk",
   );
   assert.equal(
     resolveAppOrigin({ nodeEnv: "development" }),
@@ -73,7 +75,7 @@ test("application origins are canonical and never local in production", () => {
 });
 test("authentication URLs use production origin and reject external next paths", () => {
   const environment = {
-    siteUrl: "https://www.quickola.co.uk/",
+    siteUrl: "https://quickola.co.uk/",
     nodeEnv: "production",
   };
   assert.equal(
@@ -81,7 +83,7 @@ test("authentication URLs use production origin and reject external next paths",
       "/auth/callback?next=/business/update-password",
       environment,
     ),
-    "https://www.quickola.co.uk/auth/callback?next=/business/update-password",
+    "https://quickola.co.uk/auth/callback?next=/business/update-password",
   );
   assert.equal(
     safeInternalNextPath("/business/onboarding?step=setup"),
@@ -98,20 +100,39 @@ test("authentication URLs use production origin and reject external next paths",
 });
 test("sign-up and password recovery use production callback URLs", () => {
   const environment = {
-    siteUrl: "https://www.quickola.co.uk/",
+    siteUrl: "https://quickola.co.uk/",
     nodeEnv: "production",
   };
   assert.equal(
     getSignUpConfirmationRedirect(environment),
-    "https://www.quickola.co.uk/auth/callback?next=/business/continue",
+    "https://quickola.co.uk/auth/callback?next=/business/continue",
   );
   assert.equal(
     getPasswordRecoveryRedirect(environment),
-    "https://www.quickola.co.uk/auth/callback?next=/business/update-password",
+    "https://quickola.co.uk/auth/callback?next=/business/update-password",
   );
   assert.doesNotMatch(
     `${getSignUpConfirmationRedirect(environment)} ${getPasswordRecoveryRedirect(environment)}`,
     /localhost|127\.0\.0\.1/,
+  );
+});
+test("UK property postcodes are validated and normalised", () => {
+  assert.equal(normaliseUkPostcode(" sl11aa "), "SL1 1AA");
+  assert.match(normaliseUkPostcode("SW1A2AA"), UK_POSTCODE_PATTERN);
+  assert.doesNotMatch("12345", UK_POSTCODE_PATTERN);
+});
+test("Resend sender prefers the new variable and supports the production legacy variable", () => {
+  assert.equal(
+    resolveResendFromEmail({ RESEND_FROM_EMAIL: "new@quickola.test", FROM_EMAIL: "legacy@quickola.test" }),
+    "new@quickola.test",
+  );
+  assert.equal(
+    resolveResendFromEmail({ RESEND_FROM_EMAIL: undefined, FROM_EMAIL: "legacy@quickola.test" }),
+    "legacy@quickola.test",
+  );
+  assert.equal(
+    resolveResendFromEmail({ RESEND_FROM_EMAIL: " ", FROM_EMAIL: " " }),
+    null,
   );
 });
 test("customer schedule wording separates confirmation from live arrival timing", () => {

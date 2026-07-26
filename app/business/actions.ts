@@ -13,6 +13,8 @@ import {
 } from "@/lib/business/pricing";
 import { validatePilotSchedule } from "@/lib/business/time";
 import { sendBookingReceivedEmail } from "@/lib/server/business-notifications";
+import { getServiceAreaStatus } from "@/lib/business/service-area";
+import { normaliseAddressPart, normaliseUkPostcode, UK_POSTCODE_PATTERN } from "@/lib/uk-address";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim(),
   optional = (f: FormData, n: string) => value(f, n) || null;
 const numberOrNull = (f: FormData, n: string) => {
@@ -20,12 +22,12 @@ const numberOrNull = (f: FormData, n: string) => {
   return v ? Number(v) : null;
 };
 function propertyPayload(f: FormData) {
-  const postcode = value(f, "postcode").toUpperCase();
+  const postcode = normaliseUkPostcode(value(f, "postcode"));
   return {
-    nickname: value(f, "nickname"),
-    address_line_1: value(f, "addressLine1"),
+    nickname: normaliseAddressPart(value(f, "nickname")),
+    address_line_1: normaliseAddressPart(value(f, "addressLine1")),
     address_line_2: optional(f, "addressLine2"),
-    city: value(f, "city"),
+    city: normaliseAddressPart(value(f, "city")),
     postcode,
     property_type: value(f, "propertyType"),
     bedrooms: numberOrNull(f, "bedrooms"),
@@ -40,7 +42,7 @@ function propertyPayload(f: FormData) {
     parking_notes: optional(f, "parkingNotes"),
     floor_lift_notes: optional(f, "floorLiftNotes"),
     preferred_frequency: null,
-    service_area_status: "eligible",
+    service_area_status: getServiceAreaStatus(postcode),
     default_checkout_time: value(f, "defaultCheckoutTime") || "11:00",
     default_checkin_time: value(f, "defaultCheckinTime") || "15:00",
     estimated_turnover_minutes: Number(
@@ -105,9 +107,11 @@ export async function addProperty(f: FormData) {
     !p.city ||
     !p.postcode ||
     !p.property_type ||
-    !p.access_method
+    !p.access_method || !UK_POSTCODE_PATTERN.test(p.postcode)
   )
     redirect("/business/properties/new?error=required");
+  const { data: duplicate } = await supabase.from("properties").select("id").eq("account_id", accountId).ilike("address_line_1", p.address_line_1).eq("postcode", p.postcode).neq("status", "archived").limit(1).maybeSingle();
+  if (duplicate) redirect(`/business/properties/new?error=duplicate&existing=${duplicate.id}`);
   const { data: created, error } = await supabase
     .from("properties")
     .insert({ ...p, account_id: accountId })

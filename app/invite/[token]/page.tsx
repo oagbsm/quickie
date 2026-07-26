@@ -1,9 +1,9 @@
 import crypto from "node:crypto";
 import Image from "next/image";
-import Link from "next/link";
 import { acceptWorkerInvitation } from "@/app/business/str-actions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import InvitationCredentials from "./InvitationCredentials";
 
 export default async function Page({
   params,
@@ -23,7 +23,7 @@ export default async function Page({
   const { data: invitation } = await admin
     .from("worker_invitations")
     .select(
-      "expires_at,accepted_at,revoked_at,workers(display_name),business_accounts(name)",
+      "expires_at,accepted_at,revoked_at,workers(display_name,email),business_accounts(name)",
     )
     .eq("token_hash", tokenHash)
     .maybeSingle();
@@ -33,6 +33,7 @@ export default async function Page({
     !invitation.revoked_at &&
     new Date(invitation.expires_at) > new Date(),
   );
+  const state = !invitation ? "invalid" : invitation.accepted_at ? "accepted" : invitation.revoked_at ? "invalid" : new Date(invitation.expires_at) <= new Date() ? "expired" : "valid";
   const worker = Array.isArray(invitation?.workers)
     ? invitation.workers[0]
     : invitation?.workers;
@@ -61,15 +62,15 @@ export default async function Page({
           checklists, upload evidence and report issues. Quickola does not
           employ you or handle cleaning payments.
         </p>
-        {(!valid || error === "invalid") && (
+        {state !== "valid" || error === "invalid" ? (
           <p
             role="alert"
             className="mt-4 rounded-lg bg-red-50 p-3 font-bold text-red-800"
           >
-            This invitation is invalid, expired, already used or has been
-            revoked.
+            {state === "expired" ? "This invitation has expired. Ask the team owner to resend it." : state === "accepted" ? "This invitation has already been accepted." : "This invitation is invalid or has been cancelled."}
           </p>
-        )}
+        ) : null}
+        {valid && <dl className="mt-5 grid gap-2 rounded-lg bg-slate-50 p-4 text-sm"><div><dt className="font-bold">Invited email</dt><dd>{worker?.email}</dd></div><div><dt className="font-bold">Role</dt><dd>Cleaner</dd></div><div><dt className="font-bold">Expires</dt><dd>{new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short" }).format(new Date(invitation!.expires_at))}</dd></div></dl>}
         {error === "name" && (
           <p
             role="alert"
@@ -97,14 +98,7 @@ export default async function Page({
               Confirm and accept invitation
             </button>
           </form>
-        ) : valid ? (
-          <Link
-            href={`/business/sign-in?next=${encodeURIComponent(`/invite/${token}`)}`}
-            className="mt-7 flex min-h-12 items-center justify-center rounded-lg bg-[#071f49] font-extrabold text-white"
-          >
-            Sign in or create credentials
-          </Link>
-        ) : null}
+        ) : valid && worker?.email ? <InvitationCredentials email={worker.email} token={token} /> : null}
       </div>
     </main>
   );

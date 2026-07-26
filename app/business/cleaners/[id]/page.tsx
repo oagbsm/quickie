@@ -5,22 +5,30 @@ import {
   resendWorkerInvitation,
   revokeWorkerInvitation,
   setWorkerStatus,
+  generateWorkerInviteLink,
 } from "../../str-actions";
+import CopyInviteLink from "../CopyInviteLink";
+import CopyCleanerJobLink from "../CopyCleanerJobLink";
+import { buildAbsoluteAppUrl } from "@/lib/app-url";
+import { cookies } from "next/headers";
 export default async function Page({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{
-    token?: string;
+    link?: string;
     invited?: string;
     resent?: string;
+    manual?: string;
+    email?: string;
     error?: string;
+    history?: string;
   }>;
 }) {
   const { id } = await params,
     query = await searchParams;
-  const { supabase, accountId } = await requireBusinessUser();
+  const { supabase, accountId, role } = await requireBusinessUser();
   const { data: worker } = await supabase
     .from("workers")
     .select(
@@ -30,21 +38,25 @@ export default async function Page({
     .eq("account_id", accountId)
     .maybeSingle();
   if (!worker) notFound();
+  let manualInvite: { token: string; expiresAt: string } | null = null;
+  if (role === "owner" && worker.invitation_status === "pending" && query.link === "1") {
+    const raw = (await cookies()).get(`quickola-invite-${id}`)?.value;
+    if (raw) try { manualInvite = JSON.parse(Buffer.from(raw, "base64url").toString("utf8")); } catch { manualInvite = null; }
+  }
+  const inviteLink = manualInvite?.token ? buildAbsoluteAppUrl(`/team/invite/${encodeURIComponent(manualInvite.token)}`) : null;
+  const today=new Date().toISOString().slice(0,10);const assignments=worker.assignments||[];const history=query.history||"upcoming";const group=(a:{status:string;work_items:{turnover_date:string;status:string}})=>a.status==="cancelled"||a.work_items.status==="cancelled"?"cancelled":["ready","evidence_submitted"].includes(a.work_items.status)||a.work_items.turnover_date<today?"completed":"upcoming";const filtered=assignments.filter((a:{status:string;work_items:{turnover_date:string;status:string}})=>group(a)===history);const counts={upcoming:assignments.filter((a:{status:string;work_items:{turnover_date:string;status:string}})=>group(a)==="upcoming").length,completed:assignments.filter((a:{status:string;work_items:{turnover_date:string;status:string}})=>group(a)==="completed").length,cancelled:assignments.filter((a:{status:string;work_items:{turnover_date:string;status:string}})=>group(a)==="cancelled").length};const workerState=worker.status!=="active"?"Inactive":worker.invitation_status==="pending"?"Pending invitation":"Active cleaner";
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="portal-page max-w-5xl">
       <Link
         href="/business/cleaners"
         className="text-sm font-bold text-[#526078]"
       >
         ← Cleaners
       </Link>
-      <header className="mt-4 flex flex-col gap-4 border-b pb-6 sm:flex-row sm:items-start sm:justify-between">
+      <header className="portal-header mt-4 border-b pb-5">
         <div>
-          <h1 className="text-3xl font-extrabold">{worker.display_name}</h1>
-          <p className="mt-1 text-[#657089]">
-            {worker.company_name || "Independent cleaner"} ·{" "}
-            {worker.invitation_status.replaceAll("_", " ")}
-          </p>
+          <h1 className="portal-title">{worker.display_name}</h1>
+          <p className="portal-subtitle">{workerState}</p>
         </div>
         <form action={setWorkerStatus}>
           <input type="hidden" name="workerId" value={id} />
@@ -67,22 +79,23 @@ export default async function Page({
           creating another secure link.
         </p>
       )}
-      {(query.invited || query.resent) && query.token && (
+      {(query.invited || query.resent || query.manual) && inviteLink && (
         <section className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-5">
           <h2 className="font-extrabold text-blue-950">
-            {query.resent ? "New invitation created" : "Invitation created"}
+            {query.manual ? "New invite link generated" : query.resent ? "Invitation ready" : "Invitation created"}
           </h2>
           <p className="mt-1 text-sm text-blue-900">
-            Share this private, seven-day link using{" "}
-            {worker.preferred_contact_method}. It is shown only now.
+            Invited cleaner: <strong>{worker.email}</strong>
           </p>
-          <code className="mt-3 block overflow-x-auto rounded-lg bg-white p-3 text-sm">
-            /invite/{query.token}
-          </code>
+          {manualInvite?.expiresAt && <p className="mt-1 text-sm text-blue-900">Expires {new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short" }).format(new Date(manualInvite.expiresAt))}</p>}
+          <p className="mt-2 text-sm text-blue-900">Copy this private link and share it manually with the invited cleaner.</p>
+          {query.email === "failed" && <p role="alert" className="mt-2 text-sm font-bold text-amber-900">The email could not be delivered, but the manual invitation link is active.</p>}
+          <div className="mt-4 flex flex-wrap items-center gap-3"><CopyInviteLink inviteLink={inviteLink} /></div>
         </section>
       )}
-      <div className="mt-6 grid gap-6 sm:grid-cols-2">
-        <section className="rounded-xl border bg-white p-5">
+      <section className="mt-5 grid grid-cols-3 gap-3">{Object.entries(counts).map(([label,value])=><div key={label} className="portal-card p-3"><p className="text-xs font-bold capitalize text-[#65758c]">{label}</p><p className="mt-1 text-2xl font-extrabold">{value}</p></div>)}</section>
+      <div className="mt-5 grid gap-5 lg:grid-cols-[300px_1fr]">
+        <section className="portal-card p-5">
           <h2 className="text-lg font-extrabold">Contact</h2>
           <dl className="mt-4 grid gap-3 text-sm">
             <div>
@@ -100,13 +113,14 @@ export default async function Page({
           </dl>
           {worker.invitation_status !== "accepted" && (
             <div className="mt-5 grid gap-2 border-t pt-4">
+              {role === "owner" && worker.invitation_status === "pending" && <form action={generateWorkerInviteLink}><button name="workerId" value={id} className="min-h-11 w-full rounded-lg border px-3 text-sm font-extrabold">Generate new invite link</button></form>}
               <form action={resendWorkerInvitation}>
                 <button
                   name="workerId"
                   value={id}
                   className="min-h-11 w-full rounded-lg bg-[#071f49] px-3 text-sm font-extrabold text-white"
                 >
-                  Resend invitation
+                  Resend email
                 </button>
               </form>
               {worker.invitation_status === "pending" && (
@@ -116,18 +130,18 @@ export default async function Page({
                     value={id}
                     className="min-h-10 w-full text-sm font-bold text-red-700"
                   >
-                    Revoke invitation
+                    Cancel invitation
                   </button>
                 </form>
               )}
             </div>
           )}
         </section>
-        <section className="rounded-xl border bg-white p-5">
-          <h2 className="text-lg font-extrabold">Turnover history</h2>
-          <div className="mt-3 divide-y">
-            {worker.assignments?.length ? (
-              worker.assignments.map(
+        <section className="portal-panel">
+          <div className="portal-panel-head flex-wrap"><h2 className="text-lg font-extrabold">Turnover history</h2><nav aria-label="Cleaner history filters" className="flex rounded-lg bg-[#eef2f7] p-1 text-xs font-bold">{["upcoming","completed","cancelled"].map(value=><Link key={value} href={`/business/cleaners/${id}?history=${value}`} aria-current={history===value?"page":undefined} className={`rounded-md px-2.5 py-2 capitalize ${history===value?"bg-white shadow-sm":"text-[#65758c]"}`}>{value}</Link>)}</nav></div>
+          <div className="divide-y px-5">
+            {filtered.length ? (
+              filtered.map(
                 (a: {
                   id: string;
                   status: string;
@@ -138,22 +152,28 @@ export default async function Page({
                     properties: { nickname: string };
                   };
                 }) => (
-                  <Link
-                    key={a.id}
-                    href={`/business/turnovers/${a.work_items.id}`}
-                    className="block py-3"
-                  >
-                    <p className="font-bold">
-                      {a.work_items.properties?.nickname}
-                    </p>
-                    <p className="text-sm text-[#657089]">
-                      {a.work_items.turnover_date} · {a.status}
-                    </p>
-                  </Link>
+                  <article key={a.id} className="py-3">
+                    <Link href={`/business/turnovers/${a.work_items.id}`} className="block">
+                      <p className="font-bold">{a.work_items.properties?.nickname}</p>
+                    <div className="mt-1 flex items-center justify-between gap-3 text-sm">
+                      <p className="text-[#657089]">
+                        {a.work_items.turnover_date} · {a.status}
+                      </p>
+                      <span className="shrink-0 font-bold text-[#245b9d]">
+                        View turnover →
+                      </span>
+                    </div>
+                    </Link>
+                    {a.status !== "cancelled" && a.work_items.status !== "cancelled" && (
+                      <div className="mt-3">
+                        <CopyCleanerJobLink jobLink={buildAbsoluteAppUrl(`/cleaner/turnovers/${a.work_items.id}`)} />
+                      </div>
+                    )}
+                  </article>
                 ),
               )
             ) : (
-              <p className="text-sm text-[#657089]">No assigned turnovers.</p>
+              <p className="py-6 text-sm text-[#657089]">No {history} turnovers.</p>
             )}
           </div>
         </section>

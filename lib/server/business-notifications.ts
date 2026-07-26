@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
-import { getAppOrigin } from "@/lib/app-url";
+import { buildAbsoluteAppUrl, getAppOrigin } from "@/lib/app-url";
+import { getResendFromEmail } from "@/lib/email-config";
 function admin() {
   const u = process.env.NEXT_PUBLIC_SUPABASE_URL,
     k = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -8,6 +9,39 @@ function admin() {
   return createClient(u, k, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+}
+export async function sendCleanerInvitationEmail({
+  email,
+  workspaceName,
+  invitationToken,
+  expiresAt,
+}: {
+  email: string;
+  workspaceName: string;
+  invitationToken: string;
+  expiresAt: string;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = getResendFromEmail();
+  if (!apiKey || !from) return { sent: false as const, reason: "not_configured" };
+  const acceptUrl = buildAbsoluteAppUrl(`/team/invite/${encodeURIComponent(invitationToken)}`);
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from,
+        to: [email],
+        subject: "You’ve been invited to join a Quickola cleaning team",
+        html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>${escapeHtml(workspaceName)} invited you to Quickola</h1><p>You can receive and manage cleaning assignments for this team.</p><p><a style="display:inline-block;background:#071f49;color:white;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold" href="${acceptUrl}">Accept invitation</a></p><p>This invitation expires ${escapeHtml(new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/London" }).format(new Date(expiresAt)))}.</p></div>`,
+      }),
+    });
+    if (!response.ok) throw new Error(`resend_${response.status}`);
+    return { sent: true as const };
+  } catch (error) {
+    console.error("cleaner_invitation_email_failed", { reason: error instanceof Error ? error.message : "unknown" });
+    return { sent: false as const, reason: "delivery_failed" };
+  }
 }
 export async function sendBookingReceivedEmail({
   accountId,
@@ -23,7 +57,7 @@ export async function sendBookingReceivedEmail({
   scheduledStart: string;
 }) {
   const apiKey = process.env.RESEND_API_KEY,
-    from = process.env.RESEND_FROM_EMAIL,
+    from = getResendFromEmail(),
     site = getAppOrigin();
   const db = admin(),
     { data: member } = await db
@@ -117,7 +151,7 @@ export async function sendPropertyReadyEmail({
   service: string;
 }) {
   const apiKey = process.env.RESEND_API_KEY,
-    from = process.env.RESEND_FROM_EMAIL,
+    from = getResendFromEmail(),
     site = getAppOrigin();
   if (!apiKey || !from) return { sent: false, reason: "not_configured" };
   const db = admin(),

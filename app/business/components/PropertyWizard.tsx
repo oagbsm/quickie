@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import PendingButton from "@/app/components/PendingButton";
 import { addProperty } from "../actions";
+import AddressLookup from "./AddressLookup";
 
 const field =
   "mt-1 min-h-12 w-full rounded-lg border border-[#cfd7e3] bg-white px-3 py-2 outline-none focus:border-[#2d67b2] focus:ring-4 focus:ring-[#2d67b2]/15";
@@ -24,7 +25,7 @@ const checklist = [
   "Keys and security",
   "Completion evidence",
 ];
-export default function PropertyWizard({ error }: { error?: string }) {
+export default function PropertyWizard({ error, defaults }: { error?: string; defaults?: { checkout: string; checkin: string; duration: number } }) {
   const [step, setStep] = useState(0),
     [custom, setCustom] = useState<string[]>([]),
     [summary, setSummary] = useState<Record<string, string>>({});
@@ -105,7 +106,7 @@ export default function PropertyWizard({ error }: { error?: string }) {
           role="alert"
           className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 font-bold text-red-800"
         >
-          The property could not be saved. Review the information and try again.
+          {error === "duplicate" ? "A property with this address already exists in your workspace." : error === "required" ? "Enter all required fields and a valid UK postcode." : "The property could not be saved. Review the information and try again."}
         </p>
       )}
       <div className="rounded-xl bg-white p-5 shadow-sm sm:p-8">
@@ -113,6 +114,7 @@ export default function PropertyWizard({ error }: { error?: string }) {
           <p className="text-sm font-extrabold text-[#2d67b2]">STEP 1 OF 5</p>
           <h2 className="mt-1 text-2xl font-extrabold">Property details</h2>
           <div className="mt-6 grid gap-5">
+            <AddressLookup />
             <label className="font-bold">
               Property image <small className="font-normal">(optional)</small>
               <input
@@ -155,6 +157,8 @@ export default function PropertyWizard({ error }: { error?: string }) {
                 required
               />
             </label>
+            <label className="font-bold">Address line 2 <small className="font-normal">(optional)</small><input className={field} name="addressLine2" autoComplete="address-line2" /></label>
+            <input type="hidden" name="county" /><input type="hidden" name="country" value="United Kingdom" />
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="font-bold">
                 Town or city
@@ -166,6 +170,8 @@ export default function PropertyWizard({ error }: { error?: string }) {
                   className={field}
                   name="postcode"
                   autoComplete="postal-code"
+                  pattern="[A-Za-z]{1,2}[0-9][A-Za-z0-9]? ?[0-9][A-Za-z]{2}"
+                  title="Enter a valid UK postcode, for example SL1 1AA"
                   required
                 />
               </label>
@@ -206,7 +212,7 @@ export default function PropertyWizard({ error }: { error?: string }) {
                   className={field}
                   name="defaultCheckoutTime"
                   type="time"
-                  defaultValue="11:00"
+                  defaultValue={defaults?.checkout || "11:00"}
                   required
                 />
               </label>
@@ -216,7 +222,7 @@ export default function PropertyWizard({ error }: { error?: string }) {
                   className={field}
                   name="defaultCheckinTime"
                   type="time"
-                  defaultValue="15:00"
+                  defaultValue={defaults?.checkin || "15:00"}
                   required
                 />
               </label>
@@ -228,7 +234,7 @@ export default function PropertyWizard({ error }: { error?: string }) {
                   type="number"
                   min="15"
                   step="15"
-                  defaultValue="180"
+                  defaultValue={defaults?.duration || 180}
                   required
                 />
               </label>

@@ -12,7 +12,7 @@ export function currentAssignment<T extends AssignmentView>(assignments:T[]|null
 export function turnoverActionReason(item:{status:string;turnover_date:string;readiness_result?:{blocking_reasons?:string[]}|null},today=new Date().toISOString().slice(0,10)){
  if(item.turnover_date<today&&!["ready","cancelled"].includes(item.status))return"Turnover overdue";
  if(item.status==="unassigned")return"Cleaner not assigned";
- if(item.status==="awaiting_response")return"Awaiting cleaner acceptance";
+ if(item.status==="awaiting_response")return"Cleaner response pending";
  if(item.status==="declined")return"Cleaner declined assignment";
  if(item.status==="action_required"){
   const reasons=item.readiness_result?.blocking_reasons||[];

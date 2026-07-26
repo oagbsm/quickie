@@ -3,25 +3,39 @@
 import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { requireBusinessUser } from "@/lib/business/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { londonLocalToUtc } from "@/lib/business/time";
 import { hasTurnoverWindowRisk } from "@/lib/turnovers/status";
 import { isImplausibleTurnoverDate } from "@/lib/turnovers/presentation";
+import { sendCleanerInvitationEmail } from "@/lib/server/business-notifications";
 
 const text = (form: FormData, name: string) =>
   String(form.get(name) || "").trim();
 const optional = (form: FormData, name: string) => text(form, name) || null;
 
+async function storeManualInviteLink(workerId: string, token: string, expiresAt: string) {
+  const cookieStore = await cookies();
+  cookieStore.set(`quickola-invite-${workerId}`, Buffer.from(JSON.stringify({ token, expiresAt })).toString("base64url"), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 600,
+    path: `/business/cleaners/${workerId}`,
+  });
+}
+
 export async function addWorker(form: FormData) {
-  const { supabase, accountId } = await requireBusinessUser();
+  const { supabase, accountId, role } = await requireBusinessUser();
+  if (role !== "owner") redirect("/business/cleaners?error=forbidden");
   const displayName = text(form, "displayName");
   const email = optional(form, "email")?.toLowerCase() || null;
   const mobile = optional(form, "mobile");
   const preferred = text(form, "preferredContactMethod");
   if (
     !displayName ||
-    (!email && !mobile) ||
+    !email ||
     !["email", "mobile"].includes(preferred)
   ) {
     redirect("/business/cleaners/new?error=required");
@@ -34,6 +48,7 @@ export async function addWorker(form: FormData) {
   }
   const token = crypto.randomBytes(32).toString("base64url");
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString();
   const { data: workerId, error } = await supabase.rpc(
     "create_worker_with_invitation",
     {
@@ -44,7 +59,7 @@ export async function addWorker(form: FormData) {
       target_mobile: mobile,
       target_preferred_contact: preferred,
       target_token_hash: tokenHash,
-      target_expiry: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+      target_expiry: expiresAt,
     },
   );
   if (error || !workerId) {
@@ -53,10 +68,16 @@ export async function addWorker(form: FormData) {
       : "save";
     redirect(`/business/cleaners/new?error=${code}`);
   }
+  const { data: account } = await supabase.from("business_accounts").select("name").eq("id", accountId).maybeSingle();
+  const delivery = await sendCleanerInvitationEmail({ email, workspaceName: account?.name || "A Quickola cleaning team", invitationToken: token, expiresAt });
+  if (!delivery.sent) {
+    await storeManualInviteLink(workerId, token, expiresAt);
+    redirect(`/business/cleaners/${workerId}?invited=1&email=failed&link=1`);
+  }
   await supabase
     .from("activity_events")
     .update({
-      metadata: { invitation_path: `/invite/${token}`, delivery: "copy_link" },
+      metadata: { invitation_path: `/team/invite/[redacted]`, delivery: "email" },
     })
     .eq("worker_id", workerId)
     .eq("event_type", "cleaner_invited");
@@ -75,9 +96,8 @@ export async function addWorker(form: FormData) {
   revalidatePath("/business/turnovers/new");
   revalidatePath("/business/activity");
   revalidatePath("/business/dashboard");
-  redirect(
-    `/business/cleaners/${workerId}?invited=1&token=${encodeURIComponent(token)}`,
-  );
+  await storeManualInviteLink(workerId, token, expiresAt);
+  redirect(`/business/cleaners/${workerId}?invited=1&link=1`);
 }
 
 export async function skipCleanerOnboarding() {
@@ -777,11 +797,12 @@ export async function revokeWorkerInvitation(form: FormData) {
 }
 
 export async function resendWorkerInvitation(form: FormData) {
-  const { supabase, accountId, user } = await requireBusinessUser();
+  const { supabase, accountId, user, role } = await requireBusinessUser();
+  if (role !== "owner") redirect("/business/cleaners?error=forbidden");
   const workerId = text(form, "workerId");
   const { data: worker } = await supabase
     .from("workers")
-    .select("id,invitation_status")
+    .select("id,invitation_status,email")
     .eq("id", workerId)
     .eq("account_id", accountId)
     .maybeSingle();
@@ -804,11 +825,12 @@ export async function resendWorkerInvitation(form: FormData) {
     .is("accepted_at", null);
   const token = crypto.randomBytes(32).toString("base64url");
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString();
   await supabase.from("worker_invitations").insert({
     account_id: accountId,
     worker_id: workerId,
     token_hash: tokenHash,
-    expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    expires_at: expiresAt,
     created_by: user.id,
   });
   await supabase
@@ -819,7 +841,32 @@ export async function resendWorkerInvitation(form: FormData) {
     })
     .eq("id", workerId)
     .eq("account_id", accountId);
-  redirect(
-    `/business/cleaners/${workerId}?resent=1&token=${encodeURIComponent(token)}`,
-  );
+  const { data: account } = await supabase.from("business_accounts").select("name").eq("id", accountId).maybeSingle();
+  const delivery = worker.email ? await sendCleanerInvitationEmail({ email: worker.email, workspaceName: account?.name || "A Quickola cleaning team", invitationToken: token, expiresAt }) : { sent: false as const };
+  if (!delivery.sent) {
+    await storeManualInviteLink(workerId, token, expiresAt);
+    redirect(`/business/cleaners/${workerId}?resent=1&email=failed&link=1`);
+  }
+  await storeManualInviteLink(workerId, token, expiresAt);
+  redirect(`/business/cleaners/${workerId}?resent=1&link=1`);
+}
+
+export async function generateWorkerInviteLink(form: FormData) {
+  const { supabase, accountId, user, role } = await requireBusinessUser();
+  if (role !== "owner") redirect("/business/cleaners?error=forbidden");
+  const workerId = text(form, "workerId");
+  const { data: worker } = await supabase.from("workers").select("id,invitation_status").eq("id", workerId).eq("account_id", accountId).maybeSingle();
+  if (!worker || worker.invitation_status !== "pending") redirect("/business/cleaners");
+  const { data: invitation } = await supabase.from("worker_invitations").select("id,created_at").eq("worker_id", workerId).eq("account_id", accountId).is("accepted_at", null).is("revoked_at", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (invitation && Date.now() - new Date(invitation.created_at).getTime() < 60_000) redirect(`/business/cleaners/${workerId}?error=rate_limited`);
+  const token = crypto.randomBytes(32).toString("base64url");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString();
+  if (invitation) {
+    await supabase.from("worker_invitations").update({ token_hash: tokenHash, expires_at: expiresAt, revoked_at: null }).eq("id", invitation.id).eq("account_id", accountId);
+  } else {
+    await supabase.from("worker_invitations").insert({ account_id: accountId, worker_id: workerId, token_hash: tokenHash, expires_at: expiresAt, created_by: user.id });
+  }
+  await storeManualInviteLink(workerId, token, expiresAt);
+  redirect(`/business/cleaners/${workerId}?manual=1&link=1`);
 }

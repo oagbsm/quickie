@@ -35,7 +35,7 @@ export default function Header() {
           aria-label="Primary navigation"
         >
           {links.map(([label, href]) => (
-            <Link key={href} href={href}>
+            <Link key={label} href={href}>
               {label}
             </Link>
           ))}
@@ -61,7 +61,7 @@ export default function Header() {
           >
             {links.map(([label, href]) => (
               <Link
-                key={href}
+                key={label}
                 href={href}
                 className="rounded-lg px-3 py-3 font-bold"
               >

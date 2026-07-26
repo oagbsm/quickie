@@ -11,13 +11,14 @@ type Row = {
   id: string;
   turnover_date: string;
   access_start_at: string;
+  guest_checkout_at: string;
   next_checkin_at: string;
   cleaning_type: string;
   status: string;
   readiness_result: { blocking_reasons?: string[] } | null;
   properties:
-    | { nickname: string; postcode: string }
-    | { nickname: string; postcode: string }[]
+    | { nickname: string; postcode: string; bedrooms:number|null }
+    | { nickname: string; postcode: string; bedrooms:number|null }[]
     | null;
   assignments: Array<{
     status: string;
@@ -57,7 +58,7 @@ export default async function Page({
   let query = supabase
     .from("work_items")
     .select(
-      "id,turnover_date,access_start_at,next_checkin_at,cleaning_type,status,readiness_result,properties(nickname,postcode),assignments(status,assigned_at,response_due_at,workers(display_name))",
+      "id,turnover_date,guest_checkout_at,access_start_at,next_checkin_at,cleaning_type,status,readiness_result,properties(nickname,postcode,bedrooms),assignments(status,assigned_at,response_due_at,workers(display_name))",
     )
     .eq("account_id", accountId)
     .order("access_start_at");
@@ -87,25 +88,22 @@ export default async function Page({
   });
   const href = (nextView: string) => `/business/turnovers?view=${nextView}`;
   return (
-    <div className="mx-auto max-w-[1240px]">
-      <header className="flex items-end justify-between gap-4">
+    <div className="portal-page">
+      <header className="portal-header">
         <div>
-          <p className="hidden text-sm font-extrabold text-[#2d67b2] sm:block">
-            OPERATIONS
-          </p>
-          <h1 className="text-2xl font-extrabold tracking-[-.03em] sm:mt-1 sm:text-4xl">
-            Arrivals
+          <h1 className="portal-title">
+            Turnovers
           </h1>
-          <p className="mt-1 hidden text-[#657089] sm:block">
-            Every upcoming guest arrival and its readiness decision.
+          <p className="portal-subtitle hidden sm:block">
+            Track every clean from checkout to property ready.
           </p>
         </div>
         <Link
           href="/business/turnovers/new"
-          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#071f49] px-4 font-extrabold text-white"
+          className="portal-action"
         >
-          <span className="sm:hidden">+ Create</span>
-          <span className="hidden sm:inline">Add arrival</span>
+          <span className="sm:hidden">+ Add</span>
+          <span className="hidden sm:inline">Add turnover</span>
         </Link>
       </header>
       <nav
@@ -151,15 +149,14 @@ export default async function Page({
           Filter
         </button>
       </form>
-      <div className="mt-4 overflow-hidden rounded-xl border border-[#dfe4eb] bg-white">
+      <div className="portal-panel mt-4">
         {rows.length ? (
           <div className="divide-y divide-[#e7ebf0]">
-            <div className="hidden grid-cols-[130px_minmax(180px,1fr)_150px_170px_150px_24px] gap-3 bg-[#f7f9fb] px-5 py-3 text-xs font-extrabold text-[#657089] lg:grid">
-              <span>Date</span>
+            <div className="hidden grid-cols-[112px_minmax(170px,1fr)_156px_minmax(190px,1fr)_20px] gap-4 bg-[#f7f9fb] px-5 py-3 text-xs font-extrabold text-[#657089] lg:grid">
+              <span>When</span>
               <span>Property</span>
-              <span>Window</span>
-              <span>Cleaner</span>
-              <span>Status</span>
+              <span>Checkout / Check-in</span>
+              <span>What’s happening</span>
               <span />
             </div>
             {rows.map((row) => {
@@ -170,39 +167,24 @@ export default async function Page({
                 <Link
                   href={`/business/turnovers/${row.id}`}
                   key={row.id}
-                  className="grid gap-2 p-4 outline-none hover:bg-[#f8fafc] focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-[#2d67b2]/25 lg:grid-cols-[130px_minmax(180px,1fr)_150px_170px_150px_24px] lg:items-center lg:gap-3 lg:px-5"
+                  className="portal-list-row grid gap-2 p-4 outline-none lg:grid-cols-[112px_minmax(170px,1fr)_156px_minmax(190px,1fr)_20px] lg:items-center lg:gap-4 lg:px-5 lg:py-5"
                 >
-                  <div className="flex items-start justify-between gap-3 lg:block">
-                    <div>
-                      <p className="font-extrabold">
-                        {date(row.turnover_date)}
-                      </p>
-                      <p className="text-xs text-[#657089] lg:hidden">
-                        {time(row.access_start_at)}–{time(row.next_checkin_at)}
-                      </p>
-                    </div>
-                    <TurnoverStatus status={row.status} />
+                  <div>
+                    <p className="font-extrabold">{date(row.turnover_date)}</p>
+                    <p className="mt-0.5 text-sm font-bold text-[#273752]">{time(row.guest_checkout_at)}</p>
                   </div>
                   <div>
                     <p className="font-extrabold">
                       {formatDisplayName(property?.nickname)}
                     </p>
                     <p className="mt-0.5 text-xs text-[#657089]">
-                      {property?.postcode} ·{" "}
+                      {property?.postcode}{property?.bedrooms!=null?` · ${property.bedrooms} bed`:""} ·{" "}
                       {row.cleaning_type.replaceAll("_", " ")}
                     </p>
                   </div>
-                  <p className="hidden text-sm font-bold lg:block">
-                    {time(row.access_start_at)}–{time(row.next_checkin_at)}
-                  </p>
-                  <div className="flex justify-between gap-2 text-sm lg:block">
-                    <span className="text-[#657089] lg:hidden">Cleaner</span>
-                    <span className="font-bold">
-                      {formatDisplayName(worker?.display_name) ||
-                        "Not assigned"}
-                    </span>
-                  </div>
+                  <div className="hidden text-xs lg:block"><p className="text-[#718096]">Checkout <strong className="text-[#12213c]">{time(row.guest_checkout_at)}</strong></p><p className="mt-1 text-[#718096]">Check-in <strong className="text-[#12213c]">{time(row.next_checkin_at)}</strong></p></div>
                   <div className="lg:hidden">
+                    <TurnoverStatus status={row.status} />
                     <p className="text-xs font-bold text-[#9a4f17]">
                       {assignment?.status === "pending" &&
                       assignment.response_due_at
@@ -212,11 +194,11 @@ export default async function Page({
                   </div>
                   <div className="hidden lg:block">
                     <TurnoverStatus status={row.status} />
-                    <p className="mt-1 text-xs text-[#657089]">
+                    <p className="mt-2 text-xs leading-5 text-[#657089]">
                       {assignment?.status === "pending" &&
                       assignment.response_due_at
                         ? `${new Date(assignment.response_due_at) < new Date() ? "Response overdue" : "Reply due"} ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(new Date(assignment.response_due_at))}`
-                        : turnoverActionReason(row, today)}
+                        : turnoverActionReason(row, today)}{worker?.display_name&&["accepted","en_route","arrived","in_progress"].includes(row.status)?` · ${formatDisplayName(worker.display_name)}`:""}
                     </p>
                   </div>
                   <span aria-hidden="true" className="hidden text-xl lg:block">

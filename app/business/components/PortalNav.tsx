@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const items = [
-  ["Overview", "/business/dashboard", "home"],
+  ["Dashboard", "/business/dashboard", "home"],
   ["Properties", "/business/properties", "building"],
-  ["Arrivals", "/business/turnovers", "calendar"],
+  ["Turnovers", "/business/turnovers", "calendar"],
   ["Team", "/business/cleaners", "people"],
   ["Issues", "/business/issues", "alert"],
   ["Activity", "/business/activity", "activity"],
@@ -17,7 +17,7 @@ export default function PortalNav() {
   const path = usePathname();
   return (
     <nav
-      className="grid w-full min-w-0 gap-1.5"
+      className="grid w-full min-w-0 gap-1"
       aria-label="Workspace navigation"
     >
       {items.map(([label, href, icon]) => {
@@ -27,7 +27,7 @@ export default function PortalNav() {
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`flex min-h-12 min-w-0 items-center gap-4 rounded-lg px-4 py-2 text-sm font-bold outline-none focus:ring-4 focus:ring-[#2e68bb]/30 lg:min-h-13 lg:text-[.9375rem] ${active ? "bg-[#183765] text-white" : "text-white/72 hover:bg-white/7 hover:text-white"}`}
+            className={`flex min-h-11 min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-4 focus:ring-[#2e68bb]/30 ${active ? "bg-[#0d56a1] text-white shadow-sm" : "text-white/75 hover:bg-white/7 hover:text-white"}`}
           >
             <NavIcon name={icon} />
             <span className="truncate">{label}</span>

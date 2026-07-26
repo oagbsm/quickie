@@ -23,14 +23,13 @@ export default async function Page() {
       .maybeSingle(),
   ]);
   return (
-    <div className="mx-auto max-w-5xl">
-      <p className="text-sm font-extrabold text-[#2d67b2]">SETTINGS</p>
-      <h1 className="mt-1 text-3xl font-extrabold">Account and defaults</h1>
-      <p className="mt-2 text-[#59677d]">
+    <div className="portal-page max-w-4xl">
+      <h1 className="portal-title">Account and defaults</h1>
+      <p className="portal-subtitle">
         Manage the controls that affect your Quickola workspace.
       </p>
-      <form action={updateWorkspaceSettings} className="mt-7 grid gap-6">
-        <section className="rounded-xl bg-white p-5 shadow-sm sm:p-7">
+      <form action={updateWorkspaceSettings} className="mt-6 grid gap-4">
+        <section className="portal-card p-5 sm:p-6">
           <h2 className="text-xl font-extrabold">Profile</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <label className="font-bold">
@@ -55,7 +54,7 @@ export default async function Page() {
             </div>
           </div>
         </section>
-        <section className="rounded-xl bg-white p-5 shadow-sm sm:p-7">
+        <section className="portal-card p-5 sm:p-6">
           <h2 className="text-xl font-extrabold">Workspace</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <label className="font-bold">
@@ -80,12 +79,12 @@ export default async function Page() {
             </label>
           </div>
         </section>
-        <section className="rounded-xl bg-white p-5 shadow-sm sm:p-7">
+        <section className="portal-card p-5 sm:p-6">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
             <div>
-              <h2 className="text-xl font-extrabold">Property defaults</h2>
+              <h2 className="text-xl font-extrabold">Defaults for new properties</h2>
               <p className="mt-1 text-sm text-[#657089]">
-                Used as the starting point for new property standards.
+                These values are suggested when you add a property. Existing properties will not be changed.
               </p>
             </div>
             <Link
@@ -97,7 +96,7 @@ export default async function Page() {
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
             <label className="font-bold">
-              Default checkout
+              Typical guest checkout
               <input
                 name="defaultCheckoutTime"
                 type="time"
@@ -106,7 +105,7 @@ export default async function Page() {
               />
             </label>
             <label className="font-bold">
-              Default check-in
+              Typical guest check-in
               <input
                 name="defaultCheckinTime"
                 type="time"
@@ -115,15 +114,14 @@ export default async function Page() {
               />
             </label>
             <label className="font-bold">
-              Estimated minutes
-              <input
+              Typical cleaning time
+              <select
                 name="defaultTurnoverMinutes"
-                type="number"
-                min="15"
-                step="15"
                 defaultValue={account?.default_turnover_minutes || 180}
                 className={field}
-              />
+              >
+                {[60,90,120,150,180,210,240].map(minutes => <option key={minutes} value={minutes}>{minutes % 60 ? `${Math.floor(minutes / 60)} hour${minutes >= 120 ? "s" : ""} ${minutes % 60} minutes` : `${minutes / 60} hour${minutes === 60 ? "" : "s"}`}</option>)}
+              </select>
             </label>
           </div>
         </section>

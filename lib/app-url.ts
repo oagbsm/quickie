@@ -5,7 +5,7 @@ export type AppOriginEnvironment = {
   browserOrigin?: string;
 };
 
-const PRODUCTION_ORIGIN = "https://www.quickola.co.uk";
+export const PRODUCTION_ORIGIN = "https://quickola.co.uk";
 const LOCAL_ORIGIN = "http://localhost:3000";
 
 function validOrigin(value: string | undefined, production: boolean) {
@@ -29,7 +29,7 @@ export function resolveAppOrigin(environment: AppOriginEnvironment = {}) {
   const production = environment.nodeEnv === "production";
   return (
     validOrigin(environment.siteUrl, production) ||
-    validOrigin(environment.vercelUrl, production) ||
+    (!production ? validOrigin(environment.vercelUrl, false) : null) ||
     (!production
       ? validOrigin(environment.browserOrigin, false) || LOCAL_ORIGIN
       : PRODUCTION_ORIGIN)
@@ -63,6 +63,9 @@ export function safeInternalNextPath(
     if (parsed.origin !== "https://internal.quickola") return fallback;
     if (
       !parsed.pathname.startsWith("/business/") &&
+      !parsed.pathname.startsWith("/cleaner/") &&
+      !parsed.pathname.startsWith("/team/invite/") &&
+      !parsed.pathname.startsWith("/invite/") &&
       parsed.pathname !== "/admin"
     )
       return fallback;

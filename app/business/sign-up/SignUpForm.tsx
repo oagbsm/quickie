@@ -12,11 +12,13 @@ export default function SignUpForm() {
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [existing, setExisting] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
     setMessage("");
+    setExisting(false);
     const form = new FormData(event.currentTarget);
     const mail = String(form.get("email") || "")
       .trim()
@@ -41,7 +43,16 @@ export default function SignUpForm() {
       },
     });
     if (error) {
-      setMessage(error.message);
+      setMessage("We couldn’t create the account. Check the details and try again.");
+      setPending(false);
+      return;
+    }
+    // Supabase intentionally returns an ambiguous successful response for an
+    // existing identity. An empty identities array is the supported signal and
+    // avoids adding a public account-enumeration endpoint.
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      setEmail(mail);
+      setExisting(true);
       setPending(false);
       return;
     }
@@ -70,6 +81,18 @@ export default function SignUpForm() {
 
   const fieldClass =
     "mt-1.5 w-full rounded-xl border border-[#dbe1ea] bg-white px-4 py-3 outline-none focus:border-[#079448] focus:ring-2 focus:ring-[#079448]/15";
+
+  if (existing)
+    return (
+      <section className="rounded-3xl bg-white p-8 shadow-xl">
+        <h1 className="text-3xl font-black">Account already exists</h1>
+        <p className="mt-4 leading-7 text-[#657089]">An account already exists for this email. Sign in or reset your password.</p>
+        <div className="mt-7 grid gap-3">
+          <Link href={`/business/sign-in?email=${encodeURIComponent(email)}`} className="rounded-xl bg-[#079448] p-3 text-center font-black text-white">Sign in</Link>
+          <Link href={`/business/sign-in?email=${encodeURIComponent(email)}&reset=1`} className="rounded-xl border p-3 text-center font-black">Reset password</Link>
+        </div>
+      </section>
+    );
 
   if (sent)
     return (

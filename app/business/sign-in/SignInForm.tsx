@@ -1,5 +1,5 @@
 "use client";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -15,6 +15,10 @@ export default function SignInForm() {
           ? "Password updated successfully. Sign in with your new password."
           : "",
     );
+  const resetButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (params.get("reset") === "1") resetButton.current?.click();
+  }, [params]);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setPending(true);
@@ -74,6 +78,7 @@ export default function SignInForm() {
           type="email"
           autoComplete="email"
           required
+          defaultValue={params.get("email") || ""}
         />
       </label>
       <label className="font-bold">
@@ -96,6 +101,7 @@ export default function SignInForm() {
         </p>
       )}
       <button
+        ref={resetButton}
         disabled={pending}
         className="min-h-12 rounded-xl bg-[#079448] py-3.5 font-bold text-white disabled:opacity-60"
       >

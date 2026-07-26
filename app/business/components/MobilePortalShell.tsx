@@ -1,175 +1,28 @@
 "use client";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import NotificationMenu from "./NotificationMenu";
 import { signOut } from "../actions";
-type Notification = {
-  id: string;
-  title: string;
-  body: string;
-  href: string | null;
-  read_at: string | null;
-  created_at: string;
-};
-const primary = [
-  ["Home", "/business/dashboard", "home"],
-  ["Turnovers", "/business/turnovers", "calendar"],
-  ["Properties", "/business/properties", "building"],
-  ["Cleaners", "/business/cleaners", "people"],
-] as const;
-function Icon({ name }: { name: string }) {
-  const paths =
-    name === "home" ? (
-      <>
-        <path d="m3 10 9-7 9 7" />
-        <path d="M5 9v11h14V9M9 20v-7h6v7" />
-      </>
-    ) : name === "calendar" ? (
-      <>
-        <rect x="3" y="5" width="18" height="16" rx="2" />
-        <path d="M8 3v4m8-4v4M3 10h18" />
-      </>
-    ) : name === "building" ? (
-      <>
-        <path d="M4 21V5l8-3 8 3v16M9 9h1m4 0h1M9 13h1m4 0h1M9 17h1m4 0h1" />
-      </>
-    ) : (
-      <>
-        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-      </>
-    );
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="21"
-      height="21"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {paths}
-    </svg>
-  );
-}
-export default function MobilePortalShell({
-  notifications,
-  displayName,
-}: {
-  notifications: Notification[];
-  displayName: string;
-}) {
-  const path = usePathname(),
-    nested = ![
-      "/business/dashboard",
-      "/business/turnovers",
-      "/business/properties",
-      "/business/cleaners",
-      "/business/issues",
-      "/business/activity",
-      "/business/settings",
-    ].includes(path);
-  const root = path.startsWith("/business/turnovers")
-    ? ["Turnovers", "/business/turnovers"]
-    : path.startsWith("/business/properties")
-      ? ["Properties", "/business/properties"]
-      : path.startsWith("/business/cleaners")
-        ? ["Cleaners", "/business/cleaners"]
-        : ["Quickola", "/business/dashboard"];
-  return (
-    <>
-      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b bg-white px-4 lg:hidden">
-        <Link
-          href={nested ? root[1] : "/business/dashboard"}
-          className="flex min-h-12 items-center gap-2 text-lg font-extrabold"
-          aria-label={nested ? `Back to ${root[0]}` : "Quickola home"}
-        >
-          {nested && <span aria-hidden="true">←</span>}
-          <span>{root[0]}</span>
-        </Link>
-        <div className="flex items-center gap-1">
-          <NotificationMenu notifications={notifications} />
-          <details className="relative">
-            <summary
-              aria-label="Account menu"
-              className="grid h-12 w-12 cursor-pointer list-none place-items-center rounded-full bg-[#e9eff8] font-extrabold text-[#16467e]"
-            >
-              {displayName.charAt(0)}
-            </summary>
-            <div className="absolute right-0 mt-2 w-52 rounded-xl bg-white p-2 shadow-xl ring-1 ring-black/10">
-              <p className="truncate px-3 py-2 text-sm font-bold">
-                {displayName}
-              </p>
-              <Link
-                href="/business/settings"
-                className="flex min-h-12 items-center rounded-lg px-3 font-bold"
-              >
-                Account settings
-              </Link>
-              <form action={signOut}>
-                <button className="min-h-12 w-full rounded-lg px-3 text-left font-bold text-red-700">
-                  Sign out
-                </button>
-              </form>
-            </div>
-          </details>
-        </div>
-      </header>
-      <nav
-        aria-label="Mobile workspace navigation"
-        className="fixed inset-x-0 bottom-0 z-50 grid h-[72px] grid-cols-5 border-t bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_18px_rgba(7,22,56,.08)] lg:hidden"
-      >
-        {primary.map(([label, href, icon]) => {
-          const active = path === href || path.startsWith(`${href}/`);
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={`flex min-h-12 flex-col items-center justify-center gap-1 text-[11px] font-bold ${active ? "text-[#16467e]" : "text-[#657089]"}`}
-            >
-              <Icon name={icon} />
-              {label}
-            </Link>
-          );
-        })}
-        <details className="group relative">
-          <summary
-            className={`flex h-full cursor-pointer list-none flex-col items-center justify-center gap-1 text-[11px] font-bold ${["/business/issues", "/business/activity", "/business/settings"].some((x) => path.startsWith(x)) ? "text-[#16467e]" : "text-[#657089]"}`}
-          >
-            <span className="text-xl leading-none" aria-hidden="true">
-              •••
-            </span>
-            More
-          </summary>
-          <div className="absolute bottom-[76px] right-2 w-56 rounded-xl bg-white p-2 shadow-2xl ring-1 ring-black/10">
-            {[
-              ["Issues", "/business/issues"],
-              ["Activity", "/business/activity"],
-              ["Notifications", "/business/dashboard"],
-              ["Account", "/business/settings"],
-              ["Help", "/contact"],
-            ].map(([label, href]) => (
-              <Link
-                key={label}
-                href={href}
-                className="flex min-h-12 items-center rounded-lg px-3 font-bold hover:bg-[#f4f6f9]"
-              >
-                {label}
-              </Link>
-            ))}
-            <form action={signOut}>
-              <button className="min-h-12 w-full rounded-lg px-3 text-left font-bold text-red-700">
-                Sign out
-              </button>
-            </form>
-          </div>
-        </details>
-      </nav>
-    </>
-  );
+
+type Notification={id:string;title:string;body:string;href:string|null;read_at:string|null;created_at:string};
+const primary=[["Dashboard","/business/dashboard","home"],["Properties","/business/properties","building"],["Turnovers","/business/turnovers","calendar"],["Team","/business/cleaners","people"]] as const;
+const drawer=[...primary,["Issues","/business/issues","alert"],["Activity","/business/activity","activity"],["Settings","/business/settings","settings"]] as const;
+function Icon({name}:{name:string}){const paths:Record<string,React.ReactNode>={home:<><path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9M9 20v-7h6v7"/></>,calendar:<><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4m8-4v4M3 10h18"/></>,building:<><path d="M4 21V5l8-3 8 3v16M9 9h1m4 0h1M9 13h1m4 0h1M9 17h1m4 0h1"/></>,people:<><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2M17 11a4 4 0 0 0 0-8M18 14c2.5.5 4 2.3 4 5v2"/></>,alert:<><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5M12 17h.01"/></>,activity:<path d="M3 12h4l2-6 4 12 2-6h4"/>,settings:<><circle cx="12" cy="12" r="3"/><path d="M19 15a2 2 0 0 0 1 2l-3 3a2 2 0 0 0-2-1 2 2 0 0 0-1 2h-4a2 2 0 0 0-1-2 2 2 0 0 0-2 1l-3-3a2 2 0 0 0 1-2 2 2 0 0 0-2-1v-4a2 2 0 0 0 2-1 2 2 0 0 0-1-2l3-3a2 2 0 0 0 2 1 2 2 0 0 0 1-2h4a2 2 0 0 0 1 2 2 2 0 0 0 2-1l3 3a2 2 0 0 0-1 2 2 2 0 0 0 2 1v4a2 2 0 0 0-2 1Z"/></>};return <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>}
+
+export default function MobilePortalShell({notifications,displayName}:{notifications:Notification[];displayName:string}){
+  const path=usePathname();const [open,setOpen]=useState(false);const [more,setMore]=useState(false);const drawerRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{if(!open)return;const previous=document.activeElement as HTMLElement|null;const panel=drawerRef.current;panel?.querySelector<HTMLElement>("a,button")?.focus();function key(e:KeyboardEvent){if(e.key==="Escape")setOpen(false);if(e.key==="Tab"&&panel){const focusable=[...panel.querySelectorAll<HTMLElement>("a,button")];if(!focusable.length)return;const first=focusable[0],last=focusable.at(-1)!;if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}}document.addEventListener("keydown",key);return()=>{document.removeEventListener("keydown",key);previous?.focus()}},[open]);
+  const active=(href:string)=>path===href||path.startsWith(`${href}/`);
+  return <>
+    <header className="sticky top-0 z-40 grid h-14 grid-cols-[48px_1fr_48px] items-center bg-[#061d46] px-2 text-white lg:hidden">
+      <button aria-label="Open navigation" onClick={()=>setOpen(true)} className="grid h-11 w-11 place-items-center rounded-lg focus-visible:ring-2 focus-visible:ring-white"><span className="text-xl" aria-hidden="true">☰</span></button>
+      <Link href="/business/dashboard" className="flex items-center justify-center gap-2 font-extrabold"><Image src="/quickola/logo-mark.png" alt="" width={25} height={25}/>Quickola</Link>
+      <NotificationMenu notifications={notifications}/>
+    </header>
+    {open&&<div className="fixed inset-0 z-[70] lg:hidden"><button aria-label="Close navigation" className="absolute inset-0 bg-[#020b1c]/60" onClick={()=>setOpen(false)}/><div ref={drawerRef} role="dialog" aria-modal="true" aria-label="Workspace navigation" className="absolute inset-y-0 left-0 w-[min(82vw,310px)] bg-[#061d46] p-4 text-white shadow-2xl"><div className="flex items-center justify-between border-b border-white/10 pb-4"><span className="font-extrabold">{displayName}</span><button aria-label="Close navigation" onClick={()=>setOpen(false)} className="grid h-11 w-11 place-items-center rounded-lg text-xl">×</button></div><nav className="mt-4 grid gap-1">{drawer.map(([label,href,icon])=><Link key={href} href={href} onClick={()=>setOpen(false)} className={`flex min-h-12 items-center gap-3 rounded-lg px-3 font-bold ${active(href)?"bg-[#0d56a1]":"text-white/78"}`}><Icon name={icon}/>{label}</Link>)}</nav><form action={signOut} className="absolute inset-x-4 bottom-5"><button className="min-h-12 w-full rounded-lg border border-white/15 px-3 text-left font-bold">Sign out</button></form></div></div>}
+    <nav aria-label="Mobile workspace navigation" className="fixed inset-x-0 bottom-0 z-50 grid min-h-[68px] grid-cols-5 border-t bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_18px_rgba(7,22,56,.08)] lg:hidden">{primary.map(([label,href,icon])=><Link key={href} href={href} aria-current={active(href)?"page":undefined} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-bold ${active(href)?"text-[#0b63ce]":"text-[#5f6f86]"}`}><Icon name={icon}/>{label}</Link>)}<button aria-label="More navigation" aria-expanded={more} onClick={()=>setMore(v=>!v)} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-bold ${["/business/issues","/business/activity","/business/settings"].some(active)?"text-[#0b63ce]":"text-[#5f6f86]"}`}><span className="text-xl leading-none" aria-hidden="true">•••</span>More</button></nav>
+    {more&&<><button aria-label="Close more menu" onClick={()=>setMore(false)} className="fixed inset-0 z-40 bg-black/20 lg:hidden"/><div className="fixed bottom-[76px] right-3 z-[60] w-56 rounded-xl border bg-white p-2 shadow-2xl lg:hidden">{drawer.slice(4).map(([label,href,icon])=><Link key={href} href={href} onClick={()=>setMore(false)} className="flex min-h-12 items-center gap-3 rounded-lg px-3 font-bold hover:bg-[#f4f6f9]"><Icon name={icon}/>{label}</Link>)}<form action={signOut}><button className="min-h-12 w-full rounded-lg px-3 text-left font-bold text-red-700">Sign out</button></form></div></>}
+  </>
 }

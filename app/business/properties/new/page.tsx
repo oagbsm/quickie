@@ -6,10 +6,11 @@ import PropertyWizard from "../../components/PropertyWizard";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ duplicate?: string; error?: string }>;
+  searchParams: Promise<{ duplicate?: string; error?: string; existing?: string }>;
 }) {
   const { duplicate, error } = await searchParams;
   const { supabase, accountId } = await requireBusinessUser();
+  const { data: accountDefaults } = await supabase.from("business_accounts").select("default_checkout_time,default_checkin_time,default_turnover_minutes").eq("id", accountId).maybeSingle();
   const { data: source } = duplicate
     ? await supabase
         .from("properties")
@@ -49,7 +50,7 @@ export default async function Page({
           duplicatePropertyId={source.id}
         />
       ) : (
-        <PropertyWizard error={error} />
+        <PropertyWizard error={error} defaults={{ checkout: accountDefaults?.default_checkout_time || "11:00", checkin: accountDefaults?.default_checkin_time || "15:00", duration: accountDefaults?.default_turnover_minutes || 180 }} />
       )}
     </div>
   );
