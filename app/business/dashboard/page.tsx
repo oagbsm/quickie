@@ -22,6 +22,7 @@ type Item = {
   assignments: Array<{
     status: string;
     assigned_at: string;
+    response_due_at: string | null;
     workers: { display_name: string } | { display_name: string }[] | null;
   }>;
 };
@@ -40,13 +41,12 @@ export default async function Page() {
     supabase
       .from("work_items")
       .select(
-        "id,turnover_date,access_start_at,next_checkin_at,estimated_duration_minutes,cleaning_type,status,readiness_result,properties(nickname,postcode,bedrooms),assignments(status,assigned_at,workers(display_name))",
+        "id,turnover_date,access_start_at,next_checkin_at,estimated_duration_minutes,cleaning_type,status,readiness_result,properties(nickname,postcode,bedrooms),assignments(status,assigned_at,response_due_at,workers(display_name))",
       )
       .eq("account_id", accountId)
-      .gte("turnover_date", today)
       .not("status", "eq", "cancelled")
       .order("access_start_at")
-      .limit(8),
+      .limit(100),
     supabase
       .from("properties")
       .select("id", { count: "exact", head: true })
@@ -74,19 +74,39 @@ export default async function Page() {
   const propertyCount = results[2].count;
   const issues = results[3].data;
   const activity = results[4].data;
-  const rows = (items || []) as Item[];
+  const allRows = (items || []) as Item[];
+  const rows = allRows
+    .filter((item) => item.turnover_date >= today)
+    .slice(0, 8);
+  const endOfWeek = new Date(now);
+  endOfWeek.setDate(endOfWeek.getDate() + 7);
+  const weekEnd = endOfWeek.toISOString().slice(0, 10);
   const counts = {
-    today: rows.filter((i) => i.turnover_date === today).length,
-    pending: rows.filter((i) => i.status === "awaiting_response").length,
-    attention: rows.filter((i) =>
-      ["unassigned", "declined", "action_required"].includes(i.status),
+    today: allRows.filter((i) => i.turnover_date === today).length,
+    week: allRows.filter(
+      (i) => i.turnover_date >= today && i.turnover_date <= weekEnd,
     ).length,
-    ready: rows.filter((i) => i.turnover_date === today && i.status === "ready")
-      .length,
+    pending: allRows.filter((i) => i.status === "awaiting_response").length,
+    attention: allRows.filter(
+      (i) =>
+        (i.turnover_date < today &&
+          !["ready", "cancelled"].includes(i.status)) ||
+        ["unassigned", "declined", "action_required"].includes(i.status) ||
+        (i.status === "awaiting_response" &&
+          Boolean(
+            currentAssignment(i.assignments)?.response_due_at &&
+            new Date(currentAssignment(i.assignments)!.response_due_at!) < now,
+          )),
+    ).length,
+    blocking: issues?.filter((issue) => issue.blocking).length || 0,
+    ready: allRows.filter(
+      (i) => i.turnover_date === today && i.status === "ready",
+    ).length,
   };
   const name = member?.full_name?.split(" ")[0] || "there";
   const next = rows[0];
   const nextProperty = next ? one(next.properties) : null;
+  const nextAssignment = next ? currentAssignment(next.assignments) : null;
   return (
     <div className="mx-auto max-w-[1320px]">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
@@ -156,6 +176,19 @@ export default async function Page() {
               <p className="mt-2 text-sm font-bold text-[#9a4f17]">
                 {turnoverActionReason(next, today)}
               </p>
+              {nextAssignment?.status === "pending" &&
+                nextAssignment.response_due_at && (
+                  <p className="mt-1 text-xs font-bold text-[#657089]">
+                    Reply due{" "}
+                    {new Intl.DateTimeFormat("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      timeZone: "Europe/London",
+                    }).format(new Date(nextAssignment.response_due_at))}
+                  </p>
+                )}
             </div>
             <TurnoverStatus status={next.status} />
           </div>
@@ -175,29 +208,19 @@ export default async function Page() {
         className="mt-4 grid grid-cols-2 gap-3 lg:mt-7 xl:grid-cols-4"
       >
         {[
+          ["Today", counts.today, "turnovers", "/business/turnovers"],
+          ["This week", counts.week, "turnovers", "/business/turnovers"],
           [
-            "Check-ins today",
-            counts.today,
-            "Scheduled today",
-            "/business/turnovers",
-          ],
-          [
-            "Cleaner acceptance",
+            "Awaiting reply",
             counts.pending,
-            "Assignments waiting",
+            "cleaner responses",
             "/business/turnovers?status=awaiting_response",
           ],
           [
-            "Action required",
-            counts.attention,
-            "Unassigned or blocked",
-            "/business/turnovers?status=action_required",
-          ],
-          [
-            "Guest ready",
-            counts.ready,
-            "Evidence requirements passed",
-            "/business/turnovers?status=ready",
+            "Blocking issues",
+            counts.blocking,
+            "open issues",
+            "/business/issues",
           ],
         ].map(([label, value, detail, href]) => (
           <Link
@@ -206,7 +229,9 @@ export default async function Page() {
             className="rounded-xl border border-[#dfe4eb] bg-white p-4 outline-none transition hover:-translate-y-0.5 hover:border-[#9aacc4] focus-visible:ring-4 focus-visible:ring-[#2d67b2]/20 active:translate-y-0 sm:p-5"
           >
             <p className="text-sm font-bold text-[#657089]">{label}</p>
-            <p className="mt-2 text-2xl font-extrabold sm:mt-3 sm:text-3xl">{value}</p>
+            <p className="mt-2 text-2xl font-extrabold sm:mt-3 sm:text-3xl">
+              {value}
+            </p>
             <p className="mt-2 hidden text-xs font-bold text-[#748096] sm:block">
               {detail} <span aria-hidden="true">→</span>
             </p>

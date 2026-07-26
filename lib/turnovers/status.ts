@@ -18,19 +18,22 @@ export type TurnoverStatus = (typeof turnoverStatuses)[number];
 export const turnoverStatusLabels: Record<TurnoverStatus, string> = {
   draft: "Draft",
   unassigned: "Unassigned",
-  awaiting_response: "Awaiting response",
-  accepted: "Accepted",
+  awaiting_response: "Awaiting cleaner response",
+  accepted: "Cleaner confirmed",
   en_route: "Cleaner en route",
   arrived: "Arrived",
-  in_progress: "In progress",
-  evidence_submitted: "Evidence submitted",
+  in_progress: "Cleaning in progress",
+  evidence_submitted: "Completion evidence submitted",
   action_required: "Action required",
   ready: "Property ready",
-  declined: "Declined",
+  declined: "Cleaner declined",
   cancelled: "Cancelled",
 };
 
-export const legalTurnoverTransitions: Record<TurnoverStatus, TurnoverStatus[]> = {
+export const legalTurnoverTransitions: Record<
+  TurnoverStatus,
+  TurnoverStatus[]
+> = {
   draft: ["unassigned", "awaiting_response", "cancelled"],
   unassigned: ["awaiting_response", "cancelled"],
   awaiting_response: ["accepted", "declined", "cancelled"],
@@ -46,9 +49,13 @@ export const legalTurnoverTransitions: Record<TurnoverStatus, TurnoverStatus[]> 
 };
 
 export function canTransitionTurnover(from: string, to: string) {
-  return turnoverStatuses.includes(from as TurnoverStatus) &&
+  return (
+    turnoverStatuses.includes(from as TurnoverStatus) &&
     turnoverStatuses.includes(to as TurnoverStatus) &&
-    legalTurnoverTransitions[from as TurnoverStatus].includes(to as TurnoverStatus);
+    legalTurnoverTransitions[from as TurnoverStatus].includes(
+      to as TurnoverStatus,
+    )
+  );
 }
 
 export function turnoverWindowMinutes(checkout: Date, checkin: Date) {

@@ -13,20 +13,48 @@ type Notification = {
 };
 const primary = [
   ["Home", "/business/dashboard", "home"],
-  ["Arrivals", "/business/turnovers", "calendar"],
+  ["Turnovers", "/business/turnovers", "calendar"],
   ["Properties", "/business/properties", "building"],
-  ["Team", "/business/cleaners", "people"],
+  ["Cleaners", "/business/cleaners", "people"],
 ] as const;
 function Icon({ name }: { name: string }) {
   const paths =
-    name === "home"
-      ? <><path d="m3 10 9-7 9 7" /><path d="M5 9v11h14V9M9 20v-7h6v7" /></>
-      : name === "calendar"
-        ? <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4m8-4v4M3 10h18" /></>
-        : name === "building"
-          ? <><path d="M4 21V5l8-3 8 3v16M9 9h1m4 0h1M9 13h1m4 0h1M9 17h1m4 0h1" /></>
-          : <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></>;
-  return <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths}</svg>;
+    name === "home" ? (
+      <>
+        <path d="m3 10 9-7 9 7" />
+        <path d="M5 9v11h14V9M9 20v-7h6v7" />
+      </>
+    ) : name === "calendar" ? (
+      <>
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M8 3v4m8-4v4M3 10h18" />
+      </>
+    ) : name === "building" ? (
+      <>
+        <path d="M4 21V5l8-3 8 3v16M9 9h1m4 0h1M9 13h1m4 0h1M9 17h1m4 0h1" />
+      </>
+    ) : (
+      <>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+      </>
+    );
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="21"
+      height="21"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {paths}
+    </svg>
+  );
 }
 export default function MobilePortalShell({
   notifications,
@@ -46,11 +74,11 @@ export default function MobilePortalShell({
       "/business/settings",
     ].includes(path);
   const root = path.startsWith("/business/turnovers")
-    ? ["Arrivals", "/business/turnovers"]
+    ? ["Turnovers", "/business/turnovers"]
     : path.startsWith("/business/properties")
       ? ["Properties", "/business/properties"]
       : path.startsWith("/business/cleaners")
-        ? ["Team", "/business/cleaners"]
+        ? ["Cleaners", "/business/cleaners"]
         : ["Quickola", "/business/dashboard"];
   return (
     <>

@@ -22,10 +22,8 @@ type Row = {
   assignments: Array<{
     status: string;
     assigned_at: string;
-    workers:
-      | { display_name: string }
-      | { display_name: string }[]
-      | null;
+    response_due_at: string | null;
+    workers: { display_name: string } | { display_name: string }[] | null;
   }>;
 };
 const related = <T,>(value: T | T[] | null) =>
@@ -59,7 +57,7 @@ export default async function Page({
   let query = supabase
     .from("work_items")
     .select(
-      "id,turnover_date,access_start_at,next_checkin_at,cleaning_type,status,readiness_result,properties(nickname,postcode),assignments(status,assigned_at,workers(display_name))",
+      "id,turnover_date,access_start_at,next_checkin_at,cleaning_type,status,readiness_result,properties(nickname,postcode),assignments(status,assigned_at,response_due_at,workers(display_name))",
     )
     .eq("account_id", accountId)
     .order("access_start_at");
@@ -87,8 +85,7 @@ export default async function Page({
     if (view === "attention") return !completed && attention;
     return !completed && row.turnover_date >= today;
   });
-  const href = (nextView: string) =>
-    `/business/turnovers?view=${nextView}`;
+  const href = (nextView: string) => `/business/turnovers?view=${nextView}`;
   return (
     <div className="mx-auto max-w-[1240px]">
       <header className="flex items-end justify-between gap-4">
@@ -158,8 +155,12 @@ export default async function Page({
         {rows.length ? (
           <div className="divide-y divide-[#e7ebf0]">
             <div className="hidden grid-cols-[130px_minmax(180px,1fr)_150px_170px_150px_24px] gap-3 bg-[#f7f9fb] px-5 py-3 text-xs font-extrabold text-[#657089] lg:grid">
-              <span>Date</span><span>Property</span><span>Window</span>
-              <span>Cleaner</span><span>Status</span><span />
+              <span>Date</span>
+              <span>Property</span>
+              <span>Window</span>
+              <span>Cleaner</span>
+              <span>Status</span>
+              <span />
             </div>
             {rows.map((row) => {
               const property = related(row.properties);
@@ -173,7 +174,9 @@ export default async function Page({
                 >
                   <div className="flex items-start justify-between gap-3 lg:block">
                     <div>
-                      <p className="font-extrabold">{date(row.turnover_date)}</p>
+                      <p className="font-extrabold">
+                        {date(row.turnover_date)}
+                      </p>
                       <p className="text-xs text-[#657089] lg:hidden">
                         {time(row.access_start_at)}–{time(row.next_checkin_at)}
                       </p>
@@ -201,13 +204,19 @@ export default async function Page({
                   </div>
                   <div className="lg:hidden">
                     <p className="text-xs font-bold text-[#9a4f17]">
-                      {turnoverActionReason(row, today)}
+                      {assignment?.status === "pending" &&
+                      assignment.response_due_at
+                        ? `${new Date(assignment.response_due_at) < new Date() ? "Response overdue" : "Reply due"} ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(new Date(assignment.response_due_at))}`
+                        : turnoverActionReason(row, today)}
                     </p>
                   </div>
                   <div className="hidden lg:block">
                     <TurnoverStatus status={row.status} />
                     <p className="mt-1 text-xs text-[#657089]">
-                      {turnoverActionReason(row, today)}
+                      {assignment?.status === "pending" &&
+                      assignment.response_due_at
+                        ? `${new Date(assignment.response_due_at) < new Date() ? "Response overdue" : "Reply due"} ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(new Date(assignment.response_due_at))}`
+                        : turnoverActionReason(row, today)}
                     </p>
                   </div>
                   <span aria-hidden="true" className="hidden text-xl lg:block">

@@ -3,8 +3,8 @@ import AxeBuilder from "@axe-core/playwright";
 
 test("homepage presents the STR product truthfully and accessibly", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Know every property is ready before the next guest arrives.");
-  await expect(page.getByText(/invite the cleaners you already use/i).first()).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Stop a missed clean becoming your next bad review");
+  await expect(page.getByText(/use your existing cleaner/i).first()).toBeVisible();
   await expect(page.getByText("Bring your own cleaner", { exact: true }).first()).toBeVisible();
   for (const contradiction of [
     /Quickola handles the cleaning/i,
