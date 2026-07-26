@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireBusinessUser } from "@/lib/business/auth";
 import TurnoverStatus from "../components/TurnoverStatus";
+import { formatDisplayName } from "@/lib/display-name";
 type Item = {
   id: string;
   turnover_date: string;
@@ -205,7 +206,9 @@ export default async function Page() {
                       </p>
                     </div>
                     <div>
-                      <p className="font-extrabold">{p?.nickname}</p>
+                      <p className="font-extrabold">
+                        {formatDisplayName(p?.nickname)}
+                      </p>
                       <p className="mt-1 text-xs text-[#657089]">
                         {p?.postcode} · {p?.bedrooms ?? "—"} bed ·{" "}
                         {row.cleaning_type.replaceAll("_", " ")}

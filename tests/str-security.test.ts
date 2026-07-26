@@ -30,7 +30,14 @@ const ownerChecklist = readFileSync(
   ),
   "utf8",
 );
-const sql = `${core}\n${hardening}\n${atomic}\n${ownerChecklist}`;
+const accessExpiry = readFileSync(
+  new URL(
+    "../supabase/migrations/202607260005_completed_access_expiry.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const sql = `${core}\n${hardening}\n${atomic}\n${ownerChecklist}\n${accessExpiry}`;
 
 test("neutral reusable core objects avoid Airbnb-specific table names", () => {
   for (const table of [
@@ -142,6 +149,11 @@ test("owners can instantiate checklist snapshots only inside their own account",
   assert.match(ownerChecklist, /members manage checklist tasks/);
   assert.match(ownerChecklist, /public\.is_business_member\(account_id\)/);
   assert.match(ownerChecklist, /with check/);
+});
+
+test("cleaner access to property secrets expires at terminal turnover states", () => {
+  assert.match(accessExpiry, /item\.status not in \('ready','cancelled'\)/);
+  assert.match(accessExpiry, /assignment\.status='accepted'/);
 });
 
 test("assignment and transition mutations are server-side transactions", () => {

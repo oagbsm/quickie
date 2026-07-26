@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireBusinessUser } from "@/lib/business/auth";
 import ArchivePropertyForm from "./ArchivePropertyForm";
 import TurnoverStatus from "../components/TurnoverStatus";
+import { formatDisplayName } from "@/lib/display-name";
 export default async function Page({
   searchParams,
 }: {
@@ -87,7 +88,9 @@ export default async function Page({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-extrabold">{p.nickname}</h2>
+                    <h2 className="text-lg font-extrabold">
+                      {formatDisplayName(p.nickname)}
+                    </h2>
                     <p className="mt-1 text-sm text-[#657089]">
                       {p.address_line_1}, {p.city}, {p.postcode}
                     </p>

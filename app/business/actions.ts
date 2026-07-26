@@ -223,6 +223,98 @@ export async function updateProperty(f: FormData) {
   revalidatePath("/business/settings");
   redirect(`/business/properties/${id}?updated=1`);
 }
+export async function updatePropertySection(f: FormData) {
+  const { supabase, accountId } = await requireBusinessUser();
+  const id = value(f, "id"),
+    section = value(f, "section");
+  const payload =
+    section === "standard"
+      ? {
+          default_checkout_time: value(f, "defaultCheckoutTime"),
+          default_checkin_time: value(f, "defaultCheckinTime"),
+          estimated_turnover_minutes: Number(
+            value(f, "estimatedTurnoverMinutes"),
+          ),
+          bed_configuration: optional(f, "bedConfiguration"),
+          sofa_bed_required: f.get("sofaBedRequired") === "on",
+          linen_requirements: optional(f, "linenRequirements"),
+          towel_requirements: optional(f, "towelRequirements"),
+          waste_instructions: optional(f, "wasteInstructions"),
+          consumables_instructions: optional(f, "consumablesInstructions"),
+          cleaning_notes: optional(f, "cleaningNotes"),
+          required_completion_photos: Number(
+            value(f, "requiredCompletionPhotos") || 4,
+          ),
+          updated_at: new Date().toISOString(),
+        }
+      : section === "access"
+        ? {
+            access_notes: optional(f, "accessNotes"),
+            key_instructions: optional(f, "keyInstructions"),
+            key_return_instructions: optional(f, "keyReturnInstructions"),
+            parking_notes: optional(f, "parkingNotes"),
+            floor_lift_notes: optional(f, "floorLiftNotes"),
+            heating_instructions: optional(f, "heatingInstructions"),
+            lighting_instructions: optional(f, "lightingInstructions"),
+            emergency_contact: optional(f, "emergencyContact"),
+            internal_notes: optional(f, "internalNotes"),
+            updated_at: new Date().toISOString(),
+          }
+        : null;
+  if (!payload) return;
+  const { error } = await supabase
+    .from("properties")
+    .update(payload)
+    .eq("id", id)
+    .eq("account_id", accountId);
+  if (error)
+    redirect(`/business/properties/${id}?tab=${section}&edit=1&error=save`);
+  revalidatePath(`/business/properties/${id}`);
+  revalidatePath("/business/properties");
+  redirect(`/business/properties/${id}?tab=${section}&updated=1`);
+}
+
+export type AccessRevealState = {
+  revealed: boolean;
+  message?: string;
+  accessNotes?: string | null;
+  keyInstructions?: string | null;
+  parkingNotes?: string | null;
+  floorLiftNotes?: string | null;
+};
+export async function revealPropertyAccess(
+  _state: AccessRevealState,
+  f: FormData,
+): Promise<AccessRevealState> {
+  const { supabase, accountId, user } = await requireBusinessUser();
+  const id = value(f, "propertyId");
+  const { data, error } = await supabase
+    .from("properties")
+    .select("access_notes,key_instructions,parking_notes,floor_lift_notes")
+    .eq("id", id)
+    .eq("account_id", accountId)
+    .maybeSingle();
+  if (error || !data)
+    return {
+      revealed: false,
+      message: "Access details could not be revealed.",
+    };
+  await supabase.from("activity_events").insert({
+    account_id: accountId,
+    property_id: id,
+    actor_user_id: user.id,
+    event_type: "property_access_revealed",
+    description: "Sensitive property access details were revealed by the owner",
+  });
+  revalidatePath(`/business/properties/${id}`);
+  return {
+    revealed: true,
+    accessNotes: data.access_notes,
+    keyInstructions: data.key_instructions,
+    parkingNotes: data.parking_notes,
+    floorLiftNotes: data.floor_lift_notes,
+  };
+}
 export async function setPropertyStatus(f: FormData) {
   const { supabase, accountId } = await requireBusinessUser(),
     id = value(f, "id"),
