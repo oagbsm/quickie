@@ -1,275 +1,96 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-test("homepage communicates managed business cleaning and passes a basic accessibility scan", async ({
-  page,
-}) => {
+test("homepage presents the STR product truthfully and accessibly", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "The smarter way to manage every clean, every time.",
-  );
-  await expect(
-    page.getByRole("link", { name: "Create account" }).first(),
-  ).toBeVisible();
-  await expect(
-    page.getByText(/controlled service currently available in Slough/i),
-  ).toBeVisible();
-  await expect(page.getByText(/book a cleaner for your home/i)).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Know every property is ready before the next guest arrives.");
+  await expect(page.getByText(/invite the cleaners you already use/i).first()).toBeVisible();
+  await expect(page.getByText("Bring your own cleaner", { exact: true }).first()).toBeVisible();
+  for (const contradiction of [
+    /Quickola handles the cleaning/i,
+    /Quickola arranges the service/i,
+    /managed cleaning currently available/i,
+    /serving Slough/i,
+    /MATO GROUP/i,
+  ]) await expect(page.getByText(contradiction)).toHaveCount(0);
   const results = await new AxeBuilder({ page }).analyze();
-  expect(
-    results.violations.filter((v) =>
-      ["critical", "serious"].includes(v.impact || ""),
-    ),
-  ).toEqual([]);
+  expect(results.violations.filter(v => ["critical", "serious"].includes(v.impact || ""))).toEqual([]);
 });
 
-test("desktop and mobile navigation expose the public architecture", async ({
-  page,
-}, testInfo) => {
+test("public navigation matches the STR information architecture", async ({ page }) => {
   await page.goto("/");
-  if (testInfo.project.name === "mobile")
-    await page.getByText("Menu", { exact: true }).click();
-  const navigation = page.getByRole("navigation", {
-    name:
-      testInfo.project.name === "mobile"
-        ? "Mobile navigation"
-        : "Primary navigation",
-  });
-  await expect(
-    navigation.getByRole("link", { name: "How it works" }),
-  ).toBeVisible();
-  await expect(
-    navigation.getByRole("link", { name: "For businesses" }),
-  ).toBeVisible();
-  for (const removed of ["Product", "Solutions", "Pricing", "Service area"])
-    await expect(
-      navigation.getByRole("link", { name: removed, exact: true }),
-    ).toHaveCount(0);
-  await expect(
-    page.getByRole("link", { name: "Sign in" }).first(),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Create account" }).first(),
-  ).toBeVisible();
+  const menu = page.getByText("Menu", { exact: true });
+  if (await menu.isVisible()) await menu.click();
+  const navigation = page.getByRole("navigation", { name: "Primary navigation" }).filter({ visible: true });
+  await expect(navigation.getByRole("link", { name: "Product" })).toBeVisible();
+  await expect(navigation.getByRole("link", { name: "How it works" })).toBeVisible();
+  await expect(navigation.getByRole("link", { name: "For STR operators" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Create account" }).first()).toBeVisible();
 });
 
-test("landing page uses truthful capability, legal and CTA copy", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await expect(
-    page.getByRole("heading", {
-      name: "Everything you need to organise property cleaning in one place.",
-    }),
-  ).toBeVisible();
-  for (const title of [
-    "Manage every property",
-    "Request cleans quickly",
-    "Follow every booking",
-  ])
-    await expect(page.getByRole("heading", { name: title })).toBeVisible();
-  await expect(
-    page.getByRole("img", { name: "Quickola business dashboard preview" }),
-  ).toBeVisible();
-  await expect(page.getByText("MATO GROUP LTD", { exact: true })).toBeVisible();
-  await expect(
-    page.getByText("Company number 17327292", { exact: true }),
-  ).toBeVisible();
-  for (const unsupported of [
-    "No contracts",
-    "cancel anytime",
-    "Real-Time Updates",
-    "audit history",
-    "100+",
-    "Consistent results",
-    "Vetted professionals",
-    "Insured & compliant",
-  ])
-    await expect(page.getByText(new RegExp(unsupported, "i"))).toHaveCount(0);
-  await expect(
-    page.getByRole("heading", {
-      name: "Ready to simplify your property cleaning?",
-    }),
-  ).toBeVisible();
+test("product page answers the non-marketplace questions directly", async ({ page }) => {
+  await page.goto("/product");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("guest checkout to property ready");
+  for (const text of [
+    "Does Quickola provide cleaners?",
+    "Can I invite my existing cleaner?",
+    "How is a property marked ready?",
+    "Does Quickola take payment for cleaning?",
+    "Will calendar integrations be added later?",
+  ]) await expect(page.getByRole("heading", { name: text })).toBeVisible();
 });
 
-test("landing section links target real sections and hero mock-up is readable", async ({
-  page,
-}, testInfo) => {
-  await page.goto("/");
-  await expect(page.locator("#for-businesses")).toBeVisible();
-  await expect(page.locator("#how-it-works")).toBeVisible();
-  if (testInfo.project.name === "mobile")
-    await page.getByText("Menu", { exact: true }).click();
-  const navigation = page.getByRole("navigation", {
-    name:
-      testInfo.project.name === "mobile"
-        ? "Mobile navigation"
-        : "Primary navigation",
-  });
-  await expect(
-    navigation.getByRole("link", { name: "For businesses" }),
-  ).toHaveAttribute("href", "#for-businesses");
-  await expect(
-    navigation.getByRole("link", { name: "How it works" }),
-  ).toHaveAttribute("href", "#how-it-works");
-  await expect(
-    page.getByRole("img", { name: "Quickola business dashboard preview" }),
-  ).toHaveAttribute("src", /106\.png/);
+test("signup collects only the V1 account fields", async ({ page }) => {
+  await page.goto("/business/sign-up");
+  await expect(page.getByRole("heading", { level: 1, name: "Create your account" })).toBeVisible();
+  await expect(page.getByLabel("Full name")).toBeVisible();
+  await expect(page.getByLabel("Email")).toBeVisible();
+  await expect(page.getByLabel("Password")).toBeVisible();
+  await expect(page.getByLabel(/business or portfolio/i)).toHaveCount(0);
+  await expect(page.getByLabel(/phone/i)).toHaveCount(0);
+  await expect(page.getByLabel(/customer type/i)).toHaveCount(0);
 });
 
-test("solution, product, process and service-area routes render", async ({
-  page,
-}) => {
-  for (const path of [
-    "/product",
-    "/how-it-works",
-    "/service-area",
-    "/solutions/letting-agents",
-    "/solutions/airbnb",
-    "/solutions/offices",
-  ]) {
-    await page.goto(path);
-    await expect(page.getByRole("heading", { level: 1 }), path).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "Create account" }).first(),
-    ).toBeVisible();
-  }
-});
-
-test("self-service registration is available without an invitation", async ({
-  page,
-}) => {
-  const response = await page.goto("/business/sign-up");
-  expect(response?.status()).toBe(200);
-  await expect(page).toHaveURL(/\/business\/sign-up$/);
-  await expect(
-    page.getByRole("heading", {
-      level: 1,
-      name: "Create your business account",
-    }),
-  ).toBeVisible();
-  await expect(
-    page.getByText(/no sales call or administrator invitation is required/i),
-  ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Continue" })).toBeVisible();
-});
-
-test("business enquiry validates and is clearly non-confirming", async ({
-  page,
-}) => {
-  await page.goto("/business/enquire");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Tell us what you need cleaned.",
-  );
-  await expect(page.getByLabel("Business or organisation")).toBeVisible();
-  await expect(
-    page.getByText(/before confirming any work/i).first(),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Request business access" }).click();
-  await expect(page.getByLabel("Your name")).toBeFocused();
-});
-
-test("solution pages are tailored and avoid defensive lead copy", async ({
-  page,
-}) => {
-  await page.goto("/solutions/airbnb");
-  await expect(
-    page.getByRole("heading", {
-      name: "Repeat bookings without repeating instructions.",
-    }),
-  ).toBeVisible();
-  await expect(page.getByText(/guest changeover/i).first()).toBeVisible();
-  await page.goto("/solutions/letting-agents");
-  await expect(
-    page.getByRole("heading", {
-      name: "One place for every property and clean.",
-    }),
-  ).toBeVisible();
-  await expect(page.getByText(/end-of-tenancy/i).first()).toBeVisible();
-  await page.goto("/solutions/offices");
-  await expect(page.getByText(/operating hours/i).first()).toBeVisible();
-  for (const phrase of [
-    "does not claim Airbnb integrations",
-    "does not pass you a list of cleaners",
-    "without claiming an unconfirmed request is booked",
-  ]) {
-    await expect(page.getByText(new RegExp(phrase, "i"))).toHaveCount(0);
-  }
-});
-
-test("public pages use one legal identity and consistent CTA label", async ({
-  page,
-}) => {
-  for (const path of [
-    "/",
-    "/how-it-works",
-    "/solutions/airbnb",
-    "/solutions/letting-agents",
-    "/solutions/offices",
-    "/business/enquire",
-  ]) {
-    await page.goto(path);
-    await expect(
-      page.getByText("Company number 17327292", { exact: false }).last(),
-    ).toBeVisible();
-    await expect(page.getByText(/16330743/)).toHaveCount(0);
-    await expect(
-      page.getByRole("link", { name: "Request access", exact: true }),
-    ).toHaveCount(0);
-  }
-});
-
-test("consumer booking URLs permanently retire to business enquiry", async ({
-  request,
-}) => {
-  for (const path of [
-    "/book",
-    "/regular-cleaner-slough",
-    "/slough/langley/cleaner",
-    "/commercial-cleaning",
-  ]) {
+test("legacy managed-service URLs permanently redirect to the STR product", async ({ request }) => {
+  for (const path of ["/book", "/regular-cleaner-slough", "/slough/langley/cleaner", "/commercial-cleaning", "/solutions/offices"]) {
     const response = await request.get(path, { maxRedirects: 0 });
     expect(response.status(), path).toBe(308);
-    expect(response.headers().location).toBe("/business/enquire");
+    expect(response.headers().location, path).toBe("/product");
   }
 });
 
-test("protected portals redirect unauthenticated visitors", async ({
-  page,
-}) => {
-  await page.goto("/admin");
-  await expect(page).toHaveURL(/\/admin\/login$/);
-  await page.goto("/business/dashboard");
-  await expect(page).toHaveURL(/\/business\/sign-in$/);
+test("obsolete protected booking and finance routes redirect to V1 equivalents", async ({ request }) => {
+  const booking = await request.get("/business/bookings", { maxRedirects: 0 });
+  const billing = await request.get("/business/billing", { maxRedirects: 0 });
+  expect(booking.headers().location).toBe("/business/turnovers");
+  expect(billing.headers().location).toBe("/business/settings");
+});
+
+test("protected owner and cleaner routes require authentication", async ({ page }) => {
+  for (const path of ["/business/dashboard", "/business/turnovers", "/business/cleaners", "/cleaner/today"]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/business\/sign-in/);
+  }
 });
 
 test("public routes have no horizontal overflow", async ({ page }) => {
-  for (const path of [
-    "/",
-    "/product",
-    "/how-it-works",
-    "/service-area",
-    "/solutions/letting-agents",
-    "/business/enquire",
-    "/business/sign-in",
-  ]) {
+  for (const path of ["/", "/product", "/business/sign-in", "/business/sign-up", "/terms"]) {
     await page.goto(path);
-    expect(
-      await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth >
-          document.documentElement.clientWidth,
-      ),
-      `${path} overflows`,
-    ).toBe(false);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth), `${path} overflows`).toBe(false);
   }
+});
+
+test("llms.txt reflects the current product boundary", async ({ request }) => {
+  const response = await request.get("/llms.txt");
+  expect(response.ok()).toBe(true);
+  const body = await response.text();
+  expect(body).toContain("STR turnover coordination");
+  expect(body).toContain("does not supply, source, vet or employ cleaners");
+  expect(body).not.toContain("Slough");
 });
 
 test("unknown routes render a useful 404", async ({ page }) => {
   const response = await page.goto("/not-a-real-quickola-page");
   expect(response?.status()).toBe(404);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "That page is not here.",
-  );
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("That page is not here.");
 });

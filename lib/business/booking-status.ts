@@ -69,7 +69,7 @@ export const bookingStatusConfig: Record<BookingStatus, BookingPresentation> = {
     terminalException: false,
   },
   confirmed: {
-    customerLabel: "Confirmed",
+    customerLabel: "Booking confirmed",
     customerTitle: "Booking confirmed",
     adminLabel: "Confirmed · unassigned",
     customerCopy:

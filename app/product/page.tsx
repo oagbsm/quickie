@@ -1,110 +1,17 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import Header from "@/app/homepagecomponents/Header";
-import Footer from "@/app/components/Footer";
-export const metadata: Metadata = {
-  title: "Managed cleaning platform for business properties | Quickola",
-  description:
-    "See how Quickola combines property records, cleaning requests, managed assignment and booking tracking for Slough businesses.",
-  alternates: { canonical: "/product" },
-};
-const items = [
-  [
-    "Property records",
-    "Save addresses, property details, access methods and cleaning instructions.",
-  ],
-  [
-    "Cleaning requests",
-    "Request one-off or recurring work against the correct property record.",
-  ],
-  [
-    "Operational review",
-    "Quickola checks coverage, the brief and availability before confirmation.",
-  ],
-  [
-    "Cleaner assignment",
-    "Assignment is managed by Quickola, with suitability checks built into operations.",
-  ],
-  [
-    "Arrival visibility",
-    "Requested timings and arrival windows remain attached to the booking.",
-  ],
-  [
-    "Lifecycle tracking",
-    "Follow work through requested, confirmed, assigned, underway and completed states.",
-  ],
-  [
-    "Notes and history",
-    "Keep booking notes and central service history available in the secure account.",
-  ],
-  [
-    "Completion record",
-    "See completed work against the property and booking it belongs to.",
-  ],
+export const metadata:Metadata={title:"Quickola STR product | Turnover coordination",description:"Property standards, cleaner assignments, checklists, evidence, issues and guest-ready verification for short-term-rental operators.",alternates:{canonical:"/product"}};
+const flow=["Add your property","Save its turnover standard","Invite your own cleaner","Create a turnover","Assign the cleaner","Track progress","Collect checklist evidence","Confirm the property is ready"];
+const questions=[
+["What is Quickola STR?","Software for short-term-rental operators to coordinate property turnovers with cleaners or contractors they already use."],
+["Does Quickola provide cleaners?","No. Quickola does not source, vet, employ or automatically assign cleaners."],
+["Can I invite my existing cleaner?","Yes. Add their name and email or mobile number, choose their preferred contact method and share a secure invitation."],
+["How is a property marked ready?","A server-side check verifies mandatory tasks, required photos and notes, key return, completion submission and unresolved blocking issues."],
+["What happens when the cleaner reports an issue?","The operator sees it in the turnover and Issues view. A blocking issue prevents Property Ready until it is resolved or explicitly downgraded with an audit record."],
+["Can I manage multiple properties?","Yes. Each property has its own access details, timings, turnover standard, checklist and history."],
+["Does Quickola take payment for cleaning?","No. Quickola does not set rates, invoice for cleaning or manage cleaner payouts."],
+["Can I create turnovers manually?","Yes. Manual creation is the complete V1 workflow."],
+["Will calendar integrations be added later?","They may be added later. No calendar integration is shown as active until it genuinely works."],
 ];
-export default function Page() {
-  return (
-    <div className="min-h-screen bg-white text-[#071638]">
-      <Header />
-      <main id="main-content">
-        <section className="bg-[#071a3b] px-5 py-18 text-white sm:px-8">
-          <div className="mx-auto max-w-[1120px]">
-            <p className="eyebrow !text-[#66dd78]">The Quickola platform</p>
-            <h1 className="mt-4 max-w-4xl text-5xl font-black leading-none tracking-[-.05em] sm:text-6xl">
-              Software for the work. People managing fulfilment.
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-white/75">
-              Quickola gives businesses one place to organise cleaning while our
-              operations team remains responsible for review, assignment and
-              coordination.
-            </p>
-            <Link
-              href="/business/sign-up"
-              className="mt-8 inline-flex min-h-12 items-center rounded-[.65rem] bg-[#66dd78] px-6 font-black text-[#071a3b]"
-            >
-              Create account
-            </Link>
-          </div>
-        </section>
-        <section className="px-5 py-18 sm:px-8">
-          <div className="mx-auto max-w-[1120px]">
-            <p className="eyebrow">What customers can manage</p>
-            <h2 className="mt-3 max-w-3xl text-4xl font-black tracking-[-.04em]">
-              A reliable operational record from address to completion.
-            </h2>
-            <div className="mt-10 grid gap-px overflow-hidden border-y border-[#d7e0e5] bg-[#d7e0e5] md:grid-cols-2">
-              {items.map(([h, p]) => (
-                <article key={h} className="bg-white p-6">
-                  <h3 className="text-xl font-black">{h}</h3>
-                  <p className="mt-2 leading-7 text-[#526078]">{p}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-        <section className="bg-[#f2f5f3] px-5 py-16 sm:px-8">
-          <div className="mx-auto grid max-w-[1120px] gap-8 lg:grid-cols-2">
-            <div>
-              <p className="eyebrow">An honest service model</p>
-              <h2 className="mt-3 text-3xl font-black">
-                Not a cleaner directory. Not software sold on its own.
-              </h2>
-            </div>
-            <div className="leading-7 text-[#526078]">
-              <p>
-                The account supports a managed cleaning service. Customers
-                provide the operational detail and see progress; Quickola
-                controls assignment and service delivery.
-              </p>
-              <p className="mt-4">
-                Access is currently controlled and limited to suitable cleaning
-                requirements in the Slough service area.
-              </p>
-            </div>
-          </div>
-        </section>
-      </main>
-      <Footer />
-    </div>
-  );
-}
+export default function Page(){return <main className="min-h-screen text-[#071638]"><header className="border-b bg-white px-5"><div className="mx-auto flex h-17 max-w-[1120px] items-center justify-between"><Link href="/" className="flex items-center gap-2 text-xl font-extrabold"><Image src="/quickola/logo-mark.png" alt="" width={34} height={34}/>Quickola</Link><div className="flex gap-2"><Link href="/business/sign-in" className="inline-flex min-h-11 items-center px-3 text-sm font-bold">Sign in</Link><Link href="/business/sign-up" className="inline-flex min-h-11 items-center rounded-lg bg-[#071f49] px-4 text-sm font-extrabold text-white">Create account</Link></div></div></header><section className="bg-[#071a3a] px-5 py-18 text-white"><div className="mx-auto max-w-[1000px]"><p className="text-sm font-extrabold uppercase tracking-[.12em] text-[#8db9ef]">Quickola STR</p><h1 className="mt-4 max-w-4xl text-4xl font-extrabold tracking-[-.04em] sm:text-6xl">One operational record from guest checkout to property ready.</h1><p className="mt-6 max-w-2xl text-lg leading-8 text-white/70">Give every property a clear standard, every cleaner a focused workflow and every readiness decision the evidence behind it.</p></div></section><section className="px-5 py-18"><div className="mx-auto max-w-[1120px]"><h2 className="text-3xl font-extrabold sm:text-5xl">The complete manual turnover flow</h2><ol className="mt-9 grid gap-px overflow-hidden rounded-xl border bg-[#dfe4eb] sm:grid-cols-2 lg:grid-cols-4">{flow.map((step,index)=><li key={step} className="bg-white p-5"><p className="text-sm font-extrabold text-[#2d67b2]">{String(index+1).padStart(2,"0")}</p><p className="mt-5 font-extrabold">{step}.</p></li>)}</ol></div></section><section className="bg-[#f3f6f9] px-5 py-18"><div className="mx-auto max-w-[900px]"><h2 className="text-3xl font-extrabold sm:text-5xl">Direct answers</h2><div className="mt-8 divide-y divide-[#d5dce5]">{questions.map(([q,a])=><article key={q} className="grid gap-2 py-6 sm:grid-cols-[260px_1fr] sm:gap-8"><h3 className="font-extrabold">{q}</h3><p className="leading-7 text-[#657089]">{a}</p></article>)}</div></div></section><section className="px-5 py-16 text-center"><h2 className="text-3xl font-extrabold">Know the property is ready.</h2><Link href="/business/sign-up" className="mt-6 inline-flex min-h-12 items-center rounded-lg bg-[#071f49] px-6 font-extrabold text-white">Create account</Link></section></main>}

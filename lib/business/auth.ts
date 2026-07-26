@@ -6,10 +6,22 @@ import { resolveBusinessWorkspace } from "@/lib/business/workspace";
 
 export async function requireBusinessUser() {
   const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/business/sign-in");
 
   const workspace = await resolveBusinessWorkspace();
-  if (!workspace.ok) redirect(`/business/setup-error?ref=${encodeURIComponent(workspace.reference)}`);
-  return { supabase, user, accountId: workspace.accountId, role: workspace.role };
+  if (!workspace.ok && workspace.reason === "suspended")
+    redirect("/business/suspended");
+  if (!workspace.ok)
+    redirect(
+      `/business/setup-error?ref=${encodeURIComponent(workspace.reference)}`,
+    );
+  return {
+    supabase,
+    user,
+    accountId: workspace.accountId,
+    role: workspace.role,
+  };
 }

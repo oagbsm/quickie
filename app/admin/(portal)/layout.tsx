@@ -4,12 +4,12 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { adminSignOut } from "@/app/admin/actions";
 const nav = [
   ["Overview", "/admin"],
-  ["Enquiries", "/admin/enquiries"],
-  ["Bookings", "/admin/bookings"],
+  ["Accounts", "/admin/accounts"],
   ["Properties", "/admin/properties"],
-  ["Customers", "/admin/customers"],
-  ["Providers", "/admin/providers"],
-  ["Settings", "/admin/settings"],
+  ["Cleaners", "/admin/cleaners"],
+  ["Turnovers", "/admin/turnovers"],
+  ["Issues", "/admin/issues"],
+  ["Audit history", "/admin/activity"],
 ];
 export default async function Layout({
   children,
@@ -28,7 +28,7 @@ export default async function Layout({
               width={34}
               height={34}
             />
-            Quickola Operations
+            Quickola Support
           </Link>
           <div className="flex items-center gap-4">
             <form action={adminSignOut}>

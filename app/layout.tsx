@@ -11,11 +11,11 @@ const nunito = Nunito_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.quickola.co.uk"),
   title: {
-    default: "Quickola | Managed cleaning for properties and businesses",
+    default: "Quickola | STR turnover coordination",
     template: "%s",
   },
   description:
-    "Managed cleaning for property professionals, accommodation operators, offices and businesses in the Slough area.",
+    "Coordinate short-term-rental turnovers with the cleaners you already use and receive proof when each property is guest-ready.",
   applicationName: "Quickola",
   authors: [{ name: "Quickola" }],
   creator: "Quickola",
@@ -36,23 +36,23 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://www.quickola.co.uk",
     siteName: "Quickola",
-    title: "Quickola | Managed cleaning for properties and businesses",
+    title: "Quickola | STR turnover coordination",
     description:
-      "Organise and track managed cleaning for properties, portfolios and business premises in the Slough area.",
+      "Coordinate short-term-rental turnovers and verify when each property is guest-ready.",
     images: [
       {
         url: "/quickola/logo-mark.png",
         width: 1200,
         height: 630,
-        alt: "Quickola Property Services",
+        alt: "Quickola",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Quickola | Managed cleaning for properties and businesses",
+    title: "Quickola | STR turnover coordination",
     description:
-      "Managed cleaning for property professionals and businesses in the Slough area.",
+      "Coordinate STR turnovers with your own cleaners and collect guest-ready evidence.",
     images: ["/quickola/logo-mark.png"],
   },
   robots: {

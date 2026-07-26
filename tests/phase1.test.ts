@@ -21,6 +21,24 @@ import {
   validatePilotSchedule,
 } from "../lib/business/time.ts";
 import { getServiceAreaStatus } from "../lib/business/service-area.ts";
+import {
+  compareBookingDateAscending,
+  compareBookingDateDescending,
+  formatCompactBookingDateTime,
+  formatPropertyName,
+  getLondonDateKey,
+} from "../lib/business/portal-display.ts";
+import {
+  buildAbsoluteAppUrl,
+  resolveAppOrigin,
+  safeInternalNextPath,
+} from "../lib/app-url.ts";
+import { getCustomerBookingPresentation } from "../lib/business/booking-presentation.ts";
+import { createDashboardViewModel } from "../lib/business/dashboard-view-model.ts";
+import {
+  getPasswordRecoveryRedirect,
+  getSignUpConfirmationRedirect,
+} from "../lib/auth-redirects.ts";
 const base = {
   frequency: "one_off",
   propertyType: "flat",
@@ -29,6 +47,179 @@ const base = {
   extras: [],
   serviceAreaStatus: "eligible",
 } as const;
+test("application origins are canonical and never local in production", () => {
+  assert.equal(
+    resolveAppOrigin({
+      siteUrl: "https://www.quickola.co.uk/",
+      nodeEnv: "production",
+    }),
+    "https://www.quickola.co.uk",
+  );
+  assert.equal(
+    resolveAppOrigin({
+      siteUrl: "http://localhost:3000",
+      nodeEnv: "production",
+    }),
+    "https://www.quickola.co.uk",
+  );
+  assert.equal(
+    resolveAppOrigin({ siteUrl: "not a URL", nodeEnv: "production" }),
+    "https://www.quickola.co.uk",
+  );
+  assert.equal(
+    resolveAppOrigin({ nodeEnv: "development" }),
+    "http://localhost:3000",
+  );
+});
+test("authentication URLs use production origin and reject external next paths", () => {
+  const environment = {
+    siteUrl: "https://www.quickola.co.uk/",
+    nodeEnv: "production",
+  };
+  assert.equal(
+    buildAbsoluteAppUrl(
+      "/auth/callback?next=/business/update-password",
+      environment,
+    ),
+    "https://www.quickola.co.uk/auth/callback?next=/business/update-password",
+  );
+  assert.equal(
+    safeInternalNextPath("/business/onboarding?step=setup"),
+    "/business/onboarding?step=setup",
+  );
+  assert.equal(
+    safeInternalNextPath("https://evil.example/business/dashboard"),
+    "/business/continue",
+  );
+  assert.equal(
+    safeInternalNextPath("//evil.example/business/dashboard"),
+    "/business/continue",
+  );
+});
+test("sign-up and password recovery use production callback URLs", () => {
+  const environment = {
+    siteUrl: "https://www.quickola.co.uk/",
+    nodeEnv: "production",
+  };
+  assert.equal(
+    getSignUpConfirmationRedirect(environment),
+    "https://www.quickola.co.uk/auth/callback?next=/business/continue",
+  );
+  assert.equal(
+    getPasswordRecoveryRedirect(environment),
+    "https://www.quickola.co.uk/auth/callback?next=/business/update-password",
+  );
+  assert.doesNotMatch(
+    `${getSignUpConfirmationRedirect(environment)} ${getPasswordRecoveryRedirect(environment)}`,
+    /localhost|127\.0\.0\.1/,
+  );
+});
+test("customer schedule wording separates confirmation from live arrival timing", () => {
+  const scheduledStart = "2026-07-25T09:00:00+01:00";
+  const requested = getCustomerBookingPresentation({
+    status: "requested",
+    scheduledStart,
+  });
+  assert.equal(requested.statusLabel, "Booking received");
+  assert.match(requested.scheduleLabel, /^Requested for /);
+
+  const confirmed = getCustomerBookingPresentation({
+    status: "confirmed",
+    scheduledStart,
+  });
+  assert.equal(confirmed.statusLabel, "Booking confirmed");
+  assert.match(confirmed.scheduleLabel, /^Scheduled for /);
+  assert.match(confirmed.supportingMessage, /live arrival estimate/);
+
+  const assigned = getCustomerBookingPresentation({
+    status: "provider_assigned",
+    scheduledStart,
+    estimatedArrivalStart: "2026-07-25T09:30:00+01:00",
+    estimatedArrivalEnd: "2026-07-25T10:00:00+01:00",
+  });
+  assert.equal(assigned.statusLabel, "Cleaner arranged");
+  assert.match(assigned.scheduleLabel, /^Arrival /);
+  assert.doesNotMatch(assigned.scheduleLabel, /to be confirmed/);
+});
+test("desktop and mobile consume the same canonical dashboard facts", () => {
+  const booking = {
+    id: "booking-1",
+    scheduled_start: "2026-07-25T09:00:00+01:00",
+    status: "confirmed",
+    properties: { nickname: "Quinbrookes" },
+  };
+  const model = createDashboardViewModel({
+    accountId: "account-1",
+    userId: "user-1",
+    displayName: "Alex",
+    propertyCount: 2,
+    upcomingCount: 1,
+    completedCount: 3,
+    actionRequiredCount: 0,
+    upcomingBookings: [booking],
+    recentActivity: [],
+    properties: [{ id: "property-1", nickname: "Quinbrookes" }],
+    monthSummary: { completed: 1, upcoming: 1, cancelled: 0 },
+  });
+  const desktop = {
+    nextId: model.nextBooking?.id,
+    property: Array.isArray(model.nextBooking?.properties)
+      ? model.nextBooking?.properties[0]?.nickname
+      : model.nextBooking?.properties?.nickname,
+    date: model.nextBooking?.scheduled_start,
+    status: model.nextBooking?.status,
+    counts: model.counts,
+  };
+  const mobile = { ...desktop };
+  assert.deepEqual(mobile, desktop);
+  assert.equal(model.remainingUpcoming.length, 0);
+});
+test("booking request activity is idempotent without blocking repeatable events", () => {
+  const migration = readFileSync(
+    "supabase/migrations/202607230001_booking_event_request_idempotency.sql",
+    "utf8",
+  );
+  assert.match(
+    migration,
+    /unique index[\s\S]+booking_id,\s*event_type[\s\S]+where event_type = 'booking_requested'/i,
+  );
+  assert.doesNotMatch(migration, /unique[\s\S]+created_at/i);
+  const bookingRpc = readFileSync(
+    "supabase/migrations/202607220004_pilot_operations.sql",
+    "utf8",
+  );
+  assert.match(bookingRpc, /idempotency_key=request_key/i);
+  assert.match(bookingRpc, /if result\.id is not null then return result/i);
+});
+test("portal booking dates sort by complete timestamps in either direction", () => {
+  const rows = [
+    { scheduled_start: "2026-07-25T17:00:00+01:00" },
+    { scheduled_start: "2026-07-25T09:00:00+01:00" },
+    { scheduled_start: "invalid" },
+  ];
+  assert.deepEqual([...rows].sort(compareBookingDateAscending), [
+    rows[1],
+    rows[0],
+    rows[2],
+  ]);
+  assert.deepEqual([...rows].sort(compareBookingDateDescending), [
+    rows[0],
+    rows[1],
+    rows[2],
+  ]);
+});
+test("portal dates and property names use consistent customer-facing formatting", () => {
+  assert.equal(
+    formatCompactBookingDateTime("2026-07-25T09:00:00+01:00"),
+    "25 Jul · 09:00",
+  );
+  assert.equal(
+    getLondonDateKey("2026-07-25T23:30:00+00:00"),
+    "2026-07-26",
+  );
+  assert.equal(formatPropertyName("quinbrookes house"), "Quinbrookes House");
+  assert.equal(formatPropertyName("iPhone House"), "iPhone House");
+});
 test("regular cleaning uses the versioned hourly pilot configuration", () => {
   const q = calculatePilotQuote({ ...base, service: "regular_cleaning" });
   assert.equal(q.estimatedDurationMinutes, 150);
@@ -80,7 +271,10 @@ test("canonical transitions reject invalid lifecycle changes", () => {
   assert.equal(canTransitionBooking("provider_assigned", "on_the_way"), true);
   assert.equal(canTransitionBooking("on_the_way", "arrived"), true);
   assert.equal(canTransitionBooking("arrived", "in_progress"), true);
-  assert.equal(getBookingStatus("confirmed").customerLabel, "Confirmed");
+  assert.equal(
+    getBookingStatus("confirmed").customerLabel,
+    "Booking confirmed",
+  );
 });
 test("every canonical status has one complete customer presentation", () => {
   for (const status of BOOKING_STATUSES) {

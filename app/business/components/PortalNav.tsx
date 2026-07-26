@@ -4,18 +4,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const items = [
-  ["Dashboard", "/business/dashboard", "home"],
+  ["Overview", "/business/dashboard", "home"],
   ["Properties", "/business/properties", "building"],
-  ["Bookings", "/business/bookings", "calendar"],
-  ["Settings", "/business/account", "settings"],
+  ["Turnovers", "/business/turnovers", "calendar"],
+  ["Cleaners", "/business/cleaners", "people"],
+  ["Issues", "/business/issues", "alert"],
+  ["Activity", "/business/activity", "activity"],
+  ["Settings", "/business/settings", "settings"],
 ] as const;
 
 export default function PortalNav() {
   const path = usePathname();
   return (
     <nav
-      className="grid w-full min-w-0 grid-cols-4 gap-1 lg:grid-cols-1 lg:gap-2"
-      aria-label="Business account navigation"
+      className="grid w-full min-w-0 gap-1.5"
+      aria-label="Workspace navigation"
     >
       {items.map(([label, href, icon]) => {
         const active = path === href || path.startsWith(`${href}/`);
@@ -24,7 +27,7 @@ export default function PortalNav() {
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[.6875rem] font-bold outline-none focus:ring-4 focus:ring-[#2e68bb]/30 sm:text-xs lg:min-h-13 lg:flex-row lg:justify-start lg:gap-4 lg:px-4 lg:text-[.9375rem] ${active ? "bg-[#132e5b] text-white" : "text-white/78 hover:bg-white/7 hover:text-white"}`}
+            className={`flex min-h-12 min-w-0 items-center gap-4 rounded-lg px-4 py-2 text-sm font-bold outline-none focus:ring-4 focus:ring-[#2e68bb]/30 lg:min-h-13 lg:text-[.9375rem] ${active ? "bg-[#183765] text-white" : "text-white/72 hover:bg-white/7 hover:text-white"}`}
           >
             <NavIcon name={icon} />
             <span className="truncate">{label}</span>
@@ -53,6 +56,19 @@ function NavIcon({ name }: { name: string }) {
         <rect x="3" y="5" width="18" height="16" rx="2" />
         <path d="M7 3v4M17 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01" />
       </>
+    ),
+    people: (
+      <>
+        <circle cx="9" cy="8" r="3" /><path d="M3 20c.4-4 2.4-6 6-6s5.6 2 6 6M16 5a3 3 0 0 1 0 6M17 14c2.5.4 3.8 2.4 4 5" />
+      </>
+    ),
+    alert: (
+      <>
+        <path d="M12 3 2.8 20h18.4L12 3Z" /><path d="M12 9v5M12 17.2h.01" />
+      </>
+    ),
+    activity: (
+      <path d="M3 12h4l2.2-6 4.2 12 2.2-6H21" />
     ),
     settings: (
       <>

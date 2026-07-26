@@ -45,15 +45,88 @@ const nextConfig: NextConfig = {
     return [
       ...retired.map((source) => ({
         source,
-        destination: "/business/enquire",
+        destination: "/product",
         permanent: true,
       })),
-      { source: "/business", destination: "/", permanent: true },
-      { source: "/for-providers", destination: "/", permanent: false },
+      { source: "/business", destination: "/product", permanent: true },
+      { source: "/for-providers", destination: "/product", permanent: true },
+      { source: "/how-it-works", destination: "/product", permanent: true },
+      { source: "/service-area", destination: "/product", permanent: true },
+      { source: "/solutions/:path*", destination: "/product", permanent: true },
+      { source: "/about", destination: "/product", permanent: true },
+      { source: "/trust-safety", destination: "/product", permanent: true },
+      { source: "/business/enquire", destination: "/product", permanent: true },
+      {
+        source: "/business/bookings",
+        destination: "/business/turnovers",
+        permanent: true,
+      },
+      {
+        source: "/business/bookings/:path*",
+        destination: "/business/turnovers",
+        permanent: true,
+      },
+      {
+        source: "/business/schedule",
+        destination: "/business/turnovers",
+        permanent: true,
+      },
+      {
+        source: "/business/billing",
+        destination: "/business/settings",
+        permanent: true,
+      },
+      {
+        source: "/business/account",
+        destination: "/business/settings",
+        permanent: true,
+      },
+      {
+        source: "/admin/bookings",
+        destination: "/admin/turnovers",
+        permanent: true,
+      },
+      {
+        source: "/admin/bookings/:path*",
+        destination: "/admin/turnovers",
+        permanent: true,
+      },
+      {
+        source: "/admin/providers",
+        destination: "/admin/cleaners",
+        permanent: true,
+      },
+      {
+        source: "/admin/customers",
+        destination: "/admin/accounts",
+        permanent: true,
+      },
+      {
+        source: "/admin/customers/:path*",
+        destination: "/admin/accounts",
+        permanent: true,
+      },
+      {
+        source: "/admin/enquiries",
+        destination: "/admin/accounts",
+        permanent: true,
+      },
+      { source: "/qk-ops-7f3a", destination: "/admin", permanent: true },
+      { source: "/qk-ops-7f3a/:path*", destination: "/admin", permanent: true },
+      {
+        source: "/qk-ops-7f3a-login",
+        destination: "/admin/login",
+        permanent: true,
+      },
       { source: "/privacy", destination: "/privacy-policy", permanent: true },
       {
-        source: "/terms",
-        destination: "/business/legal/terms",
+        source: "/business/legal/terms",
+        destination: "/terms",
+        permanent: true,
+      },
+      {
+        source: "/business/legal/cancellation",
+        destination: "/terms",
         permanent: true,
       },
     ];

@@ -5,23 +5,21 @@ const groups = [
     "Platform",
     [
       ["How it works", "/how-it-works"],
-      ["For businesses", "/#for-businesses"],
+      ["Product", "/product"],
       ["Sign in", "/business/sign-in"],
     ],
   ],
   [
-    "Solutions",
+    "Product",
     [
-      ["Letting agents", "/solutions/letting-agents"],
-      ["Airbnb operators", "/solutions/airbnb"],
-      ["Offices", "/solutions/offices"],
+      ["For STR operators", "/product"],
+      ["Bring your own cleaner", "/product"],
+      ["Property-ready proof", "/product"],
     ],
   ],
   [
     "Company",
     [
-      ["About", "/about"],
-      ["Trust & safety", "/trust-safety"],
       ["Contact", "/contact"],
     ],
   ],
@@ -29,8 +27,7 @@ const groups = [
     "Legal",
     [
       ["Privacy", "/privacy-policy"],
-      ["Business terms", "/business/legal/terms"],
-      ["Cancellations", "/business/legal/cancellation"],
+      ["Terms", "/terms"],
       ["Cookies", "/cookies"],
     ],
   ],
@@ -56,7 +53,7 @@ export default function Footer() {
             </span>
           </Link>
           <p className="mt-4 max-w-xs text-[.9375rem] leading-6 text-[#526078]">
-            Managed cleaning for property teams and businesses in Slough.
+            STR turnover coordination for operators and the cleaners they already use.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4">
@@ -77,13 +74,8 @@ export default function Footer() {
         </div>
       </div>
       <div className="mx-auto mt-12 grid max-w-[1120px] gap-2 border-t border-[#e5eaed] pt-6 text-[.8125rem] leading-5 text-[#657089] sm:grid-cols-2">
-        <p>
-          © {new Date().getFullYear()} Quickola. Quickola is a trading name of
-          MATO GROUP LTD.
-        </p>
-        <p className="sm:text-right">
-          Registered in England and Wales · Company number 17327292
-        </p>
+        <p>© {new Date().getFullYear()} Quickola.</p>
+        <p className="sm:text-right">Know every property is ready before the next guest arrives.</p>
       </div>
     </footer>
   );

@@ -2,113 +2,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveBusinessWorkspace } from "@/lib/business/workspace";
-import PropertyForm from "../components/PropertyForm";
-import { acceptTerms } from "../actions";
-
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<{ step?: string }>;
-}) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/business/sign-in");
-  const workspace = await resolveBusinessWorkspace();
-  if (!workspace.ok)
-    redirect(
-      `/business/setup-error?ref=${encodeURIComponent(workspace.reference)}`,
-    );
-  const [{ count }, { data: terms }] = await Promise.all([
-    supabase
-      .from("properties")
-      .select("id", { count: "exact", head: true })
-      .eq("account_id", workspace.accountId),
-    supabase
-      .from("terms_acceptances")
-      .select("id")
-      .eq("account_id", workspace.accountId)
-      .eq("terms_version", "business-pilot-2026-07-22")
-      .maybeSingle(),
-  ]);
-  if ((count || 0) > 0 && terms) redirect("/business/dashboard");
-  const { step: requestedStep } = await searchParams;
-  const step = requestedStep || (!(count || 0) ? "property" : "setup");
-  return (
-    <main className="min-h-screen bg-[#f3f6f8] px-5 py-10">
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-7 flex gap-2" aria-label="Onboarding progress">
-          {[1, 2, 3, 4].map((n) => (
-            <span
-              key={n}
-              className={`h-2 flex-1 rounded-full ${n <= (step === "property" ? 3 : 4) ? "bg-[#079448]" : "bg-[#dce2e9]"}`}
-            />
-          ))}
-        </div>
-        <p className="text-sm font-black text-[#079448]">
-          {step === "property" ? "STEP 3 OF 4" : "STEP 4 OF 4"}
-        </p>
-        {step === "property" ? (
-          <>
-            <h1 className="mt-2 mb-2 text-3xl font-black">
-              Add your first property
-            </h1>
-            <p className="mb-6 text-[#657089]">
-              You can add more properties at any time.
-            </p>
-            <PropertyForm />
-          </>
-        ) : (
-          <div className="rounded-3xl bg-white p-7 shadow-sm">
-            <h1 className="text-3xl font-black">Review and accept</h1>
-            <p className="mt-3 text-[#657089]">
-              Choose one-off or recurring cleaning each time you make a request.
-              No booking is required now.
-            </p>
-            <form action={acceptTerms} className="mt-8 border-t pt-6">
-              <input
-                type="hidden"
-                name="termsVersion"
-                value="business-pilot-2026-07-22"
-              />
-              <label className="flex items-start gap-3 font-bold">
-                <input type="checkbox" required className="mt-1 h-5 w-5" />
-                <span>
-                  I accept the{" "}
-                  <Link
-                    className="text-[#079448] underline"
-                    href="/business/legal/terms"
-                    target="_blank"
-                  >
-                    Quickola Business Terms
-                  </Link>
-                  ,{" "}
-                  <Link
-                    className="text-[#079448] underline"
-                    href="/privacy-policy"
-                    target="_blank"
-                  >
-                    Privacy Policy
-                  </Link>
-                  , and{" "}
-                  <Link
-                    className="text-[#079448] underline"
-                    href="/business/legal/cancellation"
-                    target="_blank"
-                  >
-                    cancellation information
-                  </Link>
-                  .
-                </span>
-              </label>
-              <button className="mt-6 w-full rounded-xl bg-[#079448] p-3.5 font-black text-white">
-                Enter dashboard
-              </button>
-            </form>
-          </div>
-        )}
-      </div>
-    </main>
-  );
+import { addProperty } from "../actions";
+import { addWorker, saveOnboardingStandard, skipCleanerOnboarding } from "../str-actions";
+const field="mt-1.5 min-h-12 w-full rounded-lg border border-[#cfd7e3] bg-white px-3.5 py-2.5 outline-none focus:border-[#2d67b2] focus:ring-4 focus:ring-[#2d67b2]/15";
+export default async function Page({searchParams}:{searchParams:Promise<{step?:string;property?:string;error?:string}>}){
+ const s=await createSupabaseServerClient();const{data:{user}}=await s.auth.getUser();if(!user)redirect("/business/sign-in");const w=await resolveBusinessWorkspace();if(!w.ok)redirect(`/business/setup-error?ref=${w.reference}`);
+ const q=await searchParams;const{data:properties}=await s.from("properties").select("id,nickname").eq("account_id",w.accountId).order("created_at");const step=q.step||(properties?.length?"standard":"property");const propertyId=q.property||properties?.[0]?.id;
+ if(step==="standard"&&!propertyId)redirect("/business/onboarding?step=property");
+ const number=step==="property"?2:step==="standard"?3:4;
+ return <main className="min-h-screen bg-[#f3f6f9] px-5 py-10"><div className="mx-auto max-w-3xl"><Link href="/" className="text-xl font-extrabold">Quickola</Link><div className="mt-8 flex gap-2" aria-label={`Onboarding step ${number} of 4`}>{[1,2,3,4].map(n=><span key={n} className={`h-1.5 flex-1 ${n<=number?"bg-[#2d67b2]":"bg-[#d5dce5]"}`}/>)}</div><p className="mt-7 text-sm font-extrabold text-[#2d67b2]">STEP {number} OF 4</p>
+ {step==="property"?<><h1 className="mt-2 text-3xl font-extrabold">Add your first property</h1><p className="mt-2 text-[#59677d]">Start with the core property details. You will define its turnover standard next.</p><form action={addProperty} className="mt-6 grid gap-5 rounded-xl border bg-white p-5 sm:p-7"><input type="hidden" name="returnTo" value="onboarding"/><input type="hidden" name="addressLine2" value=""/><input type="hidden" name="accessMethod" value="Owner-arranged access"/><div className="grid gap-4 sm:grid-cols-2"><label className="font-bold">Property name<input name="nickname" required className={field}/></label><label className="font-bold">Property type<select name="propertyType" required defaultValue="" className={field}><option value="" disabled>Select type</option><option value="house">House</option><option value="flat">Flat or apartment</option><option value="serviced_apartment">Serviced apartment</option><option value="cottage">Cottage</option><option value="other">Other</option></select></label></div><label className="font-bold">Full address<input name="addressLine1" autoComplete="address-line1" required className={field}/></label><div className="grid gap-4 sm:grid-cols-2"><label className="font-bold">Town or city<input name="city" autoComplete="address-level2" required className={field}/></label><label className="font-bold">Postcode<input name="postcode" autoComplete="postal-code" required className={field}/></label></div><div className="grid gap-4 sm:grid-cols-2"><label className="font-bold">Bedrooms<input name="bedrooms" type="number" min="0" required className={field}/></label><label className="font-bold">Bathrooms<input name="bathrooms" type="number" min="0" step=".5" required className={field}/></label></div><button className="min-h-12 rounded-lg bg-[#071f49] font-extrabold text-white">Continue to turnover standard</button></form></>:
+ step==="standard"?<><h1 className="mt-2 text-3xl font-extrabold">Define the turnover standard</h1><p className="mt-2 text-[#59677d]">Set the timing, access, bed, linen, presentation and proof requirements for {properties?.find(p=>p.id===propertyId)?.nickname||"this property"}.</p><form action={saveOnboardingStandard} className="mt-6 grid gap-5 rounded-xl border bg-white p-5 sm:p-7"><input type="hidden" name="propertyId" value={propertyId}/><div className="grid gap-4 sm:grid-cols-3"><label className="font-bold">Default checkout<input name="defaultCheckoutTime" type="time" defaultValue="11:00" required className={field}/></label><label className="font-bold">Default check-in<input name="defaultCheckinTime" type="time" defaultValue="15:00" required className={field}/></label><label className="font-bold">Estimated clean (minutes)<input name="estimatedTurnoverMinutes" type="number" min="15" step="15" defaultValue="180" required className={field}/></label></div><label className="font-bold">Access instructions <span className="font-normal text-[#59677d]">(protected until acceptance)</span><textarea name="accessNotes" rows={3} required className={field}/></label><label className="font-bold">Bed setup<textarea name="bedConfiguration" rows={2} required className={field}/></label><label className="font-bold">Linen instructions<textarea name="linenRequirements" rows={2} required className={field}/></label><label className="font-bold">Key-return instructions<textarea name="keyReturnInstructions" rows={2} required className={field}/></label><label className="font-bold">Guest-ready standard<textarea name="cleaningNotes" rows={3} required className={field}/></label><label className="max-w-xs font-bold">Required completion photos<input name="requiredCompletionPhotos" type="number" min="0" max="50" defaultValue="4" required className={field}/></label><p className="text-sm text-[#59677d]">A complete default STR checklist is created automatically and can be edited from the property page.</p><button className="min-h-12 rounded-lg bg-[#071f49] font-extrabold text-white">Continue to cleaner</button></form></>:
+ <><h1 className="mt-2 text-3xl font-extrabold">Add your cleaner or contractor</h1><p className="mt-2 text-[#59677d]">Invite the person or business you already use. You can skip this and add them later.</p><form action={addWorker} className="mt-6 grid gap-5 rounded-xl border bg-white p-5 sm:p-7"><input type="hidden" name="returnTo" value="onboarding"/><label className="font-bold">Name<input name="displayName" required className={field}/></label><label className="font-bold">Business name <span className="font-normal text-[#59677d]">(optional)</span><input name="companyName" className={field}/></label><div className="grid gap-4 sm:grid-cols-2"><label className="font-bold">Email<input name="email" type="email" className={field}/></label><label className="font-bold">Mobile number<input name="mobile" type="tel" className={field}/></label></div><label className="font-bold">Preferred contact method<select name="preferredContactMethod" className={field}><option value="email">Email</option><option value="mobile">Mobile</option></select></label><button className="min-h-12 rounded-lg bg-[#071f49] font-extrabold text-white">Add cleaner and enter dashboard</button></form><form action={skipCleanerOnboarding}><button className="mt-3 min-h-11 w-full font-bold text-[#526078] underline">Skip for now</button></form></>}
+ </div></main>
 }

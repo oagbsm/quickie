@@ -15,7 +15,7 @@ export default function NotFound() {
             That page is not here.
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg leading-8 text-[#526078]">
-            Return to the Quickola managed cleaning platform or create your
+            Return to Quickola or create your
             business account.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">

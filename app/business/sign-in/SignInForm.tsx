@@ -3,6 +3,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { getPasswordRecoveryRedirect } from "@/lib/auth-redirects";
 export default function SignInForm() {
   const router = useRouter(),
     params = useSearchParams();
@@ -29,7 +30,8 @@ export default function SignInForm() {
       setPending(false);
       return;
     }
-    router.push("/business/continue");
+    const next = params.get("next");
+    router.push(next?.startsWith("/") && !next.startsWith("//") ? next : "/business/continue");
     router.refresh();
   }
   async function reset(e: FormEvent<HTMLButtonElement>) {
@@ -43,7 +45,7 @@ export default function SignInForm() {
     setPending(true);
     const { error } =
       await createSupabaseBrowserClient().auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/business/update-password`,
+        redirectTo: getPasswordRecoveryRedirect(),
       });
     setMessage(
       error ? error.message : "Password reset instructions have been sent.",
@@ -61,11 +63,11 @@ export default function SignInForm() {
         <p className="eyebrow">Customer account</p>
         <h1 className="mt-2 text-3xl font-extrabold">Sign in to Quickola</h1>
         <p className="mt-2 text-sm leading-6 text-[#657089]">
-          Access your properties, cleaning requests and booking progress.
+          Access your properties, turnovers and guest-ready evidence.
         </p>
       </div>
       <label className="font-bold">
-        Work email
+        Email
         <input
           className={c}
           name="email"
@@ -108,7 +110,7 @@ export default function SignInForm() {
         Forgot password?
       </button>
       <p className="text-center text-sm font-semibold">
-        Need a business account?{" "}
+        Need an operator account?{" "}
         <Link href="/business/sign-up" className="font-bold text-[#079448]">
           Create account
         </Link>

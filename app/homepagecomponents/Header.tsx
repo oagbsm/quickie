@@ -2,8 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 const links = [
-  ["How it works", "/how-it-works"],
-  ["For businesses", "/#for-businesses"],
+  ["Product", "/product"],
+  ["How it works", "/product"],
+  ["For STR operators", "/product"],
 ];
 
 export default function Header() {

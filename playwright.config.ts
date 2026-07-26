@@ -11,12 +11,60 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "desktop",
-      use: { ...devices["Desktop Chrome"], browserName: "chromium" },
+      name: "desktop-1440",
+      use: {
+        ...devices["Desktop Chrome"],
+        browserName: "chromium",
+        viewport: { width: 1440, height: 1000 },
+      },
     },
     {
-      name: "mobile",
-      use: { ...devices["iPhone 13"], browserName: "chromium" },
+      name: "desktop-1280",
+      use: {
+        ...devices["Desktop Chrome"],
+        browserName: "chromium",
+        viewport: { width: 1280, height: 900 },
+      },
+    },
+    {
+      name: "tablet-1024",
+      use: {
+        ...devices["Desktop Chrome"],
+        browserName: "chromium",
+        viewport: { width: 1024, height: 900 },
+      },
+    },
+    {
+      name: "tablet-768",
+      use: {
+        ...devices["Desktop Chrome"],
+        browserName: "chromium",
+        viewport: { width: 768, height: 900 },
+      },
+    },
+    {
+      name: "mobile-430",
+      use: {
+        ...devices["iPhone 13"],
+        browserName: "chromium",
+        viewport: { width: 430, height: 850 },
+      },
+    },
+    {
+      name: "mobile-375",
+      use: {
+        ...devices["iPhone 13"],
+        browserName: "chromium",
+        viewport: { width: 375, height: 800 },
+      },
+    },
+    {
+      name: "mobile-320",
+      use: {
+        ...devices["iPhone 13"],
+        browserName: "chromium",
+        viewport: { width: 320, height: 700 },
+      },
     },
   ],
   webServer: {

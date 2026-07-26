@@ -1,4 +1,5 @@
 "use server";
+import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireBusinessUser } from "@/lib/business/auth";
@@ -12,7 +13,6 @@ import {
 } from "@/lib/business/pricing";
 import { validatePilotSchedule } from "@/lib/business/time";
 import { sendBookingReceivedEmail } from "@/lib/server/business-notifications";
-import { getServiceAreaStatus } from "@/lib/business/service-area";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim(),
   optional = (f: FormData, n: string) => value(f, n) || null;
 const numberOrNull = (f: FormData, n: string) => {
@@ -36,12 +36,65 @@ function propertyPayload(f: FormData) {
     key_instructions: optional(f, "keyInstructions"),
     cleaning_notes: optional(f, "cleaningNotes"),
     linen_requirements: optional(f, "linenRequirements"),
-    is_airbnb_turnover: f.get("isAirbnbTurnover") === "on",
+    is_airbnb_turnover: true,
     parking_notes: optional(f, "parkingNotes"),
-    preferred_frequency: optional(f, "preferredFrequency"),
-    service_area_status: getServiceAreaStatus(postcode),
+    floor_lift_notes: optional(f, "floorLiftNotes"),
+    preferred_frequency: null,
+    service_area_status: "eligible",
+    default_checkout_time: value(f, "defaultCheckoutTime") || "11:00",
+    default_checkin_time: value(f, "defaultCheckinTime") || "15:00",
+    estimated_turnover_minutes: Number(
+      value(f, "estimatedTurnoverMinutes") || 180,
+    ),
+    bed_configuration: optional(f, "bedConfiguration"),
+    towel_requirements: optional(f, "towelRequirements"),
+    consumables_instructions: optional(f, "consumablesInstructions"),
+    waste_instructions: optional(f, "wasteInstructions"),
+    key_return_instructions: optional(f, "keyReturnInstructions"),
+    required_completion_photos: Number(
+      value(f, "requiredCompletionPhotos") || 4,
+    ),
+    sofa_bed_required: f.get("sofaBedRequired") === "on",
+    heating_instructions: optional(f, "heatingInstructions"),
+    lighting_instructions: optional(f, "lightingInstructions"),
+    emergency_contact: optional(f, "emergencyContact"),
+    internal_notes: optional(f, "internalNotes"),
     updated_at: new Date().toISOString(),
   };
+}
+async function savePropertyImage(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  accountId: string,
+  propertyId: string,
+  f: FormData,
+) {
+  const image = f.get("propertyImage");
+  if (!(image instanceof File) || image.size === 0) return;
+  if (
+    image.size > 10 * 1024 * 1024 ||
+    !["image/jpeg", "image/png", "image/webp"].includes(image.type)
+  )
+    throw new Error("invalid_property_image");
+  const extension =
+    image.type === "image/png"
+      ? "png"
+      : image.type === "image/webp"
+        ? "webp"
+        : "jpg";
+  const path = `${accountId}/${propertyId}/${crypto.randomUUID()}.${extension}`;
+  const { error: uploadError } = await supabase.storage
+    .from("property-images")
+    .upload(path, image, {
+      contentType: image.type,
+      upsert: false,
+    });
+  if (uploadError) throw uploadError;
+  const { error: updateError } = await supabase
+    .from("properties")
+    .update({ image_path: path })
+    .eq("id", propertyId)
+    .eq("account_id", accountId);
+  if (updateError) throw updateError;
 }
 export async function addProperty(f: FormData) {
   const { supabase, accountId } = await requireBusinessUser(),
@@ -55,9 +108,11 @@ export async function addProperty(f: FormData) {
     !p.access_method
   )
     redirect("/business/properties/new?error=required");
-  const { error } = await supabase
+  const { data: created, error } = await supabase
     .from("properties")
-    .insert({ ...p, account_id: accountId });
+    .insert({ ...p, account_id: accountId })
+    .select("id")
+    .single();
   if (error) {
     console.error("business_property_create_failed", {
       accountId,
@@ -65,9 +120,80 @@ export async function addProperty(f: FormData) {
     });
     redirect("/business/properties/new?error=save");
   }
+  const duplicatePropertyId = value(f, "duplicatePropertyId");
+  if (duplicatePropertyId && created?.id) {
+    const { error: cloneError } = await supabase.rpc(
+      "clone_property_checklist",
+      {
+        source_property: duplicatePropertyId,
+        target_property: created.id,
+      },
+    );
+    if (cloneError)
+      redirect(`/business/properties/${created.id}?error=checklist`);
+  }
+  const extraTasks = f
+    .getAll("extraChecklistTask")
+    .map(String)
+    .map((task) => task.trim())
+    .filter(Boolean);
+  if (extraTasks.length && created?.id) {
+    const { data: template } = await supabase
+      .from("checklist_templates")
+      .select("id")
+      .eq("property_id", created.id)
+      .eq("active", true)
+      .maybeSingle();
+    if (template) {
+      let { data: section } = await supabase
+        .from("checklist_template_sections")
+        .select("id")
+        .eq("template_id", template.id)
+        .eq("title", "Property-specific")
+        .maybeSingle();
+      if (!section) {
+        const result = await supabase
+          .from("checklist_template_sections")
+          .insert({
+            template_id: template.id,
+            title: "Property-specific",
+            position: 99,
+          })
+          .select("id")
+          .single();
+        section = result.data;
+      }
+      if (section)
+        await supabase.from("checklist_template_tasks").insert(
+          extraTasks.map((label, index) => ({
+            section_id: section.id,
+            label,
+            position: index + 1,
+            mandatory: true,
+          })),
+        );
+    }
+  }
+  if (created?.id) {
+    try {
+      await savePropertyImage(supabase, accountId, created.id, f);
+    } catch (imageError) {
+      console.error("business_property_image_failed", {
+        accountId,
+        propertyId: created.id,
+        imageError,
+      });
+      redirect(`/business/properties/${created.id}?error=image`);
+    }
+  }
+  revalidatePath("/business/dashboard");
+  revalidatePath("/business/properties");
+  revalidatePath("/business/turnovers/new");
+  revalidatePath("/business/settings");
+  revalidatePath("/business/activity");
   redirect(
     value(f, "returnTo") === "onboarding"
-      ? "/business/onboarding?step=setup"
+      ? `/business/onboarding?step=standard&property=${created?.id || ""}`
       : "/business/properties?created=1",
   );
 }
@@ -80,7 +206,21 @@ export async function updateProperty(f: FormData) {
       .eq("id", id)
       .eq("account_id", accountId);
   if (error) redirect(`/business/properties/${id}?error=save`);
+  try {
+    await savePropertyImage(supabase, accountId, id, f);
+  } catch (imageError) {
+    console.error("business_property_image_failed", {
+      accountId,
+      propertyId: id,
+      imageError,
+    });
+    redirect(`/business/properties/${id}?error=image`);
+  }
+  revalidatePath("/business/dashboard");
+  revalidatePath("/business/properties");
   revalidatePath(`/business/properties/${id}`);
+  revalidatePath("/business/turnovers/new");
+  revalidatePath("/business/settings");
   redirect(`/business/properties/${id}?updated=1`);
 }
 export async function setPropertyStatus(f: FormData) {
@@ -90,19 +230,19 @@ export async function setPropertyStatus(f: FormData) {
   if (!["active", "archived"].includes(status)) return;
   if (status === "archived") {
     const { count } = await supabase
-      .from("business_bookings")
+      .from("work_items")
       .select("id", { count: "exact", head: true })
       .eq("property_id", id)
       .eq("account_id", accountId)
       .in("status", [
-        "requested",
-        "under_review",
-        "confirmed",
-        "awaiting_customer_confirmation",
-        "provider_assigned",
-        "on_the_way",
+        "unassigned",
+        "awaiting_response",
+        "accepted",
+        "en_route",
         "arrived",
         "in_progress",
+        "evidence_submitted",
+        "action_required",
       ]);
     if ((count || 0) > 0 && value(f, "confirmActiveBookings") !== "1")
       redirect(`/business/properties/${id}?error=active_bookings`);
@@ -113,6 +253,7 @@ export async function setPropertyStatus(f: FormData) {
     .eq("id", id)
     .eq("account_id", accountId);
   revalidatePath("/business/properties");
+  revalidatePath("/business/dashboard");
   revalidatePath(`/business/properties/${id}`);
 }
 export async function joinServiceAreaWaitlist(f: FormData) {
@@ -137,6 +278,7 @@ export async function joinServiceAreaWaitlist(f: FormData) {
     .eq("id", p.id)
     .eq("account_id", accountId);
   revalidatePath("/business/properties");
+  revalidatePath("/business/dashboard");
   revalidatePath(`/business/properties/${p.id}`);
 }
 export type BookingActionState = { message: string; code?: string };
@@ -152,6 +294,7 @@ export async function acceptBookingChange(f: FormData) {
       `/business/bookings/${id}?error=${encodeURIComponent(error.message)}`,
     );
   revalidatePath("/business/dashboard");
+  revalidatePath("/business/bookings");
   revalidatePath(`/business/bookings/${id}`);
   redirect(`/business/bookings/${id}?accepted=1`);
 }

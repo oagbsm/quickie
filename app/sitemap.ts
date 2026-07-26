@@ -4,19 +4,10 @@ const SITE_URL = "https://www.quickola.co.uk";
 
 const pages = [
   "/",
-  "/business/enquire",
   "/product",
-  "/how-it-works",
-  "/service-area",
-  "/solutions/letting-agents",
-  "/solutions/airbnb",
-  "/solutions/offices",
-  "/about",
-  "/trust-safety",
   "/contact",
   "/privacy-policy",
-  "/business/legal/terms",
-  "/business/legal/cancellation",
+  "/terms",
   "/cookies",
 ];
 
@@ -27,6 +18,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `${SITE_URL}${path === "/" ? "" : path}`,
     lastModified: now,
     changeFrequency: "monthly",
-    priority: path === "/" ? 1 : path === "/business/enquire" ? 0.95 : 0.7,
+    priority: path === "/" ? 1 : path === "/product" ? 0.9 : 0.7,
   }));
 }

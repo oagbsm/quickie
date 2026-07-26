@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { buildAbsoluteAppUrl } from "@/lib/app-url";
 
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -296,24 +297,7 @@ function buildProviderOfferToken() {
 }
 
 function buildProviderOfferUrl(token: string) {
-  const rawSiteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.SITE_URL ||
-    process.env.APP_URL ||
-    "https://quickola.co.uk";
-
-  let siteUrl = rawSiteUrl.trim().replace(/\/+$/, "");
-
-  if (
-    siteUrl.includes("localhost") ||
-    siteUrl.includes("127.0.0.1") ||
-    siteUrl.includes("0.0.0.0")
-  ) {
-    siteUrl = "https://quickola.co.uk";
-  }
-
-  return `${siteUrl}/p/provider-offer/${token}`;
+  return buildAbsoluteAppUrl(`/p/provider-offer/${token}`);
 }
 
 function buildShortProviderOfferMessage({
