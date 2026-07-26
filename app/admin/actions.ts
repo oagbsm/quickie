@@ -80,6 +80,36 @@ export async function adminRevokeWorkerInvitation(f: FormData) {
   revalidatePath("/admin/cleaners");
   revalidatePath("/admin/activity");
 }
+export async function adminClaimIssue(f: FormData) {
+  const { user } = await requireAdmin();
+  const issueId = value(f, "issueId");
+  const workItemId = value(f, "workItemId");
+  const accountId = value(f, "accountId");
+  if (!issueId || !workItemId || !accountId) return;
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin
+    .from("operational_issues")
+    .update({
+      assigned_admin_id: user.id,
+      assigned_admin_at: new Date().toISOString(),
+      status: "acknowledged",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", issueId)
+    .in("status", ["open", "acknowledged", "waiting_for_owner"]);
+  if (error) redirect("/admin/issues?error=claim");
+  await admin.from("activity_events").insert({
+    account_id: accountId,
+    work_item_id: workItemId,
+    actor_user_id: user.id,
+    event_type: "issue_claimed_by_admin",
+    description: "An administrator took ownership of an operational issue",
+    metadata: { issue_id: issueId },
+  });
+  revalidatePath("/admin");
+  revalidatePath("/admin/issues");
+  revalidatePath(`/admin/turnovers/${workItemId}`);
+}
 export async function transitionBooking(f: FormData) {
   const { supabase } = await requireAdmin(),
     id = value(f, "bookingId"),

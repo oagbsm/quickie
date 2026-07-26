@@ -2,15 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { requireAdmin } from "@/lib/admin/auth";
 import { adminSignOut } from "@/app/admin/actions";
-const nav = [
-  ["Overview", "/admin"],
-  ["Accounts", "/admin/accounts"],
-  ["Properties", "/admin/properties"],
-  ["Cleaners", "/admin/cleaners"],
-  ["Turnovers", "/admin/turnovers"],
-  ["Issues", "/admin/issues"],
-  ["Audit history", "/admin/activity"],
-];
+import AdminNav from "@/app/admin/components/AdminNav";
 export default async function Layout({
   children,
 }: {
@@ -18,8 +10,8 @@ export default async function Layout({
 }) {
   await requireAdmin();
   return (
-    <div className="min-h-screen bg-[#f2f5f7] text-[#071638]">
-      <header className="sticky top-0 z-30 border-b bg-white">
+    <div className="min-h-screen bg-[#f4f6f9] text-[#071638] lg:grid lg:grid-cols-[236px_1fr]">
+      <header className="sticky top-0 z-30 border-b bg-white lg:hidden">
         <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 sm:px-6">
           <Link href="/admin" className="flex items-center gap-2 font-black">
             <Image
@@ -28,7 +20,7 @@ export default async function Layout({
               width={34}
               height={34}
             />
-            Quickola Support
+            Quickola Operations
           </Link>
           <div className="flex items-center gap-4">
             <form action={adminSignOut}>
@@ -37,25 +29,13 @@ export default async function Layout({
           </div>
         </div>
       </header>
-      <div className="mx-auto grid max-w-[1600px] lg:grid-cols-[220px_1fr]">
-        <aside className="border-b bg-white p-3 lg:min-h-[calc(100vh-4rem)] lg:border-b-0 lg:border-r lg:p-5">
-          <nav
-            className="flex gap-2 overflow-x-auto lg:grid"
-            aria-label="Admin navigation"
-          >
-            {nav.map(([label, href]) => (
-              <Link
-                key={href}
-                href={href}
-                className="whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-extrabold hover:bg-[#edf7f1] hover:text-[#079448]"
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-        </aside>
-        <main className="min-w-0 p-4 sm:p-7 lg:p-9">{children}</main>
-      </div>
+      <aside className="sticky top-0 hidden h-screen bg-[linear-gradient(160deg,#061b40,#031a36)] p-4 text-white lg:block">
+        <Link href="/admin" className="flex items-center gap-3 px-3 py-5 text-xl font-extrabold"><Image src="/quickola/logo-mark.png" alt="" width={38} height={38}/>Quickola</Link>
+        <p className="mb-5 px-3 text-xs font-extrabold uppercase tracking-[.14em] text-white/45">Operations console</p>
+        <AdminNav />
+        <form action={adminSignOut} className="absolute inset-x-4 bottom-5"><button className="min-h-11 w-full rounded-lg border border-white/15 px-3 text-left text-sm font-bold text-white/70">Sign out</button></form>
+      </aside>
+      <main className="min-w-0 p-4 sm:p-7 lg:p-9 xl:p-10">{children}</main>
     </div>
   );
 }
