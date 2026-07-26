@@ -5,6 +5,7 @@ import { signOut } from "../actions";
 import PortalNav from "../components/PortalNav";
 import NotificationMenu from "../components/NotificationMenu";
 import { formatDisplayName } from "@/lib/display-name";
+import MobilePortalShell from "../components/MobilePortalShell";
 
 export default async function Layout({
   children,
@@ -39,7 +40,8 @@ export default async function Layout({
   const displayInitial = displayName.trim().charAt(0).toUpperCase() || "B";
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-[#071638] lg:grid lg:grid-cols-[236px_1fr]">
-      <aside className="sticky top-0 z-40 border-b border-white/10 bg-[linear-gradient(160deg,#061b40,#031a36)] text-white lg:h-screen lg:border-b-0 lg:border-r lg:border-white/10">
+      <MobilePortalShell notifications={notifications || []} displayName={displayName} />
+      <aside className="sticky top-0 z-40 hidden border-b border-white/10 bg-[linear-gradient(160deg,#061b40,#031a36)] text-white lg:block lg:h-screen lg:border-b-0 lg:border-r lg:border-white/10">
         <div className="flex h-16 items-center justify-between px-4 lg:h-auto lg:px-7 lg:py-8">
           <Link
             href="/business/dashboard"
@@ -55,27 +57,7 @@ export default async function Layout({
             />
             Quickola
           </Link>
-          <div className="flex items-center gap-2 lg:hidden">
-            <NotificationMenu notifications={notifications || []} />
-            <span className="text-sm font-bold text-white/60">Operations</span>
-          </div>
         </div>
-        <details className="group border-t border-white/10 lg:hidden">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-5 text-sm font-bold">
-            Menu{" "}
-            <span aria-hidden="true" className="group-open:rotate-180">
-              ⌄
-            </span>
-          </summary>
-          <div className="border-t border-white/10 p-3">
-            <PortalNav />
-            <form action={signOut}>
-              <button className="mt-2 min-h-11 w-full rounded-lg px-4 text-left text-sm font-bold text-white/72 hover:bg-white/10">
-                Sign out
-              </button>
-            </form>
-          </div>
-        </details>
         <div className="hidden border-t border-white/10 p-2 lg:block lg:border-0 lg:px-4 lg:pt-10">
           <PortalNav />
         </div>
@@ -104,7 +86,7 @@ export default async function Layout({
           </form>
         </div>
       </aside>
-      <main className="min-w-0 p-4 sm:p-7 lg:p-8 xl:p-10">{children}</main>
+      <main className="min-w-0 p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-8 xl:p-10">{children}</main>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { requireBusinessUser } from "@/lib/business/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { londonLocalToUtc } from "@/lib/business/time";
 import { hasTurnoverWindowRisk } from "@/lib/turnovers/status";
+import { isImplausibleTurnoverDate } from "@/lib/turnovers/presentation";
 
 const text = (form: FormData, name: string) =>
   String(form.get(name) || "").trim();
@@ -153,6 +154,8 @@ export async function createTurnover(form: FormData) {
   const { supabase, accountId, user } = await requireBusinessUser();
   const propertyId = text(form, "propertyId");
   const date = text(form, "date");
+  if (isImplausibleTurnoverDate(date))
+    redirect("/business/turnovers/new?error=date");
   let checkout: Date, access: Date, checkin: Date;
   try {
     checkout = londonLocalToUtc(date, text(form, "checkoutTime"));

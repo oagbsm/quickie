@@ -2,6 +2,10 @@ import Link from "next/link";
 import { requireBusinessUser } from "@/lib/business/auth";
 import TurnoverStatus from "../components/TurnoverStatus";
 import { formatDisplayName } from "@/lib/display-name";
+import {
+  currentAssignment,
+  turnoverActionReason,
+} from "@/lib/turnovers/presentation";
 type Item = {
   id: string;
   turnover_date: string;
@@ -10,12 +14,14 @@ type Item = {
   estimated_duration_minutes: number;
   cleaning_type: string;
   status: string;
+  readiness_result: { blocking_reasons?: string[] } | null;
   properties:
     | { nickname: string; postcode: string; bedrooms: number | null }
     | { nickname: string; postcode: string; bedrooms: number | null }[]
     | null;
   assignments: Array<{
     status: string;
+    assigned_at: string;
     workers: { display_name: string } | { display_name: string }[] | null;
   }>;
 };
@@ -34,7 +40,7 @@ export default async function Page() {
     supabase
       .from("work_items")
       .select(
-        "id,turnover_date,access_start_at,next_checkin_at,estimated_duration_minutes,cleaning_type,status,properties(nickname,postcode,bedrooms),assignments(status,workers(display_name))",
+        "id,turnover_date,access_start_at,next_checkin_at,estimated_duration_minutes,cleaning_type,status,readiness_result,properties(nickname,postcode,bedrooms),assignments(status,assigned_at,workers(display_name))",
       )
       .eq("account_id", accountId)
       .gte("turnover_date", today)
@@ -79,6 +85,8 @@ export default async function Page() {
       .length,
   };
   const name = member?.full_name?.split(" ")[0] || "there";
+  const next = rows[0];
+  const nextProperty = next ? one(next.properties) : null;
   return (
     <div className="mx-auto max-w-[1320px]">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
@@ -90,7 +98,7 @@ export default async function Page() {
               month: "long",
             }).format(now)}
           </p>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-[-.035em] sm:text-4xl">
+          <h1 className="mt-1 text-2xl font-extrabold tracking-[-.035em] sm:text-4xl">
             Good{" "}
             {now.getHours() < 12
               ? "morning"
@@ -99,28 +107,72 @@ export default async function Page() {
                 : "evening"}
             , {name}
           </h1>
-          <p className="mt-2 text-[#657089]">
+          <p className="mt-2 hidden text-[#657089] sm:block">
             Here is what needs attention across your properties.
           </p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex items-center gap-3 sm:flex-row">
           <Link
             href="/business/properties/new"
-            className="inline-flex min-h-12 items-center justify-center rounded-lg border bg-white px-5 font-extrabold"
+            className="inline-flex min-h-11 items-center justify-center text-sm font-extrabold text-[#245b9d] sm:min-h-12 sm:rounded-lg sm:border sm:bg-white sm:px-5 sm:text-base sm:text-inherit"
           >
             Add property
           </Link>
           <Link
             href="/business/turnovers/new"
-            className="inline-flex min-h-12 items-center justify-center rounded-lg bg-[#071f49] px-5 font-extrabold text-white"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#071f49] px-4 text-sm font-extrabold text-white sm:min-h-12 sm:px-5 sm:text-base"
           >
             Create turnover
           </Link>
         </div>
       </header>
+      {next && (
+        <Link
+          href={`/business/turnovers/${next.id}`}
+          className="mt-5 block rounded-xl border border-[#cfd8e5] bg-white p-4 shadow-sm lg:hidden"
+        >
+          <p className="text-xs font-extrabold uppercase tracking-wide text-[#2d67b2]">
+            Next turnover
+          </p>
+          <div className="mt-2 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-extrabold">
+                {formatDisplayName(nextProperty?.nickname)}
+              </h2>
+              <p className="mt-1 text-sm text-[#657089]">
+                {new Intl.DateTimeFormat("en-GB", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                }).format(new Date(next.turnover_date))}{" "}
+                ·{" "}
+                {new Intl.DateTimeFormat("en-GB", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  timeZone: "Europe/London",
+                }).format(new Date(next.access_start_at))}
+              </p>
+              <p className="mt-2 text-sm font-bold text-[#9a4f17]">
+                {turnoverActionReason(next, today)}
+              </p>
+            </div>
+            <TurnoverStatus status={next.status} />
+          </div>
+        </Link>
+      )}
+      {counts.attention > 0 && (
+        <Link
+          href="/business/turnovers?view=attention"
+          className="mt-3 flex min-h-12 items-center justify-between rounded-xl border border-amber-300 bg-amber-50 px-4 font-extrabold text-amber-950 lg:hidden"
+        >
+          <span>{counts.attention} need attention</span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
       <section
         aria-label="Operational summary"
-        className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        className="mt-4 grid grid-cols-2 gap-3 lg:mt-7 xl:grid-cols-4"
       >
         {[
           [
@@ -151,17 +203,17 @@ export default async function Page() {
           <Link
             key={String(label)}
             href={String(href)}
-            className="rounded-xl border border-[#dfe4eb] bg-white p-5 outline-none transition hover:-translate-y-0.5 hover:border-[#9aacc4] focus-visible:ring-4 focus-visible:ring-[#2d67b2]/20 active:translate-y-0"
+            className="rounded-xl border border-[#dfe4eb] bg-white p-4 outline-none transition hover:-translate-y-0.5 hover:border-[#9aacc4] focus-visible:ring-4 focus-visible:ring-[#2d67b2]/20 active:translate-y-0 sm:p-5"
           >
             <p className="text-sm font-bold text-[#657089]">{label}</p>
-            <p className="mt-3 text-3xl font-extrabold">{value}</p>
-            <p className="mt-2 text-xs font-bold text-[#748096]">
+            <p className="mt-2 text-2xl font-extrabold sm:mt-3 sm:text-3xl">{value}</p>
+            <p className="mt-2 hidden text-xs font-bold text-[#748096] sm:block">
               {detail} <span aria-hidden="true">→</span>
             </p>
           </Link>
         ))}
       </section>
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="mt-6 hidden gap-6 lg:grid xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="overflow-hidden rounded-xl border border-[#dfe4eb] bg-white">
           <div className="flex items-center justify-between border-b px-5 py-4">
             <div>
@@ -181,9 +233,7 @@ export default async function Page() {
             <div className="divide-y">
               {rows.map((row) => {
                 const p = one(row.properties);
-                const a = row.assignments?.find((x) =>
-                  ["pending", "accepted"].includes(x.status),
-                );
+                const a = currentAssignment(row.assignments);
                 const w = one(a?.workers || null);
                 return (
                   <Link
@@ -212,6 +262,9 @@ export default async function Page() {
                       <p className="mt-1 text-xs text-[#657089]">
                         {p?.postcode} · {p?.bedrooms ?? "—"} bed ·{" "}
                         {row.cleaning_type.replaceAll("_", " ")}
+                      </p>
+                      <p className="mt-1 text-xs font-bold text-[#9a4f17]">
+                        {turnoverActionReason(row, today)}
                       </p>
                     </div>
                     <div>

@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { evaluateReadiness } from "../lib/turnovers/readiness.ts";
 import { canTransitionTurnover, hasTurnoverWindowRisk } from "../lib/turnovers/status.ts";
+import {
+  currentAssignment,
+  isImplausibleTurnoverDate,
+  turnoverActionReason,
+} from "../lib/turnovers/presentation.ts";
 
 const complete = {
   completionSubmitted: true,
@@ -15,6 +20,25 @@ const complete = {
   keyReturnConfirmed: true,
   unresolvedBlockingIssues: 0,
 };
+
+test("the accepted assignment is canonical across every portal view", () => {
+  const assignment = currentAssignment([
+    { status: "pending", assigned_at: "2026-07-26T11:00:00Z", workers: { display_name: "Pending Cleaner" } },
+    { status: "accepted", assigned_at: "2026-07-26T10:00:00Z", workers: { display_name: "Confirmed Cleaner" } },
+  ]);
+  assert.equal((assignment?.workers as { display_name: string }).display_name, "Confirmed Cleaner");
+});
+
+test("turnover action reasons explain overdue and unassigned records", () => {
+  assert.equal(turnoverActionReason({ status: "unassigned", turnover_date: "2026-07-25" }, "2026-07-26"), "Turnover overdue");
+  assert.equal(turnoverActionReason({ status: "unassigned", turnover_date: "2026-07-27" }, "2026-07-26"), "Cleaner not assigned");
+});
+
+test("implausible turnover dates are rejected", () => {
+  const now = new Date("2026-07-26T12:00:00Z");
+  assert.equal(isImplausibleTurnoverDate("2090-01-01", now), true);
+  assert.equal(isImplausibleTurnoverDate("2026-08-01", now), false);
+});
 
 test("canonical lifecycle allows only sequential cleaner progression", () => {
   assert.equal(canTransitionTurnover("awaiting_response", "accepted"), true);
