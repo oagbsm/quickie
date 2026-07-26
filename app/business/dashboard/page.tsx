@@ -108,7 +108,7 @@ export default async function Page() {
             , {name}
           </h1>
           <p className="mt-2 hidden text-[#657089] sm:block">
-            Here is what needs attention across your properties.
+            Property readiness for every upcoming guest.
           </p>
         </div>
         <div className="flex items-center gap-3 sm:flex-row">
@@ -122,7 +122,7 @@ export default async function Page() {
             href="/business/turnovers/new"
             className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#071f49] px-4 text-sm font-extrabold text-white sm:min-h-12 sm:px-5 sm:text-base"
           >
-            Create turnover
+            Add arrival
           </Link>
         </div>
       </header>
@@ -132,7 +132,7 @@ export default async function Page() {
           className="mt-5 block rounded-xl border border-[#cfd8e5] bg-white p-4 shadow-sm lg:hidden"
         >
           <p className="text-xs font-extrabold uppercase tracking-wide text-[#2d67b2]">
-            Next turnover
+            Next guest arrival
           </p>
           <div className="mt-2 flex items-start justify-between gap-3">
             <div>
@@ -176,13 +176,13 @@ export default async function Page() {
       >
         {[
           [
-            "Today’s turnovers",
+            "Check-ins today",
             counts.today,
             "Scheduled today",
             "/business/turnovers",
           ],
           [
-            "Awaiting cleaner response",
+            "Cleaner acceptance",
             counts.pending,
             "Assignments waiting",
             "/business/turnovers?status=awaiting_response",
@@ -194,7 +194,7 @@ export default async function Page() {
             "/business/turnovers?status=action_required",
           ],
           [
-            "Properties ready today",
+            "Guest ready",
             counts.ready,
             "Evidence requirements passed",
             "/business/turnovers?status=ready",
@@ -217,7 +217,7 @@ export default async function Page() {
         <section className="overflow-hidden rounded-xl border border-[#dfe4eb] bg-white">
           <div className="flex items-center justify-between border-b px-5 py-4">
             <div>
-              <h2 className="text-lg font-extrabold">Upcoming turnovers</h2>
+              <h2 className="text-lg font-extrabold">Upcoming arrivals</h2>
               <p className="mt-1 text-sm text-[#657089]">
                 Schedule, assignment and readiness risk
               </p>
@@ -283,9 +283,9 @@ export default async function Page() {
             </div>
           ) : (
             <div className="p-10 text-center">
-              <h3 className="font-extrabold">No upcoming turnovers</h3>
+              <h3 className="font-extrabold">No upcoming arrivals</h3>
               <p className="mt-2 text-sm text-[#657089]">
-                Create a turnover to coordinate the next guest changeover.
+                Add an arrival to coordinate readiness for the next guest.
               </p>
             </div>
           )}
@@ -365,7 +365,7 @@ export default async function Page() {
               <ol className="mt-3 grid gap-2 text-sm text-white/80">
                 <li>1. Add a property</li>
                 <li>2. Add your cleaner</li>
-                <li>3. Create a turnover</li>
+                <li>3. Add the next guest arrival</li>
               </ol>
               <Link
                 href="/business/properties/new"

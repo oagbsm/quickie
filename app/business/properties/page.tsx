@@ -3,6 +3,7 @@ import { requireBusinessUser } from "@/lib/business/auth";
 import ArchivePropertyForm from "./ArchivePropertyForm";
 import TurnoverStatus from "../components/TurnoverStatus";
 import { formatDisplayName } from "@/lib/display-name";
+import { currentAssignment, turnoverActionReason } from "@/lib/turnovers/presentation";
 export default async function Page({
   searchParams,
 }: {
@@ -13,7 +14,7 @@ export default async function Page({
   let query = supabase
     .from("properties")
     .select(
-      "id,nickname,address_line_1,city,postcode,property_type,bedrooms,bathrooms,status,work_items(id,status,turnover_date,access_start_at)",
+      "id,nickname,address_line_1,city,postcode,property_type,bedrooms,bathrooms,status,work_items(id,status,turnover_date,access_start_at,next_checkin_at,ready_at,assignments(status,assigned_at,workers(display_name)))",
     )
     .eq("account_id", accountId)
     .order("created_at", { ascending: false });
@@ -73,7 +74,7 @@ export default async function Page({
               .filter(
                 (w) =>
                   new Date(w.access_start_at) > new Date() &&
-                  !["cancelled", "ready"].includes(w.status),
+                  w.status !== "cancelled",
               )
               .sort((a, b) =>
                 a.access_start_at.localeCompare(b.access_start_at),
@@ -81,6 +82,15 @@ export default async function Page({
             const latest = [...(p.work_items || [])].sort((a, b) =>
               b.turnover_date.localeCompare(a.turnover_date),
             )[0];
+            const lastReady = [...(p.work_items || [])]
+              .filter((w) => w.status === "ready")
+              .sort((a, b) => (b.ready_at || "").localeCompare(a.ready_at || ""))[0];
+            const assignment = upcoming ? currentAssignment(upcoming.assignments) : null;
+            const cleaner = (assignment
+              ? Array.isArray(assignment.workers)
+                ? assignment.workers[0]
+                : assignment.workers
+              : null) as { display_name?: string } | null;
             return (
               <article
                 key={p.id}
@@ -111,31 +121,21 @@ export default async function Page({
                     </div>
                   </details>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold">
-                  <span className="rounded-full bg-[#f1f3f6] px-3 py-1 capitalize">
-                    {p.property_type.replaceAll("_", " ")}
-                  </span>
-                  <span className="rounded-full bg-[#f1f3f6] px-3 py-1">
-                    {p.bedrooms ?? "—"} bed · {p.bathrooms ?? "—"} bath
-                  </span>
-                </div>
                 <div className="mt-5 border-t pt-4">
                   <p className="text-xs font-bold text-[#748096]">
-                    NEXT TURNOVER
+                    NEXT GUEST
                   </p>
-                  <p className="mt-1 font-bold">
+                  <p className="mt-1 text-lg font-extrabold">
                     {upcoming
                       ? new Intl.DateTimeFormat("en-GB", {
                           dateStyle: "medium",
                           timeStyle: "short",
-                        }).format(new Date(upcoming.access_start_at))
+                          timeZone: "Europe/London",
+                        }).format(new Date(upcoming.next_checkin_at))
                       : "None scheduled"}
                   </p>
-                  {latest && (
-                    <div className="mt-3">
-                      <TurnoverStatus status={latest.status} />
-                    </div>
-                  )}
+                  {upcoming ? <dl className="mt-4 grid grid-cols-2 gap-4 text-sm"><div><dt className="text-xs font-bold text-[#748096]">CLEANER</dt><dd className="mt-1 font-extrabold">{formatDisplayName(cleaner?.display_name) || "Not assigned"}</dd><dd className="mt-0.5 text-xs capitalize text-[#657089]">{assignment?.status || "Needs assignment"}</dd></div><div><dt className="text-xs font-bold text-[#748096]">READINESS</dt><dd className="mt-1"><TurnoverStatus status={upcoming.status} /></dd><dd className="mt-1 text-xs font-bold text-[#657089]">{turnoverActionReason(upcoming)}</dd></div></dl> : latest && <div className="mt-3"><TurnoverStatus status={latest.status} /></div>}
+                  <p className="mt-4 text-xs text-[#657089]">Last ready: {lastReady?.ready_at ? new Intl.DateTimeFormat("en-GB",{dateStyle:"medium"}).format(new Date(lastReady.ready_at)) : "No completed readiness yet"}</p>
                 </div>
                 <div className="mt-5 flex gap-2">
                   <Link
@@ -149,7 +149,7 @@ export default async function Page({
                       href={`/business/turnovers/new?property=${p.id}`}
                       className="inline-flex min-h-11 items-center rounded-lg bg-[#071f49] px-4 text-sm font-extrabold text-white"
                     >
-                      Create turnover
+                      Add arrival
                     </Link>
                   )}
                 </div>

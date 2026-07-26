@@ -13,9 +13,9 @@ type Notification = {
 };
 const primary = [
   ["Home", "/business/dashboard", "home"],
-  ["Turnovers", "/business/turnovers", "calendar"],
+  ["Arrivals", "/business/turnovers", "calendar"],
   ["Properties", "/business/properties", "building"],
-  ["Cleaners", "/business/cleaners", "people"],
+  ["Team", "/business/cleaners", "people"],
 ] as const;
 function Icon({ name }: { name: string }) {
   const paths =
@@ -46,11 +46,11 @@ export default function MobilePortalShell({
       "/business/settings",
     ].includes(path);
   const root = path.startsWith("/business/turnovers")
-    ? ["Turnovers", "/business/turnovers"]
+    ? ["Arrivals", "/business/turnovers"]
     : path.startsWith("/business/properties")
       ? ["Properties", "/business/properties"]
       : path.startsWith("/business/cleaners")
-        ? ["Cleaners", "/business/cleaners"]
+        ? ["Team", "/business/cleaners"]
         : ["Quickola", "/business/dashboard"];
   return (
     <>

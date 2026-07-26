@@ -97,10 +97,10 @@ export default async function Page({
             OPERATIONS
           </p>
           <h1 className="text-2xl font-extrabold tracking-[-.03em] sm:mt-1 sm:text-4xl">
-            Turnovers
+            Arrivals
           </h1>
           <p className="mt-1 hidden text-[#657089] sm:block">
-            Every guest changeover, response and readiness decision.
+            Every upcoming guest arrival and its readiness decision.
           </p>
         </div>
         <Link
@@ -108,7 +108,7 @@ export default async function Page({
           className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#071f49] px-4 font-extrabold text-white"
         >
           <span className="sm:hidden">+ Create</span>
-          <span className="hidden sm:inline">Create turnover</span>
+          <span className="hidden sm:inline">Add arrival</span>
         </Link>
       </header>
       <nav

@@ -1,11 +1,15 @@
 import { turnoverStatusLabels, type TurnoverStatus } from "@/lib/turnovers/status";
 
 const tones: Record<string, string> = {
-  ready: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  action_required: "border-red-200 bg-red-50 text-red-800",
-  declined: "border-red-200 bg-red-50 text-red-800",
-  unassigned: "border-amber-200 bg-amber-50 text-amber-900",
-  awaiting_response: "border-amber-200 bg-amber-50 text-amber-900",
+  ready: "border-emerald-700 bg-emerald-700 text-white",
+  action_required: "border-red-700 bg-red-700 text-white",
+  declined: "border-red-700 bg-red-700 text-white",
+  unassigned: "border-amber-500 bg-amber-400 text-amber-950",
+  awaiting_response: "border-amber-500 bg-amber-400 text-amber-950",
+  accepted: "border-blue-700 bg-blue-700 text-white",
+  en_route: "border-blue-700 bg-blue-700 text-white",
+  arrived: "border-blue-700 bg-blue-700 text-white",
+  in_progress: "border-blue-700 bg-blue-700 text-white",
   cancelled: "border-slate-200 bg-slate-50 text-slate-600",
 };
 

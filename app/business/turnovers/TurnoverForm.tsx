@@ -67,11 +67,11 @@ export default function TurnoverForm({ properties, workers, initialPropertyId }:
       <p className="text-xs font-extrabold uppercase tracking-[.12em] text-[#2d67b2]">4 · Assign cleaner</p>
       <label className="mt-4 block font-bold">Cleaner or contractor<select name="workerId" value={workerId} onChange={e => setWorkerId(e.target.value)} className={field}><option value="">Leave unassigned</option>{workers.map(w => <option key={w.id} value={w.id}>{w.display_name}{w.company_name ? ` · ${w.company_name}` : ""}</option>)}</select></label>
       <p className="mt-2 text-sm text-[#647086]">You can assign or change the cleaner later. Quickola does not select a cleaner for you.</p>
-      <div className="mt-5 grid grid-cols-[auto_1fr] gap-2 sm:hidden"><button type="button" onClick={() => setStep(3)} className="min-h-12 rounded-lg border px-4 font-bold">Back</button><button className="min-h-12 rounded-lg bg-[#071f49] px-5 font-extrabold text-white">Create turnover</button></div>
+      <div className="mt-5 grid grid-cols-[auto_1fr] gap-2 sm:hidden"><button type="button" onClick={() => setStep(3)} className="min-h-12 rounded-lg border px-4 font-bold">Back</button><button className="min-h-12 rounded-lg bg-[#071f49] px-5 font-extrabold text-white">Add arrival</button></div>
     </section>
     <section className="hidden flex-col justify-between gap-4 rounded-xl bg-[#071f49] p-5 text-white sm:flex sm:flex-row sm:items-center sm:p-7">
-      <div><p className="font-extrabold">Review and create</p><p className="mt-1 text-sm text-white/70">The property checklist and evidence rules will be copied into this turnover.</p></div>
-      <button className="min-h-12 rounded-lg bg-white px-6 font-extrabold text-[#071f49] focus-visible:ring-4 focus-visible:ring-white/40">Create turnover</button>
+      <div><p className="font-extrabold">Review and add arrival</p><p className="mt-1 text-sm text-white/70">The property checklist and evidence rules will be copied into this readiness workflow.</p></div>
+      <button className="min-h-12 rounded-lg bg-white px-6 font-extrabold text-[#071f49] focus-visible:ring-4 focus-visible:ring-white/40">Add arrival</button>
     </section>
   </form>;
 }
