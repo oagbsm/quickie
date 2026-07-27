@@ -14,7 +14,7 @@ export default async function Page({
   let query = supabase
     .from("operational_issues")
     .select(
-      "id,account_id,work_item_id,issue_type,severity,status,blocking,description,created_at,assigned_admin_id,work_items(next_checkin_at,properties(nickname),business_accounts(name))",
+      "id,account_id,work_item_id,issue_type,severity,status,blocking,description,created_at,assigned_admin_id,work_items(window_end_at,next_checkin_at,properties(nickname),business_accounts(name))",
     );
   query =
     view === "resolved"
@@ -27,10 +27,10 @@ export default async function Page({
       Number(b.blocking) - Number(a.blocking) ||
       (
         (Array.isArray(a.work_items) ? a.work_items[0] : a.work_items)
-          ?.next_checkin_at || ""
+          ?.window_end_at || ""
       ).localeCompare(
         (Array.isArray(b.work_items) ? b.work_items[0] : b.work_items)
-          ?.next_checkin_at || "",
+          ?.window_end_at || "",
       ) ||
       a.created_at.localeCompare(b.created_at),
   );
@@ -101,20 +101,20 @@ export default async function Page({
                 </div>
                 <div>
                   <p className="text-xs font-bold text-[#657089]">
-                    NEXT CHECK-IN
+                    {work?.next_checkin_at ? "NEXT CHECK-IN" : "DEADLINE"}
                   </p>
                   <p className="mt-1 font-bold">
-                    {work?.next_checkin_at
+                    {work?.window_end_at
                       ? new Intl.DateTimeFormat("en-GB", {
                           dateStyle: "medium",
                           timeStyle: "short",
                           timeZone: "Europe/London",
-                        }).format(new Date(work.next_checkin_at))
+                        }).format(new Date(work.next_checkin_at || work.window_end_at))
                       : "—"}
                   </p>
                   <p className="text-xs font-bold text-red-700">
-                    {work?.next_checkin_at &&
-                      checkInCountdown(work.next_checkin_at)}
+                    {work?.window_end_at &&
+                      checkInCountdown(work.next_checkin_at || work.window_end_at, new Date(), work.next_checkin_at ? "check-in" : "deadline")}
                   </p>
                 </div>
                 <div>

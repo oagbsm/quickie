@@ -13,7 +13,7 @@ export default async function Page({
   const { data: a } = await supabase
     .from("business_accounts")
     .select(
-      "id,name,created_at,suspended_at,business_members(full_name,role),properties(id,nickname,status),workers(id,display_name,status),work_items(id,turnover_date,status,next_checkin_at,properties(nickname)),operational_issues(id,status,blocking,description,work_item_id),activity_events(id,description,created_at)",
+      "id,name,created_at,suspended_at,business_members(full_name,role),properties(id,nickname,status),workers(id,display_name,status),work_items(id,turnover_date,status,window_end_at,next_checkin_at,properties(nickname)),operational_issues(id,status,blocking,description,work_item_id),activity_events(id,description,created_at)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -71,7 +71,7 @@ export default async function Page({
             {a.work_items
               .filter((w) => w.status !== "cancelled")
               .sort((x, y) =>
-                x.next_checkin_at.localeCompare(y.next_checkin_at),
+                x.window_end_at.localeCompare(y.window_end_at),
               )
               .slice(0, 8)
               .map((w) => {

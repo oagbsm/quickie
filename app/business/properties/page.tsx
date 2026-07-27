@@ -16,7 +16,7 @@ export default async function Page({
   let query = supabase
     .from("properties")
     .select(
-      "id,nickname,address_line_1,city,postcode,property_type,bedrooms,bathrooms,status,default_checkout_time,default_checkin_time,work_items(id,status,turnover_date,access_start_at,next_checkin_at,ready_at,assignments(status,assigned_at,workers(display_name)))",
+      "id,nickname,address_line_1,city,postcode,property_type,bedrooms,bathrooms,status,default_checkout_time,default_checkin_time,work_items(id,status,turnover_date,access_start_at,window_end_at,next_checkin_at,ready_at,assignments(status,assigned_at,workers(display_name)))",
     )
     .eq("account_id", accountId)
     .order("created_at", { ascending: false });
@@ -136,7 +136,7 @@ export default async function Page({
                           dateStyle: "medium",
                           timeStyle: "short",
                           timeZone: "Europe/London",
-                        }).format(new Date(upcoming.next_checkin_at))
+                        }).format(new Date(upcoming.next_checkin_at || upcoming.window_end_at))
                       : "None scheduled"}
                   </p>
                   <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">

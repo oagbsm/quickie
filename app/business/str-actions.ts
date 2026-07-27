@@ -220,6 +220,7 @@ export async function createTurnover(form: FormData) {
       turnover_date: date,
       guest_checkout_at: checkout.toISOString(),
       access_start_at: access.toISOString(),
+      window_end_at: checkin.toISOString(),
       next_checkin_at: checkin.toISOString(),
       estimated_duration_minutes: duration,
       cleaning_type: text(form, "cleaningType") || "standard_turnover",

@@ -12,7 +12,8 @@ type Row = {
   turnover_date: string;
   access_start_at: string;
   guest_checkout_at: string;
-  next_checkin_at: string;
+  next_checkin_at: string | null;
+  window_end_at: string;
   cleaning_type: string;
   status: string;
   readiness_result: { blocking_reasons?: string[] } | null;
@@ -58,7 +59,7 @@ export default async function Page({
   let query = supabase
     .from("work_items")
     .select(
-      "id,turnover_date,guest_checkout_at,access_start_at,next_checkin_at,cleaning_type,status,readiness_result,properties(nickname,postcode,bedrooms),assignments(status,assigned_at,response_due_at,workers(display_name))",
+      "id,turnover_date,guest_checkout_at,access_start_at,window_end_at,next_checkin_at,cleaning_type,status,readiness_result,properties(nickname,postcode,bedrooms),assignments(status,assigned_at,response_due_at,workers(display_name))",
     )
     .eq("account_id", accountId)
     .order("access_start_at");
@@ -182,7 +183,7 @@ export default async function Page({
                       {row.cleaning_type.replaceAll("_", " ")}
                     </p>
                   </div>
-                  <div className="hidden text-xs lg:block"><p className="text-[#718096]">Checkout <strong className="text-[#12213c]">{time(row.guest_checkout_at)}</strong></p><p className="mt-1 text-[#718096]">Check-in <strong className="text-[#12213c]">{time(row.next_checkin_at)}</strong></p></div>
+                  <div className="hidden text-xs lg:block"><p className="text-[#718096]">Checkout <strong className="text-[#12213c]">{time(row.guest_checkout_at)}</strong></p><p className="mt-1 text-[#718096]">{row.next_checkin_at ? "Check-in" : "Deadline"} <strong className="text-[#12213c]">{time(row.next_checkin_at || row.window_end_at)}</strong></p></div>
                   <div className="lg:hidden">
                     <TurnoverStatus status={row.status} />
                     <p className="text-xs font-bold text-[#9a4f17]">

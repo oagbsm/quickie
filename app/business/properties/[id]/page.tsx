@@ -91,12 +91,20 @@ export default async function Page({
             {p.address_line_1}, {p.city}, {p.postcode}
           </p>
         </div>
-        <Link
-          href={`/business/turnovers/new?property=${id}`}
-          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#071f49] px-4 font-extrabold text-white"
-        >
-          Create turnover
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/business/reservations/new?property=${id}`}
+            className="portal-action-secondary"
+          >
+            Add reservation
+          </Link>
+          <Link
+            href={`/business/turnovers/new?property=${id}`}
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#071f49] px-4 font-extrabold text-white"
+          >
+            Create turnover
+          </Link>
+        </div>
       </header>
       <nav
         aria-label="Property sections"

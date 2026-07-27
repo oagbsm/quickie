@@ -10,9 +10,12 @@
     "test:phase1": "node --experimental-strip-types --experimental-default-type=module --test tests/phase1.test.ts",
     "test:turnovers": "node --experimental-strip-types --experimental-default-type=module --test tests/turnover-v1.test.ts",
     "test:str-security": "node --experimental-strip-types --experimental-default-type=module --test tests/str-security.test.ts",
+    "test:reservations": "node --experimental-strip-types --experimental-default-type=module --test tests/reservations.test.ts",
+    "test:reservations:integration": "node --env-file=.env.local scripts/verify-reservations-e2e.mjs",
     "test:str-integration": "node --env-file=.env.local scripts/verify-str-e2e.mjs",
     "seed:str": "node --env-file=.env.local scripts/seed-str-v1.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:reservations": "RUN_RESERVATION_E2E=1 node --env-file=.env.local node_modules/@playwright/test/cli.js test tests/e2e/reservations.spec.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

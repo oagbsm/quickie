@@ -91,6 +91,17 @@ export function londonLocalToUtc(date: string, time: string) {
   const [y, m, d] = date.split("-").map(Number),
     [hour, minute] = time.split(":").map(Number),
     desired = Date.UTC(y, m - 1, d, hour, minute);
+  if (
+    m < 1 ||
+    m > 12 ||
+    d < 1 ||
+    d > 31 ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59
+  )
+    throw new Error("invalid_local_datetime");
   let guess = desired;
   for (let attempt = 0; attempt < 2; attempt++) {
     const parts = new Intl.DateTimeFormat("en-GB", {
@@ -113,5 +124,43 @@ export function londonLocalToUtc(date: string, time: string) {
     );
     guess += desired - represented;
   }
-  return new Date(guess);
+  const result = new Date(guess);
+  const roundTrip = new Intl.DateTimeFormat("en-GB", {
+    timeZone: BUSINESS_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(result);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(roundTrip.find((part) => part.type === type)?.value);
+  if (
+    value("year") !== y ||
+    value("month") !== m ||
+    value("day") !== d ||
+    value("hour") !== hour ||
+    value("minute") !== minute
+  )
+    throw new Error("invalid_local_datetime");
+  return result;
+}
+
+export function londonFormDateTime(value: string | Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: BUSINESS_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value || "";
+  return {
+    date: `${part("year")}-${part("month")}-${part("day")}`,
+    time: `${part("hour")}:${part("minute")}`,
+  };
 }

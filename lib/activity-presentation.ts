@@ -38,7 +38,6 @@ export function activityContext(event: ActivityPresentationEvent) {
 export function formatActivityEvent(event: ActivityPresentationEvent) {
   const { propertyName, workerName } = activityContext(event);
   const cleaner = workerName || "Cleaner";
-  const property = propertyName || "the turnover";
   const titleByType: Record<string, string> = {
     cleaner_assigned: workerName ? `${cleaner} was assigned` : "Cleaner was assigned",
     assignment_created: workerName ? `${cleaner} was assigned` : "Cleaner was assigned",

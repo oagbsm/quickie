@@ -20,9 +20,9 @@ export default async function Page({
   let query = supabase
     .from("work_items")
     .select(
-      "id,status,turnover_date,access_start_at,next_checkin_at,readiness_result,properties(nickname,postcode),business_accounts(name),assignments(status,assigned_at,workers(display_name,mobile,email)),operational_issues(status,blocking)",
+      "id,status,turnover_date,access_start_at,window_end_at,next_checkin_at,readiness_result,properties(nickname,postcode),business_accounts(name),assignments(status,assigned_at,workers(display_name,mobile,email)),operational_issues(status,blocking)",
     )
-    .order("next_checkin_at");
+    .order("window_end_at");
   if (params.status) query = query.eq("status", params.status);
   else if (params.view !== "diagnostics")
     query = query.neq("status", "cancelled");
@@ -129,7 +129,7 @@ export default async function Page({
                       }).format(new Date(item.turnover_date))}
                     </p>
                     <p className="text-xs font-bold text-[#657089]">
-                      {checkInCountdown(item.next_checkin_at)}
+                      {checkInCountdown(item.next_checkin_at || item.window_end_at, new Date(), item.next_checkin_at ? "check-in" : "deadline")}
                     </p>
                   </div>
                   <div>
@@ -150,12 +150,12 @@ export default async function Page({
                       }).format(new Date(item.access_start_at))}
                     </p>
                     <p className="font-bold">
-                      Check-in{" "}
+                      {item.next_checkin_at ? "Check-in" : "Deadline"}{" "}
                       {new Intl.DateTimeFormat("en-GB", {
                         hour: "2-digit",
                         minute: "2-digit",
                         timeZone: "Europe/London",
-                      }).format(new Date(item.next_checkin_at))}
+                      }).format(new Date(item.next_checkin_at || item.window_end_at))}
                     </p>
                   </div>
                   <div>

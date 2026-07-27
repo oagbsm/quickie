@@ -8,7 +8,7 @@ export default async function Page() {
   const { data, error } = await supabase
     .from("properties")
     .select(
-      "id,nickname,address_line_1,city,postcode,service_area_status,status,business_accounts(name),work_items(id,status,turnover_date,access_start_at,next_checkin_at,ready_at,readiness_result,assignments(status,assigned_at,workers(display_name)),operational_issues(status,blocking))",
+      "id,nickname,address_line_1,city,postcode,service_area_status,status,business_accounts(name),work_items(id,status,turnover_date,access_start_at,window_end_at,next_checkin_at,ready_at,readiness_result,assignments(status,assigned_at,workers(display_name)),operational_issues(status,blocking))",
     );
   if (error) throw new Error(`admin_properties_failed:${error.code}`);
   const now = new Date();
@@ -18,17 +18,17 @@ export default async function Page() {
         .filter(
           (item) =>
             item.status !== "cancelled" &&
-            new Date(item.next_checkin_at) >= now,
+            new Date(item.window_end_at) >= now,
         )
-        .sort((a, b) => a.next_checkin_at.localeCompare(b.next_checkin_at))[0];
+        .sort((a, b) => a.window_end_at.localeCompare(b.window_end_at))[0];
       const completed = [...(property.work_items || [])]
         .filter((item) => item.status === "ready")
         .sort((a, b) => (b.ready_at || "").localeCompare(a.ready_at || ""))[0];
       return { property, active, completed };
     })
     .sort((a, b) =>
-      (a.active?.next_checkin_at || "9999").localeCompare(
-        b.active?.next_checkin_at || "9999",
+      (a.active?.window_end_at || "9999").localeCompare(
+        b.active?.window_end_at || "9999",
       ),
     );
   return (
@@ -70,7 +70,7 @@ export default async function Page() {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-[#657089]">
-                      NEXT CHECK-IN
+                      {active?.next_checkin_at ? "NEXT CHECK-IN" : "NEXT DEADLINE"}
                     </p>
                     <p className="mt-1 font-bold">
                       {active
@@ -78,7 +78,7 @@ export default async function Page() {
                             dateStyle: "medium",
                             timeStyle: "short",
                             timeZone: "Europe/London",
-                          }).format(new Date(active.next_checkin_at))
+                          }).format(new Date(active.next_checkin_at || active.window_end_at))
                         : "None scheduled"}
                     </p>
                   </div>

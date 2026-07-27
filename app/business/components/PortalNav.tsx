@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const items = [
   ["Dashboard", "/business/dashboard", "home"],
   ["Properties", "/business/properties", "building"],
+  ["Reservations", "/business/reservations", "book"],
   ["Turnovers", "/business/turnovers", "calendar"],
   ["Team", "/business/cleaners", "people"],
   ["Issues", "/business/issues", "alert"],
@@ -55,6 +56,12 @@ function NavIcon({ name }: { name: string }) {
       <>
         <rect x="3" y="5" width="18" height="16" rx="2" />
         <path d="M7 3v4M17 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01" />
+      </>
+    ),
+    book: (
+      <>
+        <path d="M5 4h11a3 3 0 0 1 3 3v13H7a2 2 0 0 1-2-2V4Z" />
+        <path d="M5 17h11M9 8h6M9 12h6" />
       </>
     ),
     people: (

@@ -7,7 +7,8 @@ export type AdminWorkItem = {
   status: string;
   turnover_date: string;
   access_start_at: string;
-  next_checkin_at: string;
+  window_end_at: string;
+  next_checkin_at: string | null;
   readiness_result?: { blocking_reasons?: string[] } | null;
   assignments?: Array<{
     status: string;
@@ -17,15 +18,19 @@ export type AdminWorkItem = {
   operational_issues?: Array<{ status: string; blocking: boolean }>;
 };
 
-export function checkInCountdown(value: string, now = new Date()) {
+export function checkInCountdown(
+  value: string,
+  now = new Date(),
+  label = "deadline",
+) {
   const minutes = Math.round(
     (new Date(value).getTime() - now.getTime()) / 60_000,
   );
   if (minutes < 0) return `${Math.abs(minutes)}m overdue`;
-  if (minutes < 60) return `${minutes}m to check-in`;
+  if (minutes < 60) return `${minutes}m to ${label}`;
   if (minutes < 1440)
-    return `${Math.floor(minutes / 60)}h ${minutes % 60}m to check-in`;
-  return `${Math.ceil(minutes / 1440)}d to check-in`;
+    return `${Math.floor(minutes / 60)}h ${minutes % 60}m to ${label}`;
+  return `${Math.ceil(minutes / 1440)}d to ${label}`;
 }
 
 export function adminRisk(item: AdminWorkItem, now = new Date()) {
@@ -41,7 +46,8 @@ export function adminRisk(item: AdminWorkItem, now = new Date()) {
   if (blocking)
     return { level: "critical", reason: "Blocking issue before check-in" };
   const minutes =
-    (new Date(item.next_checkin_at).getTime() - now.getTime()) / 60_000;
+    (new Date(item.next_checkin_at || item.window_end_at).getTime() - now.getTime()) /
+    60_000;
   if (
     new Date(item.access_start_at) < now &&
     ["accepted", "awaiting_response", "unassigned"].includes(item.status)

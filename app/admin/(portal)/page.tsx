@@ -18,11 +18,11 @@ export default async function Page() {
       supabase
         .from("work_items")
         .select(
-          "id,status,turnover_date,access_start_at,next_checkin_at,readiness_result,properties(nickname,postcode),business_accounts(name),assignments(status,assigned_at,workers(display_name,mobile,email)),operational_issues(status,blocking)",
+          "id,status,turnover_date,access_start_at,window_end_at,next_checkin_at,readiness_result,properties(nickname,postcode),business_accounts(name),assignments(status,assigned_at,workers(display_name,mobile,email)),operational_issues(status,blocking)",
         )
         .eq("turnover_date", today)
         .neq("status", "cancelled")
-        .order("next_checkin_at"),
+        .order("window_end_at"),
       supabase
         .from("operational_issues")
         .select("id")
@@ -36,7 +36,7 @@ export default async function Page() {
     .map((item) => ({ item, risk: adminRisk(item, now) }))
     .filter(({ risk }) => ["critical", "high", "medium"].includes(risk.level))
     .sort((a, b) =>
-      a.item.next_checkin_at.localeCompare(b.item.next_checkin_at),
+      a.item.window_end_at.localeCompare(b.item.window_end_at),
     );
   const counts = {
     today: items.length,
@@ -126,10 +126,10 @@ export default async function Page() {
                         hour: "2-digit",
                         minute: "2-digit",
                         timeZone: "Europe/London",
-                      }).format(new Date(item.next_checkin_at))}
+                      }).format(new Date(item.next_checkin_at || item.window_end_at))}
                     </p>
                     <p className="mt-1 text-xs font-bold text-red-700">
-                      {checkInCountdown(item.next_checkin_at, now)}
+                      {checkInCountdown(item.next_checkin_at || item.window_end_at, now, item.next_checkin_at ? "check-in" : "deadline")}
                     </p>
                   </div>
                   <div>
@@ -201,8 +201,8 @@ export default async function Page() {
                     hour: "2-digit",
                     minute: "2-digit",
                     timeZone: "Europe/London",
-                  }).format(new Date(item.next_checkin_at))}{" "}
-                  CHECK-IN
+                  }).format(new Date(item.next_checkin_at || item.window_end_at))}{" "}
+                  {item.next_checkin_at ? "CHECK-IN" : "DEADLINE"}
                 </p>
                 <p className="mt-2 font-extrabold">
                   {formatDisplayName(p?.nickname)}

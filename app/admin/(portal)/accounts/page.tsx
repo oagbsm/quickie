@@ -6,7 +6,7 @@ export default async function Page() {
   const { data, error } = await supabase
     .from("business_accounts")
     .select(
-      "id,name,created_at,suspended_at,business_members(full_name,role),properties(id),workers(id),work_items(id,status,turnover_date,next_checkin_at),operational_issues(id,status),activity_events(created_at)",
+      "id,name,created_at,suspended_at,business_members(full_name,role),properties(id),workers(id),work_items(id,status,turnover_date,window_end_at,next_checkin_at),operational_issues(id,status),activity_events(created_at)",
     )
     .order("created_at", { ascending: false });
   if (error) throw new Error(`admin_customers_failed:${error.code}`);
@@ -31,7 +31,7 @@ export default async function Page() {
                     item.turnover_date >= today && item.status !== "cancelled",
                 )
                 .sort((a, b) =>
-                  a.next_checkin_at.localeCompare(b.next_checkin_at),
+                  a.window_end_at.localeCompare(b.window_end_at),
                 )[0];
               const issues =
                 account.operational_issues?.filter(
