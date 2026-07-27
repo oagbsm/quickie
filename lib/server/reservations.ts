@@ -2,6 +2,7 @@ import "server-only";
 
 import { requireBusinessUser } from "@/lib/business/auth";
 import { formatBusinessDateTime } from "@/lib/business/time";
+import type { ReservationSourceConnection } from "@/lib/reservations/source";
 import {
   UUID_PATTERN,
   type ReservationFormSource,
@@ -45,7 +46,7 @@ export type ReservationRecord = {
   account_id: string;
   property_id: string;
   source: string;
-  external_reservation_id: string;
+  source_connection_id: string | null;
   guest_name: string | null;
   guest_count: number | null;
   check_in_at: string;
@@ -73,12 +74,14 @@ export type ReservationEventRecord = {
 export type ReservationListItem = ReservationRecord & {
   property: Pick<ReservationProperty, "id" | "nickname" | "postcode">;
   turnover: ReservationTurnover | null;
+  sourceConnection: ReservationSourceConnection;
 };
 
 export type ReservationDetail = ReservationRecord & {
   property: ReservationProperty;
   turnover: ReservationTurnover | null;
   events: ReservationEventRecord[];
+  sourceConnection: ReservationSourceConnection;
 };
 
 export class ReservationServiceError extends Error {
@@ -272,7 +275,7 @@ export async function listReservations(
   let query = supabase
     .from("reservations")
     .select(
-      "id,account_id,property_id,source,external_reservation_id,guest_name,guest_count,check_in_at,check_out_at,status,source_updated_at,cancelled_at,created_at,updated_at,properties(id,nickname,postcode)",
+      "id,account_id,property_id,source,source_connection_id,guest_name,guest_count,check_in_at,check_out_at,status,source_updated_at,cancelled_at,created_at,updated_at,properties(id,nickname,postcode)",
     )
     .eq("account_id", accountId);
   if (view === "cancelled") query = query.eq("status", "cancelled");
@@ -296,6 +299,18 @@ export async function listReservations(
   if (error) throw new Error(`reservations_query_failed:${error.code}`);
   if (turnoverError)
     throw new Error(`reservation_turnovers_query_failed:${turnoverError.code}`);
+  const connectionIds = [...new Set((data || []).flatMap((row) =>
+    row.source_connection_id ? [row.source_connection_id] : [],
+  ))];
+  const { data: connections, error: connectionError } = connectionIds.length
+    ? await supabase
+        .from("property_calendar_connections_safe")
+        .select("id,provider,display_name,last_successful_sync_at")
+        .in("id", connectionIds)
+    : { data: [], error: null };
+  if (connectionError)
+    throw new Error(`reservation_sources_query_failed:${connectionError.code}`);
+  const connectionById = new Map((connections || []).map((row) => [row.id, row]));
   const byReservation = new Map(
     ((turnovers || []) as ReservationTurnover[]).map((item) => [
       item.reservation_id,
@@ -310,6 +325,9 @@ export async function listReservations(
       ...row,
       property: related,
       turnover: byReservation.get(row.id) || null,
+      sourceConnection: row.source_connection_id
+        ? (connectionById.get(row.source_connection_id) as ReservationSourceConnection) || null
+        : null,
     } as ReservationListItem;
   });
 }
@@ -322,7 +340,7 @@ export async function getReservationDetail(
   const { data, error } = await supabase
     .from("reservations")
     .select(
-      "id,account_id,property_id,source,external_reservation_id,guest_name,guest_count,check_in_at,check_out_at,status,source_updated_at,cancelled_at,created_at,updated_at,properties(id,nickname,postcode,default_checkout_time,default_checkin_time,estimated_turnover_minutes)",
+      "id,account_id,property_id,source,source_connection_id,guest_name,guest_count,check_in_at,check_out_at,status,source_updated_at,cancelled_at,created_at,updated_at,properties(id,nickname,postcode,default_checkout_time,default_checkin_time,estimated_turnover_minutes)",
     )
     .eq("id", reservationId)
     .eq("account_id", accountId)
@@ -351,6 +369,15 @@ export async function getReservationDetail(
     throw new Error(`reservation_turnover_query_failed:${turnoverResult.error.code}`);
   if (eventsResult.error)
     throw new Error(`reservation_events_query_failed:${eventsResult.error.code}`);
+  const sourceConnectionResult = data.source_connection_id
+    ? await supabase
+        .from("property_calendar_connections_safe")
+        .select("provider,display_name,last_successful_sync_at")
+        .eq("id", data.source_connection_id)
+        .maybeSingle()
+    : { data: null, error: null };
+  if (sourceConnectionResult.error)
+    throw new Error(`reservation_source_query_failed:${sourceConnectionResult.error.code}`);
   const related = Array.isArray(data.properties)
     ? data.properties[0]
     : data.properties;
@@ -360,5 +387,7 @@ export async function getReservationDetail(
     property: related,
     turnover: (turnoverResult.data as ReservationTurnover | null) || null,
     events: (eventsResult.data || []) as ReservationEventRecord[],
+    sourceConnection:
+      (sourceConnectionResult.data as ReservationSourceConnection) || null,
   } as ReservationDetail;
 }

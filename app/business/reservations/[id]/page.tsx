@@ -9,6 +9,7 @@ import {
 import TurnoverStatus from "../../components/TurnoverStatus";
 import ReservationStatus from "../ReservationStatus";
 import CancelReservation from "../CancelReservation";
+import { reservationSourceLabel } from "@/lib/reservations/source";
 
 const detail = (label: string, value: React.ReactNode) => (
   <div>
@@ -35,6 +36,10 @@ export default async function Page({
   const reservation = await getReservationDetail(id);
   if (!reservation) notFound();
   const turnover = reservation.turnover;
+  const sourceLabel = reservationSourceLabel(
+    reservation.source,
+    reservation.sourceConnection,
+  );
   const sameDay = turnover
     ? isSameLondonDate(turnover.guest_checkout_at, turnover.next_checkin_at)
     : false;
@@ -55,7 +60,7 @@ export default async function Page({
       <header className="mt-4 flex flex-col gap-4 border-b border-[#dfe4eb] pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-extrabold uppercase text-[#2d67b2]">
-            {reservation.source.replaceAll("_", " ")} reservation
+            {sourceLabel} reservation
           </p>
           <h1 className="mt-1 text-3xl font-extrabold tracking-[-.03em]">
             {reservation.property.nickname}
@@ -67,7 +72,7 @@ export default async function Page({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ReservationStatus status={reservation.status} />
-          {reservation.status !== "cancelled" && (
+          {reservation.status !== "cancelled" && reservation.source === "manual" && (
             <>
               <Link
                 href={`/business/reservations/${id}/edit`}
@@ -99,7 +104,16 @@ export default async function Page({
             <h2 className="text-lg font-extrabold">Reservation</h2>
             <dl className="mt-5 grid gap-5 sm:grid-cols-2">
               {detail("Property", reservation.property.nickname)}
-              {detail("Source", reservation.source === "manual" ? "Manual" : reservation.source)}
+              {detail("Reservation source", `${sourceLabel}${reservation.source === "ical" ? " calendar" : ""}`)}
+              {reservation.source === "ical" &&
+                detail(
+                  "Last synchronised",
+                  reservation.sourceConnection?.last_successful_sync_at
+                    ? formatBusinessDateTime(
+                        reservation.sourceConnection.last_successful_sync_at,
+                      )
+                    : "Pending",
+                )}
               {detail("Guest name", reservation.guest_name)}
               {detail("Guest count", reservation.guest_count)}
               {detail("Check-in", formatBusinessDateTime(reservation.check_in_at))}
@@ -137,7 +151,7 @@ export default async function Page({
                       ? formatBusinessDateTime(turnover.next_checkin_at)
                       : "No later confirmed reservation",
                   )}
-                  {detail("Created from", "Manual reservation")}
+                  {detail("Created from", reservation.source === "manual" ? "Manual reservation" : `${sourceLabel} calendar`)}
                 </dl>
                 {(sameDay || turnover.requires_attention) && (
                   <div className="mt-5 flex flex-wrap gap-2">

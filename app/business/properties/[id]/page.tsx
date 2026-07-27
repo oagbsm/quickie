@@ -9,9 +9,12 @@ import {
   deleteChecklistTask,
   moveChecklistTask,
 } from "../../str-actions";
+import { listPropertyCalendarConnections } from "@/lib/server/property-calendars";
+import CalendarSources from "./CalendarSources";
 
 const tabs = [
   ["overview", "Overview"],
+  ["reservations", "Reservations"],
   ["standard", "Standard"],
   ["checklist", "Checklist"],
   ["access", "Access"],
@@ -75,6 +78,8 @@ export default async function Page({
       (a: { position: number }, b: { position: number }) =>
         a.position - b.position,
     );
+  const calendarConnections =
+    tab === "reservations" ? await listPropertyCalendarConnections(id) : [];
   return (
     <div className="mx-auto max-w-[1180px]">
       <Link
@@ -175,6 +180,10 @@ export default async function Page({
             })}
           </dl>
         </section>
+      )}
+
+      {tab === "reservations" && (
+        <CalendarSources propertyId={id} connections={calendarConnections} />
       )}
 
       {tab === "standard" &&

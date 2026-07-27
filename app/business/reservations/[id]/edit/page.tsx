@@ -14,6 +14,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     listReservationProperties(),
   ]);
   if (!reservation) notFound();
+  if (reservation.source !== "manual")
+    redirect(
+      `/business/reservations/${id}?error=${encodeURIComponent("Booking dates are managed by the connected calendar.")}`,
+    );
   if (reservation.status === "cancelled")
     redirect(
       `/business/reservations/${id}?error=${encodeURIComponent("A cancelled reservation cannot be edited.")}`,

@@ -85,6 +85,8 @@ export function formatReservationEvent(
 ): ReservationTimelineItem {
   if (event.event_type === "reservation.created")
     return { title: "Reservation created", detail: null };
+  if (event.event_type === "reservation.imported")
+    return { title: "Reservation imported", detail: "Received from a connected calendar." };
   if (event.event_type === "turnover.created")
     return { title: "Turnover created", detail: "The cleaning window was scheduled." };
   if (event.event_type === "reservation.cancelled")

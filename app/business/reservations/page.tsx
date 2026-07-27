@@ -3,6 +3,7 @@ import { listReservations } from "@/lib/server/reservations";
 import { formatBusinessDateTime } from "@/lib/business/time";
 import TurnoverStatus from "../components/TurnoverStatus";
 import ReservationStatus from "./ReservationStatus";
+import { reservationSourceLabel } from "@/lib/reservations/source";
 
 const views = [
   ["Upcoming", "upcoming"],
@@ -116,7 +117,9 @@ export default async function Page({
                   )}
                 </div>
                 <div className="text-sm font-bold capitalize text-[#657089]">
-                  {row.source.replaceAll("_", " ")}
+                  <span className="inline-flex rounded-full bg-[#eef4fb] px-2.5 py-1 text-xs font-extrabold text-[#245b9d]">
+                    {reservationSourceLabel(row.source, row.sourceConnection)}
+                  </span>
                   <p className="mt-1 text-[11px] font-normal">
                     Updated {formatBusinessDateTime(row.updated_at, { day: "numeric", month: "short" })}
                   </p>
