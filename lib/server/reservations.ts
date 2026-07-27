@@ -1,6 +1,7 @@
 import "server-only";
 
 import { requireBusinessUser } from "@/lib/business/auth";
+import { formatBusinessDateTime } from "@/lib/business/time";
 import {
   UUID_PATTERN,
   type ReservationFormSource,
@@ -102,6 +103,8 @@ const messages: Record<string, string> = {
   invalid_reservation_input: "Review the reservation details and try again.",
   invalid_request_key: "This form has expired. Refresh the page and try again.",
   idempotency_conflict: "This submission was already used with different details.",
+  reservation_overlap:
+    "This reservation overlaps with an existing reservation for this property.",
   linked_turnover_not_found: "The linked turnover could not be found.",
   linked_turnover_cancelled: "The linked turnover is already cancelled.",
   linked_turnover_property_change_locked:
@@ -109,8 +112,32 @@ const messages: Record<string, string> = {
   invalid_turnover_window: "The property turnover window is invalid.",
 };
 
-function serviceError(error: { message?: string; code?: string } | null) {
+function overlapMessage(details?: string) {
+  if (!details) return messages.reservation_overlap;
+  try {
+    const conflict = JSON.parse(details) as Record<string, unknown>;
+    if (
+      typeof conflict.check_in_at !== "string" ||
+      typeof conflict.check_out_at !== "string"
+    )
+      return messages.reservation_overlap;
+    const checkIn = formatBusinessDateTime(conflict.check_in_at);
+    const checkOut = formatBusinessDateTime(conflict.check_out_at);
+    return `${messages.reservation_overlap} The existing stay runs from ${checkIn} to ${checkOut}.`;
+  } catch {
+    return messages.reservation_overlap;
+  }
+}
+
+function serviceError(
+  error: { message?: string; code?: string; details?: string } | null,
+) {
   const raw = error?.message || "reservation_operation_failed";
+  if (raw.includes("reservation_overlap"))
+    return new ReservationServiceError(
+      "reservation_overlap",
+      overlapMessage(error?.details),
+    );
   const code = Object.keys(messages).find((candidate) => raw.includes(candidate));
   return new ReservationServiceError(
     code || "reservation_operation_failed",

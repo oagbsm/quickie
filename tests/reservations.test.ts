@@ -27,6 +27,13 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const overlapMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/202607270002_prevent_reservation_overlaps.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const service = readFileSync(
   new URL("../lib/server/reservations.ts", import.meta.url),
   "utf8",
@@ -60,6 +67,17 @@ const valid = {
   checkOutDate: "2026-08-07",
   checkOutTime: "11:00",
 };
+
+type TestStay = {
+  checkIn: number;
+  checkOut: number;
+  status?: "confirmed" | "cancelled";
+};
+
+const overlaps = (candidate: TestStay, existing: TestStay) =>
+  existing.status !== "cancelled" &&
+  candidate.checkIn < existing.checkOut &&
+  candidate.checkOut > existing.checkIn;
 
 test("manual reservation input is converted from Europe/London without shifting local time", () => {
   const result = validateReservationInput(valid);
@@ -217,6 +235,52 @@ test("invalid ranges, malformed property IDs and guest counts are rejected", () 
     /positive whole number/i,
   );
   assert.match(reservationFieldError(state, "checkOutDate") || "", /after check-in/i);
+});
+
+test("reservation overlap interval cases use half-open stay ranges", () => {
+  const existing = { checkIn: 10, checkOut: 20 };
+  const cases: Array<[string, TestStay, boolean]> = [
+    ["exact duplicate dates", { checkIn: 10, checkOut: 20 }, true],
+    ["partial overlap at start", { checkIn: 5, checkOut: 15 }, true],
+    ["partial overlap at end", { checkIn: 15, checkOut: 25 }, true],
+    ["fully contained reservation", { checkIn: 12, checkOut: 18 }, true],
+    ["reservation containing another", { checkIn: 5, checkOut: 25 }, true],
+    ["back-to-back before", { checkIn: 5, checkOut: 10 }, false],
+    ["back-to-back after", { checkIn: 20, checkOut: 25 }, false],
+  ];
+  for (const [label, candidate, expected] of cases)
+    assert.equal(overlaps(candidate, existing), expected, label);
+  assert.equal(
+    overlaps(existing, { ...existing, status: "cancelled" }),
+    false,
+    "cancelled reservations are ignored",
+  );
+});
+
+test("database atomically rejects active property overlaps before turnover work", () => {
+  assert.match(overlapMigration, /before insert or update of[\s\S]*on public\.reservations/);
+  assert.match(overlapMigration, /candidate\.status <> 'cancelled'/);
+  assert.match(overlapMigration, /candidate\.id <> new\.id/);
+  assert.match(
+    overlapMigration,
+    /new\.check_in_at < candidate\.check_out_at[\s\S]*new\.check_out_at > candidate\.check_in_at/,
+  );
+  assert.match(overlapMigration, /pg_advisory_xact_lock/);
+  assert.match(overlapMigration, /reservation-overlap:[\s\S]*new\.property_id/);
+  assert.match(overlapMigration, /message = 'reservation_overlap'/);
+  assert.match(service, /This reservation overlaps with an existing reservation/);
+  assert.match(service, /The existing stay runs from/);
+});
+
+test("edit conflict checks exclude the edited reservation but reject a new conflict", () => {
+  const self = { checkIn: 10, checkOut: 20 };
+  assert.equal(overlaps(self, self), true, "time comparison alone overlaps itself");
+  assert.match(overlapMigration, /candidate\.id <> new\.id/);
+  assert.equal(
+    overlaps({ checkIn: 18, checkOut: 25 }, { checkIn: 10, checkOut: 20 }),
+    true,
+    "an edit moving into another stay conflicts",
+  );
 });
 
 test("reservation status is current state while modification is an event", () => {

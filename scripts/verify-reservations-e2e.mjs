@@ -89,6 +89,8 @@ try {
   const other = await createBusinessUser("other");
   const firstProperty = await createProperty(owner, "Reservation Harbour House");
   const secondProperty = await createProperty(owner, "Reservation Garden Flat");
+  const overlapProperty = await createProperty(owner, "Reservation Overlap House");
+  const concurrentProperty = await createProperty(owner, "Reservation Race House");
   await createProperty(other, "Other Business Property");
 
   const firstPayload = {
@@ -131,6 +133,184 @@ try {
     }),
     "second reservation create",
   );
+
+  const overlapBasePayload = {
+    property_id: overlapProperty.id,
+    guest_name: "Overlap Base Guest",
+    guest_count: 2,
+    check_in_at: at(30, 14),
+    check_out_at: at(33, 10),
+  };
+  const overlapBase = await check(
+    await owner.client.rpc("create_manual_reservation", {
+      request_key: crypto.randomUUID(),
+      payload: overlapBasePayload,
+    }),
+    "overlap base reservation",
+  );
+  const rejectedOverlapCases = [
+    ["exact duplicate dates", overlapBasePayload.check_in_at, overlapBasePayload.check_out_at],
+    ["partial overlap at start", at(29, 14), at(31, 10)],
+    ["partial overlap at end", at(32, 14), at(34, 10)],
+    ["fully contained reservation", at(31, 14), at(32, 10)],
+    ["reservation containing another", at(29, 14), at(34, 10)],
+  ];
+  for (const [label, checkInAt, checkOutAt] of rejectedOverlapCases) {
+    const beforeReservations = await check(
+      await owner.client
+        .from("reservations")
+        .select("id")
+        .eq("property_id", overlapProperty.id),
+      `${label} reservations before`,
+    );
+    const beforeTurnovers = await check(
+      await owner.client
+        .from("work_items")
+        .select("id")
+        .eq("property_id", overlapProperty.id),
+      `${label} turnovers before`,
+    );
+    const rejected = await owner.client.rpc("create_manual_reservation", {
+      request_key: crypto.randomUUID(),
+      payload: {
+        ...overlapBasePayload,
+        guest_name: label,
+        check_in_at: checkInAt,
+        check_out_at: checkOutAt,
+      },
+    });
+    assert(
+      rejected.error?.message.includes("reservation_overlap"),
+      `${label} must be rejected as an overlap`,
+    );
+    const afterReservations = await check(
+      await owner.client
+        .from("reservations")
+        .select("id")
+        .eq("property_id", overlapProperty.id),
+      `${label} reservations after`,
+    );
+    const afterTurnovers = await check(
+      await owner.client
+        .from("work_items")
+        .select("id")
+        .eq("property_id", overlapProperty.id),
+      `${label} turnovers after`,
+    );
+    assert.equal(afterReservations.length, beforeReservations.length);
+    assert.equal(afterTurnovers.length, beforeTurnovers.length);
+  }
+
+  const adjacentPayload = {
+    ...overlapBasePayload,
+    guest_name: "Back-to-back Guest",
+    check_in_at: overlapBasePayload.check_out_at,
+    check_out_at: at(35, 10),
+  };
+  const adjacent = await check(
+    await owner.client.rpc("create_manual_reservation", {
+      request_key: crypto.randomUUID(),
+      payload: adjacentPayload,
+    }),
+    "back-to-back reservation",
+  );
+
+  const selfEdit = await check(
+    await owner.client.rpc("update_manual_reservation", {
+      target_reservation: overlapBase.reservation_id,
+      payload: { ...overlapBasePayload, guest_count: 4 },
+    }),
+    "edit excludes itself",
+  );
+  assert.equal(selfEdit.changed, true);
+
+  const adjacentTurnoverBefore = await check(
+    await owner.client
+      .from("work_items")
+      .select("id,guest_checkout_at,next_checkin_at,updated_at")
+      .eq("reservation_id", adjacent.reservation_id)
+      .single(),
+    "adjacent turnover before conflicting edit",
+  );
+  const conflictingEdit = await owner.client.rpc("update_manual_reservation", {
+    target_reservation: adjacent.reservation_id,
+    payload: { ...adjacentPayload, check_in_at: at(32, 14) },
+  });
+  assert(conflictingEdit.error?.message.includes("reservation_overlap"));
+  const adjacentAfter = await check(
+    await owner.client
+      .from("reservations")
+      .select("check_in_at,check_out_at")
+      .eq("id", adjacent.reservation_id)
+      .single(),
+    "adjacent reservation after conflicting edit",
+  );
+  const adjacentTurnoverAfter = await check(
+    await owner.client
+      .from("work_items")
+      .select("id,guest_checkout_at,next_checkin_at,updated_at")
+      .eq("reservation_id", adjacent.reservation_id)
+      .single(),
+    "adjacent turnover after conflicting edit",
+  );
+  assert.equal(adjacentAfter.check_in_at, adjacentPayload.check_in_at);
+  assert.equal(adjacentAfter.check_out_at, adjacentPayload.check_out_at);
+  assert.deepEqual(adjacentTurnoverAfter, adjacentTurnoverBefore);
+
+  await check(
+    await owner.client.rpc("cancel_manual_reservation", {
+      target_reservation: overlapBase.reservation_id,
+    }),
+    "cancel overlap base",
+  );
+  await check(
+    await owner.client.rpc("create_manual_reservation", {
+      request_key: crypto.randomUUID(),
+      payload: { ...overlapBasePayload, guest_name: "Cancelled slot replacement" },
+    }),
+    "cancelled reservation ignored",
+  );
+
+  const concurrentPayload = {
+    property_id: concurrentProperty.id,
+    guest_name: "Concurrent Guest",
+    guest_count: 2,
+    check_in_at: at(40, 14),
+    check_out_at: at(43, 10),
+  };
+  const concurrentAttempts = await Promise.all([
+    owner.client.rpc("create_manual_reservation", {
+      request_key: crypto.randomUUID(),
+      payload: concurrentPayload,
+    }),
+    owner.client.rpc("create_manual_reservation", {
+      request_key: crypto.randomUUID(),
+      payload: concurrentPayload,
+    }),
+  ]);
+  assert.equal(concurrentAttempts.filter((attempt) => !attempt.error).length, 1);
+  assert.equal(
+    concurrentAttempts.filter((attempt) =>
+      attempt.error?.message.includes("reservation_overlap"),
+    ).length,
+    1,
+  );
+  const concurrentReservations = await check(
+    await owner.client
+      .from("reservations")
+      .select("id")
+      .eq("property_id", concurrentProperty.id),
+    "concurrent reservations",
+  );
+  const concurrentTurnovers = await check(
+    await owner.client
+      .from("work_items")
+      .select("id")
+      .eq("property_id", concurrentProperty.id),
+    "concurrent turnovers",
+  );
+  assert.equal(concurrentReservations.length, 1);
+  assert.equal(concurrentTurnovers.length, 1);
 
   const firstRows = await check(
     await owner.client
@@ -365,6 +545,10 @@ try {
           "checkout and property synchronization preserve turnover ID",
           "guest-only and no-op audit behavior",
           "idempotent cancellation preserves both records",
+          "overlap interval matrix and back-to-back boundary",
+          "cancelled stays ignored and edits exclude themselves",
+          "conflicting edits preserve linked turnovers",
+          "concurrent overlap creates produce one reservation and turnover",
           "cancelled edit rejected",
           "direct writes denied",
         ],
