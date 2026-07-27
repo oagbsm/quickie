@@ -20,7 +20,9 @@ export type ReservationField =
   | "checkOutDate"
   | "checkOutTime";
 
-export type ReservationFieldErrors = Partial<Record<ReservationField, string>>;
+export type ReservationFieldErrors = Partial<
+  Record<ReservationField, string | string[]>
+>;
 
 export type ReservationValidationResult =
   | { ok: true; value: ReservationInput }

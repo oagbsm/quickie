@@ -15,7 +15,7 @@
     "test:str-integration": "node --env-file=.env.local scripts/verify-str-e2e.mjs",
     "seed:str": "node --env-file=.env.local scripts/seed-str-v1.mjs",
     "test:e2e": "playwright test",
-    "test:e2e:reservations": "RUN_RESERVATION_E2E=1 node --env-file=.env.local node_modules/@playwright/test/cli.js test tests/e2e/reservations.spec.ts"
+    "test:e2e:reservations": "RUN_RESERVATION_E2E=1 node --env-file=.env.local node_modules/@playwright/test/cli.js test tests/e2e/reservations.spec.ts --workers=1"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

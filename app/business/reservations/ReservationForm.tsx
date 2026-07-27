@@ -3,9 +3,13 @@
 import { useActionState } from "react";
 import {
   createReservationAction,
-  initialReservationActionState,
   updateReservationAction,
 } from "./actions";
+import {
+  initialReservationActionState,
+  reservationFieldError,
+} from "@/lib/reservations/action-state";
+import type { ReservationField } from "@/lib/reservations/validation";
 
 type Property = { id: string; nickname: string; postcode: string };
 type InitialValues = {
@@ -41,19 +45,20 @@ export default function ReservationForm({
     mode === "create" ? createReservationAction : updateAction,
     initialReservationActionState,
   );
-  const error = (name: keyof typeof state.fieldErrors) =>
-    state.fieldErrors[name];
+  const currentState = state ?? initialReservationActionState;
+  const error = (name: ReservationField) =>
+    reservationFieldError(state, name);
   return (
     <form action={action} className="grid gap-5" noValidate>
       {mode === "create" && (
         <input type="hidden" name="requestKey" value={requestKey} />
       )}
-      {state.message && (
+      {currentState.message && (
         <div
           role="alert"
           className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm font-bold text-red-800"
         >
-          {state.message}
+          {currentState.message}
         </div>
       )}
       <section className="portal-card p-5 sm:p-7">

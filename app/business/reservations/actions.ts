@@ -9,34 +9,22 @@ import {
   updateManualReservation,
 } from "@/lib/server/reservations";
 import {
-  reservationSourceFromForm,
-  type ReservationFieldErrors,
-  validateReservationInput,
-} from "@/lib/reservations/validation";
+  executeReservationMutation,
+  executeReservationSubmission,
+} from "@/lib/reservations/action-execution";
+import type { ReservationActionState } from "@/lib/reservations/action-state";
+import { reservationSourceFromForm } from "@/lib/reservations/validation";
 
-export type ReservationActionState = {
-  message: string;
-  fieldErrors: ReservationFieldErrors;
-};
-
-export const initialReservationActionState: ReservationActionState = {
-  message: "",
-  fieldErrors: {},
-};
-
-function expectedError(error: unknown): ReservationActionState {
+function expectedErrorMessage(error: unknown): string {
   if (error instanceof ReservationServiceError)
-    return { message: error.message, fieldErrors: {} };
+    return error.message;
   console.warn(
     JSON.stringify({
       event: "reservation_action_failed",
       error: error instanceof Error ? error.message : "unknown",
     }),
   );
-  return {
-    message: "The reservation could not be saved. Try again.",
-    fieldErrors: {},
-  };
+  return "The reservation could not be saved. Try again.";
 }
 
 function revalidateReservationRoutes(id: string) {
@@ -52,21 +40,16 @@ export async function createReservationAction(
   form: FormData,
 ): Promise<ReservationActionState> {
   const source = reservationSourceFromForm(form);
-  const validation = validateReservationInput(source);
-  if (!validation.ok)
-    return {
-      message: validation.message,
-      fieldErrors: validation.fieldErrors,
-    };
-  let result;
-  try {
-    result = await createManualReservation(
+  const outcome = await executeReservationSubmission(
+    source,
+    () => createManualReservation(
       source,
       String(form.get("requestKey") || ""),
-    );
-  } catch (error) {
-    return expectedError(error);
-  }
+    ),
+    expectedErrorMessage,
+  );
+  if (!outcome.ok) return outcome.state;
+  const result = outcome.value;
   revalidateReservationRoutes(result.reservationId);
   redirect(`/business/reservations/${result.reservationId}?created=1`);
 }
@@ -77,18 +60,13 @@ export async function updateReservationAction(
   form: FormData,
 ): Promise<ReservationActionState> {
   const source = reservationSourceFromForm(form);
-  const validation = validateReservationInput(source);
-  if (!validation.ok)
-    return {
-      message: validation.message,
-      fieldErrors: validation.fieldErrors,
-    };
-  let result;
-  try {
-    result = await updateManualReservation(reservationId, source);
-  } catch (error) {
-    return expectedError(error);
-  }
+  const outcome = await executeReservationSubmission(
+    source,
+    () => updateManualReservation(reservationId, source),
+    expectedErrorMessage,
+  );
+  if (!outcome.ok) return outcome.state;
+  const result = outcome.value;
   revalidateReservationRoutes(result.reservationId);
   redirect(
     `/business/reservations/${result.reservationId}?${result.changed ? "updated=1" : "unchanged=1"}`,
@@ -97,18 +75,16 @@ export async function updateReservationAction(
 
 export async function cancelReservationAction(
   reservationId: string,
+  _previous: ReservationActionState,
   form: FormData,
-) {
+): Promise<ReservationActionState> {
   void form;
-  let result;
-  try {
-    result = await cancelManualReservation(reservationId);
-  } catch (error) {
-    const state = expectedError(error);
-    redirect(
-      `/business/reservations/${reservationId}?error=${encodeURIComponent(state.message)}`,
-    );
-  }
+  const outcome = await executeReservationMutation(
+    () => cancelManualReservation(reservationId),
+    expectedErrorMessage,
+  );
+  if (!outcome.ok) return outcome.state;
+  const result = outcome.value;
   revalidateReservationRoutes(result.reservationId);
   redirect(`/business/reservations/${result.reservationId}?cancelled=1`);
 }

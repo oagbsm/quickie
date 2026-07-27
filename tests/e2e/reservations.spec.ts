@@ -27,6 +27,8 @@ test.describe("manual reservation lifecycle", () => {
     const password = `Qu!${crypto.randomBytes(18).toString("base64url")}`;
     let userId = "";
     let accountId = "";
+    const browserErrors: string[] = [];
+    page.on("pageerror", (error) => browserErrors.push(error.message));
     try {
       const created = await root.auth.admin.createUser({
         email,
@@ -88,8 +90,27 @@ test.describe("manual reservation lifecycle", () => {
           () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
         ),
       ).toBe(false);
-      await page.getByRole("link", { name: /add reservation/i }).first().click();
-      await expect(page.getByRole("heading", { level: 1, name: "Add reservation" })).toBeVisible();
+      await page.goto("/business/reservations/new");
+      await test.step("new reservation form renders before any action is submitted", async () => {
+        await expect(
+          page.getByRole("heading", { level: 1, name: "Add reservation" }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: "Create reservation" }),
+        ).toBeEnabled();
+        await expect(page.locator('form [role="alert"]')).toHaveCount(0);
+        expect(browserErrors).toEqual([]);
+      });
+
+      await test.step("validation failure keeps a complete visible action state", async () => {
+        await page.getByRole("button", { name: "Create reservation" }).click();
+        await expect(page.locator('form [role="alert"]')).toContainText(
+          "Review the highlighted reservation details.",
+        );
+        await expect(page.getByText("Enter the check-in date.")).toBeVisible();
+        await expect(page).toHaveURL(/\/business\/reservations\/new$/);
+        expect(browserErrors).toEqual([]);
+      });
 
       const future = new Date();
       future.setUTCDate(future.getUTCDate() + 10);
@@ -112,7 +133,13 @@ test.describe("manual reservation lifecycle", () => {
 
       const detailUrl = page.url().split("?")[0];
       await page.getByRole("link", { name: "Edit reservation" }).click();
-      await expect(page.getByRole("heading", { name: "Edit reservation" })).toBeVisible();
+      await test.step("edit reservation form renders with its initial values", async () => {
+        await expect(page.getByRole("heading", { name: "Edit reservation" })).toBeVisible();
+        await expect(page.getByLabel("Guest name")).toHaveValue("Taylor Guest");
+        await expect(page.getByLabel("Guest count")).toHaveValue("3");
+        await expect(page.locator('form [role="alert"]')).toHaveCount(0);
+        expect(browserErrors).toEqual([]);
+      });
       await page.getByLabel("Guest count").fill("4");
       await page.locator('input[name="checkOutTime"]').fill("12:00");
       await page.getByRole("button", { name: "Save changes" }).click();

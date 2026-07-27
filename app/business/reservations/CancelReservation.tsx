@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef } from "react";
+import { useActionState, useRef } from "react";
+import { initialReservationActionState } from "@/lib/reservations/action-state";
 import { cancelReservationAction } from "./actions";
 
 export default function CancelReservation({
@@ -11,7 +12,11 @@ export default function CancelReservation({
   propertyName: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const action = cancelReservationAction.bind(null, reservationId);
+  const cancelAction = cancelReservationAction.bind(null, reservationId);
+  const [state, action, pending] = useActionState(
+    cancelAction,
+    initialReservationActionState,
+  );
   return (
     <>
       <button
@@ -34,6 +39,14 @@ export default function CancelReservation({
             The reservation and linked turnover for {propertyName} will be marked
             cancelled. Their history will be kept.
           </p>
+          {state?.message && (
+            <p
+              role="alert"
+              className="mt-4 rounded-lg border border-red-100 bg-red-50 p-3 text-sm font-bold text-red-800"
+            >
+              {state.message}
+            </p>
+          )}
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button
               type="button"
@@ -43,8 +56,11 @@ export default function CancelReservation({
               Keep reservation
             </button>
             <form action={action}>
-              <button className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-red-700 px-4 text-sm font-extrabold text-white">
-                Yes, cancel reservation
+              <button
+                disabled={pending}
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-red-700 px-4 text-sm font-extrabold text-white disabled:cursor-wait disabled:opacity-60"
+              >
+                {pending ? "Cancelling…" : "Yes, cancel reservation"}
               </button>
             </form>
           </div>

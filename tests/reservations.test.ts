@@ -9,6 +9,15 @@ import {
   formatReservationEvent,
   isSameLondonDate,
 } from "../lib/reservations/presentation.ts";
+import {
+  initialReservationActionState,
+  reservationFieldError,
+  type ReservationActionState,
+} from "../lib/reservations/action-state.ts";
+import {
+  executeReservationMutation,
+  executeReservationSubmission,
+} from "../lib/reservations/action-execution.ts";
 import { validateReservationInput } from "../lib/reservations/validation.ts";
 
 const migration = readFileSync(
@@ -24,6 +33,21 @@ const service = readFileSync(
 );
 const detailPage = readFileSync(
   new URL("../app/business/reservations/[id]/page.tsx", import.meta.url),
+  "utf8",
+);
+const reservationForm = readFileSync(
+  new URL("../app/business/reservations/ReservationForm.tsx", import.meta.url),
+  "utf8",
+);
+const newReservationPage = readFileSync(
+  new URL("../app/business/reservations/new/page.tsx", import.meta.url),
+  "utf8",
+);
+const editReservationPage = readFileSync(
+  new URL(
+    "../app/business/reservations/[id]/edit/page.tsx",
+    import.meta.url,
+  ),
   "utf8",
 );
 
@@ -49,6 +73,109 @@ test("manual reservation input is converted from Europe/London without shifting 
   });
 });
 
+test("reservation forms start with a complete empty action state", () => {
+  assert.deepEqual(initialReservationActionState, {
+    status: "idle",
+    message: "",
+    fieldErrors: {},
+  });
+  assert.match(reservationForm, /from "@\/lib\/reservations\/action-state"/);
+  assert.match(
+    reservationForm,
+    /useActionState\([\s\S]*initialReservationActionState/,
+  );
+  assert.match(newReservationPage, /<ReservationForm[\s\S]*mode="create"/);
+  assert.match(editReservationPage, /<ReservationForm[\s\S]*mode="edit"/);
+});
+
+test("reservation submission returns complete validation failure state", async () => {
+  let submitted = false;
+  const outcome = await executeReservationSubmission(
+    { ...valid, propertyId: "invalid" },
+    async () => {
+      submitted = true;
+      return { reservationId: "unused" };
+    },
+    () => "Database failure",
+  );
+  assert.equal(outcome.ok, false);
+  assert.equal(submitted, false);
+  assert.equal(outcome.state.status, "error");
+  assert.match(outcome.state.message, /highlighted reservation details/i);
+  assert.match(
+    reservationFieldError(outcome.state, "propertyId") || "",
+    /valid property/i,
+  );
+  assert.deepEqual(Object.keys(outcome.state).sort(), [
+    "fieldErrors",
+    "message",
+    "status",
+  ]);
+});
+
+test("reservation submission returns complete database failure state", async () => {
+  const outcome = await executeReservationSubmission(
+    valid,
+    async () => {
+      throw new Error("database unavailable");
+    },
+    () => "The reservation could not be saved. Try again.",
+  );
+  assert.equal(outcome.ok, false);
+  assert.deepEqual(outcome.state, {
+    status: "error",
+    message: "The reservation could not be saved. Try again.",
+    fieldErrors: {},
+  });
+});
+
+test("successful reservation submission returns complete success state", async () => {
+  const value = { reservationId: "reservation-1" };
+  const outcome = await executeReservationSubmission(
+    valid,
+    async () => value,
+    () => "Unexpected failure",
+  );
+  assert.equal(outcome.ok, true);
+  if (!outcome.ok) return;
+  assert.deepEqual(outcome.state, {
+    status: "success",
+    message: "",
+    fieldErrors: {},
+  });
+  assert.equal(outcome.value, value);
+});
+
+test("cancellation failure returns the same complete action state shape", async () => {
+  const outcome = await executeReservationMutation(
+    async () => {
+      throw new Error("cancellation database failure");
+    },
+    () => "The reservation could not be saved. Try again.",
+  );
+  assert.equal(outcome.ok, false);
+  assert.deepEqual(outcome.state, {
+    status: "error",
+    message: "The reservation could not be saved. Try again.",
+    fieldErrors: {},
+  });
+});
+
+test("field error access is defensive and preserves string arrays", () => {
+  assert.equal(reservationFieldError(undefined, "propertyId"), undefined);
+  const state: ReservationActionState = {
+    status: "error",
+    message: "Review the highlighted reservation details.",
+    fieldErrors: {
+      propertyId: ["Select a property.", "The property must be active."],
+    },
+  };
+  assert.equal(
+    reservationFieldError(state, "propertyId"),
+    "Select a property. The property must be active.",
+  );
+});
+
 test("non-existent London times during the spring DST transition are rejected", () => {
   assert.throws(
     () => londonLocalToUtc("2026-03-29", "01:30"),
@@ -61,7 +188,13 @@ test("non-existent London times during the spring DST transition are rejected", 
   });
   assert.equal(result.ok, false);
   if (result.ok) return;
-  assert.match(result.fieldErrors.checkInTime || "", /clocks change/i);
+  assert.match(
+    reservationFieldError(
+      { status: "error", message: result.message, fieldErrors: result.fieldErrors },
+      "checkInTime",
+    ) || "",
+    /clocks change/i,
+  );
 });
 
 test("invalid ranges, malformed property IDs and guest counts are rejected", () => {
@@ -73,9 +206,17 @@ test("invalid ranges, malformed property IDs and guest counts are rejected", () 
   });
   assert.equal(result.ok, false);
   if (result.ok) return;
-  assert.match(result.fieldErrors.propertyId || "", /valid property/i);
-  assert.match(result.fieldErrors.guestCount || "", /positive whole number/i);
-  assert.match(result.fieldErrors.checkOutDate || "", /after check-in/i);
+  const state: ReservationActionState = {
+    status: "error",
+    message: result.message,
+    fieldErrors: result.fieldErrors,
+  };
+  assert.match(reservationFieldError(state, "propertyId") || "", /valid property/i);
+  assert.match(
+    reservationFieldError(state, "guestCount") || "",
+    /positive whole number/i,
+  );
+  assert.match(reservationFieldError(state, "checkOutDate") || "", /after check-in/i);
 });
 
 test("reservation status is current state while modification is an event", () => {
