@@ -168,6 +168,43 @@ function pinnedHttpsFetch(
   });
 }
 
+async function logDevelopmentResponse(response: Response) {
+  if (process.env.NODE_ENV !== "development") return;
+  let first200Bytes = "";
+  try {
+    const reader = response.clone().body?.getReader();
+    if (reader) {
+      const chunks: Uint8Array[] = [];
+      let total = 0;
+      while (total < 200) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value) continue;
+        const remaining = 200 - total;
+        const chunk = value.subarray(0, remaining);
+        chunks.push(chunk);
+        total += chunk.byteLength;
+      }
+      void reader.cancel().catch(() => undefined);
+      const preview = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        preview.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      first200Bytes = new TextDecoder("utf-8", { fatal: false }).decode(preview);
+    }
+  } catch {
+    first200Bytes = "<response preview unavailable>";
+  }
+  console.info("[calendar-fetch] response", {
+    status: response.status,
+    headers: Object.fromEntries(response.headers.entries()),
+    contentType: response.headers.get("content-type") || "",
+    first200Bytes,
+  });
+}
+
 export async function fetchCalendarText(
   input: string,
   dependencies: CalendarFetchDependencies = {},
@@ -208,6 +245,8 @@ export async function fetchCalendarText(
       throw new CalendarFetchError("calendar_unavailable");
     }
 
+    await logDevelopmentResponse(response);
+
     if (response.status >= 300 && response.status < 400) {
       clearTimeout(timeout);
       if (redirects === maxRedirects)
@@ -229,7 +268,10 @@ export async function fetchCalendarText(
       !contentType.includes("application/octet-stream")
     ) {
       clearTimeout(timeout);
-      throw new CalendarFetchError("calendar_content_type");
+      const error = new CalendarFetchError("calendar_content_type");
+      if (process.env.NODE_ENV === "development")
+        console.error("[calendar-fetch] content type rejected", error);
+      throw error;
     }
     const declaredLength = Number(response.headers.get("content-length") || 0);
     if (declaredLength > maxBytes) {

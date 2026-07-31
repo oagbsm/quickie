@@ -683,7 +683,7 @@ export async function deleteChecklistTask(form: FormData) {
   const { data: task } = await supabase
     .from("checklist_template_tasks")
     .select(
-      "id,checklist_template_sections!inner(checklist_templates!inner(account_id,property_id))",
+      "id,checklist_template_sections!inner(id,checklist_templates!inner(account_id,property_id))",
     )
     .eq("id", taskId)
     .maybeSingle();
@@ -696,8 +696,19 @@ export async function deleteChecklistTask(form: FormData) {
   if (
     template?.account_id === accountId &&
     template?.property_id === propertyId
-  )
+  ) {
     await supabase.from("checklist_template_tasks").delete().eq("id", taskId);
+    const remaining = await supabase
+      .from("checklist_template_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("section_id", section?.id);
+    if (!remaining.error && (remaining.count || 0) === 0 && section?.id) {
+      await supabase
+        .from("checklist_template_sections")
+        .delete()
+        .eq("id", section.id);
+    }
+  }
   revalidatePath(`/business/properties/${propertyId}`);
 }
 

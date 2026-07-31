@@ -48,6 +48,10 @@ const calendarActions = readFileSync(
   ),
   "utf8",
 );
+const propertyPage = readFileSync(
+  new URL("../app/business/properties/[id]/page.tsx", import.meta.url),
+  "utf8",
+);
 
 const publicResolver = async () => ["93.184.216.34"];
 const calendar = (events: string) =>
@@ -67,6 +71,17 @@ test("calendar URL validation accepts public HTTPS URLs", async () => {
     fetch: async () => new Response(calendar(""), { headers: { "content-type": "text/calendar" } }),
   });
   assert.match(result, /VCALENDAR/);
+});
+
+test("calendar fetch accepts GitHub Raw text/plain calendar responses", async () => {
+  const result = await fetchCalendarText("https://raw.githubusercontent.com/feed.ics", {
+    resolve: publicResolver,
+    fetch: async () =>
+      new Response(calendar(""), {
+        headers: { "content-type": "text/plain; charset=utf-8" },
+      }),
+  });
+  assert.match(result, /^BEGIN:VCALENDAR/);
 });
 
 test("calendar secrets are encrypted, fingerprinted and masked", () => {
@@ -324,4 +339,15 @@ test("property source component has accessible actions and never renders a raw U
   assert.match(sourceComponent, /Syncing…/);
   assert.match(sourceComponent, /masked_calendar_url/);
   assert.doesNotMatch(sourceComponent, /calendar_url_encrypted|calendarUrlFingerprint/);
+});
+
+test("property creation redirects to a visible calendar setup panel", () => {
+  assert.match(propertyPage, /created\?: string/);
+  assert.match(propertyPage, /created === "1"/);
+  assert.match(propertyPage, /Property created successfully/);
+  assert.match(propertyPage, /Connect reservation source/);
+  assert.match(
+    readFileSync(new URL("../app/business/actions.ts", import.meta.url), "utf8"),
+    /`\/business\/properties\/\$\{created\?\.id\}\?created=1`/,
+  );
 });

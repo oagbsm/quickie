@@ -423,6 +423,14 @@ export async function syncPropertyCalendar(
       null,
       handled.message,
     ).catch(() => undefined);
+    if (
+      process.env.NODE_ENV === "development" &&
+      handled.code === "calendar_content_type"
+    )
+      console.error(
+        "[calendar-sync] throwing PropertyCalendarError(calendar_content_type)",
+        handled,
+      );
     throw handled;
   }
 }

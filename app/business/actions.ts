@@ -15,6 +15,11 @@ import { validatePilotSchedule } from "@/lib/business/time";
 import { sendBookingReceivedEmail } from "@/lib/server/business-notifications";
 import { getServiceAreaStatus } from "@/lib/business/service-area";
 import { normaliseAddressPart, normaliseUkPostcode, UK_POSTCODE_PATTERN } from "@/lib/uk-address";
+import type { CalendarProvider } from "@/lib/calendar/types";
+import {
+  createPropertyCalendarConnection,
+  syncPropertyCalendar,
+} from "@/lib/server/property-calendars";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim(),
   optional = (f: FormData, n: string) => value(f, n) || null;
 const numberOrNull = (f: FormData, n: string) => {
@@ -179,6 +184,34 @@ export async function addProperty(f: FormData) {
     }
   }
   if (created?.id) {
+    const reservationCalendarUrl = value(f, "reservationCalendarUrl");
+    const reservationProvider = value(f, "reservationProvider") || "airbnb";
+    const reservationConnectionName = optional(f, "reservationConnectionName");
+    if (reservationCalendarUrl) {
+      try {
+        const connectionId = await createPropertyCalendarConnection({
+          propertyId: created.id,
+          provider: reservationProvider as CalendarProvider,
+          displayName: reservationConnectionName || "",
+          calendarUrl: reservationCalendarUrl,
+        });
+        try {
+          await syncPropertyCalendar(connectionId);
+        } catch (syncError) {
+          console.error("business_property_calendar_sync_failed", {
+            accountId,
+            propertyId: created.id,
+            syncError,
+          });
+        }
+      } catch (calendarError) {
+        console.error("business_property_calendar_connect_failed", {
+          accountId,
+          propertyId: created.id,
+          calendarError,
+        });
+      }
+    }
     try {
       await savePropertyImage(supabase, accountId, created.id, f);
     } catch (imageError) {
@@ -198,7 +231,7 @@ export async function addProperty(f: FormData) {
   redirect(
     value(f, "returnTo") === "onboarding"
       ? `/business/onboarding?step=standard&property=${created?.id || ""}`
-      : "/business/properties?created=1",
+      : `/business/properties/${created?.id}?created=1`,
   );
 }
 export async function updateProperty(f: FormData) {

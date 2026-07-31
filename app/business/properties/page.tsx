@@ -24,6 +24,35 @@ export default async function Page({
   if (q) query = query.ilike("nickname", `%${q}%`);
   const { data, error } = await query;
   if (error) throw new Error(`properties_query_failed:${error.code}`);
+  const propertyIds = (data || []).map((property) => property.id);
+  const { data: connectionRows, error: connectionError } = propertyIds.length
+    ? await supabase
+        .from("property_calendar_connections_safe")
+        .select("property_id,sync_status")
+        .in("property_id", propertyIds)
+    : { data: [], error: null };
+  if (connectionError) throw new Error(`calendar_status_query_failed:${connectionError.code}`);
+  const reservationStatusByProperty = (connectionRows || []).reduce(
+    (memo: Record<string, { count: number; healthy: number; attention: number; disabled: number; neverSynced: number; syncing: number }> , connection: { property_id: string; sync_status: string }) => {
+      const item = memo[connection.property_id] || {
+        count: 0,
+        healthy: 0,
+        attention: 0,
+        disabled: 0,
+        neverSynced: 0,
+        syncing: 0,
+      };
+      item.count += 1;
+      if (connection.sync_status === "healthy") item.healthy += 1;
+      else if (connection.sync_status === "attention_required") item.attention += 1;
+      else if (connection.sync_status === "disabled") item.disabled += 1;
+      else if (connection.sync_status === "never_synced") item.neverSynced += 1;
+      else if (connection.sync_status === "syncing") item.syncing += 1;
+      memo[connection.property_id] = item;
+      return memo;
+    },
+    {},
+  );
   return (
     <div className="portal-page">
       <header className="portal-header">
@@ -158,6 +187,18 @@ export default async function Page({
                         }).format(new Date(lastReady.ready_at))
                       : ""}
                   </p>
+                  <div className="mt-4 grid gap-2 rounded-xl border border-[#dfe4eb] bg-[#f4f6f9] p-3 text-sm">
+                    <span className="font-bold">Reservation source</span>
+                    <span className="text-[#657089]">
+                      {(() => {
+                        const status = reservationStatusByProperty[p.id];
+                        if (!status || status.count === 0) return "No reservation source";
+                        if (status.attention || status.neverSynced || status.syncing) return "Needs attention";
+                        if (status.healthy) return "Connected";
+                        return "Reservation source connected";
+                      })()}
+                    </span>
+                  </div>
                 </div>
                 <div className="mt-4 flex gap-2">
                   <Link

@@ -139,29 +139,31 @@ export default function CalendarSources({ propertyId, connections }: { propertyI
           <div className="mt-4"><ManageConnection propertyId={propertyId} connection={connection} /></div>
         </article>
       ))}
-      <details open={!connections.length} className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
-        <summary className="cursor-pointer font-extrabold">Connect reservation source</summary>
-        <RefreshOnSuccess state={state} />
-        <form action={action} className="mt-5 grid gap-5" noValidate>
-          <label className="font-bold">Platform
-            <select name="provider" defaultValue="airbnb" className={field}>
-              <option value="airbnb">Airbnb</option><option value="booking_com">Booking.com</option><option value="vrbo">Vrbo</option><option value="other">Other calendar</option>
-            </select>
-            {state.fieldErrors.provider && <span className="mt-1 block text-sm text-red-700">{state.fieldErrors.provider}</span>}
-          </label>
-          <label className="font-bold">Connection name <span className="font-normal text-[#657089]">(optional)</span>
-            <input name="displayName" maxLength={80} className={field} />
-            {state.fieldErrors.displayName && <span className="mt-1 block text-sm text-red-700">{state.fieldErrors.displayName}</span>}
-          </label>
-          <label className="font-bold">Calendar URL
-            <input name="calendarUrl" type="url" required autoComplete="off" placeholder="https://…" className={field} />
-            <span className="mt-1 block text-xs font-normal text-[#657089]">Paste the private calendar link supplied by the booking platform.</span>
-            {state.fieldErrors.calendarUrl && <span className="mt-1 block text-sm text-red-700">{state.fieldErrors.calendarUrl}</span>}
-          </label>
-          <button disabled={pending} className="portal-action justify-self-start disabled:opacity-60">{pending ? "Connecting…" : "Connect and sync"}</button>
-        </form>
-        <div className="mt-4"><Result state={state} /></div>
-      </details>
+      {connections.length === 0 && (
+        <details open className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
+          <summary className="cursor-pointer font-extrabold">Connect reservation source</summary>
+          <RefreshOnSuccess state={state} />
+          <form action={action} className="mt-5 grid gap-5" noValidate>
+            <label className="font-bold">Platform
+              <select name="provider" defaultValue="airbnb" className={field}>
+                <option value="airbnb">Airbnb</option><option value="booking_com">Booking.com</option><option value="vrbo">Vrbo</option><option value="other">Other calendar</option>
+              </select>
+              {state.fieldErrors.provider && <span className="mt-1 block text-sm text-red-700">{state.fieldErrors.provider}</span>}
+            </label>
+            <label className="font-bold">Connection name <span className="font-normal text-[#657089]">(optional)</span>
+              <input name="displayName" maxLength={80} className={field} />
+              {state.fieldErrors.displayName && <span className="mt-1 block text-sm text-red-700">{state.fieldErrors.displayName}</span>}
+            </label>
+            <label className="font-bold">Calendar URL
+              <input name="calendarUrl" type="url" required autoComplete="off" placeholder="https://…" className={field} />
+              <span className="mt-1 block text-xs font-normal text-[#657089]">Paste the private calendar link supplied by the booking platform.</span>
+              {state.fieldErrors.calendarUrl && <span className="mt-1 block text-sm text-red-700">{state.fieldErrors.calendarUrl}</span>}
+            </label>
+            <button disabled={pending} className="portal-action justify-self-start disabled:opacity-60">{pending ? "Connecting…" : "Connect and sync"}</button>
+          </form>
+          <div className="mt-4"><Result state={state} /></div>
+        </details>
+      )}
     </section>
   );
 }

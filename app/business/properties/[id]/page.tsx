@@ -52,12 +52,13 @@ export default async function Page({
   searchParams: Promise<{
     tab?: string;
     edit?: string;
+    created?: string;
     error?: string;
     updated?: string;
   }>;
 }) {
   const { id } = await params,
-    { tab: requested, edit, error, updated } = await searchParams;
+    { tab: requested, edit, created, error, updated } = await searchParams;
   const tab = tabs.some(([key]) => key === requested) ? requested! : "overview";
   const { supabase, accountId } = await requireBusinessUser();
   const { data: p, error: queryError } = await supabase
@@ -78,8 +79,21 @@ export default async function Page({
       (a: { position: number }, b: { position: number }) =>
         a.position - b.position,
     );
-  const calendarConnections =
-    tab === "reservations" ? await listPropertyCalendarConnections(id) : [];
+  const calendarConnections = await listPropertyCalendarConnections(id);
+  const overviewCalendarStatus = calendarConnections.length
+    ? calendarConnections.some((connection) =>
+        ["attention_required", "never_synced", "syncing", "disabled"].includes(
+          connection.sync_status,
+        ),
+      )
+      ? "attention"
+      : "connected"
+    : "no_source";
+  const visibleSections = sections.filter(
+    (section: { checklist_template_tasks: Array<unknown> }) =>
+      Array.isArray(section.checklist_template_tasks) &&
+      section.checklist_template_tasks.length > 0,
+  );
   return (
     <div className="mx-auto max-w-[1180px]">
       <Link
@@ -126,6 +140,24 @@ export default async function Page({
           </Link>
         ))}
       </nav>
+      {created === "1" && (
+        <section
+          role="status"
+          className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-950"
+        >
+          <h2 className="text-lg font-extrabold">Property created successfully</h2>
+          <p className="mt-1 text-sm">
+            Your turnover standard and checklist are ready. Connect a reservation
+            calendar to import bookings and create turnovers automatically.
+          </p>
+          <Link
+            href={`/business/properties/${id}?tab=reservations`}
+            className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-[#071f49] px-4 font-extrabold text-white"
+          >
+            Connect reservation source
+          </Link>
+        </section>
+      )}
       {updated && (
         <p
           role="status"
@@ -144,42 +176,73 @@ export default async function Page({
       )}
 
       {tab === "overview" && (
-        <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
-          <div className="flex justify-between">
-            <h2 className="text-xl font-extrabold">Overview</h2>
-            <Link
-              href={`/business/properties/new?duplicate=${id}`}
-              className="text-sm font-bold text-[#245b9d]"
-            >
-              Duplicate property
-            </Link>
-          </div>
-          <dl className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {detail({
-              label: "Property type",
-              value: display(p.property_type),
-            })}
-            {detail({ label: "Bedrooms", value: p.bedrooms })}
-            {detail({ label: "Bathrooms", value: p.bathrooms })}
-            {detail({ label: "Status", value: display(p.status) })}
-            {detail({
-              label: "Default checkout",
-              value: String(p.default_checkout_time).slice(0, 5),
-            })}
-            {detail({
-              label: "Default check-in",
-              value: String(p.default_checkin_time).slice(0, 5),
-            })}
-            {detail({
-              label: "Estimated turnover",
-              value: `${p.estimated_turnover_minutes} minutes`,
-            })}
-            {detail({
-              label: "Completion evidence",
-              value: `${p.required_completion_photos} photos`,
-            })}
-          </dl>
-        </section>
+        <>
+          <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
+            <div className="flex justify-between gap-4">
+              <div>
+                <p className="text-sm font-extrabold text-[#2d67b2]">
+                  Reservation source
+                </p>
+                <h2 className="mt-1 text-xl font-extrabold">
+                  {overviewCalendarStatus === "no_source"
+                    ? "No reservation source connected"
+                    : overviewCalendarStatus === "attention"
+                    ? "Reservation source needs attention"
+                    : "Reservation source connected"}
+                </h2>
+              </div>
+              <Link
+                href={`/business/properties/${id}?tab=reservations`}
+                className="text-sm font-bold text-[#245b9d]"
+              >
+                Manage sources
+              </Link>
+            </div>
+            <p className="mt-3 text-sm text-[#657089]">
+              {overviewCalendarStatus === "no_source"
+                ? "Add a calendar feed on the Reservations tab to import bookings automatically."
+                : overviewCalendarStatus === "attention"
+                ? "A connected source needs attention or has not completed its first sync."
+                : "A reservation source is connected and syncing normally."}
+            </p>
+          </section>
+          <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
+            <div className="flex justify-between">
+              <h2 className="text-xl font-extrabold">Overview</h2>
+              <Link
+                href={`/business/properties/new?duplicate=${id}`}
+                className="text-sm font-bold text-[#245b9d]"
+              >
+                Duplicate property
+              </Link>
+            </div>
+            <dl className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {detail({
+                label: "Property type",
+                value: display(p.property_type),
+              })}
+              {detail({ label: "Bedrooms", value: p.bedrooms })}
+              {detail({ label: "Bathrooms", value: p.bathrooms })}
+              {detail({ label: "Status", value: display(p.status) })}
+              {detail({
+                label: "Default checkout",
+                value: String(p.default_checkout_time).slice(0, 5),
+              })}
+              {detail({
+                label: "Default check-in",
+                value: String(p.default_checkin_time).slice(0, 5),
+              })}
+              {detail({
+                label: "Estimated turnover",
+                value: `${p.estimated_turnover_minutes} minutes`,
+              })}
+              {detail({
+                label: "Completion evidence",
+                value: `${p.required_completion_photos} photos`,
+              })}
+            </dl>
+          </section>
+        </>
       )}
 
       {tab === "reservations" && (
@@ -429,7 +492,7 @@ export default async function Page({
             Changes apply to future turnovers only.
           </p>
           <div className="mt-5 grid gap-5">
-            {sections.map(
+            {visibleSections.map(
               (section: {
                 id: string;
                 title: string;

@@ -15,7 +15,6 @@ export default function PropertyForm({
   return (
     <form
       action={property?.id ? updateProperty : addProperty}
-      encType="multipart/form-data"
       className="grid gap-7 rounded-xl border border-[#dfe4eb] bg-white p-5 sm:p-7"
     >
       {property && property.id && (
