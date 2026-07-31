@@ -52,6 +52,21 @@ const propertyPage = readFileSync(
   new URL("../app/business/properties/[id]/page.tsx", import.meta.url),
   "utf8",
 );
+const scheduler = readFileSync(
+  new URL("../lib/server/calendar-scheduler.ts", import.meta.url),
+  "utf8",
+);
+const schedulerRoute = readFileSync(
+  new URL("../app/api/internal/calendar-sync/route.ts", import.meta.url),
+  "utf8",
+);
+const schedulerMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/202608010001_sprint_4_calendar_scheduler.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 const publicResolver = async () => ["93.184.216.34"];
 const calendar = (events: string) =>
@@ -350,4 +365,24 @@ test("property creation redirects to a visible calendar setup panel", () => {
     readFileSync(new URL("../app/business/actions.ts", import.meta.url), "utf8"),
     /`\/business\/properties\/\$\{created\?\.id\}\?created=1`/,
   );
+});
+
+test("automatic scheduler is protected, due-only, leased and isolated per failure", () => {
+  assert.match(schedulerRoute, /CALENDAR_SYNC_SECRET/);
+  assert.match(schedulerRoute, /timingSafeEqual/);
+  assert.match(schedulerRoute, /processed|healthy|attention/);
+  assert.match(scheduler, /next_sync_at\.is\.null,next_sync_at\.lte/);
+  assert.match(scheduler, /sync_status\.neq\.syncing,last_sync_started_at\.lt/);
+  assert.match(scheduler, /syncPropertyCalendar\(connection\.id, admin\)/);
+  assert.match(scheduler, /for \(const connection of data \|\| \[\]\)/);
+  assert.match(schedulerMigration, /add column if not exists next_sync_at/);
+  assert.match(schedulerMigration, /interval '15 minutes'/);
+  assert.match(schedulerMigration, /interval '6 hours'/);
+  assert.match(schedulerMigration, /consecutive_failure_count/);
+});
+
+test("scheduled sync state never exposes calendar URLs or secrets", () => {
+  assert.doesNotMatch(schedulerRoute, /calendar_url|encrypted_url|CALENDAR_URL_ENCRYPTION_KEY/);
+  assert.doesNotMatch(scheduler, /calendar_url|encrypted_url/);
+  assert.doesNotMatch(schedulerMigration, /calendar_url_encrypted/);
 });
