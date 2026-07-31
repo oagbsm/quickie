@@ -13,9 +13,9 @@ const nextAction: Record<string, [string, string] | undefined> = {
   awaiting_response: ["Accept turnover", "accepted"],
   accepted: ["I’m en route", "en_route"],
   en_route: ["I’ve arrived", "arrived"],
-  arrived: ["Start turnover", "in_progress"],
-  in_progress: ["Submit completion", "evidence_submitted"],
-  action_required: ["Retry completion", "in_progress"],
+  arrived: ["Start the clean", "in_progress"],
+  in_progress: ["Complete the clean", "evidence_submitted"],
+  action_required: ["Resolve remaining requirements", "in_progress"],
 };
 export default async function Page({
   params,
@@ -138,7 +138,7 @@ export default async function Page({
               </span>
             </div>
             {!canWork && <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm font-bold text-[#657089]">Checklist actions unlock after you mark Arrived.</p>}
-            {i.status === "action_required" && blockers.length > 0 && <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"><p className="font-extrabold">Outstanding requirements</p><ul className="mt-2 list-disc pl-5">{blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul></div>}
+            {canWork && blockers.length > 0 && <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"><p className="font-extrabold">{i.status === "action_required" ? "Resolve these before retrying" : "Before you complete the clean"}</p><ul className="mt-2 list-disc pl-5">{blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul></div>}
             <div className="mt-3 divide-y">
               {i.checklist_tasks.map(
                 (t: {
@@ -160,7 +160,7 @@ export default async function Page({
                   const keyReturn = /key.*return/i.test(t.label);
                   return (
                     <div key={t.id} className="py-4">
-                      {canWork ? <form action={updateChecklistTask}>
+                      {canWork ? t.completed ? <div className="rounded-lg bg-emerald-50 p-3 text-sm"><p className="font-extrabold text-emerald-900">✓ Task completed</p><p className="mt-1 text-emerald-800">Your saved result and note are kept.</p></div> : <form action={updateChecklistTask}>
                         <input type="hidden" name="turnoverId" value={id} />
                         <input type="hidden" name="taskId" value={t.id} />
                         <label className="flex min-h-11 items-start gap-3 font-bold">
@@ -252,11 +252,7 @@ export default async function Page({
                             pending="Uploading…"
                             className="mt-2 min-h-10 rounded-lg border bg-white px-3 text-sm font-bold"
                           />
-                          {taskPhoto && (
-                            <p className="mt-2 text-xs font-bold text-emerald-700">
-                              Evidence uploaded
-                            </p>
-                          )}
+                          {taskPhoto && <p className="mt-2 text-xs font-bold text-emerald-700">✓ Task photo saved{t.completed ? " — task complete" : ""}</p>}
                         </form>
                       )}
                     </div>
@@ -266,7 +262,7 @@ export default async function Page({
             </div>
           </section>
           <section className="mt-5 rounded-xl border bg-white p-5">
-            <h2 className="text-lg font-extrabold">Evidence</h2>
+            <h2 className="text-lg font-extrabold">Final completion evidence</h2>
             <p className="mt-1 text-sm text-[#657089]">
               {i.evidence_submissions.length} uploaded ·{" "}
               {i.required_evidence_count} completion photos required
@@ -279,7 +275,7 @@ export default async function Page({
                 value="completion_photo"
               />
               <label className="font-bold">
-                Completion photo
+              Final completion photo
                 <input
                   type="file"
                   name="file"
@@ -381,7 +377,7 @@ export default async function Page({
           {process.env.NODE_ENV === "development" && process.env.QUICKOLA_TEST_SHORTCUTS === "1" && canWork && (
             <form action={completeTestTurnover} className="mt-3">
               <input type="hidden" name="turnoverId" value={id} />
-              <button className="min-h-11 w-full rounded-lg border border-dashed px-5 font-bold text-[#59677d]">Complete test turnover</button>
+              <button className="min-h-11 w-full rounded-lg border border-dashed px-5 font-bold text-[#59677d]">Development-only: complete test turnover</button>
             </form>
           )}
         </>

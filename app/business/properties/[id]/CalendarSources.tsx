@@ -106,6 +106,7 @@ export default function CalendarSources({ propertyId, connections }: { propertyI
       <div>
         <h2 id="reservation-sources-title" className="text-xl font-extrabold">Reservation sources</h2>
         <p className="mt-1 text-sm text-[#657089]">Automatically import reservations from Airbnb, Booking.com, Vrbo or another calendar.</p>
+        <p className="mt-2 text-xs font-semibold text-[#657089]">Healthy sources sync automatically. If a source needs attention, existing reservations stay safe while you review the issue.</p>
       </div>
       {connections.map((connection) => (
         <article key={connection.id} className="rounded-xl bg-white p-5 shadow-sm sm:p-6">

@@ -19,7 +19,7 @@ test("invite copy can never produce a cleaner turnover URL", () => {
 
 test("checklist and evidence are unavailable before arrival", () => {
   assert.match(turnoverPage, /const canWork = \["arrived", "in_progress", "action_required"\]/);
-  assert.match(turnoverPage, /canWork \? <form action=\{updateChecklistTask\}/);
+  assert.match(turnoverPage, /canWork \? t\.completed \?/);
   assert.match(turnoverPage, /canWork && <form action=\{uploadEvidence\}/);
 });
 
@@ -37,7 +37,7 @@ test("task completion requires response, note and required photo", () => {
 });
 
 test("failed completion preserves work and exposes exact blockers", () => {
-  assert.match(turnoverPage, /Outstanding requirements/);
+  assert.match(turnoverPage, /Outstanding requirements|Before you complete the clean/);
   assert.match(turnoverPage, /incompleteMandatory/);
   assert.match(turnoverPage, /missingNotes/);
   assert.match(turnoverPage, /missingTaskPhotos/);
@@ -46,8 +46,20 @@ test("failed completion preserves work and exposes exact blockers", () => {
 });
 
 test("completion remains retryable after action_required", () => {
-  assert.match(turnoverPage, /action_required: \["Retry completion", "in_progress"\]/);
+  assert.match(turnoverPage, /action_required: \["Resolve remaining requirements", "in_progress"\]/);
   assert.match(transitionMigration, /when 'action_required' then next_status in \('in_progress','cancelled'\)/);
+});
+
+test("cleaner screens make the next action and saved evidence explicit", () => {
+  const cards = readFileSync(new URL("../app/cleaner/TurnoverCards.tsx", import.meta.url), "utf8");
+  assert.match(cards, /Next:/);
+  assert.match(cards, /Accept or decline/);
+  assert.match(turnoverPage, /Task completed/);
+  assert.match(turnoverPage, /Task photo saved/);
+  assert.match(turnoverPage, /Final completion evidence/);
+  assert.match(turnoverPage, /Development-only: complete test turnover/);
+  assert.match(todayPage, /one next step/);
+  assert.match(upcomingPage, /next action shown/);
 });
 
 test("property readiness requires every server-side requirement", () => {
