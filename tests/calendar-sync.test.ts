@@ -149,6 +149,10 @@ test("calendar URL validation rejects unsafe protocols, hosts and credentials", 
     assert.equal(isBlockedCalendarAddress(address), true, address);
 });
 
+test("connection-time URL validation is converted to the safe calendar error contract", () => {
+  assert.match(service, /try \{[\s\S]*validateCalendarUrl\(input\.calendarUrl\)[\s\S]*assertSafeCalendarDestination\(url\)[\s\S]*throw safeError\(error\)/);
+});
+
 test("calendar redirects are revalidated and private destinations are rejected", async () => {
   let requests = 0;
   await assert.rejects(

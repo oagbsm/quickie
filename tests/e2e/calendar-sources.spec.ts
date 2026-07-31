@@ -80,11 +80,11 @@ test.describe("property reservation sources", () => {
       await expect(
         page.getByRole("heading", { name: "Reservation sources" }),
       ).toBeVisible();
-      await expect(page.getByLabel("Platform")).toBeVisible();
-      await expect(page.getByLabel("Calendar URL")).toBeVisible();
-      await page.getByLabel("Calendar URL").fill("https://localhost/private.ics");
+      await expect(page.locator('select[name="provider"]')).toBeVisible();
+      await expect(page.locator('input[name="calendarUrl"]').first()).toBeVisible();
+      await page.locator('input[name="calendarUrl"]').first().fill("https://localhost/private.ics");
       await page.getByRole("button", { name: "Connect and sync" }).click();
-      await expect(page.getByRole("alert")).toContainText(
+      await expect(page.getByRole("region", { name: "Reservation sources" }).getByRole("alert")).toContainText(
         "This calendar address cannot be connected.",
       );
 

@@ -174,8 +174,13 @@ export async function createPropertyCalendarConnection(input: {
   calendarUrl: string;
 }) {
   const { supabase } = await requireBusinessUser();
-  const url = validateCalendarUrl(input.calendarUrl);
-  await assertSafeCalendarDestination(url);
+  let url: URL;
+  try {
+    url = validateCalendarUrl(input.calendarUrl);
+    await assertSafeCalendarDestination(url);
+  } catch (error) {
+    throw safeError(error);
+  }
   return rpc<string>(supabase, "create_property_calendar_connection", {
     target_property: input.propertyId,
     selected_provider: input.provider,

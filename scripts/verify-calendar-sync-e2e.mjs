@@ -56,7 +56,7 @@ async function property(owner, name) {
       .insert({
         account_id: owner.accountId,
         nickname: name,
-        address_line_1: "1 Calendar Test Street",
+        address_line_1: `${name} ${nonce} Test Street`,
         city: "London",
         postcode: "SW1A 1AA",
         property_type: "airbnb",

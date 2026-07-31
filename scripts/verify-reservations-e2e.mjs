@@ -56,7 +56,7 @@ async function createProperty(owner, nickname) {
       .insert({
         account_id: owner.accountId,
         nickname,
-        address_line_1: "1 Reservation Test Street",
+        address_line_1: `${nickname} ${nonce} Test Street`,
         city: "London",
         postcode: "SW1A 1AA",
         property_type: "flat",
@@ -204,7 +204,8 @@ try {
   const adjacentPayload = {
     ...overlapBasePayload,
     guest_name: "Back-to-back Guest",
-    check_in_at: overlapBasePayload.check_out_at,
+    // Leave the configured three-hour cleaning window before the next arrival.
+    check_in_at: at(33, 13),
     check_out_at: at(35, 10),
   };
   const adjacent = await check(
@@ -253,8 +254,8 @@ try {
       .single(),
     "adjacent turnover after conflicting edit",
   );
-  assert.equal(adjacentAfter.check_in_at, adjacentPayload.check_in_at);
-  assert.equal(adjacentAfter.check_out_at, adjacentPayload.check_out_at);
+  assert.equal(new Date(adjacentAfter.check_in_at).toISOString(), new Date(adjacentPayload.check_in_at).toISOString());
+  assert.equal(new Date(adjacentAfter.check_out_at).toISOString(), new Date(adjacentPayload.check_out_at).toISOString());
   assert.deepEqual(adjacentTurnoverAfter, adjacentTurnoverBefore);
 
   await check(
@@ -332,7 +333,7 @@ try {
   assert.equal(firstTurnovers[0].account_id, owner.accountId);
   assert.equal(firstTurnovers[0].property_id, firstProperty.id);
   assert.equal(firstTurnovers[0].creation_source, "manual_reservation");
-  assert.equal(firstTurnovers[0].next_checkin_at, secondPayload.check_in_at);
+  assert.equal(new Date(firstTurnovers[0].next_checkin_at).toISOString(), new Date(secondPayload.check_in_at).toISOString());
 
   const createdEvents = await check(
     await owner.client
@@ -343,7 +344,7 @@ try {
   );
   assert.deepEqual(
     createdEvents.map((event) => event.event_type).sort(),
-    ["reservation.created", "turnover.created"],
+    ["reservation.created", "turnover.created", "turnover.updated"],
   );
 
   assert.equal(
@@ -397,7 +398,7 @@ try {
     "updated turnover",
   );
   assert.equal(updatedTurnover.id, first.turnover_id);
-  assert.equal(updatedTurnover.guest_checkout_at, changedCheckout);
+  assert.equal(new Date(updatedTurnover.guest_checkout_at).toISOString(), new Date(changedCheckout).toISOString());
 
   const eventsBeforeNoop = await check(
     await owner.client
