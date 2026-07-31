@@ -12,6 +12,8 @@ export async function requireBusinessUser() {
   if (!user) redirect("/business/sign-in");
 
   const workspace = await resolveBusinessWorkspace();
+  if (!workspace.ok && workspace.reason === "cleaner_account")
+    redirect("/cleaner/today");
   if (!workspace.ok && workspace.reason === "suspended")
     redirect("/business/suspended");
   if (!workspace.ok)

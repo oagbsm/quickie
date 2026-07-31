@@ -27,7 +27,12 @@ export async function proxy(request: NextRequest) {
         },
       },
     });
-    await auth.auth.getUser();
+    const { data: { user } } = await auth.auth.getUser();
+    if (request.nextUrl.pathname.startsWith("/cleaner") && !user) {
+      const loginUrl = new URL("/business/sign-in", request.url);
+      loginUrl.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   if (!request.nextUrl.pathname.startsWith("/qk-ops-7f3a")) return response;
@@ -42,5 +47,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/business/:path*", "/qk-ops-7f3a/:path*", "/.2SADXWEDX@%3E%23@%232/:path*"],
+  matcher: ["/admin/:path*", "/business/:path*", "/cleaner/:path*", "/qk-ops-7f3a/:path*", "/.2SADXWEDX@%3E%23@%232/:path*"],
 };

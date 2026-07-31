@@ -9,6 +9,9 @@ export async function GET(request: Request) {
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type") as EmailOtpType | null;
   const next = safeInternalNextPath(url.searchParams.get("next"));
+  const nextQuery = encodeURIComponent(next);
+  const email = url.searchParams.get("email");
+  const emailQuery = email ? `&email=${encodeURIComponent(email)}` : "";
   const appOrigin = getAppOrigin();
   const supabase = await createSupabaseServerClient();
   let error: { message: string } | null = null;
@@ -21,7 +24,7 @@ export async function GET(request: Request) {
   if (error || !user) {
     console.error("business_auth_callback_failed", { hasCode: Boolean(code), hasTokenHash: Boolean(tokenHash), type, authenticated: Boolean(user) });
     return NextResponse.redirect(
-      new URL("/business/sign-in?error=confirmation", appOrigin),
+      new URL(`/business/sign-in?error=confirmation&next=${nextQuery}${emailQuery}`, appOrigin),
     );
   }
   if (process.env.NODE_ENV !== "production") console.info("business_auth_callback_complete", { userId: user.id, type });

@@ -7,6 +7,8 @@ import { getPasswordRecoveryRedirect } from "@/lib/auth-redirects";
 export default function SignInForm() {
   const router = useRouter(),
     params = useSearchParams();
+  const next = params.get("next"),
+    invitationPath = next?.startsWith("/invite/") || next?.startsWith("/team/invite/");
   const [pending, setPending] = useState(false),
     [message, setMessage] = useState(
       params.get("error") === "confirmation"
@@ -34,7 +36,6 @@ export default function SignInForm() {
       setPending(false);
       return;
     }
-    const next = params.get("next");
     router.push(next?.startsWith("/") && !next.startsWith("//") ? next : "/business/continue");
     router.refresh();
   }
@@ -64,10 +65,10 @@ export default function SignInForm() {
       className="grid gap-5 rounded-2xl bg-white p-7 shadow-lg"
     >
       <div>
-        <p className="eyebrow">Customer account</p>
-        <h1 className="mt-2 text-3xl font-extrabold">Sign in to Quickola</h1>
+        <p className="eyebrow">{invitationPath ? "Cleaner invitation" : "Customer account"}</p>
+        <h1 className="mt-2 text-3xl font-extrabold">{invitationPath ? "Sign in to accept your invitation" : "Sign in to Quickola"}</h1>
         <p className="mt-2 text-sm leading-6 text-[#657089]">
-          Access your properties, turnovers and guest-ready evidence.
+          {invitationPath ? "Use the invited email to continue to your cleaner invitation." : "Access your properties, turnovers and guest-ready evidence."}
         </p>
       </div>
       <label className="font-bold">
@@ -79,6 +80,7 @@ export default function SignInForm() {
           autoComplete="email"
           required
           defaultValue={params.get("email") || ""}
+          readOnly={invitationPath && Boolean(params.get("email"))}
         />
       </label>
       <label className="font-bold">
@@ -115,12 +117,12 @@ export default function SignInForm() {
       >
         Forgot password?
       </button>
-      <p className="text-center text-sm font-semibold">
+      {!invitationPath && <p className="text-center text-sm font-semibold">
         Need an operator account?{" "}
         <Link href="/business/sign-up" className="font-bold text-[#079448]">
           Create account
         </Link>
-      </p>
+      </p>}
     </form>
   );
 }

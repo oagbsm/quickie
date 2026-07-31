@@ -38,9 +38,10 @@ const accessExpiry = readFileSync(
   "utf8",
 );
 const invitationEmailGuard = readFileSync(new URL("../supabase/migrations/202607260008_invitation_email_guard.sql", import.meta.url), "utf8");
+const sprint2aSecurity = readFileSync(new URL("../supabase/migrations/202607310001_sprint_2a_cleaner_security.sql", import.meta.url), "utf8");
 const invitationActions = readFileSync(new URL("../app/business/str-actions.ts", import.meta.url), "utf8");
 const cleanerPage = readFileSync(new URL("../app/business/cleaners/[id]/page.tsx", import.meta.url), "utf8");
-const sql = `${core}\n${hardening}\n${atomic}\n${ownerChecklist}\n${accessExpiry}\n${invitationEmailGuard}`;
+const sql = `${core}\n${hardening}\n${atomic}\n${ownerChecklist}\n${accessExpiry}\n${invitationEmailGuard}\n${sprint2aSecurity}`;
 
 test("neutral reusable core objects avoid Airbnb-specific table names", () => {
   for (const table of [
@@ -128,6 +129,8 @@ test("invitation acceptance is single-use and bound to the invited email", () =>
   assert.match(invitationEmailGuard, /invitation_already_accepted/);
   assert.match(invitationEmailGuard, /for update/);
   assert.match(invitationEmailGuard, /worker_already_linked/);
+  assert.match(sprint2aSecurity, /worker\.account_id<>invitation\.account_id/);
+  assert.match(sprint2aSecurity, /worker\.account_id=worker_invitations\.account_id/);
 });
 test("manual invite links rotate hashed tokens and stay out of redirect URLs", () => {
   assert.match(invitationActions, /generateWorkerInviteLink/);
@@ -162,6 +165,15 @@ test("cleaner and invitation creation is atomic and duplicate contacts are const
   assert.match(atomic, /workers_account_email_unique/);
   assert.match(atomic, /workers_account_mobile_unique/);
   assert.match(atomic, /duplicate_worker_contact/);
+});
+
+test("Sprint 2A cleaner creation requires email and assignment can prepare an invitation", () => {
+  assert.match(invitationActions, /const preferred = "email"/);
+  assert.match(invitationActions, /worker_email_required/);
+  assert.match(invitationActions, /worker_invitations/);
+  assert.match(invitationActions, /sendCleanerInvitationEmail/);
+  assert.match(invitationActions, /assign_work_item_worker/);
+  assert.match(cleanerPage, /worker\.invitation_status === "pending"/);
 });
 
 test("owners can instantiate checklist snapshots only inside their own account", () => {

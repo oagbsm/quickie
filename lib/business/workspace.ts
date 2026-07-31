@@ -7,7 +7,7 @@ export type WorkspaceResult =
       ok: false;
       reference: string;
       reason:
-        "schema_outdated" | "provisioning_failed" | "no_session" | "suspended";
+        "schema_outdated" | "provisioning_failed" | "no_session" | "suspended" | "cleaner_account";
     };
 
 export async function resolveBusinessWorkspace(): Promise<WorkspaceResult> {
@@ -40,6 +40,15 @@ export async function resolveBusinessWorkspace(): Promise<WorkspaceResult> {
       provisioned: false,
     };
   }
+
+  const { data: cleaner } = await supabase
+    .from("workers")
+    .select("id,status")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
+  if (cleaner)
+    return { ok: false, reference: "CLEANER-ACCOUNT", reason: "cleaner_account" };
 
   const { data, error } = await supabase.rpc("ensure_business_workspace");
   const row = Array.isArray(data) ? data[0] : data;

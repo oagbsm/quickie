@@ -4,6 +4,7 @@ import TurnoverStatus from "@/app/business/components/TurnoverStatus";
 import PendingButton from "@/app/components/PendingButton";
 import {
   reportIssue,
+  completeTestTurnover,
   transitionTurnover,
   updateChecklistTask,
   uploadEvidence,
@@ -14,6 +15,7 @@ const nextAction: Record<string, [string, string] | undefined> = {
   en_route: ["I’ve arrived", "arrived"],
   arrived: ["Start turnover", "in_progress"],
   in_progress: ["Submit completion", "evidence_submitted"],
+  action_required: ["Retry completion", "in_progress"],
 };
 export default async function Page({
   params,
@@ -36,15 +38,26 @@ export default async function Page({
   const p = Array.isArray(i.properties) ? i.properties[0] : i.properties;
   const accepted = !["awaiting_response", "declined"].includes(i.status);
   const action = nextAction[i.status];
+  const canWork = ["arrived", "in_progress", "action_required"].includes(i.status);
+  const incompleteMandatory = i.checklist_tasks.filter((t: { id: string; label: string; mandatory: boolean; completed: boolean }) => t.mandatory && !t.completed);
+  const missingNotes = i.checklist_tasks.filter((t: { id: string; label: string; note_required: boolean; note: string | null }) => t.note_required && !t.note?.trim());
+  const missingTaskPhotos = i.checklist_tasks.filter((t: { id: string; label: string; photo_required: boolean }) => t.photo_required && !i.evidence_submissions.some((e: { checklist_task_id: string | null }) => e.checklist_task_id === t.id));
+  const completionPhotos = i.evidence_submissions.filter((e: { evidence_type: string }) => e.evidence_type === "completion_photo").length;
+  const blockers = [
+    ...incompleteMandatory.map((t: { id: string; label: string }) => `Task ${t.id}: ${t.label} is incomplete`),
+    ...missingNotes.map((t: { id: string; label: string }) => `Task ${t.id}: ${t.label} needs a note`),
+    ...missingTaskPhotos.map((t: { id: string; label: string }) => `Task ${t.id}: ${t.label} needs a photo`),
+    ...(completionPhotos < i.required_evidence_count ? [`${i.required_evidence_count - completionPhotos} completion photo${i.required_evidence_count - completionPhotos === 1 ? "" : "s"} missing`] : []),
+    ...i.operational_issues.filter((issue: { blocking: boolean; status: string }) => issue.blocking && !["resolved", "closed"].includes(issue.status)).map(() => "An unresolved blocking issue remains"),
+  ];
   return (
     <div>
-      {error === "upload" && (
+      {error && (
         <p
           role="alert"
           className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 font-bold text-red-800"
         >
-          The image could not be uploaded. Check that it is a JPG, PNG, WebP or
-          HEIC file under 10 MB, then try again.
+          {error === "pre_arrival" ? "Checklist and evidence become available after you mark Arrived." : error === "invalid_file" ? "That file is not supported. Use a JPG, PNG, WebP or HEIC image under 10 MB." : error === "storage" ? "The image passed validation but could not be stored. Try again." : error === "evidence" ? "The image was stored but its task evidence record could not be saved. Try again." : error === "task_photo_required" ? "Upload the required task photo before marking this task complete." : error === "task_requirements" ? "Complete the required result and note before marking this task complete." : error === "action_required" ? "Action required: review the outstanding completion requirements below." : "We could not save that cleaner update. Try again."}
         </p>
       )}
       <div className="flex items-start justify-between gap-3">
@@ -124,6 +137,8 @@ export default async function Page({
                 /{i.checklist_tasks.length}
               </span>
             </div>
+            {!canWork && <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm font-bold text-[#657089]">Checklist actions unlock after you mark Arrived.</p>}
+            {i.status === "action_required" && blockers.length > 0 && <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"><p className="font-extrabold">Outstanding requirements</p><ul className="mt-2 list-disc pl-5">{blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul></div>}
             <div className="mt-3 divide-y">
               {i.checklist_tasks.map(
                 (t: {
@@ -145,7 +160,7 @@ export default async function Page({
                   const keyReturn = /key.*return/i.test(t.label);
                   return (
                     <div key={t.id} className="py-4">
-                      <form action={updateChecklistTask}>
+                      {canWork ? <form action={updateChecklistTask}>
                         <input type="hidden" name="turnoverId" value={id} />
                         <input type="hidden" name="taskId" value={t.id} />
                         <label className="flex min-h-11 items-start gap-3 font-bold">
@@ -202,8 +217,8 @@ export default async function Page({
                         <button className="mt-2 min-h-10 rounded-lg border px-3 text-sm font-bold">
                           Save task
                         </button>
-                      </form>
-                      {(t.photo_required || keyReturn) && (
+                      </form> : <div className="py-2 text-sm text-[#657089]">Not available until arrival.</div>}
+                      {canWork && (t.photo_required || keyReturn) && (
                         <form
                           action={uploadEvidence}
                           className="mt-3 rounded-lg bg-[#f4f6f9] p-3"
@@ -256,7 +271,7 @@ export default async function Page({
               {i.evidence_submissions.length} uploaded ·{" "}
               {i.required_evidence_count} completion photos required
             </p>
-            <form action={uploadEvidence} className="mt-4 grid gap-3">
+            {canWork && <form action={uploadEvidence} className="mt-4 grid gap-3">
               <input type="hidden" name="turnoverId" value={id} />
               <input
                 type="hidden"
@@ -279,7 +294,8 @@ export default async function Page({
                 pending="Uploading…"
                 className="min-h-11 rounded-lg border px-4 font-bold"
               />
-            </form>
+            </form>}
+            {!canWork && <p className="mt-3 text-sm font-bold text-[#657089]">Completion evidence unlocks after you mark Arrived.</p>}
           </section>
           <details className="mt-5 rounded-xl border bg-white p-5">
             <summary className="min-h-11 cursor-pointer font-extrabold">
@@ -360,6 +376,12 @@ export default async function Page({
               >
                 {action[0]}
               </button>
+            </form>
+          )}
+          {process.env.NODE_ENV === "development" && process.env.QUICKOLA_TEST_SHORTCUTS === "1" && canWork && (
+            <form action={completeTestTurnover} className="mt-3">
+              <input type="hidden" name="turnoverId" value={id} />
+              <button className="min-h-11 w-full rounded-lg border border-dashed px-5 font-bold text-[#59677d]">Complete test turnover</button>
             </form>
           )}
         </>

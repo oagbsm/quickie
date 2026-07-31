@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 
-export default function CopyInviteLink({ inviteLink }: { inviteLink: string }) {
+export default function CopyInviteLink({ inviteToken }: { inviteToken: string }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
+    const inviteLink = new URL(`/invite/${encodeURIComponent(inviteToken)}`, window.location.origin).toString();
     await navigator.clipboard.writeText(inviteLink);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2500);

@@ -5,9 +5,7 @@ import { addWorker } from "../../str-actions";
 const field =
   "mt-1.5 min-h-12 w-full rounded-lg border border-[#cfd7e3] bg-white px-3.5 py-2.5 outline-none focus:border-[#2d67b2] focus:ring-4 focus:ring-[#2d67b2]/15";
 const errors: Record<string, string> = {
-  required: "Enter a name and at least one contact method.",
-  preferred:
-    "The preferred contact method must have a matching email address or mobile number.",
+  required: "Enter a full name and a valid email address.",
   duplicate:
     "A cleaner with that email address or mobile number already exists in this workspace.",
   save: "The cleaner could not be added. No partial record was saved. Please try again.",
@@ -71,11 +69,12 @@ export default async function Page({
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="font-bold">
-            Email <span className="font-normal text-[#657089]">(optional)</span>
+            Email <span aria-hidden="true">*</span>
             <input
               name="email"
               type="email"
               autoComplete="email"
+              required
               className={field}
             />
           </label>
@@ -91,13 +90,6 @@ export default async function Page({
             />
           </label>
         </div>
-        <label className="font-bold">
-          Preferred contact method
-          <select name="preferredContactMethod" required className={field}>
-            <option value="email">Email</option>
-            <option value="mobile">Mobile</option>
-          </select>
-        </label>
         <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
           <Link
             href="/business/cleaners"

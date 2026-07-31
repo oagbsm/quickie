@@ -9,6 +9,8 @@ export default async function Page() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/business/sign-in");
   const workspace = await resolveBusinessWorkspace();
+  if (!workspace.ok && workspace.reason === "cleaner_account")
+    redirect("/cleaner/today");
   if (!workspace.ok)
     redirect(
       `/business/setup-error?ref=${encodeURIComponent(workspace.reference)}`,

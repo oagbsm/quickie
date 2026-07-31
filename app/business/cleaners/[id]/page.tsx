@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireBusinessUser } from "@/lib/business/auth";
@@ -9,8 +10,8 @@ import {
 } from "../../str-actions";
 import CopyInviteLink from "../CopyInviteLink";
 import CopyCleanerJobLink from "../CopyCleanerJobLink";
-import { buildAbsoluteAppUrl } from "@/lib/app-url";
 import { cookies } from "next/headers";
+import { buildAbsoluteAppUrl } from "@/lib/app-url";
 export default async function Page({
   params,
   searchParams,
@@ -43,7 +44,20 @@ export default async function Page({
     const raw = (await cookies()).get(`quickola-invite-${id}`)?.value;
     if (raw) try { manualInvite = JSON.parse(Buffer.from(raw, "base64url").toString("utf8")); } catch { manualInvite = null; }
   }
-  const inviteLink = manualInvite?.token ? buildAbsoluteAppUrl(`/team/invite/${encodeURIComponent(manualInvite.token)}`) : null;
+  if (manualInvite?.token) {
+    const tokenHash = crypto.createHash("sha256").update(manualInvite.token).digest("hex");
+    const { data: activeInvitation } = await supabase
+      .from("worker_invitations")
+      .select("id")
+      .eq("worker_id", id)
+      .eq("account_id", accountId)
+      .eq("token_hash", tokenHash)
+      .is("accepted_at", null)
+      .is("revoked_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    if (!activeInvitation) manualInvite = null;
+  }
   const today=new Date().toISOString().slice(0,10);const assignments=worker.assignments||[];const history=query.history||"upcoming";const group=(a:{status:string;work_items:{turnover_date:string;status:string}})=>a.status==="cancelled"||a.work_items.status==="cancelled"?"cancelled":["ready","evidence_submitted"].includes(a.work_items.status)||a.work_items.turnover_date<today?"completed":"upcoming";const filtered=assignments.filter((a:{status:string;work_items:{turnover_date:string;status:string}})=>group(a)===history);const counts={upcoming:assignments.filter((a:{status:string;work_items:{turnover_date:string;status:string}})=>group(a)==="upcoming").length,completed:assignments.filter((a:{status:string;work_items:{turnover_date:string;status:string}})=>group(a)==="completed").length,cancelled:assignments.filter((a:{status:string;work_items:{turnover_date:string;status:string}})=>group(a)==="cancelled").length};const workerState=worker.status!=="active"?"Inactive":worker.invitation_status==="pending"?"Pending invitation":"Active cleaner";
   return (
     <div className="portal-page max-w-5xl">
@@ -79,7 +93,7 @@ export default async function Page({
           creating another secure link.
         </p>
       )}
-      {(query.invited || query.resent || query.manual) && inviteLink && (
+      {(query.invited || query.resent || query.manual) && manualInvite?.token && (
         <section className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-5">
           <h2 className="font-extrabold text-blue-950">
             {query.manual ? "New invite link generated" : query.resent ? "Invitation ready" : "Invitation created"}
@@ -90,7 +104,7 @@ export default async function Page({
           {manualInvite?.expiresAt && <p className="mt-1 text-sm text-blue-900">Expires {new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short" }).format(new Date(manualInvite.expiresAt))}</p>}
           <p className="mt-2 text-sm text-blue-900">Copy this private link and share it manually with the invited cleaner.</p>
           {query.email === "failed" && <p role="alert" className="mt-2 text-sm font-bold text-amber-900">The email could not be delivered, but the manual invitation link is active.</p>}
-          <div className="mt-4 flex flex-wrap items-center gap-3"><CopyInviteLink inviteLink={inviteLink} /></div>
+          <div className="mt-4 flex flex-wrap items-center gap-3"><CopyInviteLink inviteToken={manualInvite.token} /></div>
         </section>
       )}
       <section className="mt-5 grid grid-cols-3 gap-3">{Object.entries(counts).map(([label,value])=><div key={label} className="portal-card p-3"><p className="text-xs font-bold capitalize text-[#65758c]">{label}</p><p className="mt-1 text-2xl font-extrabold">{value}</p></div>)}</section>

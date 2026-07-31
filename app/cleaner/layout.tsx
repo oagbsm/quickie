@@ -7,9 +7,9 @@ import NotificationMenu from "@/app/business/components/NotificationMenu";
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/business/sign-in");
-  const { data: worker } = await supabase.from("workers").select("display_name").eq("user_id", user.id).maybeSingle();
-  if (!worker) redirect("/business/dashboard");
+  if (!user) redirect("/business/sign-in?next=%2Fcleaner%2Ftoday");
+  const { data: worker } = await supabase.from("workers").select("display_name,status,invitation_status").eq("user_id", user.id).maybeSingle();
+  if (!worker || worker.status !== "active" || worker.invitation_status !== "accepted") redirect("/business/dashboard");
   const { data: notifications } = await supabase.from("notifications")
     .select("id,title,body,href,read_at,created_at").eq("recipient_user_id", user.id)
     .order("created_at", { ascending: false }).limit(20);
