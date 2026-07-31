@@ -18,11 +18,16 @@ test("signed-out invitation preserves its token through authentication", () => {
 });
 
 test("invitation authentication returns to the original invite URL", () => {
-  assert.match(credentials, /encodeURIComponent\(`\/invite\/\$\{token\}`\)/);
-  assert.match(credentials, /encodeURIComponent\(email\)/);
+  assert.match(credentials, /searchParams\.set\("next", `\/invite\/\$\{token\}`\)/);
+  assert.match(credentials, /searchParams\.set\("email", email\)/);
   assert.match(callback, /nextQuery = encodeURIComponent\(next\)/);
   assert.match(callback, /business\/sign-in\?error=confirmation&next=\$\{nextQuery\}\$\{emailQuery\}/);
   assert.equal(safeInternalNextPath("/invite/secure-token"), "/invite/secure-token");
+});
+
+test("invitation identities cannot be auto-provisioned as operators", () => {
+  assert.match(readFileSync(new URL("../lib/business/workspace.ts", import.meta.url), "utf8"), /account_kind === "quickola_cleaner"/);
+  assert.match(readFileSync(new URL("../app/business/continue/page.tsx", import.meta.url), "utf8"), /reason === "cleaner_account"/);
 });
 
 test("invited email can authenticate and accept the invitation", () => {

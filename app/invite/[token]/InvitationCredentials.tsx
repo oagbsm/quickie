@@ -15,9 +15,12 @@ export default function InvitationCredentials({ email, token }: { email: string;
     const form = new FormData(event.currentTarget);
     const password = String(form.get("password") || "");
     if (password.length < 10) { setMessage("Use at least 10 characters for your password."); setCreating(false); return; }
+    const confirmationRedirect = new URL(buildAbsoluteAppUrl("/auth/callback"));
+    confirmationRedirect.searchParams.set("next", `/invite/${token}`);
+    confirmationRedirect.searchParams.set("email", email);
     const { data, error } = await createSupabaseBrowserClient().auth.signUp({
       email, password,
-      options: { emailRedirectTo: buildAbsoluteAppUrl(`/auth/callback?next=${encodeURIComponent(`/invite/${token}`)}&email=${encodeURIComponent(email)}`), data: { account_kind: "quickola_cleaner" } },
+      options: { emailRedirectTo: confirmationRedirect.toString(), data: { account_kind: "quickola_cleaner" } },
     });
     if (error) { setMessage("We couldn’t create your credentials. Try signing in if you already have an account."); setCreating(false); return; }
     if (data.user?.identities?.length === 0) { setMessage("An account already exists for this email. Sign in to continue the invitation."); setCreating(false); return; }

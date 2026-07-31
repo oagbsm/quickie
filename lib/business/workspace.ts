@@ -41,6 +41,12 @@ export async function resolveBusinessWorkspace(): Promise<WorkspaceResult> {
     };
   }
 
+  // Cleaner identities must never be auto-provisioned as business accounts.
+  // This covers the short window after invitation credential creation and
+  // before the invitation acceptance action links the worker user_id.
+  if (user.user_metadata?.account_kind === "quickola_cleaner")
+    return { ok: false, reference: "CLEANER-ACCOUNT", reason: "cleaner_account" };
+
   const { data: cleaner } = await supabase
     .from("workers")
     .select("id,status")

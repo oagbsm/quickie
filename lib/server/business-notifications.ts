@@ -1,4 +1,5 @@
 import "server-only";
+import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { buildAbsoluteAppUrl, getAppOrigin } from "@/lib/app-url";
 import { getResendFromEmail } from "@/lib/email-config";
@@ -10,38 +11,102 @@ function admin() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
+type TransactionalEmailInput = {
+  accountId: string;
+  eventType: string;
+  entityId?: string | null;
+  recipient: string;
+  idempotencyKey: string;
+  subject: string;
+  html: string;
+};
+
+async function sendTransactionalEmail(input: TransactionalEmailInput) {
+  try {
+    const db = admin();
+    const { error: reserveError } = await db.from("transactional_email_deliveries").insert({
+      account_id: input.accountId,
+      event_type: input.eventType,
+      entity_id: input.entityId || null,
+      recipient: input.recipient,
+      idempotency_key: input.idempotencyKey,
+      delivery_status: "pending",
+    });
+    if (reserveError?.code === "23505") return { sent: false as const, reason: "duplicate" as const };
+    if (reserveError) return { sent: false as const, reason: "reservation_failed" as const };
+    const apiKey = process.env.RESEND_API_KEY;
+    const from = getResendFromEmail();
+    if (!apiKey || !from) {
+      await db.from("transactional_email_deliveries").update({ delivery_status: "failed", error_category: "not_configured" }).eq("idempotency_key", input.idempotencyKey);
+      return { sent: false as const, reason: "not_configured" as const };
+    }
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to: [input.recipient], subject: input.subject, html: input.html }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(`resend_${response.status}`);
+    await db.from("transactional_email_deliveries").update({ delivery_status: "sent", sent_at: new Date().toISOString(), provider_message_id: typeof body.id === "string" ? body.id : null }).eq("idempotency_key", input.idempotencyKey);
+    return { sent: true as const };
+  } catch (error) {
+    try {
+      const db = admin();
+      await db.from("transactional_email_deliveries").update({ delivery_status: "failed", error_category: error instanceof Error && error.message.startsWith("resend_") ? error.message : "delivery_failed" }).eq("idempotency_key", input.idempotencyKey);
+    } catch { /* email failure must not affect the business action */ }
+    console.error("transactional_email_failed", { eventType: input.eventType, accountId: input.accountId, recipient: input.recipient, reason: error instanceof Error ? error.message.split("_")[0] : "unknown" });
+    return { sent: false as const, reason: "delivery_failed" as const };
+  }
+}
+
+async function ownerEmail(accountId: string) {
+  const db = admin();
+  const { data: member } = await db.from("business_members").select("user_id").eq("account_id", accountId).eq("role", "owner").limit(1).maybeSingle();
+  if (!member) return null;
+  const { data: { user } } = await db.auth.admin.getUserById(member.user_id);
+  return user?.email || null;
+}
+
+export async function sendCleanerAssignmentEmail({ accountId, turnoverId, workerId, cleanerEmail, cleanerName, propertyName, turnoverDate, checkoutAt, accessStartAt, deadlineAt }: { accountId: string; turnoverId: string; workerId: string; cleanerEmail: string; cleanerName: string; propertyName: string; turnoverDate: string; checkoutAt: string; accessStartAt: string; deadlineAt: string }) {
+  const site = getAppOrigin();
+  return sendTransactionalEmail({ accountId, eventType: "turnover_assigned", entityId: turnoverId, recipient: cleanerEmail, idempotencyKey: `turnover_assigned:${turnoverId}:${workerId}`, subject: `New turnover assignment: ${propertyName}`, html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>New turnover assignment</h1><p>${escapeHtml(cleanerName)}, you have a new assignment for <strong>${escapeHtml(propertyName)}</strong>.</p><p><strong>Date:</strong> ${escapeHtml(formatLondon(turnoverDate))}<br><strong>Checkout:</strong> ${escapeHtml(formatLondon(checkoutAt))}<br><strong>Cleaner access:</strong> ${escapeHtml(formatLondon(accessStartAt))}<br><strong>Complete by:</strong> ${escapeHtml(formatLondon(deadlineAt))}</p><p><a href="${site}/cleaner/turnovers/${encodeURIComponent(turnoverId)}">Review and accept or decline</a></p></div>` });
+}
+
+export async function sendOperatorTurnoverEmail({ accountId, turnoverId, eventType, idempotencyKey, subject, cleanerName, propertyName, turnoverDate, summary, completedCount, evidenceCount }: { accountId: string; turnoverId: string; eventType: string; idempotencyKey: string; subject: string; cleanerName: string; propertyName: string; turnoverDate: string; summary: string; completedCount?: number; evidenceCount?: number }) {
+  let recipient: string | null = null;
+  try { recipient = await ownerEmail(accountId); } catch { return { sent: false as const, reason: "notification_config" as const }; }
+  if (!recipient) return { sent: false as const, reason: "no_recipient" as const };
+  const site = getAppOrigin();
+  const proof = completedCount === undefined ? "" : `<p><strong>Completed checklist tasks:</strong> ${completedCount}<br><strong>Evidence files:</strong> ${evidenceCount || 0}</p>`;
+  return sendTransactionalEmail({ accountId, eventType, entityId: turnoverId, recipient, idempotencyKey, subject, html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>${escapeHtml(subject)}</h1><p><strong>Property:</strong> ${escapeHtml(propertyName)}<br><strong>Cleaner:</strong> ${escapeHtml(cleanerName)}<br><strong>Turnover date:</strong> ${escapeHtml(formatLondon(turnoverDate))}</p><p>${escapeHtml(summary)}</p>${proof}<p><a href="${site}/business/turnovers/${encodeURIComponent(turnoverId)}">Open turnover</a></p></div>` });
+}
+
+function formatLondon(value: string) {
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/London" }).format(new Date(value));
+}
+
 export async function sendCleanerInvitationEmail({
+  accountId,
+  workerId,
   email,
   workspaceName,
   invitationToken,
   expiresAt,
 }: {
+  accountId: string;
+  workerId: string;
   email: string;
   workspaceName: string;
   invitationToken: string;
   expiresAt: string;
 }) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = getResendFromEmail();
-  if (!apiKey || !from) return { sent: false as const, reason: "not_configured" };
   const acceptUrl = buildAbsoluteAppUrl(`/team/invite/${encodeURIComponent(invitationToken)}`);
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from,
-        to: [email],
-        subject: "You’ve been invited to join a Quickola cleaning team",
-        html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>${escapeHtml(workspaceName)} invited you to Quickola</h1><p>You can receive and manage cleaning assignments for this team.</p><p><a style="display:inline-block;background:#071f49;color:white;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold" href="${acceptUrl}">Accept invitation</a></p><p>This invitation expires ${escapeHtml(new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/London" }).format(new Date(expiresAt)))}.</p></div>`,
-      }),
-    });
-    if (!response.ok) throw new Error(`resend_${response.status}`);
-    return { sent: true as const };
-  } catch (error) {
-    console.error("cleaner_invitation_email_failed", { reason: error instanceof Error ? error.message : "unknown" });
-    return { sent: false as const, reason: "delivery_failed" };
-  }
+  const tokenHash = cryptoHash(invitationToken);
+  return sendTransactionalEmail({ accountId, eventType: "cleaner_invitation", entityId: workerId, recipient: email, idempotencyKey: `cleaner_invitation:${workerId}:${tokenHash}`, subject: "You’ve been invited to join a Quickola cleaning team", html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>${escapeHtml(workspaceName)} invited you to Quickola</h1><p>You can receive and manage cleaning assignments for this team. Quickola coordinates work but does not employ or pay you.</p><p><strong>Invited email:</strong> ${escapeHtml(email)}</p><p><a style="display:inline-block;background:#071f49;color:white;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold" href="${acceptUrl}">Accept invitation</a></p><p>This invitation expires ${escapeHtml(new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/London" }).format(new Date(expiresAt)))}.</p></div>` });
+}
+
+function cryptoHash(value: string) {
+  return crypto.createHash("sha256").update(value).digest("hex");
 }
 export async function sendBookingReceivedEmail({
   accountId,

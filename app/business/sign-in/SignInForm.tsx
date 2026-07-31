@@ -8,6 +8,7 @@ export default function SignInForm() {
   const router = useRouter(),
     params = useSearchParams();
   const next = params.get("next"),
+    returnPath = next?.startsWith("/") && !next.startsWith("//") ? next : "/business/continue",
     invitationPath = next?.startsWith("/invite/") || next?.startsWith("/team/invite/");
   const [pending, setPending] = useState(false),
     [message, setMessage] = useState(
@@ -36,7 +37,7 @@ export default function SignInForm() {
       setPending(false);
       return;
     }
-    router.push(next?.startsWith("/") && !next.startsWith("//") ? next : "/business/continue");
+    router.push(returnPath);
     router.refresh();
   }
   async function reset(e: FormEvent<HTMLButtonElement>) {

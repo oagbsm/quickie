@@ -9,7 +9,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { londonLocalToUtc } from "@/lib/business/time";
 import { hasTurnoverWindowRisk } from "@/lib/turnovers/status";
 import { isImplausibleTurnoverDate } from "@/lib/turnovers/presentation";
-import { sendCleanerInvitationEmail } from "@/lib/server/business-notifications";
+import { sendCleanerAssignmentEmail, sendCleanerInvitationEmail, sendOperatorTurnoverEmail } from "@/lib/server/business-notifications";
 
 const text = (form: FormData, name: string) =>
   String(form.get(name) || "").trim();
@@ -59,7 +59,7 @@ export async function addWorker(form: FormData) {
     redirect(`/business/cleaners/new?error=${code}`);
   }
   const { data: account } = await supabase.from("business_accounts").select("name").eq("id", accountId).maybeSingle();
-  const delivery = await sendCleanerInvitationEmail({ email, workspaceName: account?.name || "A Quickola cleaning team", invitationToken: token, expiresAt });
+  const delivery = await sendCleanerInvitationEmail({ accountId, workerId, email, workspaceName: account?.name || "A Quickola cleaning team", invitationToken: token, expiresAt });
   if (!delivery.sent) {
     await storeManualInviteLink(workerId, token, expiresAt);
     redirect(`/business/cleaners/${workerId}?invited=1&email=failed&link=1`);
@@ -269,6 +269,14 @@ export async function createTurnover(form: FormData) {
       target_work_item: item.id,
       target_worker: workerId,
     });
+  if (workerId) {
+    const [{ data: assigned }, { data: worker }] = await Promise.all([
+      supabase.from("assignments").select("id").eq("work_item_id", item.id).eq("worker_id", workerId).eq("status", "pending").order("assigned_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("workers").select("email,display_name").eq("id", workerId).eq("account_id", accountId).maybeSingle(),
+    ]);
+    if (assigned && worker?.email)
+      await sendCleanerAssignmentEmail({ accountId, turnoverId: item.id, workerId, cleanerEmail: worker.email, cleanerName: worker.display_name, propertyName: property.nickname, turnoverDate: date, checkoutAt: checkout.toISOString(), accessStartAt: access.toISOString(), deadlineAt: checkin.toISOString() });
+  }
   await supabase.from("activity_events").insert({
     account_id: accountId,
     work_item_id: item.id,
@@ -286,6 +294,7 @@ export async function transitionTurnover(form: FormData) {
   const supabase = await createSupabaseServerClient();
   const id = text(form, "turnoverId");
   const next = text(form, "nextStatus");
+  const { data: before } = await supabase.from("work_items").select("account_id,property_public_name,turnover_date,assignments(status,workers(display_name))").eq("id", id).maybeSingle();
   const { error } = await supabase.rpc("transition_work_item", {
     target_work_item: id,
     next_status: next,
@@ -294,6 +303,23 @@ export async function transitionTurnover(form: FormData) {
     redirect(
       `/cleaner/turnovers/${id}?error=${encodeURIComponent(error.message)}`,
     );
+  const { data: turnover } = await supabase.from("work_items").select("account_id,status,property_public_name,turnover_date,ready_at,readiness_result,checklist_tasks(completed),evidence_submissions(id),assignments(status,workers(display_name))").eq("id", id).maybeSingle();
+  if (turnover || before) {
+    const context = turnover || before;
+    if (!context) return;
+    const assignment = (context?.assignments || []).find((entry: { status: string }) => ["pending", "accepted", "declined"].includes(entry.status));
+    const assignedWorker = Array.isArray(assignment?.workers) ? assignment.workers[0] : assignment?.workers;
+    const cleanerName = assignedWorker?.display_name || "Assigned cleaner";
+    if (["accepted", "declined", "arrived"].includes(next))
+      await sendOperatorTurnoverEmail({ accountId: context.account_id, turnoverId: id, eventType: `turnover_${next}`, idempotencyKey: `turnover_${id}:${next}`, subject: next === "accepted" ? "Cleaner accepted turnover" : next === "declined" ? "Cleaner declined turnover" : "Cleaner arrived", cleanerName, propertyName: context.property_public_name, turnoverDate: context.turnover_date, summary: next === "declined" ? "Please reassign this turnover." : `${cleanerName} updated the turnover at ${new Date().toLocaleString("en-GB")}.` });
+    if (!turnover) return;
+    if (turnover.status === "action_required") {
+      const blockerKey = crypto.createHash("sha256").update(JSON.stringify(turnover.readiness_result || {})).digest("hex");
+      await sendOperatorTurnoverEmail({ accountId: turnover.account_id, turnoverId: id, eventType: "action_required", idempotencyKey: `action_required:${id}:${blockerKey}`, subject: "Turnover needs attention", cleanerName, propertyName: turnover.property_public_name, turnoverDate: turnover.turnover_date, summary: JSON.stringify(turnover.readiness_result || "Completion requirements remain outstanding") });
+    }
+    if (turnover.status === "ready")
+      await sendOperatorTurnoverEmail({ accountId: turnover.account_id, turnoverId: id, eventType: "property_ready", idempotencyKey: `property_ready:${id}`, subject: "Property ready", cleanerName, propertyName: turnover.property_public_name, turnoverDate: turnover.turnover_date, summary: `Completed at ${turnover.ready_at || new Date().toISOString()}.`, completedCount: (turnover.checklist_tasks || []).filter((task: { completed: boolean }) => task.completed).length, evidenceCount: (turnover.evidence_submissions || []).length });
+  }
   revalidatePath(`/cleaner/turnovers/${id}`);
   revalidatePath(`/business/turnovers/${id}`);
   revalidatePath("/business/dashboard");
@@ -360,6 +386,14 @@ export async function reportIssue(form: FormData) {
     })
     .select("id")
     .single();
+  if (issue) {
+    const { data: context } = await supabase.from("work_items").select("account_id,property_public_name,turnover_date,assignments(workers(display_name))").eq("id", workItemId).maybeSingle();
+    const issueAssignment = context?.assignments?.[0];
+    const issueWorker = Array.isArray(issueAssignment?.workers) ? issueAssignment.workers[0] : issueAssignment?.workers;
+    const cleanerName = issueWorker?.display_name || "Assigned cleaner";
+    if (context)
+      await sendOperatorTurnoverEmail({ accountId: context.account_id, turnoverId: workItemId, eventType: "action_required", idempotencyKey: `action_required:issue:${issue.id}`, subject: "Action required on turnover", cleanerName, propertyName: context.property_public_name, turnoverDate: context.turnover_date, summary: `${text(form, "issueType")}: ${text(form, "description")}` });
+  }
   const file = form.get("photo");
   if (
     issue &&
@@ -828,7 +862,7 @@ export async function assignWorker(form: FormData) {
   if (!turnoverId || !workerId) return;
   const { data: worker } = await supabase
     .from("workers")
-    .select("id,email,invitation_status,status")
+    .select("id,email,display_name,invitation_status,status")
     .eq("id", workerId)
     .eq("account_id", accountId)
     .maybeSingle();
@@ -896,6 +930,10 @@ export async function assignWorker(form: FormData) {
       `/business/turnovers/${turnoverId}?error=${encodeURIComponent(error.message)}`,
     );
   }
+  const { data: assigned } = await supabase.from("assignments").select("id").eq("work_item_id", turnoverId).eq("worker_id", workerId).eq("status", "pending").order("assigned_at", { ascending: false }).limit(1).maybeSingle();
+  const { data: turnover } = await supabase.from("work_items").select("property_public_name,turnover_date,guest_checkout_at,access_start_at,window_end_at").eq("id", turnoverId).eq("account_id", accountId).maybeSingle();
+  if (assigned && turnover && worker.email)
+    await sendCleanerAssignmentEmail({ accountId, turnoverId, workerId, cleanerEmail: worker.email, cleanerName: worker.display_name, propertyName: turnover.property_public_name, turnoverDate: turnover.turnover_date, checkoutAt: turnover.guest_checkout_at, accessStartAt: turnover.access_start_at, deadlineAt: turnover.window_end_at });
   if (invitationToken && invitationExpiresAt) {
     const { data: account } = await supabase
       .from("business_accounts")
@@ -903,6 +941,8 @@ export async function assignWorker(form: FormData) {
       .eq("id", accountId)
       .maybeSingle();
     const delivery = await sendCleanerInvitationEmail({
+      accountId,
+      workerId,
       email: worker.email!,
       workspaceName: account?.name || "A Quickola cleaning team",
       invitationToken,
@@ -998,7 +1038,7 @@ export async function resendWorkerInvitation(form: FormData) {
     .eq("id", workerId)
     .eq("account_id", accountId);
   const { data: account } = await supabase.from("business_accounts").select("name").eq("id", accountId).maybeSingle();
-  const delivery = worker.email ? await sendCleanerInvitationEmail({ email: worker.email, workspaceName: account?.name || "A Quickola cleaning team", invitationToken: token, expiresAt }) : { sent: false as const };
+  const delivery = worker.email ? await sendCleanerInvitationEmail({ accountId, workerId, email: worker.email, workspaceName: account?.name || "A Quickola cleaning team", invitationToken: token, expiresAt }) : { sent: false as const };
   if (!delivery.sent) {
     await storeManualInviteLink(workerId, token, expiresAt);
     redirect(`/business/cleaners/${workerId}?resent=1&email=failed&link=1`);

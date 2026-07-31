@@ -20,7 +20,8 @@ test("active cleaners opening cleaner jobs are not sent to business onboarding",
 
 test("cleaner sign-in preserves the original turnover URL", () => {
   assert.match(proxy, /searchParams\.set\("next", request\.nextUrl\.pathname \+ request\.nextUrl\.search\)/);
-  assert.match(signIn, /router\.push\(next\?\.startsWith/);
+  assert.match(signIn, /returnPath = next\?\.startsWith/);
+  assert.match(signIn, /router\.push\(returnPath\)/);
   assert.match(proxy, /startsWith\("\/cleaner"\)/);
 });
 

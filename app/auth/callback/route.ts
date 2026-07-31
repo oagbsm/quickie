@@ -8,7 +8,10 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type") as EmailOtpType | null;
-  const next = safeInternalNextPath(url.searchParams.get("next"));
+  // Keep invitation and cleaner routes ahead of the operator continuation
+  // fallback. These paths are validated by safeInternalNextPath before use.
+  const requestedNext = url.searchParams.get("next");
+  const next = safeInternalNextPath(requestedNext);
   const nextQuery = encodeURIComponent(next);
   const email = url.searchParams.get("email");
   const emailQuery = email ? `&email=${encodeURIComponent(email)}` : "";

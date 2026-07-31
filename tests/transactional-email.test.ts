@@ -1,0 +1,67 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+
+const migration = readFileSync(new URL("../supabase/migrations/202607310002_transactional_email_deliveries.sql", import.meta.url), "utf8");
+const mailer = readFileSync(new URL("../lib/server/business-notifications.ts", import.meta.url), "utf8");
+const actions = readFileSync(new URL("../app/business/str-actions.ts", import.meta.url), "utf8");
+
+test("invitation email is attempted after invitation creation and resend", () => {
+  assert.match(actions, /sendCleanerInvitationEmail/);
+  assert.match(mailer, /eventType: "cleaner_invitation"/);
+  assert.match(mailer, /Accept invitation/);
+});
+
+test("assignment email is idempotent per assignment", () => {
+  assert.match(actions, /sendCleanerAssignmentEmail/);
+  assert.match(mailer, /eventType: "turnover_assigned"/);
+  assert.match(mailer, /turnover_assigned:\$\{turnoverId\}:\$\{workerId\}/);
+  assert.match(migration, /idempotency_key text not null unique/);
+});
+
+test("repeated transitions do not duplicate accepted, declined, or arrived mail", () => {
+  assert.match(actions, /turnover_\$\{id\}:\$\{next\}/);
+  assert.match(actions, /\["accepted", "declined", "arrived"\]/);
+});
+
+test("action-required mail is deduplicated by blocker state", () => {
+  assert.match(actions, /action_required:\$\{id\}:\$\{blockerKey\}/);
+  assert.match(actions, /action_required:issue:\$\{issue\.id\}/);
+});
+
+test("property-ready mail sends through the same delivery wrapper once", () => {
+  assert.match(actions, /property_ready:\$\{id\}/);
+  assert.match(actions, /turnover\.status === "ready"/);
+  assert.match(actions, /eventType: "property_ready"/);
+});
+
+test("email failure is isolated from business actions", () => {
+  assert.match(mailer, /catch \{ \/\* email failure must not affect the business action \*\//);
+  assert.match(mailer, /delivery_status: "failed"/);
+  assert.match(actions, /await sendOperatorTurnoverEmail/);
+});
+
+test("links use the configured application origin", () => {
+  assert.match(mailer, /const site = getAppOrigin\(\)/);
+  assert.match(mailer, /site}\/cleaner\/turnovers/);
+  assert.match(mailer, /site}\/business\/turnovers/);
+});
+
+test("invitation tokens are hashed and never stored in delivery records", () => {
+  assert.match(mailer, /crypto\.createHash\("sha256"\)/);
+  assert.match(mailer, /idempotencyKey: `cleaner_invitation:\$\{workerId\}:\$\{tokenHash\}`/);
+  assert.doesNotMatch(migration, /token/);
+});
+
+test("delivery records are account-scoped and recipients come from account data", () => {
+  assert.match(migration, /account_id uuid not null references public\.business_accounts/);
+  assert.match(mailer, /ownerEmail\(accountId\)/);
+  assert.match(mailer, /eq\("account_id", accountId\)/);
+});
+
+test("operator notification payloads include workflow context", () => {
+  assert.match(mailer, /propertyName/);
+  assert.match(mailer, /cleanerName/);
+  assert.match(mailer, /turnoverDate/);
+  assert.match(mailer, /Open turnover/);
+});
