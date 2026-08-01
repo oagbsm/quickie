@@ -51,6 +51,7 @@ export default async function Page({
     view?: string;
     q?: string;
     date?: string;
+    property?: string;
   }>;
 }) {
   const { supabase, accountId } = await requireBusinessUser();
@@ -65,6 +66,7 @@ export default async function Page({
     .order("access_start_at");
   if (params.status) query = query.eq("status", params.status);
   if (params.date) query = query.eq("turnover_date", params.date);
+  if (params.property) query = query.eq("property_id", params.property);
   const { data, error } = await query;
   if (error) throw new Error(`turnovers_query_failed:${error.code}`);
   const view = params.view || "upcoming";

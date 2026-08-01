@@ -40,7 +40,10 @@ import {
   getSignUpConfirmationRedirect,
 } from "../lib/auth-redirects.ts";
 import { normaliseUkPostcode, UK_POSTCODE_PATTERN } from "../lib/uk-address.ts";
-import { resolveResendFromEmail } from "../lib/email-config.ts";
+import {
+  resolveResendFromEmail,
+  resolveResendReplyToEmail,
+} from "../lib/email-config.ts";
 const base = {
   frequency: "one_off",
   propertyType: "flat",
@@ -60,6 +63,13 @@ test("application origins are canonical and never local in production", () => {
   assert.equal(
     resolveAppOrigin({
       siteUrl: "http://localhost:3000",
+      nodeEnv: "production",
+    }),
+    "https://quickola.co.uk",
+  );
+  assert.equal(
+    resolveAppOrigin({
+      siteUrl: "https://quickola.com",
       nodeEnv: "production",
     }),
     "https://quickola.co.uk",
@@ -91,11 +101,11 @@ test("authentication URLs use production origin and reject external next paths",
   );
   assert.equal(
     safeInternalNextPath("https://evil.example/business/dashboard"),
-    "/business/continue",
+    "/auth/portal",
   );
   assert.equal(
     safeInternalNextPath("//evil.example/business/dashboard"),
-    "/business/continue",
+    "/auth/portal",
   );
 });
 test("sign-up and password recovery use production callback URLs", () => {
@@ -121,17 +131,17 @@ test("UK property postcodes are validated and normalised", () => {
   assert.match(normaliseUkPostcode("SW1A2AA"), UK_POSTCODE_PATTERN);
   assert.doesNotMatch("12345", UK_POSTCODE_PATTERN);
 });
-test("Resend sender prefers the new variable and supports the production legacy variable", () => {
+test("Resend sender and reply-to use the canonical variables", () => {
   assert.equal(
-    resolveResendFromEmail({ RESEND_FROM_EMAIL: "new@quickola.test", FROM_EMAIL: "legacy@quickola.test" }),
-    "new@quickola.test",
+    resolveResendFromEmail({ RESEND_FROM_EMAIL: "Quickola <notifications@quickola.com>" }),
+    "Quickola <notifications@quickola.com>",
   );
   assert.equal(
-    resolveResendFromEmail({ RESEND_FROM_EMAIL: undefined, FROM_EMAIL: "legacy@quickola.test" }),
-    "legacy@quickola.test",
+    resolveResendReplyToEmail({ RESEND_REPLY_TO_EMAIL: "support@quickola.com" }),
+    "support@quickola.com",
   );
   assert.equal(
-    resolveResendFromEmail({ RESEND_FROM_EMAIL: " ", FROM_EMAIL: " " }),
+    resolveResendFromEmail({ RESEND_FROM_EMAIL: " " }),
     null,
   );
 });

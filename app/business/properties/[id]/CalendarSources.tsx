@@ -65,13 +65,6 @@ function ManageConnection({ propertyId, connection }: { propertyId: string; conn
       <RefreshOnSuccess state={state} />
       <form action={formAction} className="mt-4 grid gap-4">
         <label className="text-sm font-bold">
-          Connection name
-          <input name="displayName" maxLength={80} defaultValue={connection.display_name || ""} className={field} />
-        </label>
-        <button name="intent" value="rename" disabled={pending} className="portal-action-secondary justify-self-start">
-          Rename
-        </button>
-        <label className="text-sm font-bold">
           Replace calendar URL
           <input name="calendarUrl" type="url" autoComplete="off" placeholder="https://…" className={field} />
         </label>
@@ -104,8 +97,8 @@ export default function CalendarSources({ propertyId, connections }: { propertyI
   return (
     <section className="mt-6 grid gap-4" aria-labelledby="reservation-sources-title">
       <div>
-        <h2 id="reservation-sources-title" className="text-xl font-extrabold">Reservation sources</h2>
-        <p className="mt-1 text-sm text-[#657089]">Automatically import reservations from Airbnb, Booking.com, Vrbo or another calendar.</p>
+        <h2 id="reservation-sources-title" className="text-xl font-extrabold">Reservation calendar</h2>
+        <p className="mt-1 text-sm text-[#657089]">Connect Airbnb, Booking.com, Vrbo or another calendar to import reservations.</p>
         <p className="mt-2 text-xs font-semibold text-[#657089]">Healthy sources sync automatically. If a source needs attention, existing reservations stay safe while you review the issue.</p>
       </div>
       {connections.map((connection) => (
@@ -150,10 +143,6 @@ export default function CalendarSources({ propertyId, connections }: { propertyI
                 <option value="airbnb">Airbnb</option><option value="booking_com">Booking.com</option><option value="vrbo">Vrbo</option><option value="other">Other calendar</option>
               </select>
               {state.fieldErrors.provider && <span className="mt-1 block text-sm text-red-700">{state.fieldErrors.provider}</span>}
-            </label>
-            <label className="font-bold">Connection name <span className="font-normal text-[#657089]">(optional)</span>
-              <input name="displayName" maxLength={80} className={field} />
-              {state.fieldErrors.displayName && <span className="mt-1 block text-sm text-red-700">{state.fieldErrors.displayName}</span>}
             </label>
             <label className="font-bold">Calendar URL
               <input name="calendarUrl" type="url" required autoComplete="off" placeholder="https://…" className={field} />

@@ -1,35 +1,97 @@
-import { type EmailOtpType } from "@supabase/supabase-js";
-import { NextResponse } from "next/server";
+import { type EmailOtpType, type User } from "@supabase/supabase-js";
+import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAppOrigin, safeInternalNextPath } from "@/lib/app-url";
+import {
+  isStaleSupabaseSessionError,
+  supabaseAuthCookieNames,
+} from "@/lib/supabase/auth-recovery";
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
+function expireAuthCookies(response: NextResponse, names: string[]) {
+  names.forEach((name) =>
+    response.cookies.set(name, "", {
+      path: "/",
+      maxAge: 0,
+      expires: new Date(0),
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    }),
+  );
+  return response;
+}
+
+function failedCallbackDestination(
+  next: string,
+  email: string | null,
+  appOrigin: string,
+) {
+  if (next.startsWith("/invite/") || next.startsWith("/team/invite/")) {
+    const invitation = new URL(next, appOrigin);
+    invitation.searchParams.set("error", "verification");
+    return invitation;
+  }
+
+  const signIn = new URL("/business/sign-in", appOrigin);
+  signIn.searchParams.set("error", "confirmation");
+  signIn.searchParams.set("next", next);
+  if (email) signIn.searchParams.set("email", email);
+  return signIn;
+}
+
+export async function GET(request: NextRequest) {
+  const url = request.nextUrl;
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type") as EmailOtpType | null;
-  // Keep invitation and cleaner routes ahead of the operator continuation
-  // fallback. These paths are validated by safeInternalNextPath before use.
-  const requestedNext = url.searchParams.get("next");
-  const next = safeInternalNextPath(requestedNext);
-  const nextQuery = encodeURIComponent(next);
+  const next = safeInternalNextPath(url.searchParams.get("next"));
   const email = url.searchParams.get("email");
-  const emailQuery = email ? `&email=${encodeURIComponent(email)}` : "";
   const appOrigin = getAppOrigin();
   const supabase = await createSupabaseServerClient();
-  let error: { message: string } | null = null;
+  let verificationFailed = false;
+  let staleSession = false;
 
-  if (code) ({ error } = await supabase.auth.exchangeCodeForSession(code));
-  else if (tokenHash && type) ({ error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type }));
-  else error = { message: "Missing confirmation credentials" };
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (error || !user) {
-    console.error("business_auth_callback_failed", { hasCode: Boolean(code), hasTokenHash: Boolean(tokenHash), type, authenticated: Boolean(user) });
-    return NextResponse.redirect(
-      new URL(`/business/sign-in?error=confirmation&next=${nextQuery}${emailQuery}`, appOrigin),
-    );
+  try {
+    if (code) {
+      const result = await supabase.auth.exchangeCodeForSession(code);
+      verificationFailed = Boolean(result.error);
+    } else if (tokenHash && type) {
+      const result = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type,
+      });
+      verificationFailed = Boolean(result.error);
+    } else {
+      verificationFailed = true;
+    }
+  } catch (error) {
+    verificationFailed = true;
+    staleSession = isStaleSupabaseSessionError(error);
   }
-  if (process.env.NODE_ENV !== "production") console.info("business_auth_callback_complete", { userId: user.id, type });
+
+  let user: User | null = null;
+  if (!verificationFailed) {
+    try {
+      const result = await supabase.auth.getUser();
+      user = result.data.user;
+      staleSession = isStaleSupabaseSessionError(result.error);
+      verificationFailed = Boolean(result.error || !user);
+    } catch (error) {
+      staleSession = isStaleSupabaseSessionError(error);
+      verificationFailed = true;
+    }
+  }
+
+  if (verificationFailed || !user) {
+    const response = NextResponse.redirect(
+      failedCallbackDestination(next, email, appOrigin),
+    );
+    return staleSession
+      ? expireAuthCookies(
+          response,
+          supabaseAuthCookieNames(request.cookies.getAll()),
+        )
+      : response;
+  }
+
   return NextResponse.redirect(new URL(next, appOrigin));
 }

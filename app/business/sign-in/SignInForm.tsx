@@ -4,12 +4,16 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { getPasswordRecoveryRedirect } from "@/lib/auth-redirects";
+import { safeInternalNextPath } from "@/lib/app-url";
 export default function SignInForm() {
   const router = useRouter(),
     params = useSearchParams();
-  const next = params.get("next"),
-    returnPath = next?.startsWith("/") && !next.startsWith("//") ? next : "/business/continue",
-    invitationPath = next?.startsWith("/invite/") || next?.startsWith("/team/invite/");
+  const next = safeInternalNextPath(params.get("next"), ""),
+    invitationPath = next.startsWith("/invite/") || next.startsWith("/team/invite/"),
+    cleanerPath = invitationPath || next.startsWith("/cleaner/"),
+    returnPath = invitationPath
+      ? next
+      : `/auth/portal${next ? `?next=${encodeURIComponent(next)}` : ""}`;
   const [pending, setPending] = useState(false),
     [message, setMessage] = useState(
       params.get("error") === "confirmation"
@@ -27,18 +31,23 @@ export default function SignInForm() {
     setPending(true);
     setMessage("");
     const f = new FormData(e.currentTarget);
-    const { error } =
-      await createSupabaseBrowserClient().auth.signInWithPassword({
+    try {
+      const { error } =
+        await createSupabaseBrowserClient({ authForm: true }).auth.signInWithPassword({
         email: String(f.get("email")),
         password: String(f.get("password")),
       });
-    if (error) {
-      setMessage("We couldn’t sign you in. Check your details and try again.");
+      if (error) {
+        setMessage("We couldn’t sign you in. Check your details and try again.");
+        setPending(false);
+        return;
+      }
+      router.replace(returnPath);
+      router.refresh();
+    } catch {
+      setMessage("We couldn’t sign you in right now. Please try again shortly.");
       setPending(false);
-      return;
     }
-    router.push(returnPath);
-    router.refresh();
   }
   async function reset(e: FormEvent<HTMLButtonElement>) {
     const email = (
@@ -49,14 +58,21 @@ export default function SignInForm() {
       return;
     }
     setPending(true);
-    const { error } =
-      await createSupabaseBrowserClient().auth.resetPasswordForEmail(email, {
+    try {
+      const { error } =
+        await createSupabaseBrowserClient({ authForm: true }).auth.resetPasswordForEmail(email, {
         redirectTo: getPasswordRecoveryRedirect(),
       });
-    setMessage(
-      error ? error.message : "Password reset instructions have been sent.",
-    );
-    setPending(false);
+      setMessage(
+        error
+          ? "We couldn’t send reset instructions right now. Please try again."
+          : "Password reset instructions have been sent.",
+      );
+      setPending(false);
+    } catch {
+      setMessage("We couldn’t send reset instructions right now. Please try again.");
+      setPending(false);
+    }
   }
   const c =
     "mt-1.5 w-full rounded-xl border border-[#dbe1ea] px-4 py-3 outline-none focus:border-[#079448] focus:ring-2 focus:ring-[#079448]/15";
@@ -66,10 +82,10 @@ export default function SignInForm() {
       className="grid gap-5 rounded-2xl bg-white p-7 shadow-lg"
     >
       <div>
-        <p className="eyebrow">{invitationPath ? "Cleaner invitation" : "Customer account"}</p>
-        <h1 className="mt-2 text-3xl font-extrabold">{invitationPath ? "Sign in to accept your invitation" : "Sign in to Quickola"}</h1>
+        <p className="eyebrow">{invitationPath ? "Cleaner invitation" : cleanerPath ? "Cleaner account" : "Customer account"}</p>
+        <h1 className="mt-2 text-3xl font-extrabold">{invitationPath ? "Sign in to accept your invitation" : cleanerPath ? "Sign in to your cleaner portal" : "Sign in to Quickola"}</h1>
         <p className="mt-2 text-sm leading-6 text-[#657089]">
-          {invitationPath ? "Use the invited email to continue to your cleaner invitation." : "Access your properties, turnovers and guest-ready evidence."}
+          {invitationPath ? "Use the invited email to continue to your cleaner invitation." : cleanerPath ? "Use the email connected to your accepted worker invitation." : "Access your properties, turnovers and guest-ready evidence."}
         </p>
       </div>
       <label className="font-bold">
@@ -118,7 +134,7 @@ export default function SignInForm() {
       >
         Forgot password?
       </button>
-      {!invitationPath && <p className="text-center text-sm font-semibold">
+      {!cleanerPath && <p className="text-center text-sm font-semibold">
         Need an operator account?{" "}
         <Link href="/business/sign-up" className="font-bold text-[#079448]">
           Create account

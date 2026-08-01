@@ -10,6 +10,7 @@
     "test:phase1": "node --experimental-strip-types --experimental-default-type=module --test tests/phase1.test.ts",
     "test:turnovers": "node --experimental-strip-types --experimental-default-type=module --test tests/turnover-v1.test.ts",
     "test:str-security": "node --experimental-strip-types --experimental-default-type=module --test tests/str-security.test.ts",
+    "test:auth-routing": "node --experimental-strip-types --experimental-default-type=module --test tests/cleaner-auth-routing.test.ts tests/invitation-auth.test.ts",
     "test:reservations": "node --experimental-strip-types --experimental-default-type=module --test tests/reservations.test.ts",
     "test:calendar-sync": "node --experimental-strip-types --experimental-default-type=module --test tests/calendar-sync.test.ts",
     "test:calendar-sync:integration": "node --env-file=.env.local scripts/verify-calendar-sync-e2e.mjs",

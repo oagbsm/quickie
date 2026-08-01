@@ -47,6 +47,12 @@ test("links use the configured application origin", () => {
   assert.match(mailer, /site}\/business\/turnovers/);
 });
 
+test("all Resend payloads use the configured sender and reply-to", () => {
+  assert.match(mailer, /getResendFromEmail/);
+  assert.match(mailer, /getResendReplyToEmail/);
+  assert.match(mailer, /reply_to: replyTo \|\| undefined/);
+});
+
 test("invitation tokens are hashed and never stored in delivery records", () => {
   assert.match(mailer, /crypto\.createHash\("sha256"\)/);
   assert.match(mailer, /idempotencyKey: `cleaner_invitation:\$\{workerId\}:\$\{tokenHash\}`/);

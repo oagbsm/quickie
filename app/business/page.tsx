@@ -1,2 +1,5 @@
-import { permanentRedirect } from "next/navigation";
-export default function Page(){permanentRedirect("/product")}
+import { redirect } from "next/navigation";
+
+export default function Page() {
+  redirect("/auth/portal?next=%2Fbusiness%2Fdashboard");
+}

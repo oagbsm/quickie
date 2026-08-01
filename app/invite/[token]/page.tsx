@@ -1,9 +1,10 @@
-import crypto from "node:crypto";
 import Image from "next/image";
-import { acceptWorkerInvitation } from "@/app/business/str-actions";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import InvitationCredentials from "./InvitationCredentials";
+import { resolvePortalSession } from "@/lib/portal-session";
+import { getCleanerInvitation } from "@/lib/server/cleaner-invitations";
+import InvitationCredentials, {
+  InvitationAccountMismatch,
+  InvitationAcceptButton,
+} from "./InvitationCredentials";
 
 export default async function Page({
   params,
@@ -13,37 +14,29 @@ export default async function Page({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { token } = await params;
-  const { error } = await searchParams;
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-  const admin = createSupabaseAdminClient();
-  const { data: invitation } = await admin
-    .from("worker_invitations")
-    .select(
-      "expires_at,accepted_at,revoked_at,workers(display_name,email),business_accounts(name)",
-    )
-    .eq("token_hash", tokenHash)
-    .maybeSingle();
-  const valid = Boolean(
-    invitation &&
-    !invitation.accepted_at &&
-    !invitation.revoked_at &&
-    new Date(invitation.expires_at) > new Date(),
+  const query = await searchParams;
+  // The invitation token is authoritative for rendering this page. Auth is an
+  // optional enhancement used only to offer the signed-in account a direct
+  // acceptance button or the wrong-email recovery state.
+  const invitation = await getCleanerInvitation(token);
+  let session: Awaited<ReturnType<typeof resolvePortalSession>> | null = null;
+  if (invitation?.state === "valid") {
+    try {
+      session = await resolvePortalSession();
+    } catch {
+      // A malformed/stale cookie must not block a valid invitation.
+      session = null;
+    }
+  }
+  const valid = invitation?.state === "valid";
+  const userEmail = session?.user?.email?.trim().toLowerCase() || null;
+  const emailMatches = Boolean(
+    valid && userEmail === invitation.invitedEmail,
   );
-  const state = !invitation ? "invalid" : invitation.accepted_at ? "accepted" : invitation.revoked_at ? "invalid" : new Date(invitation.expires_at) <= new Date() ? "expired" : "valid";
-  const worker = Array.isArray(invitation?.workers)
-    ? invitation.workers[0]
-    : invitation?.workers;
-  const account = Array.isArray(invitation?.business_accounts)
-    ? invitation.business_accounts[0]
-    : invitation?.business_accounts;
 
   return (
     <main className="grid min-h-screen place-items-center bg-[#f4f6f9] p-5">
-      <div className="w-full max-w-lg rounded-xl border bg-white p-6 sm:p-8">
+      <section className="w-full max-w-lg rounded-xl border bg-white p-6 sm:p-8">
         <div className="flex items-center gap-3 text-xl font-extrabold">
           <Image src="/quickola/logo-mark.png" alt="" width={38} height={38} />
           Quickola
@@ -52,54 +45,93 @@ export default async function Page({
           CLEANER INVITATION
         </p>
         <h1 className="mt-2 text-3xl font-extrabold">
-          {valid && account?.name
-            ? `${account.name} invited you`
-            : "Coordinate turnovers with your client"}
+          {invitation
+            ? `${invitation.businessName} invited you`
+            : "This invitation isn’t available"}
         </h1>
-        <p className="mt-4 leading-7 text-[#657089]">
-          Quickola helps short-term-rental operators coordinate the cleaners
-          they already use. You can accept assignments, follow property
-          checklists, upload evidence and report issues. Quickola does not
-          employ you or handle cleaning payments.
-        </p>
-        {state !== "valid" || error === "invalid" ? (
-          <p
-            role="alert"
-            className="mt-4 rounded-lg bg-red-50 p-3 font-bold text-red-800"
-          >
-            {state === "expired" ? "This invitation has expired. Ask the team owner to resend it." : state === "accepted" ? "This invitation has already been accepted." : "This invitation is invalid or has been cancelled."}
-          </p>
-        ) : null}
-        {valid && <dl className="mt-5 grid gap-2 rounded-lg bg-slate-50 p-4 text-sm"><div><dt className="font-bold">Invited email</dt><dd>{worker?.email}</dd></div><div><dt className="font-bold">Role</dt><dd>Cleaner</dd></div><div><dt className="font-bold">Expires</dt><dd>{new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short" }).format(new Date(invitation!.expires_at))}</dd></div></dl>}
-        {error === "name" && (
-          <p
-            role="alert"
-            className="mt-4 rounded-lg bg-red-50 p-3 font-bold text-red-800"
-          >
-            Enter the name you want your client to see.
+        {valid && (
+          <p className="mt-4 leading-7 text-[#657089]">
+            You’ll receive cleaning jobs from {invitation.businessName} through
+            Quickola.
           </p>
         )}
-        {valid && user ? (
-          <form action={acceptWorkerInvitation} className="mt-7">
-            <input type="hidden" name="token" value={token} />
-            <label className="font-bold">
-              Confirm your name
-              <input
-                name="confirmedName"
-                defaultValue={worker?.display_name || ""}
-                required
-                minLength={2}
-                maxLength={120}
-                autoComplete="name"
-                className="mt-2 min-h-12 w-full rounded-lg border px-3 outline-none focus:border-[#2d67b2] focus:ring-4 focus:ring-[#2d67b2]/15"
-              />
-            </label>
-            <button className="mt-5 min-h-12 w-full rounded-lg bg-[#071f49] font-extrabold text-white">
-              Confirm and accept invitation
-            </button>
-          </form>
-        ) : valid && worker?.email ? <InvitationCredentials email={worker.email} token={token} /> : null}
-      </div>
+
+        {invitation && valid && (
+          <p className="mt-4 text-sm leading-6 text-[#657089]">
+            Sent to <strong>{invitation.invitedEmail}</strong>
+            <br />
+            Expires{" "}
+            {new Intl.DateTimeFormat("en-GB", {
+              dateStyle: "long",
+              timeStyle: "short",
+            }).format(new Date(invitation.expiresAt))}
+          </p>
+        )}
+
+        {invitation &&
+          invitation.state === "expired" && (
+            <p
+              role="alert"
+              className="mt-6 rounded-lg bg-amber-50 p-4 font-bold"
+            >
+              This invitation has expired. Ask {invitation.businessName} to
+              resend it.
+            </p>
+          )}
+        {invitation?.state === "accepted" && <div role="status" className="mt-6 rounded-lg bg-emerald-50 p-4 font-bold text-emerald-900"><p>This invitation has already been accepted. Sign in with {invitation.invitedEmail} to continue.</p><a href="/auth/portal?next=%2Fcleaner%2Ftoday" className="mt-3 inline-block text-sm underline">Sign in</a></div>}
+        {(!invitation || invitation.state === "invalid") && (
+          <p
+            role="alert"
+            className="mt-6 rounded-lg bg-amber-50 p-4 font-bold"
+          >
+            This invitation is invalid or has been cancelled. Ask the business
+            to resend it.
+          </p>
+        )}
+        {valid && query.error === "verification" && (
+          <p
+            role="alert"
+            className="mt-5 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-800"
+          >
+            We couldn’t verify that link. Enter your password to try again.
+          </p>
+        )}
+
+        {valid && session?.user && !emailMatches && (
+          <InvitationAccountMismatch
+            email={invitation.invitedEmail}
+            token={token}
+          />
+        )}
+        {valid &&
+          session?.user &&
+          emailMatches &&
+          session.portal !== null && (
+            <p
+              role="alert"
+              className="mt-7 rounded-lg bg-amber-50 p-4 font-bold"
+            >
+              This account already belongs to the {session.portal} portal and
+              cannot accept another portal role. Ask {invitation.businessName} to
+              invite a different email.
+            </p>
+          )}
+        {valid &&
+          session?.user &&
+          emailMatches &&
+          session.portal === null && (
+            <InvitationAcceptButton
+              email={invitation.invitedEmail}
+              token={token}
+            />
+          )}
+        {valid && !session?.user && (
+          <InvitationCredentials
+            email={invitation.invitedEmail}
+            token={token}
+          />
+        )}
+      </section>
     </main>
   );
 }

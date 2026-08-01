@@ -2,7 +2,10 @@ import "server-only";
 import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { buildAbsoluteAppUrl, getAppOrigin } from "@/lib/app-url";
-import { getResendFromEmail } from "@/lib/email-config";
+import {
+  getResendFromEmail,
+  getResendReplyToEmail,
+} from "@/lib/email-config";
 function admin() {
   const u = process.env.NEXT_PUBLIC_SUPABASE_URL,
     k = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -36,6 +39,7 @@ async function sendTransactionalEmail(input: TransactionalEmailInput) {
     if (reserveError) return { sent: false as const, reason: "reservation_failed" as const };
     const apiKey = process.env.RESEND_API_KEY;
     const from = getResendFromEmail();
+    const replyTo = getResendReplyToEmail();
     if (!apiKey || !from) {
       await db.from("transactional_email_deliveries").update({ delivery_status: "failed", error_category: "not_configured" }).eq("idempotency_key", input.idempotencyKey);
       return { sent: false as const, reason: "not_configured" as const };
@@ -43,7 +47,7 @@ async function sendTransactionalEmail(input: TransactionalEmailInput) {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [input.recipient], subject: input.subject, html: input.html }),
+      body: JSON.stringify({ from, to: [input.recipient], reply_to: replyTo || undefined, subject: input.subject, html: input.html }),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(`resend_${response.status}`);
@@ -100,9 +104,9 @@ export async function sendCleanerInvitationEmail({
   invitationToken: string;
   expiresAt: string;
 }) {
-  const acceptUrl = buildAbsoluteAppUrl(`/team/invite/${encodeURIComponent(invitationToken)}`);
+  const acceptUrl = buildAbsoluteAppUrl(`/invite/${encodeURIComponent(invitationToken)}`);
   const tokenHash = cryptoHash(invitationToken);
-  return sendTransactionalEmail({ accountId, eventType: "cleaner_invitation", entityId: workerId, recipient: email, idempotencyKey: `cleaner_invitation:${workerId}:${tokenHash}`, subject: "You’ve been invited to join a Quickola cleaning team", html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>${escapeHtml(workspaceName)} invited you to Quickola</h1><p>You can receive and manage cleaning assignments for this team. Quickola coordinates work but does not employ or pay you.</p><p><strong>Invited email:</strong> ${escapeHtml(email)}</p><p><a style="display:inline-block;background:#071f49;color:white;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold" href="${acceptUrl}">Accept invitation</a></p><p>This invitation expires ${escapeHtml(new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/London" }).format(new Date(expiresAt)))}.</p></div>` });
+  return sendTransactionalEmail({ accountId, eventType: "cleaner_invitation", entityId: workerId, recipient: email, idempotencyKey: `cleaner_invitation:${workerId}:${tokenHash}`, subject: `${workspaceName} invited you to Quickola`, html: `<div style="font-family:Arial,sans-serif;color:#071638"><p style="font-size:18px;font-weight:800">Quickola</p><h1>${escapeHtml(workspaceName)} invited you</h1><p>You’ll receive cleaning jobs from ${escapeHtml(workspaceName)} through Quickola.</p><p><a style="display:inline-block;background:#071f49;color:white;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold" href="${acceptUrl}">Accept invitation</a></p><p style="color:#657089;font-size:14px">Sent to ${escapeHtml(email)}. This invitation expires ${escapeHtml(new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/London" }).format(new Date(expiresAt)))}.</p></div>` });
 }
 
 function cryptoHash(value: string) {
@@ -123,6 +127,7 @@ export async function sendBookingReceivedEmail({
 }) {
   const apiKey = process.env.RESEND_API_KEY,
     from = getResendFromEmail(),
+    replyTo = getResendReplyToEmail(),
     site = getAppOrigin();
   const db = admin(),
     { data: member } = await db
@@ -175,6 +180,7 @@ export async function sendBookingReceivedEmail({
         from,
         to: [email],
         subject: `Booking request QK-${bookingId.slice(0, 8).toUpperCase()} received`,
+        reply_to: replyTo || undefined,
         html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>We received your cleaning request.</h1><p><strong>Reference:</strong> QK-${bookingId.slice(0, 8).toUpperCase()}</p><p><strong>Property:</strong> ${escapeHtml(property?.nickname || "Property")} (${escapeHtml(property?.postcode || "")})</p><p><strong>Service:</strong> ${escapeHtml(service.replaceAll("_", " "))}</p><p><strong>Requested start:</strong> ${escapeHtml(new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/London" }).format(new Date(scheduledStart)))}</p><p>Quickola will review the appointment details. This is not yet a confirmed appointment.</p><p><a href="${site}/business/bookings/${bookingId}">View booking</a></p></div>`,
       }),
     });
@@ -217,6 +223,7 @@ export async function sendPropertyReadyEmail({
 }) {
   const apiKey = process.env.RESEND_API_KEY,
     from = getResendFromEmail(),
+    replyTo = getResendReplyToEmail(),
     site = getAppOrigin();
   if (!apiKey || !from) return { sent: false, reason: "not_configured" };
   const db = admin(),
@@ -256,6 +263,7 @@ export async function sendPropertyReadyEmail({
       body: JSON.stringify({
         from,
         to: [email],
+        reply_to: replyTo || undefined,
         subject: `${propertyName} is ready`,
         html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>Your property is ready.</h1><p><strong>${escapeHtml(propertyName)}</strong> was completed at ${escapeHtml(new Date(completedAt).toLocaleString("en-GB"))}.</p><p>Cleaning type: ${escapeHtml(service.replaceAll("_", " "))}</p><p><a href="${site}/business/bookings/${bookingId}">View protected completion details</a></p></div>`,
       }),

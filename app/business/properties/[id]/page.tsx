@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import AccessReveal from "../../components/AccessReveal";
 import TurnoverStatus from "../../components/TurnoverStatus";
 import { requireBusinessUser } from "@/lib/business/auth";
@@ -15,12 +15,8 @@ import CalendarSources from "./CalendarSources";
 const tabs = [
   ["overview", "Overview"],
   ["reservations", "Reservations"],
-  ["standard", "Standard"],
   ["checklist", "Checklist"],
   ["access", "Access"],
-  ["cleaners", "Cleaners"],
-  ["history", "History"],
-  ["activity", "Activity"],
 ] as const;
 const field =
   "mt-1.5 min-h-11 w-full rounded-lg border border-[#cfd7e3] bg-white px-3 py-2 outline-none focus:border-[#2d67b2] focus:ring-4 focus:ring-[#2d67b2]/15";
@@ -36,12 +32,13 @@ const detail = ({
   label: string;
   value: React.ReactNode;
 }) => (
+  value ?
   <div>
     <dt className="text-sm font-bold text-[#657089]">{label}</dt>
     <dd className="mt-1 whitespace-pre-wrap font-medium">
-      {value || "Not set"}
+      {value}
     </dd>
-  </div>
+  </div> : null
 );
 
 export default async function Page({
@@ -59,12 +56,15 @@ export default async function Page({
 }) {
   const { id } = await params,
     { tab: requested, edit, created, error, updated } = await searchParams;
+  if (requested === "standard") redirect(`/business/properties/${id}?tab=checklist`);
+  if (requested === "cleaners") redirect(`/business/properties/${id}?tab=overview`);
+  if (requested === "history" || requested === "activity") redirect(`/business/turnovers?view=completed&property=${id}`);
   const tab = tabs.some(([key]) => key === requested) ? requested! : "overview";
   const { supabase, accountId } = await requireBusinessUser();
   const { data: p, error: queryError } = await supabase
     .from("properties")
     .select(
-      "*,checklist_templates(id,active,checklist_template_sections(id,title,position,checklist_template_tasks(id,label,position,mandatory,photo_required,note_required,blocking))),work_items(id,turnover_date,status),property_workers(workers(id,display_name)),activity_events(id,description,created_at)",
+      "*,checklist_templates(id,active,checklist_template_sections(id,title,position,checklist_template_tasks(id,label,position,mandatory,photo_required,note_required,blocking))),work_items(id,turnover_date,status,ready_at,assignments(workers(display_name))),property_workers(is_default,workers(id,display_name)),operational_issues(status),activity_events(id,description,created_at)",
     )
     .eq("id", id)
     .eq("account_id", accountId)
@@ -117,12 +117,7 @@ export default async function Page({
           >
             Add reservation
           </Link>
-          <Link
-            href={`/business/turnovers/new?property=${id}`}
-            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#071f49] px-4 font-extrabold text-white"
-          >
-            Create turnover
-          </Link>
+          <details className="relative"><summary className="inline-flex min-h-11 cursor-pointer list-none items-center rounded-lg border px-4 font-extrabold">More</summary><div className="absolute right-0 z-10 mt-2 w-52 rounded-lg border bg-white p-2 shadow-lg"><Link href={`/business/turnovers/new?property=${id}`} className="block rounded px-3 py-2 text-sm font-bold hover:bg-[#f4f6f9]">Create manual turnover</Link></div></details>
         </div>
       </header>
       <nav
@@ -177,18 +172,23 @@ export default async function Page({
 
       {tab === "overview" && (
         <>
+          <section className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl bg-white p-5 shadow-sm"><p className="text-sm font-extrabold text-[#657089]">NEXT TURNOVER</p>{p.work_items?.filter((item: { status: string; turnover_date: string }) => !["ready", "cancelled"].includes(item.status)).sort((a: { turnover_date: string }, b: { turnover_date: string }) => a.turnover_date.localeCompare(b.turnover_date))[0] ? <p className="mt-2 font-extrabold">{p.work_items.filter((item: { status: string; turnover_date: string }) => !["ready", "cancelled"].includes(item.status)).sort((a: { turnover_date: string }, b: { turnover_date: string }) => a.turnover_date.localeCompare(b.turnover_date))[0].turnover_date}</p> : <p className="mt-2 text-sm text-[#657089]">No upcoming turnover</p>}</div>
+            <div className="rounded-xl bg-white p-5 shadow-sm"><p className="text-sm font-extrabold text-[#657089]">CLEANER</p>{p.property_workers?.find((row: { is_default: boolean }) => row.is_default)?.workers ? <><p className="mt-2 font-extrabold">{(Array.isArray(p.property_workers.find((row: { is_default: boolean }) => row.is_default).workers) ? p.property_workers.find((row: { is_default: boolean }) => row.is_default).workers[0] : p.property_workers.find((row: { is_default: boolean }) => row.is_default).workers).display_name}</p><p className="text-sm text-[#657089]">Default cleaner</p></> : <><p className="mt-2 font-extrabold">Not assigned</p><Link href="/business/cleaners" className="text-sm font-bold text-[#245b9d]">Set default cleaner</Link></>}</div>
+          </section>
+          <section className="mt-4 rounded-xl bg-white p-5 shadow-sm"><p className="text-sm font-extrabold text-[#657089]">PROPERTY STATUS</p><p className="mt-2 font-extrabold">{p.operational_issues?.filter((issue: { status: string }) => !["resolved", "closed"].includes(issue.status)).length ? `${p.operational_issues.filter((issue: { status: string }) => !["resolved", "closed"].includes(issue.status)).length} open issue(s)` : "No open issues"}</p></section>
           <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>
                 <p className="text-sm font-extrabold text-[#2d67b2]">
-                  Reservation source
+                  Reservation calendar
                 </p>
                 <h2 className="mt-1 text-xl font-extrabold">
                   {overviewCalendarStatus === "no_source"
-                    ? "No reservation source connected"
+                    ? "No calendar connected"
                     : overviewCalendarStatus === "attention"
-                    ? "Reservation source needs attention"
-                    : "Reservation source connected"}
+                    ? "Calendar needs attention"
+                    : "Calendar connected"}
                 </h2>
               </div>
               <Link
@@ -200,10 +200,10 @@ export default async function Page({
             </div>
             <p className="mt-3 text-sm text-[#657089]">
               {overviewCalendarStatus === "no_source"
-                ? "Add a calendar feed on the Reservations tab to import bookings automatically."
+                ? "Connect a calendar on the Reservations tab to import bookings automatically."
                 : overviewCalendarStatus === "attention"
                 ? "A connected source needs attention or has not completed its first sync."
-                : "A reservation source is connected and syncing normally."}
+                : "Your reservation calendar is connected and syncing normally."}
             </p>
           </section>
           <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
@@ -242,6 +242,7 @@ export default async function Page({
               })}
             </dl>
           </section>
+          <section className="mt-6 rounded-xl bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><h2 className="text-xl font-extrabold">Recent turnovers</h2><Link href={`/business/turnovers?property=${id}`} className="text-sm font-bold text-[#245b9d]">View all turnovers →</Link></div><div className="mt-4 divide-y">{p.work_items?.filter((item: { status: string }) => ["ready", "cancelled"].includes(item.status)).slice(0, 3).map((item: { id: string; turnover_date: string; status: string }) => <Link key={item.id} href={`/business/turnovers/${item.id}`} className="flex justify-between py-3 text-sm"><span>{item.turnover_date}</span><strong>{item.status === "ready" ? "Property ready" : "Cancelled"}</strong></Link>)}</div></section>
         </>
       )}
 
@@ -487,7 +488,7 @@ export default async function Page({
 
       {tab === "checklist" && (
         <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-extrabold">Checklist</h2>
+          <div className="flex items-center justify-between"><h2 className="text-xl font-extrabold">Checklist</h2><Link href={`/business/properties/${id}?tab=checklist&edit=1`} className="text-sm font-bold text-[#245b9d]">{edit ? "Done editing" : "Edit checklist"}</Link></div>
           <p className="mt-1 text-sm text-[#657089]">
             Changes apply to future turnovers only.
           </p>
@@ -517,12 +518,9 @@ export default async function Page({
                       >
                         <div>
                           <p className="font-bold">{task.label}</p>
-                          <p className="text-xs text-[#657089]">
-                            {task.mandatory ? "Required" : "Optional"}
-                            {task.photo_required ? " · Photo required" : ""}
-                          </p>
+                          {edit && <p className="text-xs text-[#657089]">{task.mandatory ? "Required" : "Optional"}{task.photo_required ? " · Photo required" : ""}</p>}
                         </div>
-                        <div className="flex">
+                        {edit ? <div className="flex">
                           <form action={moveChecklistTask}>
                             <input type="hidden" name="propertyId" value={id} />
                             <input
@@ -557,14 +555,14 @@ export default async function Page({
                               Remove
                             </button>
                           </form>
-                        </div>
+                        </div> : null}
                       </div>
                     ))}
                 </div>
               ),
             )}
           </div>
-          <form
+          {edit && <form
             action={addChecklistTask}
             className="mt-6 grid gap-3 rounded-lg bg-[#f4f6f9] p-4 sm:grid-cols-2"
           >
@@ -588,7 +586,7 @@ export default async function Page({
             <button className="min-h-11 rounded-lg bg-[#071f49] px-4 font-bold text-white sm:col-span-2">
               Add task
             </button>
-          </form>
+          </form>}
         </section>
       )}
 

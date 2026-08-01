@@ -1,4 +1,4 @@
-import { turnoverStatusLabels, type TurnoverStatus } from "@/lib/turnovers/status";
+import { getOperatorState } from "@/lib/turnovers/operator-lifecycle";
 
 const tones: Record<string, string> = {
   ready: "border-emerald-100 bg-emerald-50 text-emerald-800",
@@ -15,6 +15,6 @@ const tones: Record<string, string> = {
 
 export default function TurnoverStatus({ status }: { status: string }) {
   return <span className={`portal-pill border ${tones[status] || "border-blue-100 bg-blue-50 text-blue-800"}`}>
-    {turnoverStatusLabels[status as TurnoverStatus] || status.replaceAll("_", " ")}
+    {getOperatorState(status).label}
   </span>;
 }

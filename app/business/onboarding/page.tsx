@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { resolveBusinessWorkspace } from "@/lib/business/workspace";
+import { requireBusinessUser } from "@/lib/business/auth";
 import { addProperty } from "../actions";
 import { addWorker, saveOnboardingStandard, skipCleanerOnboarding } from "../str-actions";
 const field="mt-1.5 min-h-12 w-full rounded-lg border border-[#cfd7e3] bg-white px-3.5 py-2.5 outline-none focus:border-[#2d67b2] focus:ring-4 focus:ring-[#2d67b2]/15";
 export default async function Page({searchParams}:{searchParams:Promise<{step?:string;property?:string;error?:string}>}){
- const s=await createSupabaseServerClient();const{data:{user}}=await s.auth.getUser();if(!user)redirect("/business/sign-in");const w=await resolveBusinessWorkspace();if(!w.ok&&w.reason==="cleaner_account")redirect("/cleaner/today");if(!w.ok)redirect(`/business/setup-error?ref=${w.reference}`);
- const q=await searchParams;const{data:properties}=await s.from("properties").select("id,nickname").eq("account_id",w.accountId).order("created_at");const step=q.step||(properties?.length?"standard":"property");const propertyId=q.property||properties?.[0]?.id;
+ const {supabase,accountId}=await requireBusinessUser();
+ const q=await searchParams;const{data:properties}=await supabase.from("properties").select("id,nickname").eq("account_id",accountId).order("created_at");const step=q.step||(properties?.length?"standard":"property");const propertyId=q.property||properties?.[0]?.id;
  if(step==="standard"&&!propertyId)redirect("/business/onboarding?step=property");
  const number=step==="property"?2:step==="standard"?3:4;
  return <main className="min-h-screen bg-[#f3f6f9] px-5 py-10"><div className="mx-auto max-w-3xl"><Link href="/" className="text-xl font-extrabold">Quickola</Link><div className="mt-8 flex gap-2" aria-label={`Onboarding step ${number} of 4`}>{[1,2,3,4].map(n=><span key={n} className={`h-1.5 flex-1 ${n<=number?"bg-[#2d67b2]":"bg-[#d5dce5]"}`}/>)}</div><p className="mt-7 text-sm font-extrabold text-[#2d67b2]">STEP {number} OF 4</p>

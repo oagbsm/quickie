@@ -1,117 +1,86 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { getCleanerLifecycle, selectRelevantCleanerJobs } from "../lib/cleaner/lifecycle.ts";
 import { evaluateReadiness } from "../lib/turnovers/readiness.ts";
 
+const page = readFileSync(new URL("../app/cleaner/turnovers/[id]/page.tsx", import.meta.url), "utf8");
+const today = readFileSync(new URL("../app/cleaner/today/page.tsx", import.meta.url), "utf8");
+const navigation = readFileSync(new URL("../app/cleaner/CleanerNavigation.tsx", import.meta.url), "utf8");
 const actions = readFileSync(new URL("../app/business/str-actions.ts", import.meta.url), "utf8");
-const turnoverPage = readFileSync(new URL("../app/cleaner/turnovers/[id]/page.tsx", import.meta.url), "utf8");
-const todayPage = readFileSync(new URL("../app/cleaner/today/page.tsx", import.meta.url), "utf8");
-const upcomingPage = readFileSync(new URL("../app/cleaner/upcoming/page.tsx", import.meta.url), "utf8");
-const inviteCopy = readFileSync(new URL("../app/business/cleaners/CopyInviteLink.tsx", import.meta.url), "utf8");
-const cleanerPage = readFileSync(new URL("../app/business/cleaners/[id]/page.tsx", import.meta.url), "utf8");
-const transitionMigration = readFileSync(new URL("../supabase/migrations/202607260002_str_security_notifications_and_evidence.sql", import.meta.url), "utf8");
+const operatorPage = readFileSync(new URL("../app/business/turnovers/[id]/page.tsx", import.meta.url), "utf8");
+const integrityMigration = readFileSync(new URL("../supabase/migrations/202608010003_completion_integrity.sql", import.meta.url), "utf8");
 
-test("invite copy can never produce a cleaner turnover URL", () => {
-  assert.match(inviteCopy, /\/invite\/\$\{encodeURIComponent\(inviteToken\)\}/);
-  assert.doesNotMatch(inviteCopy, /cleaner\/turnovers/);
-  assert.match(cleanerPage, /CopyInviteLink inviteToken=\{manualInvite\.token\}/);
+test("canonical cleaner lifecycle has one deterministic action", () => {
+  assert.deepEqual(getCleanerLifecycle("awaiting_response").primaryAction, { label: "Accept", nextStatus: "accepted" });
+  assert.equal(getCleanerLifecycle("accepted").label, "Accepted");
+  assert.equal(getCleanerLifecycle("en_route").label, "En route");
+  assert.equal(getCleanerLifecycle("arrived").primaryAction?.nextStatus, "in_progress");
+  assert.equal(getCleanerLifecycle("action_required").checklistActive, true);
+  assert.equal(getCleanerLifecycle("ready").terminal, true);
 });
 
-test("checklist and evidence are unavailable before arrival", () => {
-  assert.match(turnoverPage, /const canWork = \["arrived", "in_progress", "action_required"\]/);
-  assert.match(turnoverPage, /canWork \? t\.completed \?/);
-  assert.match(turnoverPage, /canWork && <form action=\{uploadEvidence\}/);
+test("Today selection prefers current work and otherwise the next assignment", () => {
+  const jobs = selectRelevantCleanerJobs([{ status: "awaiting_response", access_start_at: "2026-08-03T09:00:00Z" }, { status: "in_progress", access_start_at: "2026-08-04T09:00:00Z" }, { status: "accepted", access_start_at: "2026-08-02T09:00:00Z" }]);
+  assert.equal(jobs.primary?.status, "in_progress");
+  assert.equal(jobs.secondary.length, 2);
 });
 
-test("direct checklist and evidence actions reject pre-arrival calls", () => {
-  assert.match(actions, /error=pre_arrival/);
-  assert.match(actions, /\["arrived", "in_progress", "action_required"\]\.includes\(item\.status\)/);
-  assert.match(transitionMigration, /assigned_worker_required/);
+test("pre-start pages do not render checklist blockers or raw task IDs", () => {
+  assert.doesNotMatch(page, /after you mark Arrived|Not available until arrival|Task \$\{/);
+  assert.doesNotMatch(page, /Save task|Upload task photo|Final completion evidence|Development-only/);
 });
 
-test("task completion requires response, note and required photo", () => {
-  assert.match(actions, /task_requirements/);
-  assert.match(actions, /task_photo_required/);
-  assert.match(actions, /evidence_submissions/);
-  assert.match(turnoverPage, /defaultChecked=\{t\.completed\}/);
-});
-
-test("failed completion preserves work and exposes exact blockers", () => {
-  assert.match(turnoverPage, /Outstanding requirements|Before you complete the clean/);
-  assert.match(turnoverPage, /incompleteMandatory/);
-  assert.match(turnoverPage, /missingNotes/);
-  assert.match(turnoverPage, /missingTaskPhotos/);
-  assert.match(turnoverPage, /completionPhotos/);
-  assert.match(transitionMigration, /readiness_result=jsonb_build_object/);
-});
-
-test("completion remains retryable after action_required", () => {
-  assert.match(turnoverPage, /action_required: \["Resolve remaining requirements", "in_progress"\]/);
-  assert.match(transitionMigration, /when 'action_required' then next_status in \('in_progress','cancelled'\)/);
-});
-
-test("cleaner screens make the next action and saved evidence explicit", () => {
-  const cards = readFileSync(new URL("../app/cleaner/TurnoverCards.tsx", import.meta.url), "utf8");
-  assert.match(cards, /Next:/);
-  assert.match(cards, /Accept or decline/);
-  assert.match(turnoverPage, /Task completed/);
-  assert.match(turnoverPage, /Task photo saved/);
-  assert.match(turnoverPage, /Final completion evidence/);
-  assert.match(turnoverPage, /Development-only: complete test turnover/);
-  assert.match(todayPage, /one next step/);
-  assert.match(upcomingPage, /next action shown/);
-});
-
-test("property readiness requires every server-side requirement", () => {
-  const incomplete = evaluateReadiness({ completionSubmitted: true, mandatoryTasks: [{ completed: true }, { completed: false }], photoTasks: [], noteTasks: [], requiredPhotoCount: 1, completionPhotoCount: 1, keyReturnRequired: false, keyReturnConfirmed: false, unresolvedBlockingIssues: 0 });
-  assert.equal(incomplete.ready, false);
-  const complete = evaluateReadiness({ completionSubmitted: true, mandatoryTasks: [{ completed: true }], photoTasks: [], noteTasks: [], requiredPhotoCount: 1, completionPhotoCount: 1, keyReturnRequired: false, keyReturnConfirmed: false, unresolvedBlockingIssues: 0 });
-  assert.equal(complete.ready, true);
-});
-
-test("pending and accepted assignments are discoverable in cleaner portal queries", () => {
-  assert.match(todayPage, /assignments!inner\(status,worker_id\)/);
-  assert.match(todayPage, /assignments\.worker_id/);
-  assert.match(upcomingPage, /assignments!inner\(status,worker_id\)/);
-  assert.match(upcomingPage, /assignments\.worker_id/);
-});
-
-test("cleaner access remains assignment scoped", () => {
-  assert.match(turnoverPage, /from\("work_items"\)/);
-  assert.match(transitionMigration, /public\.is_assigned_worker\(current_row\.id\)/);
-  assert.match(transitionMigration, /not worker_actor then raise exception 'assigned_worker_required'/);
-});
-
-test("photo validation keeps supported formats and safe failure reasons", () => {
-  assert.match(actions, /image\/jpeg.*image\/png.*image\/webp.*image\/heic/);
-  assert.match(actions, /file\.size > 10_485_760/);
-  assert.match(actions, /error=invalid_file/);
-  assert.match(actions, /error=storage/);
-  assert.match(actions, /error=evidence/);
-});
-
-test("valid task photos auto-complete only fully satisfied tasks", () => {
-  assert.match(actions, /if \(taskId && type === "completion_photo"\)/);
-  assert.match(actions, /task\.note_required/);
-  assert.match(actions, /task\.response_type/);
+test("task completion is one action and photo upload auto-completes after successful evidence", () => {
+  assert.match(page, /Complete task/);
+  assert.match(page, /Complete with photo/);
+  assert.match(page, /className=\"sr-only\"/);
+  assert.match(actions, /evidenceError/);
+  assert.match(actions, /\["completion_photo", "key_return"\]/);
   assert.match(actions, /completed: true/);
-  assert.match(actions, /if \(evidenceError\) redirect/);
 });
 
-test("development shortcut is gated, assigned-cleaner-only, and uses normal validation", () => {
-  assert.match(actions, /completeTestTurnover/);
-  assert.match(actions, /NODE_ENV !== "development" \|\| process\.env\.QUICKOLA_TEST_SHORTCUTS !== "1"/);
-  assert.match(actions, /invitation_status !== "accepted"/);
-  assert.match(actions, /assignments!inner\(worker_id,status\)/);
-  assert.match(actions, /development-test:\/\//);
-  assert.match(actions, /DEVELOPMENT TEST EVIDENCE/);
-  assert.match(actions, /transition_work_item/);
-  assert.match(turnoverPage, /process\.env\.NODE_ENV === "development" && process\.env\.QUICKOLA_TEST_SHORTCUTS === "1"/);
-});
-
-test("development evidence is distinguishable and real uploads remain untouched", () => {
-  assert.match(actions, /caption: marker/);
-  assert.match(actions, /storage_path: `development-test:\/\//);
-  assert.match(actions, /storage_path: path/);
+test("server remains authoritative for readiness and rejects pre-start mutations", () => {
+  assert.match(actions, /\["in_progress", "action_required"\]\.includes\(item\.status\)/);
   assert.match(actions, /evaluate_work_item_readiness/);
+  assert.equal(evaluateReadiness({ completionSubmitted: true, mandatoryTasks: [{ completed: false }], photoTasks: [], noteTasks: [], requiredPhotoCount: 0, completionPhotoCount: 0, keyReturnRequired: false, keyReturnConfirmed: false, unresolvedBlockingIssues: 0 }).ready, false);
+});
+
+test("completed/property-ready detail has no sticky completion action", () => {
+  assert.match(page, /i\.status !== \"action_required\"/);
+  assert.match(page, /state\.primaryAction/);
+});
+
+test("completed cleaner and operator views are read-only receipts", () => {
+  assert.match(page, /Clean completed/);
+  assert.match(page, /tasks completed/);
+  assert.match(page, /photos submitted/);
+  assert.match(operatorPage, /View full checklist/);
+  assert.match(operatorPage, /Property ready|View full checklist/);
+  assert.match(operatorPage, /Guest check-in/);
+});
+
+test("readiness integrity validates required results, task evidence and stored paths", () => {
+  assert.match(integrityMigration, /missing_results/);
+  assert.match(integrityMigration, /required checklist result/);
+  assert.match(integrityMigration, /nullif\(trim\(e\.storage_path\),''\) is not null/);
+  assert.match(integrityMigration, /required_notes_missing/);
+});
+
+test("pre-acceptance query excludes sensitive access fields and accepted view restores them", () => {
+  const firstQuery = page.indexOf('select(`${base},properties(nickname,address_line_1,city,postcode)`)');
+  const fullQuery = page.indexOf('properties(nickname,address_line_1,city,postcode,access_notes,key_instructions');
+  assert.ok(firstQuery >= 0);
+  assert.ok(fullQuery > firstQuery);
+  assert.match(page, /const accepted = !\["awaiting_response", "declined"\]/);
+  assert.match(page, /if \(accepted\)/);
+  assert.match(page, /Access and property notes/);
+  assert.doesNotMatch(page, /Today \/ Upcoming \/ Completed \/ Profile/);
+});
+
+test("mobile cleaner cleanup removes explicit form encoding, dense Today chrome, and uses fixed nav", () => {
+  assert.doesNotMatch(page, /method=|encType=/);
+  assert.doesNotMatch(today, /YOUR WORK|Your current job and next assignment/);
+  assert.match(navigation, /fixed inset-x-0 bottom-0/);
+  assert.match(today, /<h1 className="text-2xl font-extrabold/);
 });

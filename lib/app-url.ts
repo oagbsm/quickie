@@ -19,6 +19,8 @@ function validOrigin(value: string | undefined, production: boolean) {
     const local =
       url.hostname === "localhost" || url.hostname === "127.0.0.1";
     if (production && (local || url.protocol !== "https:")) return null;
+    if (production && url.hostname !== new URL(PRODUCTION_ORIGIN).hostname)
+      return null;
     return url.origin;
   } catch {
     return null;
@@ -48,7 +50,7 @@ export function getAppOrigin() {
 
 export function safeInternalNextPath(
   value: string | null | undefined,
-  fallback = "/business/continue",
+  fallback = "/auth/portal",
 ) {
   if (
     !value ||
