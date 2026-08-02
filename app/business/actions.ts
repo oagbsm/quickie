@@ -15,6 +15,7 @@ import { validatePilotSchedule } from "@/lib/business/time";
 import { sendBookingReceivedEmail } from "@/lib/server/business-notifications";
 import { getServiceAreaStatus } from "@/lib/business/service-area";
 import { normaliseAddressPart, normaliseUkPostcode, UK_POSTCODE_PATTERN } from "@/lib/uk-address";
+import { validateOnboardingPropertyBasics } from "@/lib/business/property-validation";
 import type { CalendarProvider } from "@/lib/calendar/types";
 import {
   createPropertyCalendarConnection,
@@ -234,6 +235,20 @@ export async function addProperty(f: FormData) {
       : `/business/properties/${created?.id}?created=1`,
   );
 }
+
+export type OnboardingPropertyState = {
+  errors: ReturnType<typeof validateOnboardingPropertyBasics>;
+};
+
+export async function addOnboardingProperty(
+  _previousState: OnboardingPropertyState,
+  form: FormData,
+): Promise<OnboardingPropertyState> {
+  const errors = validateOnboardingPropertyBasics(form);
+  if (Object.keys(errors).length) return { errors };
+  return addProperty(form) as never;
+}
+
 export async function updateProperty(f: FormData) {
   const { supabase, accountId } = await requireBusinessUser(),
     id = value(f, "id"),
