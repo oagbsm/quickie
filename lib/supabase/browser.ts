@@ -17,9 +17,10 @@ export function createSupabaseBrowserClient({
           auth: {
             autoRefreshToken: false,
             detectSessionInUrl: false,
+            flowType: "pkce",
             persistSession: true,
           },
         }
-      : undefined,
+      : { auth: { flowType: "pkce" } },
   );
 }

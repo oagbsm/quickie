@@ -17,7 +17,7 @@ export default function Page() {
         id="main-content"
         className="mx-auto grid max-w-[1080px] gap-10 px-5 py-12 lg:grid-cols-[.8fr_1.2fr] lg:items-start lg:py-16"
       >
-        <section className="pt-3">
+        <section className="hidden pt-3 lg:block">
           <p className="eyebrow">Get started</p>
           <h2 className="public-page-title mt-4">
             Start with one property and a clear turnover standard.

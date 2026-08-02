@@ -58,25 +58,25 @@ test("application origins are canonical and never local in production", () => {
       siteUrl: "https://quickola.co.uk/",
       nodeEnv: "production",
     }),
-    "https://quickola.co.uk",
+    "https://www.quickola.co.uk",
   );
   assert.equal(
     resolveAppOrigin({
       siteUrl: "http://localhost:3000",
       nodeEnv: "production",
     }),
-    "https://quickola.co.uk",
+    "https://www.quickola.co.uk",
   );
   assert.equal(
     resolveAppOrigin({
       siteUrl: "https://quickola.com",
       nodeEnv: "production",
     }),
-    "https://quickola.co.uk",
+    "https://www.quickola.co.uk",
   );
   assert.equal(
     resolveAppOrigin({ siteUrl: "not a URL", nodeEnv: "production" }),
-    "https://quickola.co.uk",
+    "https://www.quickola.co.uk",
   );
   assert.equal(
     resolveAppOrigin({ nodeEnv: "development" }),
@@ -93,7 +93,7 @@ test("authentication URLs use production origin and reject external next paths",
       "/auth/callback?next=/business/update-password",
       environment,
     ),
-    "https://quickola.co.uk/auth/callback?next=/business/update-password",
+    "https://www.quickola.co.uk/auth/callback?next=/business/update-password",
   );
   assert.equal(
     safeInternalNextPath("/business/onboarding?step=setup"),
@@ -115,16 +115,35 @@ test("sign-up and password recovery use production callback URLs", () => {
   };
   assert.equal(
     getSignUpConfirmationRedirect(environment),
-    "https://quickola.co.uk/auth/callback?next=/business/continue",
+    "https://www.quickola.co.uk/auth/callback?next=/business/continue",
   );
   assert.equal(
     getPasswordRecoveryRedirect(environment),
-    "https://quickola.co.uk/auth/callback?next=/business/update-password",
+    "https://www.quickola.co.uk/auth/callback?next=/business/update-password",
   );
   assert.doesNotMatch(
     `${getSignUpConfirmationRedirect(environment)} ${getPasswordRecoveryRedirect(environment)}`,
     /localhost|127\.0\.0\.1/,
   );
+});
+test("business email confirmation uses the secure PKCE callback flow", () => {
+  const signup = readFileSync(
+    new URL("../app/business/sign-up/SignUpForm.tsx", import.meta.url),
+    "utf8",
+  );
+  const browserAuth = readFileSync(
+    new URL("../lib/supabase/browser.ts", import.meta.url),
+    "utf8",
+  );
+  const callback = readFileSync(
+    new URL("../app/auth/callback/route.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(signup, /emailRedirectTo: getSignUpConfirmationRedirect\(\)/);
+  assert.match(signup, /getSignUpConfirmationRedirect\(\)/);
+  assert.match(browserAuth, /flowType: "pkce"/);
+  assert.match(callback, /exchangeCodeForSession\(code\)/);
+  assert.match(signup, /router\.push\("\/business\/continue"\)/);
 });
 test("UK property postcodes are validated and normalised", () => {
   assert.equal(normaliseUkPostcode(" sl11aa "), "SL1 1AA");

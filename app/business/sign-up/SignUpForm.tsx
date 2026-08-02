@@ -13,6 +13,7 @@ export default function SignUpForm() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [existing, setExisting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -173,14 +174,25 @@ export default function SignUpForm() {
       </label>
       <label className="font-bold">
         Password
-        <input
-          className={fieldClass}
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          minLength={10}
-          required
-        />
+        <div className="relative mt-1.5">
+          <input
+            className={`${fieldClass.replace("mt-1.5 ", "")} pr-20`}
+            name="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="new-password"
+            minLength={10}
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((visible) => !visible)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-pressed={showPassword}
+            className="absolute inset-y-0 right-1 min-h-11 px-3 text-sm font-black text-[#079448]"
+          >
+            {showPassword ? "Hide" : "Show"}
+          </button>
+        </div>
         <span className="mt-1 block text-xs font-semibold text-[#657089]">
           At least 10 characters.
         </span>

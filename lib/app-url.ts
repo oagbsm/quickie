@@ -5,7 +5,7 @@ export type AppOriginEnvironment = {
   browserOrigin?: string;
 };
 
-export const PRODUCTION_ORIGIN = "https://quickola.co.uk";
+export const PRODUCTION_ORIGIN = "https://www.quickola.co.uk";
 const LOCAL_ORIGIN = "http://localhost:3000";
 
 function validOrigin(value: string | undefined, production: boolean) {
