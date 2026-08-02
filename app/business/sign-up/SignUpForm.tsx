@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getSignUpConfirmationRedirect } from "@/lib/auth-redirects";
+import { getAppOrigin } from "@/lib/app-url";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export default function SignUpForm() {
@@ -14,6 +14,9 @@ export default function SignUpForm() {
   const [sent, setSent] = useState(false);
   const [existing, setExisting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const canonicalOrigin = getAppOrigin();
+  const confirmationRedirect =
+    `${canonicalOrigin}/auth/callback?next=/business/continue`;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,7 +37,7 @@ export default function SignUpForm() {
       email: mail,
       password,
       options: {
-        emailRedirectTo: getSignUpConfirmationRedirect(),
+        emailRedirectTo: confirmationRedirect,
         data: {
           account_kind: "quickola_business",
           full_name: String(form.get("fullName")),
@@ -72,7 +75,7 @@ export default function SignUpForm() {
     const { error } = await createSupabaseBrowserClient().auth.resend({
       type: "signup",
       email,
-      options: { emailRedirectTo: getSignUpConfirmationRedirect() },
+      options: { emailRedirectTo: confirmationRedirect },
     });
     setMessage(
       error ? error.message : "A new confirmation link has been sent.",

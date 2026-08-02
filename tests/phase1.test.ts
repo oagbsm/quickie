@@ -82,6 +82,14 @@ test("application origins are canonical and never local in production", () => {
     resolveAppOrigin({ nodeEnv: "development" }),
     "http://localhost:3000",
   );
+  assert.equal(
+    resolveAppOrigin({
+      siteUrl: "https://quickola.co.uk",
+      browserOrigin: "http://localhost:3000",
+      nodeEnv: "development",
+    }),
+    "http://localhost:3000",
+  );
 });
 test("authentication URLs use production origin and reject external next paths", () => {
   const environment = {
@@ -139,8 +147,15 @@ test("business email confirmation uses the secure PKCE callback flow", () => {
     new URL("../app/auth/callback/route.ts", import.meta.url),
     "utf8",
   );
-  assert.match(signup, /emailRedirectTo: getSignUpConfirmationRedirect\(\)/);
-  assert.match(signup, /getSignUpConfirmationRedirect\(\)/);
+  assert.match(
+    signup,
+    /emailRedirectTo: confirmationRedirect/,
+  );
+  assert.match(
+    signup,
+    /\$\{canonicalOrigin\}\/auth\/callback\?next=\/business\/continue/,
+  );
+  assert.doesNotMatch(signup, /quickola\.co\.uk\/auth\/callback/);
   assert.match(browserAuth, /flowType: "pkce"/);
   assert.match(callback, /exchangeCodeForSession\(code\)/);
   assert.match(signup, /router\.push\("\/business\/continue"\)/);

@@ -29,11 +29,15 @@ function validOrigin(value: string | undefined, production: boolean) {
 
 export function resolveAppOrigin(environment: AppOriginEnvironment = {}) {
   const production = environment.nodeEnv === "production";
+  const browserOrigin = !production
+    ? validOrigin(environment.browserOrigin, false)
+    : null;
   return (
+    browserOrigin ||
     validOrigin(environment.siteUrl, production) ||
     (!production ? validOrigin(environment.vercelUrl, false) : null) ||
     (!production
-      ? validOrigin(environment.browserOrigin, false) || LOCAL_ORIGIN
+      ? LOCAL_ORIGIN
       : PRODUCTION_ORIGIN)
   );
 }
