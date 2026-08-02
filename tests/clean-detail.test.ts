@@ -13,8 +13,11 @@ test("clean detail builds addresses from present components only", () => {
 
 test("clean detail uses a single needs-cleaner action card", () => {
   assert.match(status, /status === "unassigned" \? "Needs cleaner"/);
-  assert.match(page, /<h2 className="text-xl font-extrabold text-amber-950">Assign a cleaner<\/h2>/);
+  assert.match(page, /<h2 className="text-xl font-extrabold text-\[#071f49\]">Assign a cleaner<\/h2>/);
   assert.match(page, /Choose who will complete this clean\./);
+  assert.match(page, /item\.status === "unassigned" \? "Not assigned"/);
+  assert.match(page, /item\.status !== "unassigned" && <div><p className="text-xs font-bold text-\[#748096\]">STATUS<\/p>/);
+  assert.doesNotMatch(page, /bg-amber-50 p-5/);
   assert.doesNotMatch(page, /<h2 className="text-xl font-extrabold text-amber-950">Cleaner needed<\/h2>/);
   assert.doesNotMatch(page, /state\.message &&/);
 });
@@ -24,6 +27,10 @@ test("assignment actions and checklist sections use existing data and actions", 
   assert.match(page, /<ReassignCleanerForm/);
   assert.match(page, /result\.tasks\.map/);
   assert.match(page, /<summary className="flex min-h-11 cursor-pointer/);
+  assert.match(page, /role="progressbar"/);
+  assert.match(page, /const progressPercent = tasks\.length \? Math\.round/);
+  assert.match(page, /: 0;/);
+  assert.match(page, /group-open:rotate-90/);
   assert.doesNotMatch(page, /View full checklist/);
   assert.match(page, /active && assignment && <details/);
 });
