@@ -24,7 +24,7 @@ export default async function Page() {
   ]);
   return (
     <div className="portal-page max-w-4xl">
-      <h1 className="portal-title">Account and defaults</h1>
+      <h1 className="portal-title">Settings</h1>
       <p className="portal-subtitle">
         Manage the controls that affect your Quickola workspace.
       </p>
@@ -56,17 +56,8 @@ export default async function Page() {
         </section>
         <section className="portal-card p-5 sm:p-6">
           <h2 className="text-xl font-extrabold">Workspace</h2>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <label className="font-bold">
-              Workspace display name
-              <input
-                name="workspaceName"
-                defaultValue={account?.name || "My properties"}
-                required
-                minLength={2}
-                className={field}
-              />
-            </label>
+          <input type="hidden" name="workspaceName" value={account?.name || "My properties"} />
+          <div className="mt-5 grid gap-4">
             <label className="font-bold">
               Timezone
               <select

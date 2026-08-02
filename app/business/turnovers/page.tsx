@@ -128,7 +128,7 @@ export default async function Page({
           </Link>
         ))}
       </nav>
-      <form className="mt-4 hidden grid-cols-[1fr_180px_auto] gap-2 sm:grid">
+      <form className={`${rows.length ? "mt-4 hidden sm:grid" : "hidden"} grid-cols-[1fr_180px_auto] gap-2`}>
         <input type="hidden" name="view" value={view} />
         <label>
           <span className="sr-only">Search properties</span>
@@ -213,9 +213,9 @@ export default async function Page({
           </div>
         ) : (
           <div className="p-8 text-center">
-            <h2 className="text-lg font-extrabold">Nothing in this view</h2>
+            <h2 className="text-lg font-extrabold">{view === "upcoming" ? "No upcoming cleans" : view === "attention" ? "No cleans need attention" : "No completed cleans"}</h2>
             <p className="mt-2 text-sm text-[#657089]">
-              Cleans matching this date or status will appear here.
+              {view === "upcoming" ? "Cleans will appear here automatically when bookings are added or imported." : view === "attention" ? "Any clean that needs action will appear here." : "Completed cleans will appear here."}
             </p>
           </div>
         )}

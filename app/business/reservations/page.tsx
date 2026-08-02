@@ -30,10 +30,10 @@ export default async function Page({
             Manage guest stays and their linked cleans.
           </p>
         </div>
-        <Link href="/business/reservations/new" className="portal-action">
+        {rows.length ? <Link href="/business/reservations/new" className="portal-action">
           <span className="sm:hidden">+ Add</span>
           <span className="hidden sm:inline">Add booking</span>
-        </Link>
+        </Link> : null}
       </header>
       <nav aria-label="Booking views" className="mt-5 grid grid-cols-3 border-b">
         {views.map(([label, key]) => (
@@ -137,9 +137,10 @@ export default async function Page({
             </h2>
             <p className="mt-2 text-sm text-[#657089]">
               {view === "upcoming"
-                ? "Add a manual booking to schedule its clean."
+                ? "Bookings from your connected calendars will appear here automatically."
                 : "Bookings in this view will appear here."}
             </p>
+            {view === "upcoming" && <p className="mt-1 text-sm text-[#657089]">You can also add a booking manually.</p>}
             {view === "upcoming" && (
               <Link href="/business/reservations/new" className="portal-action mt-5">
                 Add booking

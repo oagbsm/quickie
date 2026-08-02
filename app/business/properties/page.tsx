@@ -60,20 +60,14 @@ export default async function Page({
           <h1 className="portal-title">
             Properties
           </h1>
-          <p className="portal-subtitle hidden sm:block">
-            Manage property details and turnover standards.
+        <p className="portal-subtitle hidden sm:block">
+            Manage property details and clean standards.
           </p>
         </div>
-        <Link
-          href="/business/properties/new"
-          className="portal-action"
-        >
-          <span className="sm:hidden">+ Add</span>
-          <span className="hidden sm:inline">Add property</span>
-        </Link>
+        {data?.length ? <Link href="/business/properties/new" className="portal-action"><span className="sm:hidden">+ Add</span><span className="hidden sm:inline">Add property</span></Link> : null}
       </header>
       <form
-        className={`${(data?.length || 0) <= 5 && !q && !status ? "hidden sm:grid" : "grid"} mt-6 gap-3 rounded-xl border bg-white p-3 sm:grid-cols-[1fr_180px_auto]`}
+        className={`${data?.length ? "grid" : "hidden"} mt-6 gap-3 rounded-xl border bg-white p-3 sm:grid-cols-[1fr_180px_auto]`}
       >
         <label>
           <span className="sr-only">Search properties</span>
@@ -221,9 +215,9 @@ export default async function Page({
           })
         ) : (
           <div className="col-span-full rounded-xl border bg-white p-10 text-center">
-            <h2 className="text-xl font-extrabold">No properties</h2>
+            <h2 className="text-xl font-extrabold">Add your first property</h2>
             <p className="mt-2 text-[#657089]">
-              Add your first property to create a clean standard.
+              Connect its booking calendar and Quickola will automatically organise cleans after checkout.
             </p>
             <Link
               href="/business/properties/new"
