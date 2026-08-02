@@ -55,8 +55,9 @@ test("completed cleaner and operator views are read-only receipts", () => {
   assert.match(page, /Clean completed/);
   assert.match(page, /tasks completed/);
   assert.match(page, /photos submitted/);
-  assert.match(operatorPage, /View full checklist/);
-  assert.match(operatorPage, /Property ready|View full checklist/);
+  assert.match(operatorPage, /Cleaning progress/);
+  assert.match(operatorPage, /result\.tasks\.map/);
+  assert.match(operatorPage, /Property ready|Cleaning progress/);
   assert.match(operatorPage, /Guest check-in/);
 });
 

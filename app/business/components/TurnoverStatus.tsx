@@ -15,6 +15,6 @@ const tones: Record<string, string> = {
 
 export default function TurnoverStatus({ status }: { status: string }) {
   return <span className={`portal-pill border ${tones[status] || "border-blue-100 bg-blue-50 text-blue-800"}`}>
-    {getOperatorState(status).label}
+    {status === "unassigned" ? "Needs cleaner" : getOperatorState(status).label}
   </span>;
 }
