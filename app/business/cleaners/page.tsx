@@ -24,7 +24,7 @@ export default async function Page() {
             Cleaners
           </h1>
           <p className="portal-subtitle hidden sm:block">
-            Manage the people responsible for your turnovers.
+            Manage the people responsible for your cleans.
           </p>
         </div>
         <Link
@@ -77,7 +77,7 @@ export default async function Page() {
                 <div className="mt-3 flex items-center justify-between border-t pt-3 text-sm">
                   <span className="text-[#657089]">
                     {upcoming} upcoming{" "}
-                    {upcoming === 1 ? "turnover" : "turnovers"}
+                    {upcoming === 1 ? "clean" : "cleans"}
                   </span>
                   <Link href={`/business/cleaners/${worker.id}`} className="font-bold text-[#245b9d]">View cleaner →</Link>
                 </div>

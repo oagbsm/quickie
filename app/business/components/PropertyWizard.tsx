@@ -5,10 +5,7 @@ import PendingButton from "@/app/components/PendingButton";
 import { addProperty } from "../actions";
 import AddressLookup from "./AddressLookup";
 import { ONBOARDING_BEDROOMS } from "@/lib/business/property-validation";
-import {
-  formatTurnoverDurationLong,
-  TURNOVER_DURATION_OPTIONS,
-} from "@/lib/business/turnover-validation";
+import { TURNOVER_DURATION_OPTIONS } from "@/lib/business/turnover-validation";
 
 const field =
   "mt-1 min-h-12 w-full rounded-lg border border-[#cfd7e3] bg-white px-3 py-2 outline-none focus:border-[#2d67b2] focus:ring-4 focus:ring-[#2d67b2]/15";
@@ -16,18 +13,19 @@ const labels = [
   "Property details",
   "Turnover timings",
   "Connect calendar",
-  "Review and create",
 ];
 const providerNames: Record<string, string> = {
   airbnb: "Airbnb",
   booking_com: "Booking.com",
   vrbo: "Vrbo",
+  expedia: "Expedia",
   other: "Other calendar",
 };
 const providerOptions = [
   { value: "airbnb", label: "Airbnb", helper: "Paste your Airbnb private iCal link." },
   { value: "booking_com", label: "Booking.com", helper: "Paste your Booking.com calendar link." },
   { value: "vrbo", label: "Vrbo", helper: "Paste your Vrbo calendar link." },
+  { value: "expedia", label: "Expedia", helper: "Paste your Expedia calendar link." },
   { value: "other", label: "Other calendar", helper: "Paste your private iCal calendar link." },
 ] as const;
 
@@ -39,19 +37,8 @@ function CalendarIcon() {
     </svg>
   );
 }
-function formatTime(value: string | undefined) {
-  return value?.slice(0, 5) || "—";
-}
-function formatBedrooms(value: string | undefined) {
-  const bedrooms = Number(value);
-  if (!Number.isInteger(bedrooms)) return "—";
-  if (bedrooms === 0) return "Studio";
-  if (bedrooms === 5) return "5+ bedrooms";
-  return `${bedrooms} ${bedrooms === 1 ? "bedroom" : "bedrooms"}`;
-}
 export default function PropertyWizard({ error, addressLookupEnabled = false, defaults }: { error?: string; addressLookupEnabled?: boolean; defaults?: { checkout: string; checkin: string; duration: number } }) {
   const [step, setStep] = useState(0);
-  const [summary, setSummary] = useState<Record<string, string>>({});
   const [reservationSource, setReservationSource] = useState("");
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
@@ -89,7 +76,6 @@ export default function PropertyWizard({ error, addressLookupEnabled = false, de
       if (typeof v === "string") out[k] = v;
     });
     localStorage.setItem("quickola-property-draft", JSON.stringify(out));
-    setSummary(out);
   }
   function next() {
     const invalid = ref.current
@@ -106,10 +92,6 @@ export default function PropertyWizard({ error, addressLookupEnabled = false, de
     setStep((s) => Math.min(labels.length - 1, s + 1));
     scrollTo({ top: 0, behavior: "smooth" });
   }
-  function edit(targetStep: number) {
-    setStep(targetStep);
-    scrollTo({ top: 0, behavior: "smooth" });
-  }
   return (
     <form
       ref={ref}
@@ -119,7 +101,7 @@ export default function PropertyWizard({ error, addressLookupEnabled = false, de
     >
       <ol
         aria-label="Property creation progress"
-        className="mb-5 grid grid-cols-4 gap-1.5 sm:mb-7 sm:gap-2"
+        className="mb-5 grid grid-cols-3 gap-1.5 sm:mb-7 sm:gap-2"
       >
         {labels.map((x, i) => (
           <li key={x} aria-current={i === step ? "step" : undefined}>
@@ -144,7 +126,7 @@ export default function PropertyWizard({ error, addressLookupEnabled = false, de
       )}
       <div className="rounded-xl bg-white p-4 shadow-sm sm:p-8">
         <section data-step="0" hidden={step !== 0}>
-          <p className="text-sm font-extrabold text-[#2d67b2]">STEP 1 OF 4</p>
+          <p className="text-sm font-extrabold text-[#2d67b2]">STEP 1 OF 3</p>
           <h2 className="mt-1 text-2xl font-extrabold">Property details</h2>
           <div className="mt-4 grid gap-4 sm:mt-6 sm:gap-5">
             {addressLookupEnabled && <AddressLookup />}
@@ -189,7 +171,7 @@ export default function PropertyWizard({ error, addressLookupEnabled = false, de
           </div>
         </section>
         <section data-step="1" hidden={step !== 1}>
-          <p className="text-sm font-extrabold text-[#2d67b2]">STEP 2 OF 4</p>
+          <p className="text-sm font-extrabold text-[#2d67b2]">STEP 2 OF 3</p>
           <h2 className="mt-1 text-2xl font-extrabold">Turnover timings</h2>
           <p className="mt-2 max-w-2xl text-[#657089]">
             Set the usual checkout, check-in and cleaning time. You can change these for individual reservations later.
@@ -231,7 +213,7 @@ export default function PropertyWizard({ error, addressLookupEnabled = false, de
           </div>
         </section>
         <section data-step="2" hidden={step !== 2}>
-          <p className="text-sm font-extrabold text-[#2d67b2]">STEP 3 OF 4</p>
+          <p className="text-sm font-extrabold text-[#2d67b2]">STEP 3 OF 3</p>
           <h2 className="mt-1 text-2xl font-extrabold">Connect your booking calendar</h2>
           <p className="mt-2 text-[#657089]">
             Automatically keep Quickola updated when bookings change.
@@ -243,22 +225,23 @@ export default function PropertyWizard({ error, addressLookupEnabled = false, de
                 {providerOptions.map((option) => (
                   <label
                     key={option.value}
-                    className="flex min-h-12 cursor-pointer items-center gap-2 rounded-lg border border-[#cfd7e3] bg-white px-3 py-2 text-sm font-bold transition focus-within:ring-4 focus-within:ring-[#2d67b2]/15 has-[:checked]:border-[#2d67b2] has-[:checked]:bg-[#eef4fc] has-[:checked]:text-[#071f49]"
+                    className="box-border flex h-[66px] w-full cursor-pointer items-center justify-center rounded-lg border border-[#cfd7e3] bg-white p-2 text-sm font-bold transition hover:bg-[#f8fafc] focus-within:ring-4 focus-within:ring-[#2d67b2]/15 sm:h-[68px] has-[:checked]:border-[#2d67b2] has-[:checked]:bg-[#eef4fc]"
                   >
                     <input
                       className="sr-only"
                       type="radio"
                       name="reservationProvider"
                       value={option.value}
+                      aria-label={option.label}
                       required
                       checked={reservationSource === option.value}
                       onChange={(event) => setReservationSource(event.target.value)}
                     />
-                    {option.value === "airbnb" && <Image src="/brands/airbnb.svg" alt="" aria-hidden="true" width={86} height={24} className="h-5 w-auto shrink-0" />}
-                    {option.value === "booking_com" && <Image src="/brands/booking-com.svg" alt="" aria-hidden="true" width={132} height={24} className="h-5 w-auto shrink-0" />}
-                    {option.value === "vrbo" && <Image src="/brands/vrbo.svg" alt="" aria-hidden="true" width={54} height={24} className="h-5 w-auto shrink-0" />}
-                    {option.value === "other" && <CalendarIcon />}
-                    <span>{option.label}</span>
+                    {option.value === "airbnb" && <span className="flex h-[42px] w-full max-w-[148px] items-center justify-center overflow-hidden"><Image src="/icons/airbnb.png" alt="" aria-hidden="true" width={115} height={42} className="h-auto max-h-[42px] w-auto max-w-[115px] object-contain object-center" style={{ maxWidth: "100%" }} /></span>}
+                    {option.value === "booking_com" && <span className="flex h-[42px] w-full max-w-[148px] items-center justify-center overflow-hidden"><Image src="/icons/booking.jpg" alt="" aria-hidden="true" width={148} height={38} className="h-auto max-h-[38px] w-auto max-w-[148px] object-contain object-center" style={{ maxWidth: "100%" }} /></span>}
+                    {option.value === "vrbo" && <span className="flex h-[42px] w-full max-w-[148px] items-center justify-center overflow-hidden"><Image src="/icons/vrbo.png" alt="" aria-hidden="true" width={115} height={42} className="h-auto max-h-[42px] w-auto max-w-[115px] object-contain object-center" style={{ maxWidth: "100%" }} /></span>}
+                    {option.value === "expedia" && <span className="flex h-[42px] w-full max-w-[148px] items-center justify-center overflow-hidden"><Image src="/icons/expedia.png" alt="" aria-hidden="true" width={115} height={42} className="h-auto max-h-[42px] w-auto max-w-[115px] object-contain object-center" style={{ maxWidth: "100%" }} /></span>}
+                    {option.value === "other" && <span className="flex items-center gap-2"><CalendarIcon /><span>{option.label}</span></span>}
                   </label>
                 ))}
               </div>
@@ -304,46 +287,6 @@ export default function PropertyWizard({ error, addressLookupEnabled = false, de
             )}
           </div>
         </section>
-        <section data-step="3" hidden={step !== 3}>
-          <p className="text-sm font-extrabold text-[#2d67b2]">STEP 4 OF 4</p>
-          <h2 className="mt-1 text-2xl font-extrabold">Ready to create your property?</h2>
-          <p className="mt-2 text-[#657089]">Review the essentials below. You can change these settings anytime.</p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3 sm:gap-4">
-            <section className="rounded-lg border border-[#dfe4eb] bg-[#f8fafc] p-4">
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="text-sm font-bold text-[#657089]">Property</h3>
-                <button type="button" onClick={() => edit(0)} className="min-h-11 rounded-md px-2 text-sm font-bold text-[#2d67b2] underline-offset-2 hover:underline focus:outline-none focus:ring-4 focus:ring-[#2d67b2]/15">Edit</button>
-              </div>
-              <p className="mt-2 font-extrabold">{summary.nickname || "—"}</p>
-              <p className="mt-1 text-sm text-[#657089]">{summary.addressLine1}, {summary.postcode}</p>
-              <p className="mt-1 text-sm text-[#657089]">{formatBedrooms(summary.bedrooms)}</p>
-            </section>
-            <section className="rounded-lg border border-[#dfe4eb] bg-[#f8fafc] p-4">
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="text-sm font-bold text-[#657089]">Turnover timing</h3>
-                <button type="button" onClick={() => edit(1)} className="min-h-11 rounded-md px-2 text-sm font-bold text-[#2d67b2] underline-offset-2 hover:underline focus:outline-none focus:ring-4 focus:ring-[#2d67b2]/15">Edit</button>
-              </div>
-              <p className="mt-2 font-extrabold">{formatTime(summary.defaultCheckoutTime)}–{formatTime(summary.defaultCheckinTime)}</p>
-              <p className="mt-1 text-sm text-[#657089]">{formatTurnoverDurationLong(summary.estimatedTurnoverMinutes)}</p>
-            </section>
-            <section className="rounded-lg border border-[#dfe4eb] bg-[#f8fafc] p-4">
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="text-sm font-bold text-[#657089]">Calendar</h3>
-                <button type="button" onClick={() => edit(2)} className="min-h-11 rounded-md px-2 text-sm font-bold text-[#2d67b2] underline-offset-2 hover:underline focus:outline-none focus:ring-4 focus:ring-[#2d67b2]/15">Edit</button>
-              </div>
-              {summary.reservationProvider === "connect_later" ? (
-                <p className="mt-2 font-extrabold">Not connected yet</p>
-              ) : summary.reservationCalendarUrl ? (
-                <>
-                  <p className="mt-2 font-extrabold">{providerNames[summary.reservationProvider || ""] || "Calendar"}</p>
-                  <p className="mt-1 text-sm text-[#657089]">Will connect when property is created</p>
-                </>
-              ) : (
-                <p className="mt-2 font-extrabold">Not selected</p>
-              )}
-            </section>
-          </div>
-        </section>
       </div>
       <div className="mt-5 flex justify-between">
         <button
@@ -360,13 +303,7 @@ export default function PropertyWizard({ error, addressLookupEnabled = false, de
             onClick={next}
             className="min-h-12 rounded-lg bg-[#071f49] px-6 font-extrabold text-white"
           >
-            {step === 2
-              ? reservationSource === "connect_later"
-                ? "Continue without calendar"
-                : reservationSource
-                  ? "Connect calendar"
-                  : "Continue"
-              : "Continue"}
+            Continue
           </button>
         ) : (
           <PendingButton

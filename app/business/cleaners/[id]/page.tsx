@@ -152,7 +152,7 @@ export default async function Page({
           )}
         </section>
         <section className="portal-panel">
-          <div className="portal-panel-head flex-wrap"><h2 className="text-lg font-extrabold">Turnover history</h2><nav aria-label="Cleaner history filters" className="flex rounded-lg bg-[#eef2f7] p-1 text-xs font-bold">{["upcoming","completed","cancelled"].map(value=><Link key={value} href={`/business/cleaners/${id}?history=${value}`} aria-current={history===value?"page":undefined} className={`rounded-md px-2.5 py-2 capitalize ${history===value?"bg-white shadow-sm":"text-[#65758c]"}`}>{value}</Link>)}</nav></div>
+          <div className="portal-panel-head flex-wrap"><h2 className="text-lg font-extrabold">Clean history</h2><nav aria-label="Cleaner history filters" className="flex rounded-lg bg-[#eef2f7] p-1 text-xs font-bold">{["upcoming","completed","cancelled"].map(value=><Link key={value} href={`/business/cleaners/${id}?history=${value}`} aria-current={history===value?"page":undefined} className={`rounded-md px-2.5 py-2 capitalize ${history===value?"bg-white shadow-sm":"text-[#65758c]"}`}>{value}</Link>)}</nav></div>
           <div className="divide-y px-5">
             {filtered.length ? (
               filtered.map(
@@ -174,7 +174,7 @@ export default async function Page({
                         {a.work_items.turnover_date} · {a.status}
                       </p>
                       <span className="shrink-0 font-bold text-[#245b9d]">
-                        View turnover →
+                        View clean →
                       </span>
                     </div>
                     </Link>
@@ -187,7 +187,7 @@ export default async function Page({
                 ),
               )
             ) : (
-              <p className="py-6 text-sm text-[#657089]">No {history} turnovers.</p>
+              <p className="py-6 text-sm text-[#657089]">No {history} cleans.</p>
             )}
           </div>
         </section>

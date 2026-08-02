@@ -11,6 +11,7 @@ import { londonLocalToUtc } from "@/lib/business/time";
 import { hasTurnoverWindowRisk } from "@/lib/turnovers/status";
 import { isImplausibleTurnoverDate } from "@/lib/turnovers/presentation";
 import { sendCleanerAssignmentEmail, sendCleanerInvitationEmail, sendOperatorTurnoverEmail } from "@/lib/server/business-notifications";
+import { isSupportedTurnoverDuration } from "@/lib/business/turnover-validation";
 
 const text = (form: FormData, name: string) =>
   String(form.get(name) || "").trim();
@@ -109,7 +110,7 @@ export async function saveOnboardingStandard(form: FormData) {
   const checkout = text(form, "defaultCheckoutTime");
   const checkin = text(form, "defaultCheckinTime");
   const duration = Number(text(form, "estimatedTurnoverMinutes"));
-  if (!propertyId || !checkout || !checkin || !Number.isFinite(duration)) {
+  if (!propertyId || !checkout || !checkin || !isSupportedTurnoverDuration(duration)) {
     redirect(
       `/business/onboarding?step=standard&property=${propertyId}&error=required`,
     );

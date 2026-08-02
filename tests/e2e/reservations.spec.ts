@@ -84,7 +84,7 @@ test.describe("manual reservation lifecycle", () => {
       await page.waitForURL((current) => !current.pathname.includes("sign-in"));
 
       await page.goto("/business/reservations");
-      await expect(page.getByRole("heading", { level: 1, name: "Reservations" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Bookings" })).toBeVisible();
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

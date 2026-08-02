@@ -14,6 +14,7 @@ const safeTitles: Record<CalendarProvider, string> = {
   airbnb: "Airbnb reservation",
   booking_com: "Booking.com reservation",
   vrbo: "Vrbo reservation",
+  expedia: "Expedia reservation",
   other: "Imported reservation",
 };
 

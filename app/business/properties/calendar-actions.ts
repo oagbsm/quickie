@@ -14,6 +14,7 @@ const providers = new Set<CalendarProvider>([
   "airbnb",
   "booking_com",
   "vrbo",
+  "expedia",
   "other",
 ]);
 

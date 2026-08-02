@@ -153,7 +153,7 @@ export default function PropertyForm({
         />
       </fieldset>
       <fieldset className="grid gap-5 border-t pt-6">
-        <legend className="text-lg font-extrabold">Turnover standard</legend>
+        <legend className="text-lg font-extrabold">Clean standard</legend>
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="font-bold">
             Default checkout

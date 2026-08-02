@@ -48,7 +48,7 @@ export default function TurnoverForm({ properties, workers, initialPropertyId }:
     <section className={`${step === 2 ? "block" : "hidden"} rounded-xl border border-[#dfe4eb] bg-white p-5 sm:block sm:p-7`}>
       <p className="text-xs font-extrabold uppercase tracking-[.12em] text-[#2d67b2]">2 · Schedule</p>
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        <label className="font-bold">Turnover date<input name="date" type="date" min={new Date().toISOString().slice(0,10)} className={field} required /></label>
+        <label className="font-bold">Clean date<input name="date" type="date" min={new Date().toISOString().slice(0,10)} className={field} required /></label>
         <label className="font-bold">Guest checkout<input name="checkoutTime" type="time" value={checkout} onChange={e => setCheckout(e.target.value)} className={field} required /></label>
         <label className="font-bold">Next check-in<input name="checkinTime" type="time" value={checkin} onChange={e => setCheckin(e.target.value)} className={field} required /></label>
       </div>
@@ -77,7 +77,7 @@ export default function TurnoverForm({ properties, workers, initialPropertyId }:
     </section>
     <section className="hidden flex-col justify-between gap-4 rounded-xl bg-[#071f49] p-5 text-white sm:flex sm:flex-row sm:items-center sm:p-7">
       <div><p className="font-extrabold">Review and add arrival</p><p className="mt-1 text-sm text-white/70">The property checklist and evidence rules will be copied into this readiness workflow.</p></div>
-      <button disabled={pending} className="min-h-12 rounded-lg bg-white px-6 font-extrabold text-[#071f49] focus-visible:ring-4 focus-visible:ring-white/40 disabled:opacity-60">{pending ? "Creating…" : "Create turnover"}</button>
+      <button disabled={pending} className="min-h-12 rounded-lg bg-white px-6 font-extrabold text-[#071f49] focus-visible:ring-4 focus-visible:ring-white/40 disabled:opacity-60">{pending ? "Creating…" : "Create clean"}</button>
     </section>
   </form>;
 }

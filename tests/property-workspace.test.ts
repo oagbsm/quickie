@@ -8,7 +8,7 @@ const oldCleaners = readFileSync(new URL("../app/business/properties/[id]/cleane
 
 test("property workspace exposes exactly four tabs and redirects removed routes", () => {
   assert.match(page, /\["overview", "Overview"\]/);
-  assert.match(page, /\["reservations", "Reservations"\]/);
+  assert.match(page, /\["reservations", "Bookings"\]/);
   assert.match(page, /\["checklist", "Checklist"\]/);
   assert.match(page, /\["access", "Access"\]/);
   assert.match(page, /requested === "standard"/);
@@ -18,16 +18,16 @@ test("property workspace exposes exactly four tabs and redirects removed routes"
   assert.doesNotMatch(page, /\["standard", "Standard"\]/);
 });
 
-test("overview includes next turnover, default cleaner, calendar and recent turnover areas", () => {
-  assert.match(page, /NEXT TURNOVER/);
+test("overview includes next clean, default cleaner, calendar and recent clean areas", () => {
+  assert.match(page, /NEXT CLEAN/);
   assert.match(page, /CLEANER/);
   assert.match(page, /Default cleaner/);
-  assert.match(page, /Recent turnovers/);
+  assert.match(page, /Recent cleans/);
   assert.match(page, /property_workers/);
 });
 
 test("calendar setup is host-facing and does not request connection names", () => {
-  assert.match(calendar, /Reservation calendar/);
+  assert.match(calendar, /Booking calendar/);
   assert.match(calendar, /Calendar URL/);
   assert.doesNotMatch(calendar, /Connection name/);
 });
@@ -39,8 +39,8 @@ test("checklist editing controls are edit-mode only and access omits empty value
   assert.doesNotMatch(page, /Not set/);
 });
 
-test("header prioritises Add reservation and moves manual turnover under More", () => {
-  assert.match(page, /Add reservation/);
+test("header prioritises Add booking and moves manual clean under More", () => {
+  assert.match(page, /Add booking/);
   assert.match(page, />More<\/summary>/);
-  assert.match(page, /Create manual turnover/);
+  assert.match(page, /Create manual clean/);
 });

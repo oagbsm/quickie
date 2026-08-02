@@ -6,11 +6,9 @@ import { usePathname } from "next/navigation";
 const items = [
   ["Dashboard", "/business/dashboard", "home"],
   ["Properties", "/business/properties", "building"],
-  ["Reservations", "/business/reservations", "book"],
-  ["Turnovers", "/business/turnovers", "calendar"],
-  ["Team", "/business/cleaners", "people"],
-  ["Issues", "/business/issues", "alert"],
-  ["Activity", "/business/activity", "activity"],
+  ["Bookings", "/business/reservations", "book"],
+  ["Cleans", "/business/turnovers", "calendar"],
+  ["Cleaners", "/business/cleaners", "people"],
   ["Settings", "/business/settings", "settings"],
 ] as const;
 

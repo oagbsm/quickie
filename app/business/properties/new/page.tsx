@@ -40,8 +40,8 @@ export default async function Page({
       <h1 className="mb-2 mt-4 text-3xl font-extrabold">Add a property</h1>
       <p className="mb-7 text-[#59677d]">
         {source
-          ? `Turnover settings and checklist will be copied from ${source.nickname}. Add the new address details.`
-          : "Build the property standard in five focused steps."}
+          ? `Clean settings and checklist will be copied from ${source.nickname}. Add the new address details.`
+          : "Set up your property in four focused steps."}
       </p>
       {source ? (
         <PropertyForm
@@ -50,7 +50,7 @@ export default async function Page({
           duplicatePropertyId={source.id}
         />
       ) : (
-        <PropertyWizard error={error} defaults={{ checkout: accountDefaults?.default_checkout_time || "11:00", checkin: accountDefaults?.default_checkin_time || "15:00", duration: accountDefaults?.default_turnover_minutes || 180 }} />
+        <PropertyWizard error={error} addressLookupEnabled={Boolean(process.env.GETADDRESS_API_KEY)} defaults={{ checkout: accountDefaults?.default_checkout_time || "11:00", checkin: accountDefaults?.default_checkin_time || "15:00", duration: accountDefaults?.default_turnover_minutes || 180 }} />
       )}
     </div>
   );

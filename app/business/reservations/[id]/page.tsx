@@ -44,23 +44,23 @@ export default async function Page({
     ? isSameLondonDate(turnover.guest_checkout_at, turnover.next_checkin_at)
     : false;
   const success = message.created
-    ? "Reservation created with one linked turnover."
+    ? "Booking created with one linked clean."
     : message.updated
-      ? "Reservation and linked turnover updated."
+      ? "Booking and linked clean updated."
       : message.unchanged
         ? "No reservation changes were needed."
         : message.cancelled
-          ? "Reservation and linked turnover cancelled."
+          ? "Booking and linked clean cancelled."
           : null;
   return (
     <div className="portal-page max-w-6xl">
       <Link href="/business/reservations" className="text-sm font-bold text-[#526078]">
-        ← Reservations
+        ← Bookings
       </Link>
       <header className="mt-4 flex flex-col gap-4 border-b border-[#dfe4eb] pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-extrabold uppercase text-[#2d67b2]">
-            {sourceLabel} reservation
+            {sourceLabel} booking
           </p>
           <h1 className="mt-1 text-3xl font-extrabold tracking-[-.03em]">
             {reservation.property.nickname}
@@ -101,10 +101,10 @@ export default async function Page({
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)]">
         <div className="grid content-start gap-6">
           <section className="portal-card p-5 sm:p-6">
-            <h2 className="text-lg font-extrabold">Reservation</h2>
+                <h2 className="text-lg font-extrabold">Booking</h2>
             <dl className="mt-5 grid gap-5 sm:grid-cols-2">
               {detail("Property", reservation.property.nickname)}
-              {detail("Reservation source", `${sourceLabel}${reservation.source === "ical" ? " calendar" : ""}`)}
+              {detail("Booking source", `${sourceLabel}${reservation.source === "ical" ? " calendar" : ""}`)}
               {reservation.source === "ical" &&
                 detail(
                   "Last synchronised",
@@ -125,9 +125,9 @@ export default async function Page({
           <section className="portal-card p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-extrabold">Linked turnover</h2>
+                <h2 className="text-lg font-extrabold">Linked clean</h2>
                 <p className="mt-1 text-sm text-[#657089]">
-                  One turnover kept in sync with this reservation.
+              One clean kept in sync with this booking.
                 </p>
               </div>
               {turnover && <TurnoverStatus status={turnover.status} />}
@@ -136,7 +136,7 @@ export default async function Page({
               <>
                 <dl className="mt-5 grid gap-5 sm:grid-cols-2">
                   {detail(
-                    "Turnover date",
+                    "Clean date",
                     new Intl.DateTimeFormat("en-GB", { dateStyle: "long" }).format(
                       new Date(`${turnover.turnover_date}T12:00:00Z`),
                     ),
@@ -157,7 +157,7 @@ export default async function Page({
                   <div className="mt-5 flex flex-wrap gap-2">
                     {sameDay && (
                       <span className="portal-pill border border-violet-100 bg-violet-50 text-violet-800">
-                        Same-day turnover
+                        Same-day clean
                       </span>
                     )}
                     {turnover.requires_attention && (
@@ -171,12 +171,12 @@ export default async function Page({
                   href={`/business/turnovers/${turnover.id}`}
                   className="portal-action-secondary mt-5"
                 >
-                  View turnover
+                  View clean
                 </Link>
               </>
             ) : (
               <p className="mt-5 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-800">
-                The linked turnover is unavailable. No reservation data has been removed.
+                The linked clean is unavailable. No booking data has been removed.
               </p>
             )}
           </section>

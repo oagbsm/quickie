@@ -95,7 +95,7 @@ export default async function Page({
       <header className="portal-header">
         <div>
           <h1 className="portal-title">
-            Turnovers
+            Cleans
           </h1>
           <p className="portal-subtitle hidden sm:block">
             Track every clean from checkout to property ready.
@@ -106,11 +106,11 @@ export default async function Page({
           className="portal-action"
         >
           <span className="sm:hidden">+ Add</span>
-          <span className="hidden sm:inline">Add turnover</span>
+          <span className="hidden sm:inline">Add clean</span>
         </Link>
       </header>
       <nav
-        aria-label="Turnover views"
+        aria-label="Clean views"
         className="mt-5 grid grid-cols-3 border-b"
       >
         {[
@@ -140,7 +140,7 @@ export default async function Page({
           />
         </label>
         <label>
-          <span className="sr-only">Turnover date</span>
+          <span className="sr-only">Clean date</span>
           <input
             type="date"
             name="date"
@@ -215,7 +215,7 @@ export default async function Page({
           <div className="p-8 text-center">
             <h2 className="text-lg font-extrabold">Nothing in this view</h2>
             <p className="mt-2 text-sm text-[#657089]">
-              Turnovers matching this date or status will appear here.
+              Cleans matching this date or status will appear here.
             </p>
           </div>
         )}

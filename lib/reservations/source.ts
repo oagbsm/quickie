@@ -1,5 +1,5 @@
 export type ReservationSourceConnection = {
-  provider: "airbnb" | "booking_com" | "vrbo" | "other";
+  provider: "airbnb" | "booking_com" | "vrbo" | "expedia" | "other";
   display_name: string | null;
   last_successful_sync_at: string | null;
 } | null;
@@ -16,6 +16,7 @@ export function reservationSourceLabel(
       airbnb: "Airbnb",
       booking_com: "Booking.com",
       vrbo: "Vrbo",
+      expedia: "Expedia",
       other: "Calendar",
     }[connection.provider]
   );

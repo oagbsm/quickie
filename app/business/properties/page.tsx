@@ -158,7 +158,7 @@ export default async function Page({
                   </details>
                 </div>
                 <div className="mt-4 border-t pt-4">
-                  <div className="flex items-center justify-between gap-3"><p className="portal-label">Next turnover</p><span className="portal-pill border border-slate-200 bg-slate-50 text-slate-700">{p.status === "active" ? "Active" : "Inactive"}</span></div>
+                  <div className="flex items-center justify-between gap-3"><p className="portal-label">Next clean</p><span className="portal-pill border border-slate-200 bg-slate-50 text-slate-700">{p.status === "active" ? "Active" : "Inactive"}</span></div>
                   <p className="mt-1 font-extrabold">
                     {upcoming
                       ? new Intl.DateTimeFormat("en-GB", {
@@ -177,7 +177,7 @@ export default async function Page({
                       {turnoverActionReason(upcoming)}
                     </div>
                   ) : (
-                    <p className="mt-3 text-xs text-[#657089]">No upcoming turnover</p>
+                    <p className="mt-3 text-xs text-[#657089]">No upcoming clean</p>
                   )}
                   <p className="mt-4 text-xs text-[#657089]">
                     {lastReady?.ready_at ? "Last ready: " : "No completed turnovers yet."}
@@ -188,14 +188,14 @@ export default async function Page({
                       : ""}
                   </p>
                   <div className="mt-4 grid gap-2 rounded-xl border border-[#dfe4eb] bg-[#f4f6f9] p-3 text-sm">
-                    <span className="font-bold">Reservation source</span>
+                    <span className="font-bold">Booking calendar</span>
                     <span className="text-[#657089]">
                       {(() => {
                         const status = reservationStatusByProperty[p.id];
-                        if (!status || status.count === 0) return "No reservation source";
+                        if (!status || status.count === 0) return "No booking calendar";
                         if (status.attention || status.neverSynced || status.syncing) return "Needs attention";
                         if (status.healthy) return "Connected";
-                        return "Reservation source connected";
+                        return "Booking calendar connected";
                       })()}
                     </span>
                   </div>
@@ -212,7 +212,7 @@ export default async function Page({
                       href={`/business/turnovers/new?property=${p.id}`}
                       className="portal-action"
                     >
-                      Add turnover
+                      Add clean
                     </Link>
                   )}
                 </div>
@@ -223,7 +223,7 @@ export default async function Page({
           <div className="col-span-full rounded-xl border bg-white p-10 text-center">
             <h2 className="text-xl font-extrabold">No properties</h2>
             <p className="mt-2 text-[#657089]">
-              Add your first property to create a turnover standard.
+              Add your first property to create a clean standard.
             </p>
             <Link
               href="/business/properties/new"

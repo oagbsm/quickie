@@ -17,7 +17,7 @@ const field =
   "mt-1.5 min-h-11 w-full rounded-lg border border-[#cfd7e3] bg-white px-3 py-2 outline-none focus:border-[#2d67b2] focus:ring-4 focus:ring-[#2d67b2]/15";
 
 const providerName = (provider: SafeCalendarConnection["provider"]) =>
-  ({ airbnb: "Airbnb", booking_com: "Booking.com", vrbo: "Vrbo", other: "Other calendar" })[provider];
+  ({ airbnb: "Airbnb", booking_com: "Booking.com", vrbo: "Vrbo", expedia: "Expedia", other: "Other calendar" })[provider];
 
 function Result({ state }: { state: CalendarActionState }) {
   if (!state.message) return null;
@@ -79,7 +79,7 @@ function ManageConnection({ propertyId, connection }: { propertyId: string; conn
         <div className="grid gap-2 border-t border-red-100 pt-4">
           <label className="flex items-start gap-2 text-sm font-bold text-red-800">
             <input type="checkbox" name="confirmRemove" value="yes" className="mt-1 h-4 w-4" />
-            Remove this connection. Imported reservation history will remain.
+            Remove this connection. Imported booking history will remain.
           </label>
           <button name="intent" value="remove" disabled={pending} className="min-h-11 justify-self-start rounded-lg bg-red-700 px-4 font-extrabold text-white">
             Remove connection
@@ -97,9 +97,9 @@ export default function CalendarSources({ propertyId, connections }: { propertyI
   return (
     <section className="mt-6 grid gap-4" aria-labelledby="reservation-sources-title">
       <div>
-        <h2 id="reservation-sources-title" className="text-xl font-extrabold">Reservation calendar</h2>
-        <p className="mt-1 text-sm text-[#657089]">Connect Airbnb, Booking.com, Vrbo or another calendar to import reservations.</p>
-        <p className="mt-2 text-xs font-semibold text-[#657089]">Healthy sources sync automatically. If a source needs attention, existing reservations stay safe while you review the issue.</p>
+        <h2 id="reservation-sources-title" className="text-xl font-extrabold">Booking calendar</h2>
+        <p className="mt-1 text-sm text-[#657089]">Connect Airbnb, Booking.com, Vrbo, Expedia or another calendar to import bookings.</p>
+        <p className="mt-2 text-xs font-semibold text-[#657089]">Healthy sources sync automatically. If a source needs attention, existing bookings stay safe while you review the issue.</p>
       </div>
       {connections.map((connection) => (
         <article key={connection.id} className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
@@ -115,7 +115,7 @@ export default function CalendarSources({ propertyId, connections }: { propertyI
           <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-4">
             <div><dt className="portal-label">Last successful sync</dt><dd className="mt-1 font-bold">{connection.last_successful_sync_at ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/London" }).format(new Date(connection.last_successful_sync_at)) : "Not yet"}</dd></div>
             <div><dt className="portal-label">Next automatic sync</dt><dd className="mt-1 font-bold">{connection.is_active ? "Pending scheduler" : "Disabled"}</dd></div>
-            <div><dt className="portal-label">Imported reservations</dt><dd className="mt-1 font-bold">{connection.imported_reservation_count} active</dd></div>
+            <div><dt className="portal-label">Imported bookings</dt><dd className="mt-1 font-bold">{connection.imported_reservation_count} active</dd></div>
             <div><dt className="portal-label">Action required</dt><dd className="mt-1 font-bold">{connection.open_issue_count || "None"}</dd></div>
           </dl>
           <p className="mt-4 break-all text-xs text-[#657089]">{connection.masked_calendar_url}</p>
@@ -135,12 +135,12 @@ export default function CalendarSources({ propertyId, connections }: { propertyI
       ))}
       {connections.length === 0 && (
         <details open className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
-          <summary className="cursor-pointer font-extrabold">Connect reservation source</summary>
+          <summary className="cursor-pointer font-extrabold">Connect booking calendar</summary>
           <RefreshOnSuccess state={state} />
           <form action={action} className="mt-5 grid gap-5" noValidate>
             <label className="font-bold">Platform
               <select name="provider" defaultValue="airbnb" className={field}>
-                <option value="airbnb">Airbnb</option><option value="booking_com">Booking.com</option><option value="vrbo">Vrbo</option><option value="other">Other calendar</option>
+                <option value="airbnb">Airbnb</option><option value="booking_com">Booking.com</option><option value="vrbo">Vrbo</option><option value="expedia">Expedia</option><option value="other">Other calendar</option>
               </select>
               {state.fieldErrors.provider && <span className="mt-1 block text-sm text-red-700">{state.fieldErrors.provider}</span>}
             </label>

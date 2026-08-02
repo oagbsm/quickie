@@ -5,7 +5,7 @@ import SignUpForm from "./SignUpForm";
 export const metadata: Metadata = {
   title: "Create your STR operator account | Quickola",
   description:
-    "Create a Quickola account, add STR properties and coordinate turnovers with the cleaners you already use.",
+    "Create a Quickola account, add STR properties and coordinate cleans with the cleaners you already use.",
   robots: { index: false, follow: false },
 };
 
@@ -20,14 +20,14 @@ export default function Page() {
         <section className="hidden pt-3 lg:block">
           <p className="eyebrow">Get started</p>
           <h2 className="public-page-title mt-4">
-            Start with one property and a clear turnover standard.
+            Start with one property and a clear clean standard.
           </h2>
           <p className="public-body-lg public-muted mt-5">
             Create your account, define what guest-ready means for your
             property, then invite the cleaner or contractor you already use.
           </p>
           <ul className="mt-7 grid gap-3 text-sm font-semibold">
-            <li>✓ Save property-specific turnover standards</li>
+            <li>✓ Save property-specific clean standards</li>
             <li>✓ Assign your own cleaner or contractor</li>
             <li>✓ Require checklists and completion evidence</li>
           </ul>

@@ -1,4 +1,4 @@
-export type CalendarProvider = "airbnb" | "booking_com" | "vrbo" | "other";
+export type CalendarProvider = "airbnb" | "booking_com" | "vrbo" | "expedia" | "other";
 
 export type NormalizedCalendarEvent = {
   connectionId: string;

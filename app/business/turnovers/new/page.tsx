@@ -31,10 +31,10 @@ export default async function Page({
         href="/business/turnovers"
         className="text-sm font-bold text-[#526078]"
       >
-        ← Turnovers
+        ← Cleans
       </Link>
       <div className="mb-7 mt-4">
-        <p className="text-sm font-extrabold text-[#2d67b2]">MANUAL TURNOVER</p>
+        <p className="text-sm font-extrabold text-[#2d67b2]">MANUAL CLEAN</p>
         <h1 className="mt-1 text-3xl font-extrabold tracking-[-.03em] sm:text-4xl">
           Add guest arrival
         </h1>
@@ -58,7 +58,7 @@ export default async function Page({
         <div className="rounded-xl border bg-white p-8">
           <h2 className="text-xl font-extrabold">Add your first property</h2>
           <p className="mt-2 text-[#657089]">
-            A turnover needs a property and its guest-ready standard.
+            A clean needs a property and its guest-ready standard.
           </p>
           <Link
             href="/business/properties/new"

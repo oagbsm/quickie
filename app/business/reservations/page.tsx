@@ -25,17 +25,17 @@ export default async function Page({
     <div className="portal-page">
       <header className="portal-header">
         <div>
-          <h1 className="portal-title">Reservations</h1>
+          <h1 className="portal-title">Bookings</h1>
           <p className="portal-subtitle hidden sm:block">
-            Manage guest stays and their linked turnovers.
+            Manage guest stays and their linked cleans.
           </p>
         </div>
         <Link href="/business/reservations/new" className="portal-action">
           <span className="sm:hidden">+ Add</span>
-          <span className="hidden sm:inline">Add reservation</span>
+          <span className="hidden sm:inline">Add booking</span>
         </Link>
       </header>
-      <nav aria-label="Reservation views" className="mt-5 grid grid-cols-3 border-b">
+      <nav aria-label="Booking views" className="mt-5 grid grid-cols-3 border-b">
         {views.map(([label, key]) => (
           <Link
             key={key}
@@ -58,8 +58,8 @@ export default async function Page({
               <span>Property</span>
               <span>Check-in</span>
               <span>Check-out</span>
-              <span>Reservation</span>
-              <span>Linked turnover</span>
+              <span>Booking</span>
+              <span>Linked clean</span>
               <span>Source</span>
               <span />
             </div>
@@ -133,16 +133,16 @@ export default async function Page({
         ) : (
           <div className="p-8 text-center">
             <h2 className="text-lg font-extrabold">
-              {view === "upcoming" ? "No upcoming reservations" : `No ${view} reservations`}
+              {view === "upcoming" ? "No upcoming bookings" : `No ${view} bookings`}
             </h2>
             <p className="mt-2 text-sm text-[#657089]">
               {view === "upcoming"
-                ? "Add a manual reservation to schedule its turnover."
-                : "Reservations in this view will appear here."}
+                ? "Add a manual booking to schedule its clean."
+                : "Bookings in this view will appear here."}
             </p>
             {view === "upcoming" && (
               <Link href="/business/reservations/new" className="portal-action mt-5">
-                Add reservation
+                Add booking
               </Link>
             )}
           </div>

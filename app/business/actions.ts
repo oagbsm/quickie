@@ -15,7 +15,8 @@ import { validatePilotSchedule } from "@/lib/business/time";
 import { sendBookingReceivedEmail } from "@/lib/server/business-notifications";
 import { getServiceAreaStatus } from "@/lib/business/service-area";
 import { normaliseAddressPart, normaliseUkPostcode, UK_POSTCODE_PATTERN } from "@/lib/uk-address";
-import { validateOnboardingPropertyBasics } from "@/lib/business/property-validation";
+import { validatePropertyBasics } from "@/lib/business/property-validation";
+import { isSupportedTurnoverDuration } from "@/lib/business/turnover-validation";
 import type { CalendarProvider } from "@/lib/calendar/types";
 import {
   createPropertyCalendarConnection,
@@ -23,6 +24,13 @@ import {
 } from "@/lib/server/property-calendars";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim(),
   optional = (f: FormData, n: string) => value(f, n) || null;
+const calendarProviderNames: Record<string, string> = {
+  airbnb: "Airbnb calendar",
+  booking_com: "Booking.com calendar",
+  vrbo: "Vrbo calendar",
+  expedia: "Expedia calendar",
+  other: "Calendar",
+};
 const numberOrNull = (f: FormData, n: string) => {
   const v = value(f, n);
   return v ? Number(v) : null;
@@ -33,13 +41,13 @@ function propertyPayload(f: FormData) {
     nickname: normaliseAddressPart(value(f, "nickname")),
     address_line_1: normaliseAddressPart(value(f, "addressLine1")),
     address_line_2: optional(f, "addressLine2"),
-    city: normaliseAddressPart(value(f, "city")),
+    city: optional(f, "city"),
     postcode,
-    property_type: value(f, "propertyType"),
+    property_type: optional(f, "propertyType"),
     bedrooms: numberOrNull(f, "bedrooms"),
     bathrooms: numberOrNull(f, "bathrooms"),
     approximate_size: numberOrNull(f, "approximateSize"),
-    access_method: value(f, "accessMethod"),
+    access_method: optional(f, "accessMethod"),
     access_notes: optional(f, "accessNotes"),
     key_instructions: optional(f, "keyInstructions"),
     cleaning_notes: optional(f, "cleaningNotes"),
@@ -107,13 +115,21 @@ async function savePropertyImage(
 export async function addProperty(f: FormData) {
   const { supabase, accountId } = await requireBusinessUser(),
     p = propertyPayload(f);
+  const initialBasicsOnly = !p.city && !p.property_type && p.bathrooms === null;
+  const requestedDuration = value(f, "estimatedTurnoverMinutes");
+  const reservationCalendarUrl = value(f, "reservationCalendarUrl");
+  const reservationProvider = value(f, "reservationProvider");
   if (
     !p.nickname ||
     !p.address_line_1 ||
-    !p.city ||
     !p.postcode ||
-    !p.property_type ||
-    !p.access_method || !UK_POSTCODE_PATTERN.test(p.postcode)
+    p.bedrooms === null ||
+    !Number.isInteger(p.bedrooms) ||
+    p.bedrooms < 0 ||
+    p.bedrooms > (initialBasicsOnly ? 5 : 100) ||
+    !UK_POSTCODE_PATTERN.test(p.postcode) ||
+    (initialBasicsOnly && requestedDuration && !isSupportedTurnoverDuration(Number(requestedDuration))) ||
+    (reservationCalendarUrl && !Object.hasOwn(calendarProviderNames, reservationProvider))
   )
     redirect("/business/properties/new?error=required");
   const { data: duplicate } = await supabase.from("properties").select("id").eq("account_id", accountId).ilike("address_line_1", p.address_line_1).eq("postcode", p.postcode).neq("status", "archived").limit(1).maybeSingle();
@@ -185,15 +201,12 @@ export async function addProperty(f: FormData) {
     }
   }
   if (created?.id) {
-    const reservationCalendarUrl = value(f, "reservationCalendarUrl");
-    const reservationProvider = value(f, "reservationProvider") || "airbnb";
-    const reservationConnectionName = optional(f, "reservationConnectionName");
     if (reservationCalendarUrl) {
       try {
         const connectionId = await createPropertyCalendarConnection({
           propertyId: created.id,
           provider: reservationProvider as CalendarProvider,
-          displayName: reservationConnectionName || "",
+          displayName: calendarProviderNames[reservationProvider] || "Calendar",
           calendarUrl: reservationCalendarUrl,
         });
         try {
@@ -237,14 +250,14 @@ export async function addProperty(f: FormData) {
 }
 
 export type OnboardingPropertyState = {
-  errors: ReturnType<typeof validateOnboardingPropertyBasics>;
+  errors: ReturnType<typeof validatePropertyBasics>;
 };
 
 export async function addOnboardingProperty(
   _previousState: OnboardingPropertyState,
   form: FormData,
 ): Promise<OnboardingPropertyState> {
-  const errors = validateOnboardingPropertyBasics(form);
+  const errors = validatePropertyBasics(form);
   if (Object.keys(errors).length) return { errors };
   return addProperty(form) as never;
 }

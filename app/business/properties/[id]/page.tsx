@@ -14,7 +14,7 @@ import CalendarSources from "./CalendarSources";
 
 const tabs = [
   ["overview", "Overview"],
-  ["reservations", "Reservations"],
+  ["reservations", "Bookings"],
   ["checklist", "Checklist"],
   ["access", "Access"],
 ] as const;
@@ -115,9 +115,9 @@ export default async function Page({
             href={`/business/reservations/new?property=${id}`}
             className="portal-action-secondary"
           >
-            Add reservation
+            Add booking
           </Link>
-          <details className="relative"><summary className="inline-flex min-h-11 cursor-pointer list-none items-center rounded-lg border px-4 font-extrabold">More</summary><div className="absolute right-0 z-10 mt-2 w-52 rounded-lg border bg-white p-2 shadow-lg"><Link href={`/business/turnovers/new?property=${id}`} className="block rounded px-3 py-2 text-sm font-bold hover:bg-[#f4f6f9]">Create manual turnover</Link></div></details>
+          <details className="relative"><summary className="inline-flex min-h-11 cursor-pointer list-none items-center rounded-lg border px-4 font-extrabold">More</summary><div className="absolute right-0 z-10 mt-2 w-52 rounded-lg border bg-white p-2 shadow-lg"><Link href={`/business/turnovers/new?property=${id}`} className="block rounded px-3 py-2 text-sm font-bold hover:bg-[#f4f6f9]">Create manual clean</Link></div></details>
         </div>
       </header>
       <nav
@@ -142,14 +142,14 @@ export default async function Page({
         >
           <h2 className="text-lg font-extrabold">Property created successfully</h2>
           <p className="mt-1 text-sm">
-            Your turnover standard and checklist are ready. Connect a reservation
-            calendar to import bookings and create turnovers automatically.
+            Your clean standard and checklist are ready. Connect a booking
+            calendar to import bookings and create cleans automatically.
           </p>
           <Link
             href={`/business/properties/${id}?tab=reservations`}
             className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-[#071f49] px-4 font-extrabold text-white"
           >
-            Connect reservation source
+            Connect booking calendar
           </Link>
         </section>
       )}
@@ -173,7 +173,7 @@ export default async function Page({
       {tab === "overview" && (
         <>
           <section className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl bg-white p-5 shadow-sm"><p className="text-sm font-extrabold text-[#657089]">NEXT TURNOVER</p>{p.work_items?.filter((item: { status: string; turnover_date: string }) => !["ready", "cancelled"].includes(item.status)).sort((a: { turnover_date: string }, b: { turnover_date: string }) => a.turnover_date.localeCompare(b.turnover_date))[0] ? <p className="mt-2 font-extrabold">{p.work_items.filter((item: { status: string; turnover_date: string }) => !["ready", "cancelled"].includes(item.status)).sort((a: { turnover_date: string }, b: { turnover_date: string }) => a.turnover_date.localeCompare(b.turnover_date))[0].turnover_date}</p> : <p className="mt-2 text-sm text-[#657089]">No upcoming turnover</p>}</div>
+            <div className="rounded-xl bg-white p-5 shadow-sm"><p className="text-sm font-extrabold text-[#657089]">NEXT CLEAN</p>{p.work_items?.filter((item: { status: string; turnover_date: string }) => !["ready", "cancelled"].includes(item.status)).sort((a: { turnover_date: string }, b: { turnover_date: string }) => a.turnover_date.localeCompare(b.turnover_date))[0] ? <p className="mt-2 font-extrabold">{p.work_items.filter((item: { status: string; turnover_date: string }) => !["ready", "cancelled"].includes(item.status)).sort((a: { turnover_date: string }, b: { turnover_date: string }) => a.turnover_date.localeCompare(b.turnover_date))[0].turnover_date}</p> : <p className="mt-2 text-sm text-[#657089]">No upcoming clean</p>}</div>
             <div className="rounded-xl bg-white p-5 shadow-sm"><p className="text-sm font-extrabold text-[#657089]">CLEANER</p>{p.property_workers?.find((row: { is_default: boolean }) => row.is_default)?.workers ? <><p className="mt-2 font-extrabold">{(Array.isArray(p.property_workers.find((row: { is_default: boolean }) => row.is_default).workers) ? p.property_workers.find((row: { is_default: boolean }) => row.is_default).workers[0] : p.property_workers.find((row: { is_default: boolean }) => row.is_default).workers).display_name}</p><p className="text-sm text-[#657089]">Default cleaner</p></> : <><p className="mt-2 font-extrabold">Not assigned</p><Link href="/business/cleaners" className="text-sm font-bold text-[#245b9d]">Set default cleaner</Link></>}</div>
           </section>
           <section className="mt-4 rounded-xl bg-white p-5 shadow-sm"><p className="text-sm font-extrabold text-[#657089]">PROPERTY STATUS</p><p className="mt-2 font-extrabold">{p.operational_issues?.filter((issue: { status: string }) => !["resolved", "closed"].includes(issue.status)).length ? `${p.operational_issues.filter((issue: { status: string }) => !["resolved", "closed"].includes(issue.status)).length} open issue(s)` : "No open issues"}</p></section>
@@ -181,7 +181,7 @@ export default async function Page({
             <div className="flex justify-between gap-4">
               <div>
                 <p className="text-sm font-extrabold text-[#2d67b2]">
-                  Reservation calendar
+                  Booking calendar
                 </p>
                 <h2 className="mt-1 text-xl font-extrabold">
                   {overviewCalendarStatus === "no_source"
@@ -200,10 +200,10 @@ export default async function Page({
             </div>
             <p className="mt-3 text-sm text-[#657089]">
               {overviewCalendarStatus === "no_source"
-                ? "Connect a calendar on the Reservations tab to import bookings automatically."
+                ? "Connect a calendar on the Bookings tab to import bookings automatically."
                 : overviewCalendarStatus === "attention"
                 ? "A connected source needs attention or has not completed its first sync."
-                : "Your reservation calendar is connected and syncing normally."}
+                : "Your booking calendar is connected and syncing normally."}
             </p>
           </section>
           <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
@@ -233,7 +233,7 @@ export default async function Page({
                 value: String(p.default_checkin_time).slice(0, 5),
               })}
               {detail({
-                label: "Estimated turnover",
+                label: "Estimated clean",
                 value: `${p.estimated_turnover_minutes} minutes`,
               })}
               {detail({
@@ -242,7 +242,7 @@ export default async function Page({
               })}
             </dl>
           </section>
-          <section className="mt-6 rounded-xl bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><h2 className="text-xl font-extrabold">Recent turnovers</h2><Link href={`/business/turnovers?property=${id}`} className="text-sm font-bold text-[#245b9d]">View all turnovers →</Link></div><div className="mt-4 divide-y">{p.work_items?.filter((item: { status: string }) => ["ready", "cancelled"].includes(item.status)).slice(0, 3).map((item: { id: string; turnover_date: string; status: string }) => <Link key={item.id} href={`/business/turnovers/${item.id}`} className="flex justify-between py-3 text-sm"><span>{item.turnover_date}</span><strong>{item.status === "ready" ? "Property ready" : "Cancelled"}</strong></Link>)}</div></section>
+          <section className="mt-6 rounded-xl bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><h2 className="text-xl font-extrabold">Recent cleans</h2><Link href={`/business/turnovers?property=${id}`} className="text-sm font-bold text-[#245b9d]">View all cleans →</Link></div><div className="mt-4 divide-y">{p.work_items?.filter((item: { status: string }) => ["ready", "cancelled"].includes(item.status)).slice(0, 3).map((item: { id: string; turnover_date: string; status: string }) => <Link key={item.id} href={`/business/turnovers/${item.id}`} className="flex justify-between py-3 text-sm"><span>{item.turnover_date}</span><strong>{item.status === "ready" ? "Property ready" : "Cancelled"}</strong></Link>)}</div></section>
         </>
       )}
 
@@ -253,7 +253,7 @@ export default async function Page({
       {tab === "standard" &&
         (edit ? (
           <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-extrabold">Edit turnover standard</h2>
+            <h2 className="text-xl font-extrabold">Edit clean standard</h2>
             <form action={updatePropertySection} className="mt-5 grid gap-5">
               <input type="hidden" name="id" value={id} />
               <input type="hidden" name="section" value="standard" />
@@ -374,7 +374,7 @@ export default async function Page({
         ) : (
           <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
             <div className="flex justify-between">
-              <h2 className="text-xl font-extrabold">Turnover standard</h2>
+              <h2 className="text-xl font-extrabold">Clean standard</h2>
               <Link
                 href="?tab=standard&edit=1"
                 className="text-sm font-bold text-[#245b9d]"
@@ -623,7 +623,7 @@ export default async function Page({
       )}
       {tab === "history" && (
         <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-extrabold">Turnover history</h2>
+          <h2 className="text-xl font-extrabold">Clean history</h2>
           <div className="mt-4 divide-y">
             {p.work_items?.length ? (
               p.work_items
@@ -654,7 +654,7 @@ export default async function Page({
                   ),
                 )
             ) : (
-              <p className="py-3 text-[#657089]">No turnover history yet.</p>
+              <p className="py-3 text-[#657089]">No clean history yet.</p>
             )}
           </div>
         </section>

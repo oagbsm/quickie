@@ -85,7 +85,7 @@ export default function SignInForm() {
         <p className="eyebrow">{invitationPath ? "Cleaner invitation" : cleanerPath ? "Cleaner account" : "Customer account"}</p>
         <h1 className="mt-2 text-3xl font-extrabold">{invitationPath ? "Sign in to accept your invitation" : cleanerPath ? "Sign in to your cleaner portal" : "Sign in to Quickola"}</h1>
         <p className="mt-2 text-sm leading-6 text-[#657089]">
-          {invitationPath ? "Use the invited email to continue to your cleaner invitation." : cleanerPath ? "Use the email connected to your accepted worker invitation." : "Access your properties, turnovers and guest-ready evidence."}
+          {invitationPath ? "Use the invited email to continue to your cleaner invitation." : cleanerPath ? "Use the email connected to your accepted worker invitation." : "Access your properties, cleans and guest-ready evidence."}
         </p>
       </div>
       <label className="font-bold">

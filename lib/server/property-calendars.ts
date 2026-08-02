@@ -73,6 +73,7 @@ const providerNames: Record<CalendarProvider, string> = {
   airbnb: "Airbnb",
   booking_com: "Booking.com",
   vrbo: "Vrbo",
+  expedia: "Expedia",
   other: "Calendar",
 };
 

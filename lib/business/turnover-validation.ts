@@ -16,11 +16,3 @@ export function isSupportedTurnoverDuration(value: number) {
 export function formatTurnoverDuration(value: string | number | undefined) {
   return TURNOVER_DURATION_OPTIONS.find((option) => option.value === Number(value))?.label || "—";
 }
-
-export function formatTurnoverDurationLong(value: string | number | undefined) {
-  const minutes = Number(value);
-  if (!Number.isFinite(minutes)) return "—";
-  if (minutes === 300) return "5+ hours";
-  const hours = minutes / 60;
-  return `${hours} ${hours === 1 ? "hour" : "hours"}`;
-}
