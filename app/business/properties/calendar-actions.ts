@@ -6,6 +6,8 @@ import type { CalendarProvider } from "@/lib/calendar/types";
 import {
   createPropertyCalendarConnection,
   managePropertyCalendarConnection,
+  ignorePropertyCalendarConflict,
+  ignorePropertyCalendarConflicts,
   PropertyCalendarError,
   syncPropertyCalendar,
 } from "@/lib/server/property-calendars";
@@ -142,6 +144,41 @@ export async function manageCalendarAction(
       summary: "",
       fieldErrors: {},
     };
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function ignoreCalendarConflictAction(
+  propertyId: string,
+  issueId: string,
+  _previous: CalendarActionState,
+  form: FormData,
+): Promise<CalendarActionState> {
+  if (form.get("confirmIgnore") !== "yes") {
+    return { status: "error", message: "Confirm that you want to ignore this conflict.", summary: "", fieldErrors: {} };
+  }
+  try {
+    await ignorePropertyCalendarConflict(issueId);
+    refresh(propertyId);
+    return { status: "success", message: "Conflict ignored.", summary: "", fieldErrors: {} };
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function ignoreAllCalendarConflictsAction(
+  propertyId: string,
+  _previous: CalendarActionState,
+  form: FormData,
+): Promise<CalendarActionState> {
+  if (form.get("confirmIgnoreAll") !== "yes") {
+    return { status: "error", message: "Confirm that you want to ignore these conflicts.", summary: "", fieldErrors: {} };
+  }
+  try {
+    await ignorePropertyCalendarConflicts(propertyId);
+    refresh(propertyId);
+    return { status: "success", message: "Conflicts ignored.", summary: "", fieldErrors: {} };
   } catch (error) {
     return errorState(error);
   }

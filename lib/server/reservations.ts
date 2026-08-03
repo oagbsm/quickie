@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireBusinessUser } from "@/lib/business/auth";
 import { formatBusinessDateTime } from "@/lib/business/time";
 import type { ReservationSourceConnection } from "@/lib/reservations/source";
@@ -8,6 +9,26 @@ import {
   type ReservationFormSource,
   validateReservationInput,
 } from "@/lib/reservations/validation";
+
+type ReservationIssueRow = { connection_id: string; issue_type: string; metadata?: Record<string, unknown> | null };
+
+async function listOpenReservationIssues(client: SupabaseClient, connectionIds: string[]) {
+  const withMetadata = await client
+    .from("reservation_sync_issues")
+    .select("connection_id,issue_type,metadata")
+    .in("connection_id", connectionIds)
+    .eq("issue_status", "open");
+  if (!withMetadata.error) return (withMetadata.data || []) as ReservationIssueRow[];
+  if (withMetadata.error.code !== "42703") throw new Error(`reservation_source_issues_query_failed:${withMetadata.error.code}`);
+  console.warn("reservation_issue_metadata_unavailable", { operation: "list_reservations", connectionCount: connectionIds.length, code: withMetadata.error.code });
+  const legacy = await client
+    .from("reservation_sync_issues")
+    .select("connection_id,issue_type")
+    .in("connection_id", connectionIds)
+    .eq("issue_status", "open");
+  if (legacy.error) throw new Error(`reservation_source_issues_query_failed:${legacy.error.code}`);
+  return ((legacy.data || []) as ReservationIssueRow[]).map((issue) => ({ ...issue, metadata: {} }));
+}
 
 export type ReservationMutationResult = {
   reservationId: string;
@@ -82,6 +103,7 @@ export type ReservationDetail = ReservationRecord & {
   turnover: ReservationTurnover | null;
   events: ReservationEventRecord[];
   sourceConnection: ReservationSourceConnection;
+  conflictingReservations: Array<Pick<ReservationRecord, "id" | "source" | "source_connection_id" | "check_in_at" | "check_out_at"> & { sourceConnection: ReservationSourceConnection }>;
 };
 
 export class ReservationServiceError extends Error {
@@ -269,6 +291,7 @@ export async function listReservationProperties(): Promise<
 
 export async function listReservations(
   view: "upcoming" | "past" | "cancelled",
+  propertyId?: string,
 ): Promise<ReservationListItem[]> {
   const { supabase, accountId } = await requireBusinessUser();
   const now = new Date().toISOString();
@@ -283,6 +306,7 @@ export async function listReservations(
     query = query.neq("status", "cancelled").gte("check_out_at", now);
   if (view === "past")
     query = query.neq("status", "cancelled").lt("check_out_at", now);
+  if (propertyId) query = query.eq("property_id", propertyId);
   const [{ data, error }, { data: turnovers, error: turnoverError }] =
     await Promise.all([
       query.order(view === "past" ? "check_out_at" : "check_in_at", {
@@ -294,7 +318,8 @@ export async function listReservations(
           "id,reservation_id,property_id,turnover_date,guest_checkout_at,access_start_at,window_end_at,next_checkin_at,status,creation_source,requires_attention,cancelled_at,updated_at",
         )
         .eq("account_id", accountId)
-        .not("reservation_id", "is", null),
+        .not("reservation_id", "is", null)
+        .match(propertyId ? { property_id: propertyId } : {}),
     ]);
   if (error) throw new Error(`reservations_query_failed:${error.code}`);
   if (turnoverError)
@@ -302,15 +327,34 @@ export async function listReservations(
   const connectionIds = [...new Set((data || []).flatMap((row) =>
     row.source_connection_id ? [row.source_connection_id] : [],
   ))];
-  const { data: connections, error: connectionError } = connectionIds.length
-    ? await supabase
-        .from("property_calendar_connections_safe")
-        .select("id,provider,display_name,last_successful_sync_at")
-        .in("id", connectionIds)
-    : { data: [], error: null };
+  const [{ data: connections, error: connectionError }, issues] = await Promise.all([
+    connectionIds.length
+      ? supabase
+          .from("property_calendar_connections_safe")
+          .select("id,provider,display_name,last_successful_sync_at,sync_status")
+          .in("id", connectionIds)
+      : Promise.resolve({ data: [], error: null }),
+    connectionIds.length ? listOpenReservationIssues(supabase, connectionIds) : Promise.resolve([] as ReservationIssueRow[]),
+  ]);
   if (connectionError)
     throw new Error(`reservation_sources_query_failed:${connectionError.code}`);
   const connectionById = new Map((connections || []).map((row) => [row.id, row]));
+  const issueByConnection = new Map<string, string[]>();
+  const rejectedConflictByConnection = new Map<string, Array<{ startAt: string | null; endAt: string | null }>>();
+  for (const issue of issues || []) {
+    const current = issueByConnection.get(issue.connection_id) || [];
+    current.push(issue.issue_type);
+    issueByConnection.set(issue.connection_id, current);
+    if (issue.issue_type === "overlap_conflict") {
+      const metadata = (issue.metadata || {}) as Record<string, unknown>;
+      const rejected = rejectedConflictByConnection.get(issue.connection_id) || [];
+      rejected.push({
+        startAt: typeof metadata.attempted_start_at === "string" ? metadata.attempted_start_at : null,
+        endAt: typeof metadata.attempted_end_at === "string" ? metadata.attempted_end_at : null,
+      });
+      rejectedConflictByConnection.set(issue.connection_id, rejected);
+    }
+  }
   const byReservation = new Map(
     ((turnovers || []) as ReservationTurnover[]).map((item) => [
       item.reservation_id,
@@ -326,7 +370,17 @@ export async function listReservations(
       property: related,
       turnover: byReservation.get(row.id) || null,
       sourceConnection: row.source_connection_id
-        ? (connectionById.get(row.source_connection_id) as ReservationSourceConnection) || null
+        ? (() => {
+            const connection = connectionById.get(row.source_connection_id);
+            if (!connection) return null;
+            const openIssueTypes = issueByConnection.get(row.source_connection_id) || [];
+            return {
+              ...connection,
+              open_issue_types: openIssueTypes,
+              open_overlap_count: openIssueTypes.filter((type) => type === "overlap_conflict").length,
+              open_rejected_conflicts: rejectedConflictByConnection.get(row.source_connection_id) || [],
+            } as ReservationSourceConnection;
+          })()
         : null,
     } as ReservationListItem;
   });
@@ -347,7 +401,7 @@ export async function getReservationDetail(
     .maybeSingle();
   if (error) throw new Error(`reservation_query_failed:${error.code}`);
   if (!data) return null;
-  const [turnoverResult, eventsResult] = await Promise.all([
+  const [turnoverResult, eventsResult, conflictResult] = await Promise.all([
     supabase
       .from("work_items")
       .select(
@@ -364,15 +418,39 @@ export async function getReservationDetail(
       .eq("account_id", accountId)
       .eq("reservation_id", reservationId)
       .order("sequence", { ascending: true }),
+    data.status === "cancelled"
+      ? Promise.resolve({ data: [], error: null })
+      : supabase
+          .from("reservations")
+          .select("id,source,source_connection_id,check_in_at,check_out_at")
+          .eq("account_id", accountId)
+          .eq("property_id", data.property_id)
+          .neq("id", reservationId)
+          .neq("status", "cancelled")
+          .lt("check_in_at", data.check_out_at)
+          .gt("check_out_at", data.check_in_at)
+          .order("check_in_at", { ascending: true }),
   ]);
   if (turnoverResult.error)
     throw new Error(`reservation_turnover_query_failed:${turnoverResult.error.code}`);
   if (eventsResult.error)
     throw new Error(`reservation_events_query_failed:${eventsResult.error.code}`);
+  if (conflictResult.error)
+    throw new Error(`reservation_conflicts_query_failed:${conflictResult.error.code}`);
+  const conflictConnectionIds = [...new Set((conflictResult.data || []).flatMap((row) => row.source_connection_id ? [row.source_connection_id] : []))];
+  const conflictConnectionsResult = conflictConnectionIds.length
+    ? await supabase
+        .from("property_calendar_connections_safe")
+        .select("id,provider,display_name,last_successful_sync_at,sync_status")
+        .in("id", conflictConnectionIds)
+    : { data: [], error: null };
+  if (conflictConnectionsResult.error)
+    throw new Error(`reservation_conflict_sources_query_failed:${conflictConnectionsResult.error.code}`);
+  const conflictConnectionById = new Map((conflictConnectionsResult.data || []).map((row) => [row.id, row]));
   const sourceConnectionResult = data.source_connection_id
     ? await supabase
         .from("property_calendar_connections_safe")
-        .select("provider,display_name,last_successful_sync_at")
+        .select("provider,display_name,last_successful_sync_at,sync_status")
         .eq("id", data.source_connection_id)
         .maybeSingle()
     : { data: null, error: null };
@@ -389,5 +467,11 @@ export async function getReservationDetail(
     events: (eventsResult.data || []) as ReservationEventRecord[],
     sourceConnection:
       (sourceConnectionResult.data as ReservationSourceConnection) || null,
+    conflictingReservations: (conflictResult.data || []).map((row) => ({
+      ...row,
+      sourceConnection: row.source_connection_id
+        ? (conflictConnectionById.get(row.source_connection_id) as ReservationSourceConnection) || null
+        : null,
+    })),
   } as ReservationDetail;
 }

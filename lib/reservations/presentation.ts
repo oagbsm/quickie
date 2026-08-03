@@ -34,7 +34,9 @@ const labels: Record<string, string> = {
   turnover_date: "Turnover date",
   window_start_at: "Window start",
   window_end_at: "Window end",
+  access_start_at: "Cleaning starts",
   next_check_in_at: "Next check-in",
+  next_checkin_at: "Next guest",
   requires_attention: "Timing attention",
 };
 
@@ -76,7 +78,7 @@ function changes(event: ReservationEventView) {
     .filter((key) => key in previous && key !== "status" && key !== "cancelled_at")
     .map(
       (key) =>
-        `${labels[key] || key.replaceAll("_", " ")} changed from ${displayValue(key, previous[key], metadata, "previous")} to ${displayValue(key, next[key], metadata, "new")}`,
+        `${labels[key] || key.replaceAll("_", " ")} · ${displayValue(key, next[key], metadata, "new")} (was ${displayValue(key, previous[key], metadata, "previous")})`,
     );
 }
 
@@ -88,7 +90,7 @@ export function formatReservationEvent(
   if (event.event_type === "reservation.imported")
     return { title: "Reservation imported", detail: "Received from a connected calendar." };
   if (event.event_type === "turnover.created")
-    return { title: "Turnover created", detail: "The cleaning window was scheduled." };
+    return { title: "Clean created", detail: "The cleaning window was scheduled." };
   if (event.event_type === "reservation.cancelled")
     return { title: "Reservation cancelled", detail: null };
   if (event.event_type === "turnover.cancelled")
@@ -104,7 +106,7 @@ export function formatReservationEvent(
         };
   if (event.event_type === "turnover.updated")
     return {
-      title: "Turnover rescheduled",
+      title: "Cleaning window updated",
       detail: descriptions.length ? descriptions.join("; ") : null,
     };
   return { title: "Reservation activity recorded", detail: null };

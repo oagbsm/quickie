@@ -47,8 +47,20 @@ export type SafeCalendarConnection = {
     id: string;
     issue_type: string;
     safe_message: string;
+    metadata: Record<string, unknown>;
   }>;
 };
+
+class CalendarRpcError extends Error {
+  constructor(
+    public readonly rpcCode: string,
+    public readonly rpcDetails: string | null,
+    message: string,
+  ) {
+    super(message);
+    this.name = "CalendarRpcError";
+  }
+}
 
 type ClaimedConnection = {
   id: string;
@@ -61,6 +73,36 @@ type ClaimedConnection = {
   last_feed_fingerprint: string | null;
   active_reservation_count: number;
 };
+
+type RawCalendarIssue = {
+  id: string;
+  connection_id: string;
+  issue_type: string;
+  safe_message: string;
+  metadata?: Record<string, unknown> | null;
+};
+
+async function listOpenCalendarIssues(client: SupabaseClient, connectionIds: string[]) {
+  const withMetadata = await client
+    .from("reservation_sync_issues")
+    .select("id,connection_id,issue_type,safe_message,metadata")
+    .in("connection_id", connectionIds)
+    .eq("issue_status", "open");
+  if (!withMetadata.error) return (withMetadata.data || []) as RawCalendarIssue[];
+  if (withMetadata.error.code !== "42703") throw new Error(`calendar_issues_query_failed:${withMetadata.error.code}`);
+  console.warn("calendar_issue_metadata_unavailable", {
+    operation: "list_property_calendar_connections",
+    connectionCount: connectionIds.length,
+    code: withMetadata.error.code,
+  });
+  const legacy = await client
+    .from("reservation_sync_issues")
+    .select("id,connection_id,issue_type,safe_message")
+    .in("connection_id", connectionIds)
+    .eq("issue_status", "open");
+  if (legacy.error) throw new Error(`calendar_issues_query_failed:${legacy.error.code}`);
+  return ((legacy.data || []) as RawCalendarIssue[]).map((issue) => ({ ...issue, metadata: {} }));
+}
 
 export class PropertyCalendarError extends Error {
   constructor(public readonly code: string, message: string) {
@@ -93,6 +135,7 @@ const safeErrors: Record<string, string> = {
   calendar_connection_not_found: "That reservation source could not be found.",
   calendar_connection_disabled: "Enable this reservation source before syncing.",
   reservation_overlap: "This reservation overlaps another booking for this property.",
+  calendar_conflict_acknowledgement_unavailable: "Conflict acknowledgement is temporarily unavailable. Please try again after the calendar update is applied.",
 };
 
 function safeError(error: unknown) {
@@ -115,7 +158,7 @@ async function rpc<T>(
   args: Record<string, unknown>,
 ) {
   const { data, error } = await client.rpc(name, args);
-  if (error) throw safeError(new Error(`${error.code || ""}:${error.message}`));
+  if (error) throw new CalendarRpcError(error.code || "", error.details || null, error.message);
   return data as T;
 }
 
@@ -132,24 +175,17 @@ export async function listPropertyCalendarConnections(propertyId: string) {
   if (error) throw new Error(`calendar_connections_query_failed:${error.code}`);
   const ids = (data || []).map((row) => row.id);
   if (!ids.length) return [] as SafeCalendarConnection[];
-  const [reservationResult, issueResult] = await Promise.all([
+  const [reservationResult, issues] = await Promise.all([
     supabase
       .from("reservations")
       .select("source_connection_id")
       .in("source_connection_id", ids)
       .neq("status", "cancelled"),
-    supabase
-      .from("reservation_sync_issues")
-      .select("id,connection_id,issue_type,safe_message")
-      .in("connection_id", ids)
-      .eq("issue_status", "open"),
+    listOpenCalendarIssues(supabase, ids),
   ]);
   if (reservationResult.error)
     throw new Error(`calendar_reservations_query_failed:${reservationResult.error.code}`);
-  if (issueResult.error)
-    throw new Error(`calendar_issues_query_failed:${issueResult.error.code}`);
   const reservations = reservationResult.data;
-  const issues = issueResult.data;
   return (data || []).map((row) => ({
     ...row,
     imported_reservation_count: (reservations || []).filter(
@@ -160,10 +196,11 @@ export async function listPropertyCalendarConnections(propertyId: string) {
     ).length,
     open_issues: (issues || [])
       .filter((issue) => issue.connection_id === row.id)
-      .map(({ id, issue_type, safe_message }) => ({
+      .map(({ id, issue_type, safe_message, metadata }) => ({
         id,
         issue_type,
         safe_message,
+        metadata: (metadata || {}) as Record<string, unknown>,
       })),
   })) as SafeCalendarConnection[];
 }
@@ -225,13 +262,69 @@ async function recordIssue(
   issueType: string,
   uidHash: string | null,
   message: string,
+  metadata: Record<string, unknown> = {},
 ) {
-  await rpc(client, "record_calendar_sync_issue", {
-    target_connection: connectionId,
-    selected_issue_type: issueType,
-    uid_hash: uidHash,
-    message,
-  });
+  try {
+    await rpc(client, "record_calendar_sync_issue_with_metadata", {
+      target_connection: connectionId,
+      selected_issue_type: issueType,
+      uid_hash: uidHash,
+      message,
+      issue_metadata: metadata,
+    });
+  } catch (error) {
+    if (!(error instanceof CalendarRpcError) || !["42883", "PGRST202"].includes(error.rpcCode)) throw error;
+    await rpc(client, "record_calendar_sync_issue", {
+      target_connection: connectionId,
+      selected_issue_type: issueType,
+      uid_hash: uidHash,
+      message,
+    });
+  }
+}
+
+export async function ignorePropertyCalendarConflict(issueId: string) {
+  const { supabase } = await requireBusinessUser();
+  try {
+    await rpc(supabase, "ignore_calendar_overlap_conflict", {
+      target_issue: issueId,
+    });
+  } catch (error) {
+    if (error instanceof CalendarRpcError && ["42883", "PGRST202"].includes(error.rpcCode)) {
+      throw new PropertyCalendarError(
+        "calendar_conflict_acknowledgement_unavailable",
+        safeErrors.calendar_conflict_acknowledgement_unavailable,
+      );
+    }
+    throw safeError(error);
+  }
+}
+
+export async function ignorePropertyCalendarConflicts(propertyId: string) {
+  const { supabase } = await requireBusinessUser();
+  try {
+    return await rpc<number>(supabase, "ignore_calendar_overlap_conflicts_for_property", {
+      target_property: propertyId,
+    });
+  } catch (error) {
+    if (error instanceof CalendarRpcError && ["42883", "PGRST202"].includes(error.rpcCode)) {
+      throw new PropertyCalendarError(
+        "calendar_conflict_acknowledgement_unavailable",
+        safeErrors.calendar_conflict_acknowledgement_unavailable,
+      );
+    }
+    throw safeError(error);
+  }
+}
+
+function rpcDetails(error: unknown) {
+  if (!(error instanceof CalendarRpcError) || !error.rpcDetails) return {} as Record<string, unknown>;
+  try {
+    const parsed = JSON.parse(error.rpcDetails) as Record<string, unknown>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
 }
 
 async function resolveIssue(
@@ -244,6 +337,17 @@ async function resolveIssue(
     target_connection: connectionId,
     selected_issue_type: issueType,
     uid_hash: uidHash,
+  });
+}
+
+async function resolveStaleOverlapIssues(
+  client: SupabaseClient,
+  connectionId: string,
+  seenUidHashes: string[],
+) {
+  await rpc<number>(client, "resolve_stale_calendar_overlap_conflicts", {
+    target_connection: connectionId,
+    seen_uid_hashes: seenUidHashes,
   });
 }
 
@@ -381,8 +485,24 @@ export async function syncPropertyCalendar(
           "overlap_conflict",
           uidHash,
           `${event.safeDisplayTitle} from ${formatBusinessDateTime(event.checkInAt)} to ${formatBusinessDateTime(event.checkOutAt)} overlaps another reservation.`,
+          {
+            provider: claimed.provider,
+            attempted_start_at: event.checkInAt,
+            attempted_end_at: event.checkOutAt,
+            conflict_fingerprint: createHash("sha256").update([connectionId, uidHash, event.checkInAt, event.checkOutAt, typeof rpcDetails(error).reservation_id === "string" ? rpcDetails(error).reservation_id : ""].join("|" )).digest("hex"),
+            conflicting_reservation_id: typeof rpcDetails(error).reservation_id === "string" ? rpcDetails(error).reservation_id : null,
+            conflicting_start_at: typeof rpcDetails(error).check_in_at === "string" ? rpcDetails(error).check_in_at : null,
+            conflicting_end_at: typeof rpcDetails(error).check_out_at === "string" ? rpcDetails(error).check_out_at : null,
+          },
         );
       }
+    }
+    if (!suspiciousTruncation) {
+      await resolveStaleOverlapIssues(
+        database,
+        connectionId,
+        parsed.events.map((event) => createHash("sha256").update(event.externalUid).digest("hex")),
+      );
     }
     if (!suspiciousTruncation) {
       await Promise.all([
@@ -402,8 +522,7 @@ export async function syncPropertyCalendar(
       );
       summary.cancelled += missingCancelled;
     }
-    const attention =
-      parsed.issues.length > 0 || summary.conflicts > 0 || suspiciousTruncation;
+    const attention = parsed.issues.length > 0 || suspiciousTruncation;
     await complete(database, connectionId, {
       successful: true,
       status: attention ? "attention_required" : "healthy",

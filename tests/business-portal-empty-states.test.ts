@@ -18,6 +18,8 @@ test("empty properties and bookings states avoid duplicate primary actions", () 
   assert.match(properties, /data\?\.length \? <Link href="\/business\/properties\/new"/);
   assert.match(properties, /Add your first property/);
   assert.match(properties, /Connect its booking calendar and Quickola will automatically organise cleans after checkout\./);
+  assert.match(properties, /No properties found/);
+  assert.match(properties, /Clear search and filters/);
   assert.match(properties, /className=\{`\$\{data\?\.length \? "grid" : "hidden"\}/);
   assert.match(bookings, /rows\.length \? <Link href="\/business\/reservations\/new"/);
   assert.match(bookings, /Bookings from your connected calendars will appear here automatically\./);

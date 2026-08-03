@@ -47,6 +47,17 @@ const actionReason = (row: Row, today: string) => {
   return reason === "Turnover overdue" ? "Clean overdue" : reason;
 };
 
+function CleanIcon({ name }: { name: "calendar" | "clock" | "building" | "warning" | "chevron" }) {
+  const paths = {
+    calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 10h18" /></>,
+    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+    building: <path d="M5 21V4h10v17M15 9h4v12M8 8h2M8 12h2M8 16h2M11 8h1M11 12h1M11 16h1" />,
+    warning: <><path d="M12 3 2.8 20h18.4L12 3Z" /><path d="M12 9v5M12 17.2h.01" /></>,
+    chevron: <path d="m9 5 7 7-7 7" />,
+  };
+  return <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+}
+
 export default async function Page({
   searchParams,
 }: {
@@ -94,6 +105,9 @@ export default async function Page({
     return !completed && row.turnover_date >= today;
   });
   const href = (nextView: string) => `/business/turnovers?view=${nextView}`;
+  const featured = view === "upcoming" ? rows[0] : null;
+  const listRows = featured ? rows.slice(1) : rows;
+  const featuredProperty = featured ? related(featured.properties) : null;
   return (
     <div className="portal-page">
       <header className="portal-header">
@@ -156,8 +170,18 @@ export default async function Page({
           Filter
         </button>
       </form>
-      <div className="portal-panel mt-4">
-        {rows.length ? (
+      {featured && (
+        <section className="mt-4 grid gap-3" aria-labelledby="next-clean-title">
+          <div className="flex items-center gap-2 text-sm font-extrabold text-[#16467e]"><CleanIcon name="calendar" /><h2 id="next-clean-title">Next clean</h2><span className="ml-auto text-sm font-bold text-[#657089]">{date(featured.turnover_date)}</span></div>
+          <Link href={`/business/turnovers/${featured.id}`} className="portal-card border-l-4 border-l-[#2d67b2] p-5 outline-none focus-visible:ring-4 focus-visible:ring-[#2d67b2]/20">
+            <div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-lg font-extrabold break-words">{formatDisplayName(featuredProperty?.nickname)}</p><p className="mt-1 text-sm text-[#657089]">{featuredProperty?.postcode}</p></div><span className="shrink-0 rounded-full bg-[#eef5ff] px-2.5 py-1 text-xs font-extrabold text-[#16467e]">{time(featured.access_start_at)}</span></div>
+            <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2 border-t border-[#edf0f3] pt-4 text-sm font-bold"><span className="flex items-center gap-2"><CleanIcon name="clock" />{time(featured.access_start_at)} → {time(featured.window_end_at)}</span><TurnoverStatus status={featured.status} /></div>
+          </Link>
+          {listRows.length ? <p className="text-sm font-extrabold text-[#657089]">Upcoming</p> : null}
+        </section>
+      )}
+      {(listRows.length || !rows.length) && <div className="portal-panel mt-4">
+        {listRows.length ? (
           <div className="divide-y divide-[#e7ebf0]">
             <div className="hidden grid-cols-[112px_minmax(190px,1fr)_190px_minmax(170px,1fr)_20px] gap-4 bg-[#f7f9fb] px-5 py-3 text-xs font-extrabold text-[#657089] lg:grid">
               <span>When</span>
@@ -166,7 +190,7 @@ export default async function Page({
               <span>Status</span>
               <span />
             </div>
-            {rows.map((row) => {
+            {listRows.map((row) => {
               const property = related(row.properties);
               const assignment = currentAssignment(row.assignments);
               const worker = related(assignment?.workers || null);
@@ -174,12 +198,12 @@ export default async function Page({
                 <Link
                   href={`/business/turnovers/${row.id}`}
                   key={row.id}
-                  className="portal-list-row grid gap-2 p-4 outline-none lg:grid-cols-[112px_minmax(190px,1fr)_190px_minmax(170px,1fr)_20px] lg:items-center lg:gap-4 lg:px-5 lg:py-5"
+                  className="portal-list-row grid grid-cols-[52px_minmax(0,1fr)_20px] items-center gap-3 p-4 outline-none lg:grid-cols-[112px_minmax(190px,1fr)_190px_minmax(170px,1fr)_20px] lg:items-center lg:gap-4 lg:px-5 lg:py-5"
                 >
-                  <div>
+                  <div className="hidden lg:block">
                     <p className="font-extrabold">{date(row.turnover_date)}</p>
                   </div>
-                  <div>
+                  <div className="hidden lg:block">
                     <p className="font-extrabold">
                       {formatDisplayName(property?.nickname)}
                     </p>
@@ -188,8 +212,7 @@ export default async function Page({
                     </p>
                   </div>
                   <div className="hidden text-sm lg:block"><p className="font-bold">{time(row.access_start_at)} → {time(row.window_end_at)}</p>{row.next_checkin_at && <p className="mt-1 text-xs text-[#657089]">Guest check-in {time(row.next_checkin_at)}</p>}</div>
-                  <div>
-                    <div className="mb-3 lg:hidden"><p className="text-sm font-bold">{time(row.access_start_at)} → {time(row.window_end_at)}</p>{row.next_checkin_at && <p className="mt-1 text-xs text-[#657089]">Guest check-in {time(row.next_checkin_at)}</p>}</div>
+                  <div className="hidden lg:block">
                     <TurnoverStatus status={row.status} />
                     {row.status !== "unassigned" && <p className="mt-2 text-xs leading-5 text-[#657089]">
                       {assignment?.status === "pending" &&
@@ -201,6 +224,9 @@ export default async function Page({
                   <span aria-hidden="true" className="hidden text-xl lg:block">
                     ›
                   </span>
+                  <div className="flex h-full flex-col justify-center text-center lg:hidden"><span className="text-xs font-extrabold uppercase text-[#657089]">{new Intl.DateTimeFormat("en-GB", { month: "short" }).format(new Date(`${row.turnover_date}T12:00:00Z`))}</span><span className="text-xl font-extrabold text-[#16467e]">{new Intl.DateTimeFormat("en-GB", { day: "numeric" }).format(new Date(`${row.turnover_date}T12:00:00Z`))}</span></div>
+                  <div className="min-w-0 lg:hidden"><p className="break-words font-extrabold">{formatDisplayName(property?.nickname)}</p><p className="mt-1 text-xs text-[#657089]">{time(row.access_start_at)} → {time(row.window_end_at)}</p><div className="mt-2"><TurnoverStatus status={row.status} /></div></div>
+                  <span aria-hidden="true" className="text-xl text-[#657089] lg:hidden"><CleanIcon name="chevron" /></span>
                 </Link>
               );
             })}
@@ -213,7 +239,7 @@ export default async function Page({
             </p>
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

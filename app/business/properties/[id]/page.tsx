@@ -10,8 +10,11 @@ import {
   moveChecklistTask,
 } from "../../str-actions";
 import { listPropertyCalendarConnections } from "@/lib/server/property-calendars";
+import { listReservations } from "@/lib/server/reservations";
 import CalendarSources from "./CalendarSources";
+import PropertyReservations from "./PropertyReservations";
 import { formatDisplayAddress } from "@/lib/display-address";
+import type { RejectedImportConflict } from "@/lib/reservations/conflicts";
 
 const tabs = [
   ["overview", "Overview"],
@@ -125,15 +128,47 @@ export default async function Page({
     });
     throw calendarError;
   }
+  const hasTechnicalCalendarIssue = (connection: (typeof calendarConnections)[number]) => {
+    const conflictOnly = connection.open_issues.length > 0 && connection.open_issues.every((issue) => issue.issue_type === "overlap_conflict");
+    return ["attention_required", "never_synced", "syncing", "disabled"].includes(connection.sync_status) && !conflictOnly;
+  };
   const overviewCalendarStatus = calendarConnections.length
-    ? calendarConnections.some((connection) =>
-        ["attention_required", "never_synced", "syncing", "disabled"].includes(
-          connection.sync_status,
-        ),
-      )
+    ? calendarConnections.some(hasTechnicalCalendarIssue)
       ? "attention"
       : "connected"
     : "no_source";
+  const propertyReservations = tab === "reservations"
+    ? await listReservations("upcoming", id)
+    : [];
+  const calendarsHealthy = calendarConnections.length > 0 && !calendarConnections.some(hasTechnicalCalendarIssue);
+  const rejectedConflicts: RejectedImportConflict[] = calendarConnections.flatMap((connection) =>
+    connection.open_issues
+      .filter((issue) => issue.issue_type === "overlap_conflict")
+      .map((issue) => {
+        const metadata = issue.metadata || {};
+        const conflictingId = typeof metadata.conflicting_reservation_id === "string" ? metadata.conflicting_reservation_id : null;
+        const conflicting = conflictingId ? propertyReservations.find((reservation) => reservation.id === conflictingId) : null;
+        return {
+          issueId: issue.id,
+          anchorId: `booking-conflict-${issue.id.slice(0, 8)}`,
+          provider: connection.provider,
+          connectionId: connection.id,
+          startAt: typeof metadata.attempted_start_at === "string" ? metadata.attempted_start_at : null,
+          endAt: typeof metadata.attempted_end_at === "string" ? metadata.attempted_end_at : null,
+          conflictingReservation: conflicting ? {
+            id: conflicting.id,
+            provider: conflicting.sourceConnection?.provider || "other",
+            startAt: conflicting.check_in_at,
+            endAt: conflicting.check_out_at,
+          } : undefined,
+        };
+      }),
+  ).sort((a, b) => {
+    if (!a.startAt && !b.startAt) return a.anchorId.localeCompare(b.anchorId);
+    if (!a.startAt) return 1;
+    if (!b.startAt) return -1;
+    return a.startAt.localeCompare(b.startAt);
+  });
   const visibleSections = sections.filter(
     (section: { checklist_template_tasks: Array<unknown> }) =>
       Array.isArray(section.checklist_template_tasks) &&
@@ -233,6 +268,8 @@ export default async function Page({
                     ? "No calendar connected"
                     : overviewCalendarStatus === "attention"
                     ? "Calendar needs attention"
+                    : calendarConnections.length > 1
+                    ? `${calendarConnections.length} calendars connected`
                     : "Calendar connected"}
                 </h2>
               </div>
@@ -292,7 +329,16 @@ export default async function Page({
       )}
 
       {tab === "reservations" && (
-        <CalendarSources propertyId={id} connections={calendarConnections} />
+        <>
+          <PropertyReservations propertyId={id} reservations={propertyReservations} hasConnections={calendarConnections.length > 0} calendarsHealthy={calendarsHealthy} rejectedConflicts={rejectedConflicts} />
+          <details id="manage-calendars" open={calendarConnections.length === 0} className="mt-8 rounded-xl border border-[#dfe6ef] bg-white shadow-sm">
+            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-extrabold text-[#071f49] outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-[#2d67b2]/20 sm:px-6">
+              <span>Connected calendars</span><span className="text-sm font-bold text-[#657089]">{calendarConnections.length ? `${calendarConnections.length} connected` : "No calendar connected"}</span>
+            </summary>
+            {calendarConnections.length > 0 && <div className="grid gap-2 border-t border-[#e7ebf0] px-5 py-4 sm:px-6"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-extrabold text-[#657089]">Calendar health</p><p className="text-sm font-bold text-[#657089]">{calendarsHealthy ? "All healthy" : `${calendarConnections.filter((connection) => connection.sync_status !== "healthy").length} issue${calendarConnections.filter((connection) => connection.sync_status !== "healthy").length === 1 ? "" : "s"}`}</p></div><p className="text-sm font-extrabold text-[#16467e]">Manage calendars</p>{calendarConnections.map((connection) => <p key={connection.id} className="text-sm font-bold text-[#273752]">{connection.display_name || ({ airbnb: "Airbnb", booking_com: "Booking.com", vrbo: "Vrbo", expedia: "Expedia", other: "Other" }[connection.provider])} · {connection.sync_status === "healthy" ? "Healthy" : connection.sync_status === "disabled" ? "Disabled" : "Sync issue"}</p>)}</div>}
+            <div className="border-t border-[#e7ebf0] px-1 pb-2"><CalendarSources propertyId={id} connections={calendarConnections} /></div>
+          </details>
+        </>
       )}
 
       {tab === "standard" &&

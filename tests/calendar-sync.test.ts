@@ -23,6 +23,24 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const staleConflictMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/202608030001_resolve_stale_calendar_conflicts.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const conflictRepairMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/202608030002_fix_conflict_acknowledgement_schema.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const conflictPresentation = readFileSync(
+  new URL("../lib/reservations/conflicts.ts", import.meta.url),
+  "utf8",
+);
 const overlapMigration = readFileSync(
   new URL(
     "../supabase/migrations/202607270002_prevent_reservation_overlaps.sql",
@@ -32,6 +50,10 @@ const overlapMigration = readFileSync(
 );
 const service = readFileSync(
   new URL("../lib/server/property-calendars.ts", import.meta.url),
+  "utf8",
+);
+const reservationsService = readFileSync(
+  new URL("../lib/server/reservations.ts", import.meta.url),
   "utf8",
 );
 const sourceComponent = readFileSync(
@@ -353,18 +375,115 @@ test("database reconciliation reuses Sprint 1A turnover lifecycle and cautious m
 });
 
 test("property source component has accessible actions and never renders a raw URL", () => {
-  assert.match(sourceComponent, /Connect reservation source/);
-  assert.match(sourceComponent, /Connect and sync/);
+  assert.match(sourceComponent, /Booking calendar/);
+  assert.match(sourceComponent, /Connected calendars/);
+  assert.match(sourceComponent, /Connect calendar/);
+  assert.match(sourceComponent, /Automatic sync/);
+  assert.doesNotMatch(sourceComponent, /Pending scheduler/);
   assert.match(sourceComponent, /Syncing…/);
   assert.match(sourceComponent, /masked_calendar_url/);
   assert.doesNotMatch(sourceComponent, /calendar_url_encrypted|calendarUrlFingerprint/);
+});
+
+test("overlap sync issues remain distinct from technical calendar failures", () => {
+  assert.match(service, /const attention = parsed\.issues\.length > 0 \|\| suspiciousTruncation/);
+  assert.match(sourceComponent, /issue\.issue_type === "overlap_conflict"/);
+  assert.match(sourceComponent, /Booking conflict/);
+  assert.match(reservationsService, /open_issue_types/);
+  assert.match(reservationsService, /open_overlap_count/);
+});
+
+test("successful complete feeds resolve only stale overlap issues", () => {
+  assert.match(service, /resolve_stale_calendar_overlap_conflicts/);
+  assert.match(service, /!suspiciousTruncation/);
+  assert.match(service, /parsed\.events\.map\(\(event\) => createHash\("sha256"\)/);
+  assert.match(staleConflictMigration, /issue_type = 'overlap_conflict'/);
+  assert.match(staleConflictMigration, /external_uid_hash = any/);
+  assert.match(staleConflictMigration, /issue_status = 'resolved'/);
+  assert.match(staleConflictMigration, /resolved_at = clock_timestamp\(\)/);
+  assert.match(staleConflictMigration, /not public\.calendar_connection_authorised/);
+  assert.match(staleConflictMigration, /metadata jsonb not null default/);
+  assert.match(staleConflictMigration, /record_calendar_sync_issue_with_metadata/);
+  assert.match(service, /attempted_start_at: event\.checkInAt/);
+  assert.match(service, /attempted_end_at: event\.checkOutAt/);
+  assert.match(service, /conflicting_reservation_id/);
+  assert.match(service, /conflict_fingerprint/);
+  assert.match(conflictPresentation, /RejectedImportConflict/);
+});
+
+test("rejected conflicts support secure acknowledgement without changing reservations", () => {
+  assert.match(staleConflictMigration, /create or replace function public\.ignore_calendar_overlap_conflict/);
+  assert.match(staleConflictMigration, /issue_type = 'overlap_conflict'/);
+  assert.match(staleConflictMigration, /issue_status = 'open'/);
+  assert.match(staleConflictMigration, /calendar_connection_authorised/);
+  assert.match(staleConflictMigration, /operator_acknowledged/);
+  assert.match(staleConflictMigration, /acknowledged_fingerprint/);
+  assert.match(staleConflictMigration, /acknowledged_message/);
+  assert.match(staleConflictMigration, /revoke all on function public\.ignore_calendar_overlap_conflict/);
+  assert.match(service, /ignore_calendar_overlap_conflict/);
+  assert.match(service, /ignore_calendar_overlap_conflicts_for_property/);
+  assert.match(service, /calendar_conflict_acknowledgement_unavailable/);
+  assert.match(staleConflictMigration, /ignore_calendar_overlap_conflicts_for_property/);
+  assert.match(staleConflictMigration, /property_id = target_property/);
+});
+
+test("forward-only repair migration restores the live conflict acknowledgement contract", () => {
+  assert.match(conflictRepairMigration, /add column if not exists metadata jsonb not null default/);
+  assert.match(conflictRepairMigration, /create or replace function public\.record_calendar_sync_issue_with_metadata/);
+  assert.match(conflictRepairMigration, /create or replace function public\.ignore_calendar_overlap_conflict/);
+  assert.match(conflictRepairMigration, /acknowledged_message', issue\.safe_message/);
+  assert.match(conflictRepairMigration, /create or replace function public\.ignore_calendar_overlap_conflicts_for_property/);
+  assert.match(conflictRepairMigration, /security definer set search_path = ''/);
+  assert.match(conflictRepairMigration, /revoke all on function/);
+});
+
+test("legacy issue rows without metadata do not break property or reservation reads", () => {
+  assert.match(service, /calendar_issue_metadata_unavailable/);
+  assert.match(service, /console\.warn\("calendar_issue_metadata_unavailable"/);
+  assert.doesNotMatch(service, /console\.error\("calendar_issue_metadata_unavailable"/);
+  assert.match(service, /withMetadata\.error\.code !== "42703"/);
+  assert.match(service, /metadata: \{\}/);
+  assert.match(reservationsService, /reservation_issue_metadata_unavailable/);
+  assert.match(reservationsService, /console\.warn\("reservation_issue_metadata_unavailable"/);
+  assert.doesNotMatch(reservationsService, /console\.error\("reservation_issue_metadata_unavailable"/);
+  assert.match(reservationsService, /withMetadata\.error\.code !== "42703"/);
+  assert.match(reservationsService, /metadata: \{\}/);
+});
+
+test("unconnected property calendars show the compact connection form immediately", () => {
+  assert.doesNotMatch(sourceComponent, /<details open[\s\S]*Connect booking calendar/);
+  assert.match(sourceComponent, /value=\{option\.value\}/);
+  for (const provider of ["airbnb", "booking_com", "vrbo", "expedia", "other"]) {
+    assert.match(sourceComponent, new RegExp(`value: \"${provider}\"`));
+  }
+  assert.match(sourceComponent, /placeholder=\"Paste calendar URL\"/);
+  assert.match(sourceComponent, /Where do I find my calendar URL\?|Where do I find my \$\{selectedProviderLabel\} calendar URL/);
+  assert.match(sourceComponent, /max-w-3xl/);
+});
+
+test("connected properties can add another calendar without changing connection management", () => {
+  assert.match(sourceComponent, /connections\.length > 0 && !connectFormVisible/);
+  assert.match(sourceComponent, /\+ Add calendar/);
+  assert.match(sourceComponent, /const connectFormVisible = connections\.length === 0/);
+  assert.match(sourceComponent, /\{connectFormVisible &&/);
+  assert.match(sourceComponent, /ManageConnection propertyId=\{propertyId\} connection=\{connection\}/);
+  assert.match(migration, /create unique index property_calendar_connection_url_unique[\s\S]*property_id, calendar_url_fingerprint/);
+  assert.doesNotMatch(migration, /unique.*property_id, provider/);
+});
+
+test("mobile platform tiles keep a fixed alignment and make Other span both columns", () => {
+  assert.match(sourceComponent, /grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4/);
+  assert.match(sourceComponent, /option\.value === \"other\" \? \"col-span-2 sm:col-span-1\"/);
+  assert.match(sourceComponent, /min-h-16 min-w-0/);
+  assert.match(sourceComponent, /h-7 w-8 shrink-0/);
+  assert.match(sourceComponent, /max-h-7 max-w-8 object-contain/);
 });
 
 test("property creation redirects to a visible calendar setup panel", () => {
   assert.match(propertyPage, /created\?: string/);
   assert.match(propertyPage, /created === "1"/);
   assert.match(propertyPage, /Property created successfully/);
-  assert.match(propertyPage, /Connect reservation source/);
+  assert.match(propertyPage, /Connect booking calendar/);
   assert.match(
     readFileSync(new URL("../app/business/actions.ts", import.meta.url), "utf8"),
     /`\/business\/properties\/\$\{created\?\.id\}\?created=1`/,

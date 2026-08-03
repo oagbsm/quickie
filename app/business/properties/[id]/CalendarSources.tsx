@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import Image from "next/image";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   initialCalendarActionState,
@@ -18,6 +19,26 @@ const field =
 
 const providerName = (provider: SafeCalendarConnection["provider"]) =>
   ({ airbnb: "Airbnb", booking_com: "Booking.com", vrbo: "Vrbo", expedia: "Expedia", other: "Other calendar" })[provider];
+
+const providerOptions = [
+  { value: "airbnb", label: "Airbnb", image: "/icons/airbnb.png", width: 82, height: 30 },
+  { value: "booking_com", label: "Booking.com", image: "/icons/booking.jpg", width: 105, height: 27 },
+  { value: "vrbo", label: "Vrbo", image: "/icons/vrbo.png", width: 82, height: 30 },
+  { value: "expedia", label: "Expedia", image: "/icons/expedia.png", width: 88, height: 28 },
+  { value: "other", label: "Other", image: null, width: 0, height: 0 },
+] as const;
+
+function CalendarIcon({ link = false }: { link?: boolean }) {
+  return link ? (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m10 13 4-4M8.5 16.5l-1 1a3.5 3.5 0 0 1-5-5l3-3a3.5 3.5 0 0 1 5 0M15.5 7.5l1-1a3.5 3.5 0 0 1 5 5l-3 3a3.5 3.5 0 0 1-5 0" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 10h18" />
+    </svg>
+  );
+}
 
 function Result({ state }: { state: CalendarActionState }) {
   if (!state.message) return null;
@@ -94,27 +115,34 @@ function ManageConnection({ propertyId, connection }: { propertyId: string; conn
 export default function CalendarSources({ propertyId, connections }: { propertyId: string; connections: SafeCalendarConnection[] }) {
   const connect = connectCalendarAction.bind(null, propertyId);
   const [state, action, pending] = useActionState(connect, initialCalendarActionState);
+  const [selectedProvider, setSelectedProvider] = useState("airbnb");
+  const [showConnectForm, setShowConnectForm] = useState(connections.length === 0);
+  const selectedProviderLabel = providerOptions.find((option) => option.value === selectedProvider)?.label;
+  const connectFormVisible = connections.length === 0 || (showConnectForm && state.status !== "success");
   return (
     <section className="mt-6 grid gap-4" aria-labelledby="reservation-sources-title">
       <div>
         <h2 id="reservation-sources-title" className="text-xl font-extrabold">Booking calendar</h2>
-        <p className="mt-1 text-sm text-[#657089]">Connect Airbnb, Booking.com, Vrbo, Expedia or another calendar to import bookings.</p>
-        <p className="mt-2 text-xs font-semibold text-[#657089]">Healthy sources sync automatically. If a source needs attention, existing bookings stay safe while you review the issue.</p>
+        <p className="mt-1 text-sm text-[#657089]">Import bookings automatically from your reservation calendars.</p>
       </div>
+      {connections.length > 0 && <h3 className="text-sm font-extrabold text-[#657089]">Connected calendars</h3>}
       {connections.map((connection) => (
         <article key={connection.id} className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          {(() => {
+            const conflictOnly = connection.open_issues.length > 0 && connection.open_issues.every((issue) => issue.issue_type === "overlap_conflict");
+            return <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="text-lg font-extrabold">{connection.display_name || providerName(connection.provider)}</p>
-              <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-extrabold ${connection.sync_status === "healthy" ? "bg-emerald-50 text-emerald-800" : connection.sync_status === "disabled" ? "bg-slate-100 text-slate-700" : "bg-amber-50 text-amber-900"}`}>
-                {connection.sync_status === "healthy" ? "Healthy" : connection.sync_status === "disabled" ? "Disabled" : connection.sync_status === "never_synced" ? "Pending first sync" : connection.sync_status === "syncing" ? "Syncing" : "Needs attention"}
+              <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-extrabold ${connection.sync_status === "healthy" || conflictOnly ? "bg-emerald-50 text-emerald-800" : connection.sync_status === "disabled" ? "bg-slate-100 text-slate-700" : "bg-amber-50 text-amber-900"}`}>
+                {connection.sync_status === "healthy" || conflictOnly ? "Healthy" : connection.sync_status === "disabled" ? "Disabled" : connection.sync_status === "never_synced" ? "Pending first sync" : connection.sync_status === "syncing" ? "Syncing" : "Needs attention"}
               </span>
             </div>
             {connection.is_active && <SyncButton propertyId={propertyId} connectionId={connection.id} />}
-          </div>
+          </div>;
+          })()}
           <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-4">
             <div><dt className="portal-label">Last successful sync</dt><dd className="mt-1 font-bold">{connection.last_successful_sync_at ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/London" }).format(new Date(connection.last_successful_sync_at)) : "Not yet"}</dd></div>
-            <div><dt className="portal-label">Next automatic sync</dt><dd className="mt-1 font-bold">{connection.is_active ? "Pending scheduler" : "Disabled"}</dd></div>
+            <div><dt className="portal-label">Automatic sync</dt><dd className="mt-1 font-bold">{connection.is_active ? "Enabled" : "Disabled"}</dd></div>
             <div><dt className="portal-label">Imported bookings</dt><dd className="mt-1 font-bold">{connection.imported_reservation_count} active</dd></div>
             <div><dt className="portal-label">Action required</dt><dd className="mt-1 font-bold">{connection.open_issue_count || "None"}</dd></div>
           </dl>
@@ -122,7 +150,7 @@ export default function CalendarSources({ propertyId, connections }: { propertyI
           {connection.last_error_message && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-900">{connection.last_error_message}</p>}
           {connection.open_issues.length > 0 && (
             <div className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-950">
-              <p className="font-extrabold">Action required</p>
+              <p className="font-extrabold">{connection.open_issues.every((issue) => issue.issue_type === "overlap_conflict") ? "Booking conflict" : "Action required"}</p>
               <ul className="mt-1 grid gap-1">
                 {connection.open_issues.map((issue) => (
                   <li key={issue.id}>{issue.safe_message}</li>
@@ -133,26 +161,51 @@ export default function CalendarSources({ propertyId, connections }: { propertyI
           <div className="mt-4"><ManageConnection propertyId={propertyId} connection={connection} /></div>
         </article>
       ))}
-      {connections.length === 0 && (
-        <details open className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
-          <summary className="cursor-pointer font-extrabold">Connect booking calendar</summary>
+      {connections.length > 0 && !connectFormVisible && (
+        <button
+          type="button"
+          onClick={() => setShowConnectForm(true)}
+          className="portal-action-secondary min-h-11 w-full justify-center sm:w-auto"
+          aria-expanded={showConnectForm}
+        >
+          + Add calendar
+        </button>
+      )}
+      {connectFormVisible && (
+        <article className="max-w-3xl rounded-xl border border-[#dfe4eb] bg-white p-4 shadow-sm sm:p-6">
           <RefreshOnSuccess state={state} />
-          <form action={action} className="mt-5 grid gap-5" noValidate>
-            <label className="font-bold">Platform
-              <select name="provider" defaultValue="airbnb" className={field}>
-                <option value="airbnb">Airbnb</option><option value="booking_com">Booking.com</option><option value="vrbo">Vrbo</option><option value="expedia">Expedia</option><option value="other">Other calendar</option>
-              </select>
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-lg font-extrabold text-[#071f49]">Connect your calendar</h3>
+            {connections.length > 0 && (
+              <button type="button" onClick={() => setShowConnectForm(false)} className="min-h-11 px-2 text-sm font-bold text-[#245b9d]">
+                Cancel
+              </button>
+            )}
+          </div>
+          <form action={action} className="mt-4 grid gap-4" noValidate>
+            <fieldset>
+              <legend className="font-bold">Platform</legend>
+              <div className="mt-2 grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4">
+                {providerOptions.map((option) => (
+                  <label key={option.value} className={`flex min-h-16 min-w-0 cursor-pointer items-center justify-start gap-3 rounded-lg border border-[#cfd7e3] bg-white px-3 py-2 text-left text-sm font-bold outline-none transition-colors hover:bg-[#f7f9fc] has-[:checked]:border-[#2d67b2] has-[:checked]:bg-[#eef5ff] has-[:checked]:text-[#071f49] has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-[#2d67b2]/15 sm:min-h-[68px] sm:justify-center sm:px-2 sm:text-center ${option.value === "other" ? "col-span-2 sm:col-span-1" : ""}`}>
+                    <input type="radio" name="provider" value={option.value} checked={selectedProvider === option.value} onChange={() => setSelectedProvider(option.value)} className="sr-only" />
+                    <span className="grid h-7 w-8 shrink-0 place-items-center sm:h-8">{option.image ? <Image src={option.image} alt="" width={option.width} height={option.height} className="max-h-7 max-w-8 object-contain sm:max-h-8" /> : <CalendarIcon />}</span>
+                    <span className="min-w-0 truncate whitespace-nowrap">{option.label}</span>
+                  </label>
+                ))}
+              </div>
               {state.fieldErrors.provider && <span className="mt-1 block text-sm text-red-700">{state.fieldErrors.provider}</span>}
-            </label>
+            </fieldset>
             <label className="font-bold">Calendar URL
-              <input name="calendarUrl" type="url" required autoComplete="off" placeholder="https://…" className={field} />
-              <span className="mt-1 block text-xs font-normal text-[#657089]">Paste the private calendar link supplied by the booking platform.</span>
+              <span className="relative mt-1.5 block"><CalendarIcon link /><input name="calendarUrl" type="url" required autoComplete="off" placeholder="Paste calendar URL" aria-describedby="calendar-url-help" className={`${field} mt-0 pl-10`} /></span>
+              <span id="calendar-url-help" className="mt-1 block text-xs font-normal text-[#657089]">Paste the private calendar link supplied by the booking platform.</span>
               {state.fieldErrors.calendarUrl && <span className="mt-1 block text-sm text-red-700">{state.fieldErrors.calendarUrl}</span>}
             </label>
-            <button disabled={pending} className="portal-action justify-self-start disabled:opacity-60">{pending ? "Connecting…" : "Connect and sync"}</button>
+            <details className="-mt-2 text-sm"><summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 font-bold text-[#245b9d]"><span className="text-[#657089]" aria-hidden="true">?</span>{selectedProvider === "other" ? "Where do I find my calendar URL?" : `Where do I find my ${selectedProviderLabel} calendar URL?`}</summary><p className="mt-1 max-w-xl text-xs font-normal text-[#657089]">Open your booking platform’s calendar export or sharing settings and copy its private iCal/ICS link.</p></details>
+            <button disabled={pending} className="portal-action min-h-12 w-full justify-center disabled:opacity-60 sm:w-[280px]">{pending ? "Connecting…" : "Connect calendar"}</button>
           </form>
           <div className="mt-4"><Result state={state} /></div>
-        </details>
+        </article>
       )}
     </section>
   );

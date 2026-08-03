@@ -335,6 +335,13 @@ test("reservation and event reads are tenant isolated while writes use guarded R
   assert.match(service, /\.eq\("account_id", accountId\)/);
 });
 
+test("property reservation reads can be scoped without changing global booking reads", () => {
+  assert.match(service, /export async function listReservations\([\s\S]*propertyId\?: string/);
+  assert.match(service, /if \(propertyId\) query = query\.eq\("property_id", propertyId\)/);
+  assert.match(service, /\.match\(propertyId \? \{ property_id: propertyId \} : \{\}\)/);
+  assert.match(service, /reservation_id/);
+});
+
 test("no-op updates and repeated cancellations do not append duplicate events", () => {
   assert.match(
     migration,
@@ -362,10 +369,26 @@ test("timeline events are chronological, human-readable and do not render JSON",
   };
   assert.equal(
     formatReservationEvent(event).title,
-    "Check-out changed from 4 August 2026 at 11:00 to 5 August 2026 at 11:00",
+    "Check-out · 5 August 2026 at 11:00 (was 4 August 2026 at 11:00)",
   );
   assert.match(service, /\.order\("sequence", \{ ascending: true \}\)/);
   assert.doesNotMatch(detailPage, /JSON\.stringify|<pre|previous_values|new_values/);
+});
+
+test("booking detail leads with the stay and keeps technical history secondary", () => {
+  assert.match(detailPage, /Guest stay/);
+  assert.match(detailPage, /Check-in/);
+  assert.match(detailPage, /Check-out/);
+  assert.match(detailPage, /Cleaning after checkout/);
+  assert.match(detailPage, /View clean →/);
+  assert.match(detailPage, /<details className="portal-card p-5 sm:p-6">/);
+  assert.match(detailPage, /Activity &amp; history/);
+  assert.match(detailPage, /conflictingReservations/);
+  assert.match(service, /reservation_conflicts_query_failed/);
+  assert.doesNotMatch(detailPage, /Needs cleaner|TurnoverStatus|Created from/);
+  assert.doesNotMatch(detailPage, /Guest name not provided|Not provided/);
+  assert.match(detailPage, /formatDisplayName\(reservation\.property\.nickname\)/);
+  assert.match(detailPage, /sourceName\(reservation\.source/);
 });
 
 test("same-day turnovers are identified in London time", () => {
