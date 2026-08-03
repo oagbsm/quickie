@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { validatePropertyBasics } from "../lib/business/property-validation.ts";
-import { formatTurnoverDuration, isSupportedTurnoverDuration, TURNOVER_DURATION_OPTIONS } from "../lib/business/turnover-validation.ts";
 
 const wizard = readFileSync(
   new URL("../app/business/components/PropertyWizard.tsx", import.meta.url),
+  "utf8",
+);
+const propertyForm = readFileSync(
+  new URL("../app/business/components/PropertyForm.tsx", import.meta.url),
   "utf8",
 );
 const page = readFileSync(
@@ -41,20 +44,16 @@ test("portal property creation can validate with only four basics", () => {
   assert.doesNotMatch(wizard, /name="propertyType"|name="city"|name="bathrooms"|name="propertyImage"|name="addressLine2"/);
 });
 
-test("turnover step exposes only supported timing fields and durations", () => {
-  assert.match(wizard, /name="defaultCheckoutTime"/);
-  assert.match(wizard, /name="defaultCheckinTime"/);
-  assert.match(wizard, /name="estimatedTurnoverMinutes"/);
-  assert.doesNotMatch(wizard, /name="accessNotes"|name="keyInstructions"|name="requiredCompletionPhotos"/);
+test("property creation does not render or require Turnover Standard fields", () => {
+  assert.doesNotMatch(wizard, /Turnover timings|name="defaultCheckoutTime"|name="defaultCheckinTime"|name="estimatedTurnoverMinutes"/);
+  assert.match(propertyForm, /property\?\.id \? <fieldset/);
+  assert.doesNotMatch(propertyForm, /Add property and standard/);
+  assert.match(actions, /requestedDuration && !isSupportedTurnoverDuration/);
+  assert.doesNotMatch(actions, /!requestedDuration/);
   assert.match(actions, /airbnb: "Airbnb calendar"/);
   assert.match(actions, /booking_com: "Booking.com calendar"/);
   assert.match(actions, /vrbo: "Vrbo calendar"/);
   assert.match(actions, /other: "Calendar"/);
-  assert.equal(TURNOVER_DURATION_OPTIONS.length, 8);
-  assert.equal(formatTurnoverDuration(180), "3h");
-  assert.equal(formatTurnoverDuration(300), "5+");
-  assert.equal(isSupportedTurnoverDuration(210), true);
-  assert.equal(isSupportedTurnoverDuration(999), false);
 });
 
 test("unconfigured address lookup is not rendered, while configured support remains available", () => {
@@ -63,15 +62,14 @@ test("unconfigured address lookup is not rendered, while configured support rema
   assert.doesNotMatch(wizard, /Address lookup is not configured/);
 });
 
-test("portal wizard has three steps and creates from the final calendar step", () => {
+test("portal wizard has two steps and creates from the final calendar step", () => {
   assert.match(wizard, /"Property details"/);
-  assert.match(wizard, /"Turnover timings"/);
   assert.match(wizard, /"Connect calendar"/);
-  assert.match(wizard, /STEP 1 OF 3/);
-  assert.match(wizard, /STEP 2 OF 3/);
-  assert.match(wizard, /STEP 3 OF 3/);
-  assert.match(wizard, /grid grid-cols-3/);
-  assert.equal((wizard.match(/<section data-step="/g) || []).length, 3);
+  assert.match(wizard, /STEP 1 OF 2/);
+  assert.match(wizard, /STEP 2 OF 2/);
+  assert.match(wizard, /grid grid-cols-2/);
+  assert.equal((wizard.match(/<section data-step="/g) || []).length, 2);
+  assert.doesNotMatch(wizard, /Turnover timings|STEP 3 OF 3/);
   assert.doesNotMatch(wizard, /STEP 4 OF 4|Review and create|Ready to create your property\?|onClick=\{\(\) => edit/);
   assert.match(wizard, /<PendingButton[\s\S]*idle="Create property"[\s\S]*pending="Creating property…"/);
   assert.match(wizard, /action=\{addProperty\}/);

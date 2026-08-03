@@ -5,13 +5,11 @@ import PendingButton from "@/app/components/PendingButton";
 import { addProperty } from "../actions";
 import AddressLookup from "./AddressLookup";
 import { ONBOARDING_BEDROOMS } from "@/lib/business/property-validation";
-import { TURNOVER_DURATION_OPTIONS } from "@/lib/business/turnover-validation";
 
 const field =
   "mt-1 min-h-12 w-full rounded-lg border border-[#cfd7e3] bg-white px-3 py-2 outline-none focus:border-[#2d67b2] focus:ring-4 focus:ring-[#2d67b2]/15";
 const labels = [
   "Property details",
-  "Turnover timings",
   "Connect calendar",
 ];
 const providerNames: Record<string, string> = {
@@ -37,7 +35,7 @@ function CalendarIcon() {
     </svg>
   );
 }
-export default function PropertyWizard({ error, addressLookupEnabled = false, defaults }: { error?: string; addressLookupEnabled?: boolean; defaults?: { checkout: string; checkin: string; duration: number } }) {
+export default function PropertyWizard({ error, addressLookupEnabled = false }: { error?: string; addressLookupEnabled?: boolean }) {
   const [step, setStep] = useState(0);
   const [reservationSource, setReservationSource] = useState("");
   const ref = useRef<HTMLFormElement>(null);
@@ -101,7 +99,7 @@ export default function PropertyWizard({ error, addressLookupEnabled = false, de
     >
       <ol
         aria-label="Property creation progress"
-        className="mb-5 grid grid-cols-3 gap-1.5 sm:mb-7 sm:gap-2"
+        className="mb-5 grid grid-cols-2 gap-1.5 sm:mb-7 sm:gap-2"
       >
         {labels.map((x, i) => (
           <li key={x} aria-current={i === step ? "step" : undefined}>
@@ -126,7 +124,7 @@ export default function PropertyWizard({ error, addressLookupEnabled = false, de
       )}
       <div className="rounded-xl bg-white p-4 shadow-sm sm:p-8">
         <section data-step="0" hidden={step !== 0}>
-          <p className="text-sm font-extrabold text-[#2d67b2]">STEP 1 OF 3</p>
+          <p className="text-sm font-extrabold text-[#2d67b2]">STEP 1 OF 2</p>
           <h2 className="mt-1 text-2xl font-extrabold">Property details</h2>
           <div className="mt-4 grid gap-4 sm:mt-6 sm:gap-5">
             {addressLookupEnabled && <AddressLookup />}
@@ -171,49 +169,7 @@ export default function PropertyWizard({ error, addressLookupEnabled = false, de
           </div>
         </section>
         <section data-step="1" hidden={step !== 1}>
-          <p className="text-sm font-extrabold text-[#2d67b2]">STEP 2 OF 3</p>
-          <h2 className="mt-1 text-2xl font-extrabold">Turnover timings</h2>
-          <p className="mt-2 max-w-2xl text-[#657089]">
-            Set the usual checkout, check-in and cleaning time. You can change these for individual reservations later.
-          </p>
-          <div className="mt-5 grid gap-4 sm:grid-cols-3 sm:gap-5">
-              <label className="font-bold">
-                Default checkout
-                <input
-                  className={field}
-                  name="defaultCheckoutTime"
-                  type="time"
-                  defaultValue={defaults?.checkout || "11:00"}
-                  required
-                />
-              </label>
-              <label className="font-bold">
-                Default check-in
-                <input
-                  className={field}
-                  name="defaultCheckinTime"
-                  type="time"
-                  defaultValue={defaults?.checkin || "15:00"}
-                  required
-                />
-              </label>
-              <label className="font-bold">
-                Estimated cleaning time
-                <select
-                  className={field}
-                  name="estimatedTurnoverMinutes"
-                  defaultValue={TURNOVER_DURATION_OPTIONS.some(({ value }) => value === defaults?.duration) ? defaults?.duration : 180}
-                  required
-                >
-                  {TURNOVER_DURATION_OPTIONS.map(({ value, label }) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-              </label>
-          </div>
-        </section>
-        <section data-step="2" hidden={step !== 2}>
-          <p className="text-sm font-extrabold text-[#2d67b2]">STEP 3 OF 3</p>
+          <p className="text-sm font-extrabold text-[#2d67b2]">STEP 2 OF 2</p>
           <h2 className="mt-1 text-2xl font-extrabold">Connect your booking calendar</h2>
           <p className="mt-2 text-[#657089]">
             Automatically keep Quickola updated when bookings change.

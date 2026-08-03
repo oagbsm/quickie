@@ -152,7 +152,7 @@ export default function PropertyForm({
           value="Key safe or owner-arranged access"
         />
       </fieldset>
-      <fieldset className="grid gap-5 border-t pt-6">
+      {property?.id ? <fieldset className="grid gap-5 border-t pt-6">
         <legend className="text-lg font-extrabold">Clean standard</legend>
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="font-bold">
@@ -359,9 +359,9 @@ export default function PropertyForm({
             required
           />
         </label>
-      </fieldset>
+      </fieldset> : null}
       <button className="min-h-12 rounded-lg bg-[#071f49] px-5 font-extrabold text-white">
-        {property ? "Save property standard" : "Add property and standard"}
+        {property?.id ? "Save property standard" : "Add property"}
       </button>
     </form>
   );

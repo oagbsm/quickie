@@ -15,6 +15,10 @@ const actions = readFileSync(
   new URL("../app/business/actions.ts", import.meta.url),
   "utf8",
 );
+const onboarding = readFileSync(
+  new URL("../app/business/onboarding/page.tsx", import.meta.url),
+  "utf8",
+);
 
 function validForm() {
   const form = new FormData();
@@ -48,14 +52,16 @@ test("bedroom values are constrained server-side", () => {
   assert.deepEqual(ONBOARDING_BEDROOMS, ["0", "1", "2", "3", "4", "5"]);
 });
 
-test("only the four property basics are collected and onboarding continues", () => {
+test("only the four property basics are collected and onboarding skips Turnover Standard", () => {
   assert.match(page, /Property name/);
   assert.match(page, /Full address/);
   assert.match(page, /Postcode/);
   assert.match(page, /Bedrooms/);
   assert.doesNotMatch(page, /Property type|Town or city|Bathrooms/);
   assert.match(page, /Continue/);
-  assert.match(actions, /value\(f, "returnTo"\) === "onboarding"[\s\S]*business\/onboarding\?step=standard/);
+  assert.match(actions, /value\(f, "returnTo"\) === "onboarding"[\s\S]*business\/onboarding\?step=cleaner/);
+  assert.doesNotMatch(onboarding, /Turnover Standard|turnover standard|saveOnboardingStandard|step=standard/);
+  assert.match(onboarding, /STEP \{number\} OF 2/);
 });
 
 test("onboarding routes and actions re-check authoritative completion state", () => {
@@ -64,6 +70,6 @@ test("onboarding routes and actions re-check authoritative completion state", ()
   assert.match(onboarding, /onboarding_completed_at/);
   assert.match(onboarding, /redirect\("\/business\/dashboard"\)/);
   assert.match(strActions, /export async function skipCleanerOnboarding/);
-  assert.match(strActions, /export async function saveOnboardingStandard/);
+  assert.doesNotMatch(strActions, /export async function saveOnboardingStandard/);
   assert.match(strActions, /onboardingAccount\?\.onboarding_step === "complete"/);
 });

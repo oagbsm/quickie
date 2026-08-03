@@ -44,6 +44,24 @@ const detail = ({
   </div> : null
 );
 
+function GripIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="4" r="1.2" /><circle cx="11" cy="4" r="1.2" />
+      <circle cx="5" cy="8" r="1.2" /><circle cx="11" cy="8" r="1.2" />
+      <circle cx="5" cy="12" r="1.2" /><circle cx="11" cy="12" r="1.2" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 6h12M8 3h4l1 3H7l1-3ZM6 6l.7 10h6.6L14 6M8.5 9v4M11.5 9v4" />
+    </svg>
+  );
+}
+
 export default async function Page({
   params,
   searchParams,
@@ -514,12 +532,9 @@ export default async function Page({
         ))}
 
       {tab === "checklist" && (
-        <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between"><h2 className="text-xl font-extrabold">Checklist</h2><Link href={`/business/properties/${id}?tab=checklist&edit=1`} className="text-sm font-bold text-[#245b9d]">{edit ? "Done editing" : "Edit checklist"}</Link></div>
-          <p className="mt-1 text-sm text-[#657089]">
-            Changes apply to future turnovers only.
-          </p>
-          <div className="mt-5 grid gap-5">
+        <section className="mt-6 rounded-xl bg-white p-4 shadow-sm sm:p-6">
+          <div className="flex items-center justify-between gap-4"><div><h2 className="text-xl font-extrabold">Checklist</h2><p className="mt-1 text-sm text-[#657089]">Changes apply to future turnovers only.</p></div><Link href={`/business/properties/${id}?tab=checklist&edit=1`} className="inline-flex min-h-11 shrink-0 items-center font-bold text-[#245b9d]">{edit ? "Done editing" : "Edit checklist"}</Link></div>
+          <div className="mt-5 grid gap-4">
             {visibleSections.map(
               (section: {
                 id: string;
@@ -531,89 +546,30 @@ export default async function Page({
                   mandatory: boolean;
                   photo_required: boolean;
                 }>;
-              }) => (
-                <div key={section.id}>
-                  <h3 className="border-b pb-2 font-extrabold">
-                    {section.title}
-                  </h3>
-                  {[...(section.checklist_template_tasks || [])]
-                    .sort((a, b) => a.position - b.position)
-                    .map((task) => (
-                      <div
-                        key={task.id}
-                        className="flex items-center justify-between gap-3 border-b py-3"
-                      >
-                        <div>
-                          <p className="font-bold">{task.label}</p>
-                          {edit && <p className="text-xs text-[#657089]">{task.mandatory ? "Required" : "Optional"}{task.photo_required ? " · Photo required" : ""}</p>}
-                        </div>
-                        {edit ? <div className="flex">
-                          <form action={moveChecklistTask}>
-                            <input type="hidden" name="propertyId" value={id} />
-                            <input
-                              type="hidden"
-                              name="taskId"
-                              value={task.id}
-                            />
-                            <button
-                              name="direction"
-                              value="up"
-                              aria-label={`Move ${task.label} up`}
-                              className="min-h-10 min-w-10"
-                            >
-                              ↑
-                            </button>
-                            <button
-                              name="direction"
-                              value="down"
-                              aria-label={`Move ${task.label} down`}
-                              className="min-h-10 min-w-10"
-                            >
-                              ↓
-                            </button>
-                          </form>
-                          <form action={deleteChecklistTask}>
-                            <input type="hidden" name="propertyId" value={id} />
-                            <button
-                              name="taskId"
-                              value={task.id}
-                              className="min-h-10 px-2 text-sm font-bold text-red-700"
-                            >
-                              Remove
-                            </button>
-                          </form>
-                        </div> : null}
+              }) => {
+                const tasks = [...(section.checklist_template_tasks || [])].sort((a, b) => a.position - b.position);
+                return <section key={section.id} className="overflow-visible rounded-xl border border-[#e1e7ef] bg-[#fbfcfe]">
+                  <div className="flex items-center justify-between gap-3 border-b border-[#e7ebf1] px-4 py-3"><h3 className="font-extrabold text-[#071f49]">{section.title}</h3><span className="shrink-0 rounded-full bg-[#eef2f7] px-2.5 py-1 text-xs font-bold text-[#657089]">{tasks.length} {tasks.length === 1 ? "item" : "items"}</span></div>
+                  <div className="divide-y divide-[#e7ebf1] px-3">
+                    {tasks.map((task) => (
+                      <div key={task.id} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2.5 py-3 sm:gap-3">
+                        {edit ? <details className="relative mt-0.5">
+                          <summary aria-label={`Reorder checklist item: ${task.label}`} className="grid h-11 w-11 cursor-pointer list-none place-items-center rounded-lg text-[#8190a5] outline-none hover:bg-[#eef2f7] hover:text-[#526078] focus-visible:ring-4 focus-visible:ring-[#2d67b2]/20"><GripIcon /></summary>
+                          <div className="absolute left-0 top-12 z-10 grid min-w-32 gap-1 rounded-lg border border-[#dfe5ed] bg-white p-1.5 shadow-lg">
+                            <form action={moveChecklistTask}><input type="hidden" name="propertyId" value={id} /><input type="hidden" name="taskId" value={task.id} /><button name="direction" value="up" aria-label={`Move ${task.label} up`} className="min-h-10 rounded-md px-3 text-left text-sm font-bold hover:bg-[#f4f6f9]">Move up</button></form>
+                            <form action={moveChecklistTask}><input type="hidden" name="propertyId" value={id} /><input type="hidden" name="taskId" value={task.id} /><button name="direction" value="down" aria-label={`Move ${task.label} down`} className="min-h-10 rounded-md px-3 text-left text-sm font-bold hover:bg-[#f4f6f9]">Move down</button></form>
+                          </div>
+                        </details> : <span className="h-11 w-11" aria-hidden="true" />}
+                        <div className="min-w-0 pt-1"><p className="break-words font-bold leading-5 text-[#071f49]">{task.label}</p>{edit && <p className="mt-1 text-xs font-semibold text-[#657089]">{task.mandatory ? "Required" : "Optional"}{task.photo_required ? " · Photo required" : ""}</p>}</div>
+                        {edit ? <form action={deleteChecklistTask} className="mt-0.5"><input type="hidden" name="propertyId" value={id} /><button type="submit" name="taskId" value={task.id} aria-label="Remove checklist item" title="Remove checklist item" className="grid h-11 w-11 place-items-center rounded-lg text-[#9aa6b7] outline-none hover:bg-red-50 hover:text-red-700 focus-visible:ring-4 focus-visible:ring-red-200"><TrashIcon /></button></form> : <span className="h-11 w-11" aria-hidden="true" />}
                       </div>
                     ))}
-                </div>
-              ),
+                  </div>
+                </section>;
+              },
             )}
           </div>
-          {edit && <form
-            action={addChecklistTask}
-            className="mt-6 grid gap-3 rounded-lg bg-[#f4f6f9] p-4 sm:grid-cols-2"
-          >
-            <input type="hidden" name="propertyId" value={id} />
-            <label className="font-bold">
-              Section
-              <input name="sectionTitle" required className={field} />
-            </label>
-            <label className="font-bold">
-              Task
-              <input name="label" required className={field} />
-            </label>
-            <label className="flex items-center gap-2 font-bold">
-              <input type="checkbox" name="mandatory" className="h-5 w-5" />
-              Required
-            </label>
-            <label className="flex items-center gap-2 font-bold">
-              <input type="checkbox" name="photoRequired" className="h-5 w-5" />
-              Photo required
-            </label>
-            <button className="min-h-11 rounded-lg bg-[#071f49] px-4 font-bold text-white sm:col-span-2">
-              Add task
-            </button>
-          </form>}
+          {edit && <form action={addChecklistTask} className="mt-5 grid gap-3 rounded-xl border border-[#e1e7ef] bg-[#f7f9fc] p-4 sm:grid-cols-2"><input type="hidden" name="propertyId" value={id} /><label className="font-bold">Section<input name="sectionTitle" required className={field} /></label><label className="font-bold">Task<input name="label" required className={field} /></label><label className="flex items-center gap-2 font-bold"><input type="checkbox" name="mandatory" className="h-5 w-5" />Required</label><label className="flex items-center gap-2 font-bold"><input type="checkbox" name="photoRequired" className="h-5 w-5" />Photo required</label><button className="min-h-11 rounded-lg bg-[#071f49] px-4 font-bold text-white sm:col-span-2">Add task</button></form>}
         </section>
       )}
 

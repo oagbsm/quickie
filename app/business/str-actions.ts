@@ -11,7 +11,6 @@ import { londonLocalToUtc } from "@/lib/business/time";
 import { hasTurnoverWindowRisk } from "@/lib/turnovers/status";
 import { isImplausibleTurnoverDate } from "@/lib/turnovers/presentation";
 import { sendCleanerAssignmentEmail, sendCleanerInvitationEmail, sendOperatorTurnoverEmail } from "@/lib/server/business-notifications";
-import { isSupportedTurnoverDuration } from "@/lib/business/turnover-validation";
 
 const text = (form: FormData, name: string) =>
   String(form.get(name) || "").trim();
@@ -179,54 +178,6 @@ export async function skipCleanerOnboarding() {
     })
     .eq("id", accountId);
   redirect("/business/dashboard");
-}
-
-export async function saveOnboardingStandard(form: FormData) {
-  const { supabase, accountId } = await requireBusinessUser();
-  const { data: onboardingAccount, error: onboardingStateError } = await supabase
-    .from("business_accounts")
-    .select("onboarding_step,onboarding_completed_at")
-    .eq("id", accountId)
-    .maybeSingle();
-  if (onboardingStateError) redirect("/business/onboarding?step=standard&error=state");
-  if (onboardingAccount?.onboarding_step === "complete" || onboardingAccount?.onboarding_completed_at)
-    redirect("/business/dashboard");
-  const propertyId = text(form, "propertyId");
-  const checkout = text(form, "defaultCheckoutTime");
-  const checkin = text(form, "defaultCheckinTime");
-  const duration = Number(text(form, "estimatedTurnoverMinutes"));
-  if (!propertyId || !checkout || !checkin || !isSupportedTurnoverDuration(duration)) {
-    redirect(
-      `/business/onboarding?step=standard&property=${propertyId}&error=required`,
-    );
-  }
-  const { error } = await supabase
-    .from("properties")
-    .update({
-      default_checkout_time: checkout,
-      default_checkin_time: checkin,
-      estimated_turnover_minutes: duration,
-      access_notes: optional(form, "accessNotes"),
-      bed_configuration: optional(form, "bedConfiguration"),
-      linen_requirements: optional(form, "linenRequirements"),
-      key_return_instructions: optional(form, "keyReturnInstructions"),
-      cleaning_notes: optional(form, "cleaningNotes"),
-      required_completion_photos: Number(
-        text(form, "requiredCompletionPhotos") || 4,
-      ),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", propertyId)
-    .eq("account_id", accountId);
-  if (error)
-    redirect(
-      `/business/onboarding?step=standard&property=${propertyId}&error=save`,
-    );
-  await supabase
-    .from("business_accounts")
-    .update({ onboarding_step: "cleaner" })
-    .eq("id", accountId);
-  redirect("/business/onboarding?step=cleaner");
 }
 
 export async function setWorkerStatus(form: FormData) {

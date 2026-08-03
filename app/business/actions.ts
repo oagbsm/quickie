@@ -257,7 +257,7 @@ export async function addProperty(f: FormData) {
   revalidatePath("/business/activity");
   redirect(
     value(f, "returnTo") === "onboarding"
-      ? `/business/onboarding?step=standard&property=${created?.id || ""}`
+      ? "/business/onboarding?step=cleaner"
       : `/business/properties/${created?.id}?created=1`,
   );
 }

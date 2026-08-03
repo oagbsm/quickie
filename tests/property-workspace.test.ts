@@ -39,6 +39,16 @@ test("checklist editing controls are edit-mode only and access omits empty value
   assert.doesNotMatch(page, /Not set/);
 });
 
+test("checklist editing uses compact accessible controls and grouped sections", () => {
+  assert.match(page, /Reorder checklist item:/);
+  assert.match(page, /Move .* up/);
+  assert.match(page, /Move .* down/);
+  assert.match(page, /aria-label="Remove checklist item"/);
+  assert.match(page, /<TrashIcon \/>/);
+  assert.match(page, /tasks\.length === 1 \? "item" : "items"/);
+  assert.doesNotMatch(page, />↑<\/button>|>↓<\/button>|>Remove<\/button>/);
+});
+
 test("header prioritises Add booking and moves manual clean under More", () => {
   assert.match(page, /Add booking/);
   assert.match(page, />More<\/summary>/);
