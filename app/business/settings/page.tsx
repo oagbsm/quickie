@@ -26,7 +26,7 @@ export default async function Page() {
     <div className="portal-page max-w-4xl">
       <h1 className="portal-title">Settings</h1>
       <p className="portal-subtitle">
-        Manage the controls that affect your Quickola workspace.
+        Manage your account and cleaning defaults.
       </p>
       <form action={updateWorkspaceSettings} className="mt-6 grid gap-4">
         <section className="portal-card p-5 sm:p-6">
@@ -52,13 +52,7 @@ export default async function Page() {
                 Change password
               </Link>
             </div>
-          </div>
-        </section>
-        <section className="portal-card p-5 sm:p-6">
-          <h2 className="text-xl font-extrabold">Workspace</h2>
-          <input type="hidden" name="workspaceName" value={account?.name || "My properties"} />
-          <div className="mt-5 grid gap-4">
-            <label className="font-bold">
+            <label className="font-bold sm:col-span-2">
               Timezone
               <select
                 name="timezone"
@@ -70,20 +64,13 @@ export default async function Page() {
             </label>
           </div>
         </section>
+        <input type="hidden" name="workspaceName" value={account?.name || "My properties"} />
         <section className="portal-card p-5 sm:p-6">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-            <div>
-              <h2 className="text-xl font-extrabold">Defaults for new properties</h2>
+          <div>
+              <h2 className="text-xl font-extrabold">Property defaults</h2>
               <p className="mt-1 text-sm text-[#657089]">
                 These values are suggested when you add a property. Existing properties will not be changed.
               </p>
-            </div>
-            <Link
-              href="/business/properties"
-              className="text-sm font-bold text-[#245b9d]"
-            >
-              Open checklist manager
-            </Link>
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
             <label className="font-bold">
@@ -115,14 +102,23 @@ export default async function Page() {
               </select>
             </label>
           </div>
+          <div className="mt-5 flex justify-end">
+            <PendingButton
+              idle="Save settings"
+              pending="Saving…"
+              className="min-h-12 w-full rounded-lg bg-[#071f49] px-6 font-extrabold text-white sm:w-auto"
+            />
+          </div>
         </section>
-        <div className="flex justify-end">
-          <PendingButton
-            idle="Save settings"
-            pending="Saving…"
-            className="min-h-12 rounded-lg bg-[#071f49] px-6 font-extrabold text-white"
-          />
-        </div>
+        <section className="portal-card p-5 sm:p-6">
+          <h2 className="text-xl font-extrabold">Cleaning checklist</h2>
+          <p className="mt-1 text-sm text-[#657089]">
+            Set the standard tasks cleaners should complete at your properties.
+          </p>
+          <Link href="/business/properties" className="mt-4 inline-flex min-h-11 items-center rounded-lg border px-4 text-sm font-bold text-[#245b9d]">
+            Manage checklist
+          </Link>
+        </section>
       </form>
       <section className="mt-8 border-t pt-6">
         <h2 className="text-lg font-extrabold">Account</h2>

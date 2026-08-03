@@ -50,7 +50,19 @@ async function sendTransactionalEmail(input: TransactionalEmailInput) {
       body: JSON.stringify({ from, to: [input.recipient], reply_to: replyTo || undefined, subject: input.subject, html: input.html }),
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(`resend_${response.status}`);
+    if (!response.ok) {
+      const providerMessage = body && typeof body === "object" && "message" in body && typeof body.message === "string"
+        ? body.message.slice(0, 240)
+        : "provider_rejected";
+      console.error("transactional_email_provider_rejected", {
+        provider: "resend",
+        eventType: input.eventType,
+        accountId: input.accountId,
+        status: response.status,
+        message: providerMessage,
+      });
+      throw new Error(`resend_${response.status}`);
+    }
     await db.from("transactional_email_deliveries").update({ delivery_status: "sent", sent_at: new Date().toISOString(), provider_message_id: typeof body.id === "string" ? body.id : null }).eq("idempotency_key", input.idempotencyKey);
     return { sent: true as const };
   } catch (error) {

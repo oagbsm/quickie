@@ -11,6 +11,7 @@ import {
 } from "../../str-actions";
 import { listPropertyCalendarConnections } from "@/lib/server/property-calendars";
 import CalendarSources from "./CalendarSources";
+import { formatDisplayAddress } from "@/lib/display-address";
 
 const tabs = [
   ["overview", "Overview"],
@@ -20,11 +21,13 @@ const tabs = [
 ] as const;
 const field =
   "mt-1.5 min-h-11 w-full rounded-lg border border-[#cfd7e3] bg-white px-3 py-2 outline-none focus:border-[#2d67b2] focus:ring-4 focus:ring-[#2d67b2]/15";
-const display = (value: string) =>
-  value
+const display = (value?: string | null) => {
+  if (!value) return "—";
+  return value
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase())
     .replace(/\bLtd\b/i, "Ltd");
+};
 const detail = ({
   label,
   value,
@@ -64,12 +67,23 @@ export default async function Page({
   const { data: p, error: queryError } = await supabase
     .from("properties")
     .select(
-      "*,checklist_templates(id,active,checklist_template_sections(id,title,position,checklist_template_tasks(id,label,position,mandatory,photo_required,note_required,blocking))),work_items(id,turnover_date,status,ready_at,assignments(workers(display_name))),property_workers(is_default,workers(id,display_name)),operational_issues(status),activity_events(id,description,created_at)",
+      "*,checklist_templates(id,active,checklist_template_sections(id,title,position,checklist_template_tasks(id,label,position,mandatory,photo_required,note_required,blocking))),work_items(id,turnover_date,status,ready_at,assignments(workers(display_name)),operational_issues(status)),property_workers(is_default,workers(id,display_name)),activity_events(id,description,created_at)",
     )
     .eq("id", id)
     .eq("account_id", accountId)
     .maybeSingle();
-  if (queryError) throw new Error(`property_query_failed:${queryError.code}`);
+  if (queryError) {
+    console.error("property_query_failed", {
+      operation: "business_property_detail",
+      accountId,
+      propertyId: id,
+      code: queryError.code,
+      message: queryError.message,
+      details: queryError.details,
+      hint: queryError.hint,
+    });
+    throw new Error(`property_query_failed:${queryError.code}`);
+  }
   if (!p) notFound();
   const title = display(p.nickname),
     template = p.checklist_templates?.find(
@@ -79,7 +93,20 @@ export default async function Page({
       (a: { position: number }, b: { position: number }) =>
         a.position - b.position,
     );
-  const calendarConnections = await listPropertyCalendarConnections(id);
+  let calendarConnections;
+  try {
+    calendarConnections = await listPropertyCalendarConnections(id);
+  } catch (calendarError) {
+    console.error("property_calendar_connections_failed", {
+      operation: "business_property_detail",
+      accountId,
+      propertyId: id,
+      code: calendarError instanceof Error && calendarError.message.includes(":")
+        ? calendarError.message.split(":").at(-1)
+        : "unknown",
+    });
+    throw calendarError;
+  }
   const overviewCalendarStatus = calendarConnections.length
     ? calendarConnections.some((connection) =>
         ["attention_required", "never_synced", "syncing", "disabled"].includes(
@@ -107,7 +134,7 @@ export default async function Page({
           <p className="text-sm font-extrabold text-[#2d67b2]">PROPERTY</p>
           <h1 className="mt-1 text-3xl font-extrabold">{title}</h1>
           <p className="mt-2 text-[#657089]">
-            {p.address_line_1}, {p.city}, {p.postcode}
+            {formatDisplayAddress([p.address_line_1, p.city, p.postcode])}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -176,7 +203,7 @@ export default async function Page({
             <div className="rounded-xl bg-white p-5 shadow-sm"><p className="text-sm font-extrabold text-[#657089]">NEXT CLEAN</p>{p.work_items?.filter((item: { status: string; turnover_date: string }) => !["ready", "cancelled"].includes(item.status)).sort((a: { turnover_date: string }, b: { turnover_date: string }) => a.turnover_date.localeCompare(b.turnover_date))[0] ? <p className="mt-2 font-extrabold">{p.work_items.filter((item: { status: string; turnover_date: string }) => !["ready", "cancelled"].includes(item.status)).sort((a: { turnover_date: string }, b: { turnover_date: string }) => a.turnover_date.localeCompare(b.turnover_date))[0].turnover_date}</p> : <p className="mt-2 text-sm text-[#657089]">No upcoming clean</p>}</div>
             <div className="rounded-xl bg-white p-5 shadow-sm"><p className="text-sm font-extrabold text-[#657089]">CLEANER</p>{p.property_workers?.find((row: { is_default: boolean }) => row.is_default)?.workers ? <><p className="mt-2 font-extrabold">{(Array.isArray(p.property_workers.find((row: { is_default: boolean }) => row.is_default).workers) ? p.property_workers.find((row: { is_default: boolean }) => row.is_default).workers[0] : p.property_workers.find((row: { is_default: boolean }) => row.is_default).workers).display_name}</p><p className="text-sm text-[#657089]">Default cleaner</p></> : <><p className="mt-2 font-extrabold">Not assigned</p><Link href="/business/cleaners" className="text-sm font-bold text-[#245b9d]">Set default cleaner</Link></>}</div>
           </section>
-          <section className="mt-4 rounded-xl bg-white p-5 shadow-sm"><p className="text-sm font-extrabold text-[#657089]">PROPERTY STATUS</p><p className="mt-2 font-extrabold">{p.operational_issues?.filter((issue: { status: string }) => !["resolved", "closed"].includes(issue.status)).length ? `${p.operational_issues.filter((issue: { status: string }) => !["resolved", "closed"].includes(issue.status)).length} open issue(s)` : "No open issues"}</p></section>
+          <section className="mt-4 rounded-xl bg-white p-5 shadow-sm"><p className="text-sm font-extrabold text-[#657089]">PROPERTY STATUS</p><p className="mt-2 font-extrabold">{p.work_items?.flatMap((item: { operational_issues?: Array<{ status: string }> }) => item.operational_issues || []).filter((issue: { status: string }) => !["resolved", "closed"].includes(issue.status)).length ? `${p.work_items.flatMap((item: { operational_issues?: Array<{ status: string }> }) => item.operational_issues || []).filter((issue: { status: string }) => !["resolved", "closed"].includes(issue.status)).length} open issue(s)` : "No open issues"}</p></section>
           <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>
@@ -226,19 +253,19 @@ export default async function Page({
               {detail({ label: "Status", value: display(p.status) })}
               {detail({
                 label: "Default checkout",
-                value: String(p.default_checkout_time).slice(0, 5),
+                value: p.default_checkout_time ? String(p.default_checkout_time).slice(0, 5) : "—",
               })}
               {detail({
                 label: "Default check-in",
-                value: String(p.default_checkin_time).slice(0, 5),
+                value: p.default_checkin_time ? String(p.default_checkin_time).slice(0, 5) : "—",
               })}
               {detail({
                 label: "Estimated clean",
-                value: `${p.estimated_turnover_minutes} minutes`,
+                value: p.estimated_turnover_minutes == null ? "—" : `${p.estimated_turnover_minutes} minutes`,
               })}
               {detail({
                 label: "Completion evidence",
-                value: `${p.required_completion_photos} photos`,
+                value: p.required_completion_photos == null ? "—" : `${p.required_completion_photos} photos`,
               })}
             </dl>
           </section>
@@ -613,7 +640,7 @@ export default async function Page({
                         (Array.isArray(row.workers)
                           ? row.workers[0]
                           : row.workers
-                        ).display_name,
+                        )?.display_name,
                       ),
                   )
                   .join(", ")

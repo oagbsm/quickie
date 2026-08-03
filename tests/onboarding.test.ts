@@ -57,3 +57,13 @@ test("only the four property basics are collected and onboarding continues", () 
   assert.match(page, /Continue/);
   assert.match(actions, /value\(f, "returnTo"\) === "onboarding"[\s\S]*business\/onboarding\?step=standard/);
 });
+
+test("onboarding routes and actions re-check authoritative completion state", () => {
+  const onboarding = readFileSync(new URL("../app/business/onboarding/page.tsx", import.meta.url), "utf8");
+  const strActions = readFileSync(new URL("../app/business/str-actions.ts", import.meta.url), "utf8");
+  assert.match(onboarding, /onboarding_completed_at/);
+  assert.match(onboarding, /redirect\("\/business\/dashboard"\)/);
+  assert.match(strActions, /export async function skipCleanerOnboarding/);
+  assert.match(strActions, /export async function saveOnboardingStandard/);
+  assert.match(strActions, /onboardingAccount\?\.onboarding_step === "complete"/);
+});

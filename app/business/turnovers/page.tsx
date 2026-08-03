@@ -42,6 +42,10 @@ const time = (value: string) =>
     minute: "2-digit",
     timeZone: "Europe/London",
   }).format(new Date(value));
+const actionReason = (row: Row, today: string) => {
+  const reason = turnoverActionReason(row, today);
+  return reason === "Turnover overdue" ? "Clean overdue" : reason;
+};
 
 export default async function Page({
   searchParams,
@@ -105,7 +109,7 @@ export default async function Page({
           href="/business/turnovers/new"
           className="portal-action"
         >
-          <span className="sm:hidden">+ Add</span>
+          <span className="sm:hidden">+ Clean</span>
           <span className="hidden sm:inline">Add clean</span>
         </Link>
       </header>
@@ -155,11 +159,11 @@ export default async function Page({
       <div className="portal-panel mt-4">
         {rows.length ? (
           <div className="divide-y divide-[#e7ebf0]">
-            <div className="hidden grid-cols-[112px_minmax(170px,1fr)_156px_minmax(190px,1fr)_20px] gap-4 bg-[#f7f9fb] px-5 py-3 text-xs font-extrabold text-[#657089] lg:grid">
+            <div className="hidden grid-cols-[112px_minmax(190px,1fr)_190px_minmax(170px,1fr)_20px] gap-4 bg-[#f7f9fb] px-5 py-3 text-xs font-extrabold text-[#657089] lg:grid">
               <span>When</span>
               <span>Property</span>
-              <span>Checkout / Check-in</span>
-              <span>What’s happening</span>
+              <span>Cleaning window</span>
+              <span>Status</span>
               <span />
             </div>
             {rows.map((row) => {
@@ -170,39 +174,29 @@ export default async function Page({
                 <Link
                   href={`/business/turnovers/${row.id}`}
                   key={row.id}
-                  className="portal-list-row grid gap-2 p-4 outline-none lg:grid-cols-[112px_minmax(170px,1fr)_156px_minmax(190px,1fr)_20px] lg:items-center lg:gap-4 lg:px-5 lg:py-5"
+                  className="portal-list-row grid gap-2 p-4 outline-none lg:grid-cols-[112px_minmax(190px,1fr)_190px_minmax(170px,1fr)_20px] lg:items-center lg:gap-4 lg:px-5 lg:py-5"
                 >
                   <div>
                     <p className="font-extrabold">{date(row.turnover_date)}</p>
-                    <p className="mt-0.5 text-sm font-bold text-[#273752]">{time(row.guest_checkout_at)}</p>
                   </div>
                   <div>
                     <p className="font-extrabold">
                       {formatDisplayName(property?.nickname)}
                     </p>
                     <p className="mt-0.5 text-xs text-[#657089]">
-                      {property?.postcode}{property?.bedrooms!=null?` · ${property.bedrooms} bed`:""} ·{" "}
-                      {row.cleaning_type.replaceAll("_", " ")}
+                      {property?.postcode}
                     </p>
                   </div>
-                  <div className="hidden text-xs lg:block"><p className="text-[#718096]">Checkout <strong className="text-[#12213c]">{time(row.guest_checkout_at)}</strong></p><p className="mt-1 text-[#718096]">{row.next_checkin_at ? "Check-in" : "Deadline"} <strong className="text-[#12213c]">{time(row.next_checkin_at || row.window_end_at)}</strong></p></div>
-                  <div className="lg:hidden">
+                  <div className="hidden text-sm lg:block"><p className="font-bold">{time(row.access_start_at)} → {time(row.window_end_at)}</p>{row.next_checkin_at && <p className="mt-1 text-xs text-[#657089]">Guest check-in {time(row.next_checkin_at)}</p>}</div>
+                  <div>
+                    <div className="mb-3 lg:hidden"><p className="text-sm font-bold">{time(row.access_start_at)} → {time(row.window_end_at)}</p>{row.next_checkin_at && <p className="mt-1 text-xs text-[#657089]">Guest check-in {time(row.next_checkin_at)}</p>}</div>
                     <TurnoverStatus status={row.status} />
-                    <p className="text-xs font-bold text-[#9a4f17]">
+                    {row.status !== "unassigned" && <p className="mt-2 text-xs leading-5 text-[#657089]">
                       {assignment?.status === "pending" &&
                       assignment.response_due_at
                         ? `${new Date(assignment.response_due_at) < new Date() ? "Response overdue" : "Reply due"} ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(new Date(assignment.response_due_at))}`
-                        : turnoverActionReason(row, today)}
-                    </p>
-                  </div>
-                  <div className="hidden lg:block">
-                    <TurnoverStatus status={row.status} />
-                    <p className="mt-2 text-xs leading-5 text-[#657089]">
-                      {assignment?.status === "pending" &&
-                      assignment.response_due_at
-                        ? `${new Date(assignment.response_due_at) < new Date() ? "Response overdue" : "Reply due"} ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(new Date(assignment.response_due_at))}`
-                        : turnoverActionReason(row, today)}{worker?.display_name&&["accepted","en_route","arrived","in_progress"].includes(row.status)?` · ${formatDisplayName(worker.display_name)}`:""}
-                    </p>
+                        : actionReason(row, today)}{worker?.display_name&&["accepted","en_route","arrived","in_progress"].includes(row.status)?` · ${formatDisplayName(worker.display_name)}`:""}
+                    </p>}
                   </div>
                   <span aria-hidden="true" className="hidden text-xl lg:block">
                     ›

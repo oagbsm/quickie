@@ -58,6 +58,18 @@ test("attention actions are compact buttons and upcoming rows avoid redundant st
   assert.doesNotMatch(dashboard, /getOperatorState\(item\.status\)\.message/);
 });
 
+test("dashboard uses the supplied semantic icon assets and state-aware supporting copy", () => {
+  assert.match(dashboard, /\/icons\/dashboard\/\$\{name\}\.svg/);
+  for (const name of ["calendar", "check-square", "user", "alert-triangle", "home", "map-pin", "chevron-right"]) {
+    assert.match(dashboard, new RegExp(`name="${name}"`));
+  }
+  assert.match(dashboard, /Next: \{date\(nextClean\.turnover_date\)\}/);
+  assert.match(dashboard, /No cleans ready/);
+  assert.match(dashboard, /unassigned\.length > 0 \? <span/);
+  assert.match(dashboard, /You’re all caught up!/);
+  assert.doesNotMatch(dashboard, /This week/);
+});
+
 test("completed cards show one concise status", () => {
   assert.match(dashboard, /Property ready/);
   assert.match(dashboard, /TurnoverStatus status="ready"/);

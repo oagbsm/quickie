@@ -4,11 +4,11 @@ import test from "node:test";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("dashboard uses a contextual setup CTA and no longer promotes manual cleans", () => {
+test("dashboard uses contextual property/calendar setup CTAs without promoting manual cleans or cleaners", () => {
   const page = read("app/business/dashboard/page.tsx");
   assert.match(page, /Add property/);
-  assert.match(page, /Connect calendar/);
-  assert.match(page, /Add cleaner/);
+  assert.match(page, /Connect your first calendar/);
+  assert.doesNotMatch(page, /Add cleaner/);
   assert.doesNotMatch(page, /＋ Add clean/);
 });
 
@@ -37,10 +37,18 @@ test("clean empty states retain tabs and manual creation while hiding filters wi
 test("settings is simplified without removing defaults or save behavior", () => {
   const page = read("app/business/settings/page.tsx");
   assert.match(page, /<h1 className="portal-title">Settings<\/h1>/);
-  assert.doesNotMatch(page, /Workspace display name/);
+  assert.match(page, /Manage your account and cleaning defaults\./);
+  assert.doesNotMatch(page, /<h2 className="text-xl font-extrabold">Workspace<\/h2>/);
+  assert.match(page, /name="timezone"/);
+  assert.match(page, /Property defaults/);
   assert.match(page, /Typical guest checkout/);
   assert.match(page, /Typical guest check-in/);
   assert.match(page, /Typical cleaning time/);
+  assert.match(page, /Cleaning checklist/);
+  assert.match(page, /Set the standard tasks cleaners should complete at your properties\./);
+  assert.match(page, /Manage checklist/);
+  assert.doesNotMatch(page, /Open checklist manager/);
   assert.match(page, /Save settings/);
   assert.match(page, /name="workspaceName"/);
+  assert.match(page, /Sign out/);
 });

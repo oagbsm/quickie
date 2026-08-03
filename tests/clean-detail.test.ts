@@ -4,11 +4,15 @@ import test from "node:test";
 
 const page = readFileSync(new URL("../app/business/turnovers/[id]/page.tsx", import.meta.url), "utf8");
 const status = readFileSync(new URL("../app/business/components/TurnoverStatus.tsx", import.meta.url), "utf8");
+const actions = readFileSync(new URL("../app/business/str-actions.ts", import.meta.url), "utf8");
+const cleanerDialog = readFileSync(new URL("../app/business/turnovers/[id]/CleanerCreationDialog.tsx", import.meta.url), "utf8");
+const taskDialog = readFileSync(new URL("../app/business/turnovers/[id]/ChecklistTaskDialog.tsx", import.meta.url), "utf8");
+const address = readFileSync(new URL("../lib/display-address.ts", import.meta.url), "utf8");
 
 test("clean detail builds addresses from present components only", () => {
-  assert.match(page, /\[property\?\.address_line_1, property\?\.city, property\?\.postcode\]/);
-  assert.match(page, /typeof part === "string" && part\.trim\(\)\.length > 0/);
-  assert.match(page, /join\(", "\) \|\| item\.property_general_area/);
+  assert.match(page, /formatDisplayAddress\(\[property\?\.address_line_1, property\?\.city, property\?\.postcode\]/);
+  assert.match(address, /typeof part === "string" && part\.trim\(\)\.length > 0/);
+  assert.match(address, /usable\.join\(", "\)/);
 });
 
 test("clean detail uses a single needs-cleaner action card", () => {
@@ -33,4 +37,25 @@ test("assignment actions and checklist sections use existing data and actions", 
   assert.match(page, /group-open:rotate-90/);
   assert.doesNotMatch(page, /View full checklist/);
   assert.match(page, /active && assignment && <details/);
+});
+
+test("zero-cleaner state offers the existing add-cleaner flow without an empty selector", () => {
+  assert.match(page, /availableWorkers\?\.length/);
+  assert.match(page, /No cleaners added yet/);
+  assert.match(page, /Add your first cleaner to assign this clean\./);
+  assert.match(page, /<CleanerCreationDialog turnoverId=\{id\}\/\>/);
+  assert.match(page, /<CleanerCreationDialog turnoverId=\{id\} compact\/>/);
+  assert.match(cleanerDialog, /action=\{addWorkerForTurnover\}/);
+  assert.match(actions, /export async function addWorkerForTurnover/);
+  assert.match(actions, /createWorkerAndInvite/);
+});
+
+test("clean detail supports scoped checklist additions", () => {
+  assert.match(page, /<ChecklistTaskDialog turnoverId=\{id\}/);
+  assert.match(taskDialog, /\+ Add task/);
+  assert.match(taskDialog, /This clean only/);
+  assert.match(taskDialog, /Future cleans at this property/);
+  assert.match(actions, /export async function addTurnoverChecklistTask/);
+  assert.match(actions, /from\("checklist_tasks"\)\.insert/);
+  assert.match(actions, /insertPropertyChecklistTask\(supabase, accountId, turnover\.property_id/);
 });

@@ -115,6 +115,19 @@ async function savePropertyImage(
 export async function addProperty(f: FormData) {
   const { supabase, accountId } = await requireBusinessUser(),
     p = propertyPayload(f);
+  if (value(f, "returnTo") === "onboarding") {
+    const { data: account, error: accountError } = await supabase
+      .from("business_accounts")
+      .select("onboarding_step,onboarding_completed_at")
+      .eq("id", accountId)
+      .maybeSingle();
+    if (accountError) {
+      console.error("business_onboarding_state_query_failed", { accountId, code: accountError.code });
+      redirect("/business/onboarding?error=state");
+    }
+    if (account?.onboarding_step === "complete" || account?.onboarding_completed_at)
+      redirect("/business/dashboard");
+  }
   const initialBasicsOnly = !p.city && !p.property_type && p.bathrooms === null;
   const requestedDuration = value(f, "estimatedTurnoverMinutes");
   const reservationCalendarUrl = value(f, "reservationCalendarUrl");

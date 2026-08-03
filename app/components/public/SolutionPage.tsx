@@ -35,7 +35,7 @@ export default function SolutionPage(props: Props) {
               >
                 Create account
               </Link>
-              <p className="public-note">Serving businesses in Slough.</p>
+              <p className="public-note">STR workflow pilot for businesses in Slough.</p>
             </div>
           </div>
         </section>
@@ -92,8 +92,8 @@ export default function SolutionPage(props: Props) {
             <div>
               <p className="public-body-lg public-muted">{props.schedule}</p>
               <p className="public-note mt-5 border-l-2 border-[#08783f] pl-4">
-                We review your locations, cleaning requirements and preferred
-                schedule before confirming service.
+                We review your locations, workflow requirements and preferred
+                schedule before confirming the software is a fit.
               </p>
             </div>
           </div>
@@ -102,7 +102,7 @@ export default function SolutionPage(props: Props) {
           <div className="public-container flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-[clamp(1.65rem,3vw,2.1rem)] font-extrabold tracking-[-.03em]">
-                Ready to discuss your cleaning requirements?
+                Ready to coordinate your cleaning workflow?
               </h2>
               <p className="public-body public-muted mt-2">
                 Tell us about your locations and the service you need.

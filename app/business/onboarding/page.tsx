@@ -6,7 +6,11 @@ import PropertyBasicsForm from "./PropertyBasicsForm";
 const field="mt-1.5 min-h-12 w-full rounded-lg border border-[#cfd7e3] bg-white px-3.5 py-2.5 outline-none focus:border-[#2d67b2] focus:ring-4 focus:ring-[#2d67b2]/15";
 export default async function Page({searchParams}:{searchParams:Promise<{step?:string;property?:string;error?:string}>}){
  const {supabase,accountId}=await requireBusinessUser();
- const q=await searchParams;const{data:properties}=await supabase.from("properties").select("id,nickname").eq("account_id",accountId).order("created_at");const step=q.step||(properties?.length?"standard":"property");const propertyId=q.property||properties?.[0]?.id;
+ const q=await searchParams;const [{data:properties},{data:account,error:accountError}]=await Promise.all([supabase.from("properties").select("id,nickname").eq("account_id",accountId).order("created_at"),supabase.from("business_accounts").select("onboarding_step,onboarding_completed_at").eq("id",accountId).maybeSingle()]);
+ if(accountError) throw new Error(`onboarding_state_query_failed:${accountError.code}`);
+ if(account?.onboarding_step==="complete"||account?.onboarding_completed_at)redirect("/business/dashboard");
+ const storedStep=account?.onboarding_step;
+ const step=q.step||(storedStep==="cleaner"?"cleaner":storedStep==="standard"||properties?.length?"standard":"property");const propertyId=q.property||properties?.[0]?.id;
  if(step==="standard"&&!propertyId)redirect("/business/onboarding?step=property");
  const number=step==="property"?2:step==="standard"?3:4;
  const compact=step==="property";

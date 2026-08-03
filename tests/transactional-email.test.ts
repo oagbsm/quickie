@@ -41,6 +41,14 @@ test("email failure is isolated from business actions", () => {
   assert.match(actions, /await sendOperatorTurnoverEmail/);
 });
 
+test("cleaner invitation email diagnostics do not include secrets or raw tokens", () => {
+  assert.match(mailer, /response\.status/);
+  assert.match(mailer, /reason: error instanceof Error/);
+  assert.doesNotMatch(mailer, /console\.error\([^\n]*apiKey/);
+  assert.doesNotMatch(mailer, /console\.error\([^\n]*invitationToken/);
+  assert.match(actions, /const normaliseEmail =/);
+});
+
 test("links use the configured application origin", () => {
   assert.match(mailer, /const site = getAppOrigin\(\)/);
   assert.match(mailer, /site}\/cleaner\/turnovers/);

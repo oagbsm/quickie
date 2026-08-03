@@ -3,9 +3,9 @@ import Link from "next/link";
 import Header from "../homepagecomponents/Header";
 import Footer from "../components/Footer";
 export const metadata: Metadata = {
-  title: "About Quickola | Managed business cleaning",
+  title: "About Quickola | STR turnover coordination",
   description:
-    "Quickola coordinates managed cleaning for property professionals and businesses in the Slough area.",
+    "Quickola coordinates STR turnover workflows for operators using their own cleaners in the Slough area.",
 };
 export default function Page() {
   return (
@@ -20,9 +20,8 @@ export default function Page() {
             Cleaning operations should not depend on scattered messages.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-white/72">
-            Quickola coordinates cleaning for organisations managing properties,
-            accommodation and business premises. The controlled pilot begins in
-            Slough.
+            Quickola is turnover coordination software for operators managing
+            short-term-rental properties. The controlled pilot begins in Slough.
           </p>
         </div>
       </section>
@@ -30,16 +29,16 @@ export default function Page() {
         <div className="mx-auto grid max-w-[1080px] gap-10 lg:grid-cols-3">
           {[
             [
-              "One accountable service",
-              "Customers request work from Quickola. We coordinate the operational response rather than acting as a public cleaner directory.",
+              "One clear workflow",
+              "Bring your bookings, properties and existing cleaners into one place without rebuilding every brief in a message thread.",
             ],
             [
               "Clear requested and confirmed states",
               "A requested time is not presented as confirmed until availability has actually been reviewed.",
             ],
             [
-              "A focused cleaning platform",
-              "The account keeps properties, cleaning requests and service history together without pretending to be a general property CRM.",
+              "A focused operations platform",
+              "The account keeps properties, turnovers, checklists and readiness evidence together without pretending to be a general property CRM.",
             ],
           ].map(([h, p]) => (
             <article key={h} className="border-t-2 border-[#071638] pt-5">

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import SolutionPage from "@/app/components/public/SolutionPage";
 export const metadata: Metadata = {
-  title: "Managed office and commercial cleaning in Slough | Quickola",
+  title: "Office and commercial cleaning coordination in Slough | Quickola",
   description:
     "Coordinate regular cleaning, site instructions and booking history for offices and commercial premises in Slough.",
   alternates: { canonical: "/solutions/offices" },
@@ -11,7 +11,7 @@ export default function Page() {
     <SolutionPage
       eyebrow="Offices & commercial properties"
       title="Keep routine workplace cleaning on a clear schedule."
-      intro="Store site instructions, request recurring cleans and follow each booking while Quickola coordinates the cleaner."
+      intro="Store site instructions, coordinate recurring work with your existing contractors and follow each job in one place."
       sectionTitle="Cleaning that works around your premises."
       sectionIntro="Keep access windows, communal-area priorities and operating hours with the site so routine cleaning is easier to coordinate."
       uses={[
@@ -31,8 +31,8 @@ export default function Page() {
           "Share the frequency and access window that suits how the premises operates.",
         ],
         [
-          "Managed assignment",
-          "Quickola coordinates cleaner assignment and the operational handover.",
+          "Work assignment",
+          "Assign work to the contractors your team already uses and keep the operational handover visible.",
         ],
         [
           "Multi-site visibility",

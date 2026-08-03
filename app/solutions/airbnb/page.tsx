@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import SolutionPage from "@/app/components/public/SolutionPage";
 export const metadata: Metadata = {
-  title: "Managed cleaning for Airbnb and serviced accommodation | Quickola",
+  title: "Airbnb turnover coordination for STR operators | Quickola",
   description:
     "Organise repeat turnaround cleans and track booking status for short-let properties in the Slough area.",
   alternates: { canonical: "/solutions/airbnb" },
@@ -11,7 +11,7 @@ export default function Page() {
     <SolutionPage
       eyebrow="Airbnb & serviced accommodation"
       title="Make repeat property turnarounds easier to coordinate."
-      intro="Keep property instructions, access details and requested turnaround timing together while Quickola manages cleaner assignment."
+      intro="Keep property instructions and turnaround timing together, then bring your existing cleaner into the workflow."
       sectionTitle="Repeat bookings without repeating instructions."
       sectionIntro="Keep the details for each short-let property ready for the next guest changeover, without rebuilding the brief in a message thread."
       uses={[
@@ -31,8 +31,8 @@ export default function Page() {
           "Request a clean around the required guest departure and arrival window.",
         ],
         [
-          "Managed assignment",
-          "Quickola coordinates the cleaner as part of the managed service.",
+          "Cleaner assignment",
+          "Invite your cleaner, assign the turnover and keep the next action clear.",
         ],
         [
           "Booking progress",
@@ -40,7 +40,7 @@ export default function Page() {
         ],
       ]}
       scheduleTitle="Turnaround timing stays attached to the property."
-      schedule="Share the requested window and property details once. Quickola reviews coverage and coordinates cleaner assignment for suitable Slough turnarounds."
+      schedule="Share the window and property details once. Your booking creates the clean, then your cleaner completes the checklist and evidence before the property is marked ready."
     />
   );
 }

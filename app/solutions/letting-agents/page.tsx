@@ -4,7 +4,7 @@ export const metadata: Metadata = {
   title:
     "Cleaning platform for letting agents and property managers | Quickola",
   description:
-    "Coordinate move-in, move-out and recurring property cleans across Slough from one managed cleaning platform.",
+    "Coordinate move-in, move-out and recurring property work across Slough with your existing contractors and providers.",
   alternates: { canonical: "/solutions/letting-agents" },
 };
 export default function Page() {
@@ -12,7 +12,7 @@ export default function Page() {
     <SolutionPage
       eyebrow="Letting agents & property managers"
       title="Keep cleaning organised across every property."
-      intro="Store property instructions, request one-off or recurring cleans and follow every booking from one account."
+      intro="Store property instructions, coordinate one-off or recurring work with your existing contractors and follow every job from one account."
       sectionTitle="One place for every property and clean."
       sectionIntro="Coordinate end-of-tenancy, turnaround and recurring work across a portfolio while keeping the right access details with each address."
       uses={[
@@ -32,8 +32,8 @@ export default function Page() {
           "Request end-of-tenancy, move-in or void-property cleaning against the right record.",
         ],
         [
-          "Managed assignment",
-          "Quickola coordinates cleaner assignment so your team has one accountable service.",
+          "Work assignment",
+          "Assign work to the contractors or cleaners your team already uses and keep the next action visible.",
         ],
         [
           "Portfolio visibility",

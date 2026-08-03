@@ -30,3 +30,10 @@ test("business pages present bookings and cleans without changing internal route
   assert.match(bookings, /\/business\/reservations\/new/);
   assert.match(cleans, /\/business\/turnovers\/new/);
 });
+
+test("business sidebar uses turnover-coordination positioning", () => {
+  const layout = read("app/business/dashboard/layout.tsx");
+  const obsolete = ["Managed", "cleaning for STR properties"].join(" ");
+  assert.match(layout, /STR turnover coordination/);
+  assert.doesNotMatch(layout, new RegExp(obsolete));
+});

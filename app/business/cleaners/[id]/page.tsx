@@ -22,6 +22,7 @@ export default async function Page({
     invited?: string;
     resent?: string;
     manual?: string;
+    existing?: string;
     email?: string;
     error?: string;
     history?: string;
@@ -106,6 +107,11 @@ export default async function Page({
           {query.email === "failed" && <p role="alert" className="mt-2 text-sm font-bold text-amber-900">The email could not be delivered, but the manual invitation link is active.</p>}
           <div className="mt-4 flex flex-wrap items-center gap-3"><CopyInviteLink inviteToken={manualInvite.token} /></div>
         </section>
+      )}
+      {query.existing === "1" && (
+        <p role="status" className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-3 font-bold text-blue-950">
+          This cleaner already belongs to your team. No duplicate invitation was created.
+        </p>
       )}
       <section className="mt-5 grid grid-cols-3 gap-3">{Object.entries(counts).map(([label,value])=><div key={label} className="portal-card p-3"><p className="text-xs font-bold capitalize text-[#65758c]">{label}</p><p className="mt-1 text-2xl font-extrabold">{value}</p></div>)}</section>
       <div className="mt-5 grid gap-5 lg:grid-cols-[300px_1fr]">

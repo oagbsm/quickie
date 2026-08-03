@@ -57,7 +57,7 @@ export default async function Layout({
             />
             Quickola
           </Link>
-          <p className="ml-[46px] mt-1 max-w-[125px] text-[10px] font-semibold leading-4 text-white/62">Managed cleaning for STR properties</p>
+          <p className="ml-[46px] mt-1 max-w-[125px] text-[10px] font-semibold leading-4 text-white/62">STR turnover coordination</p>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-5">
           <PortalNav />
