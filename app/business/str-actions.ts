@@ -183,32 +183,33 @@ async function createWorkerAndInvite({
 export async function addWorker(form: FormData) {
   const { supabase, accountId, role, user } = await requireBusinessUser();
   if (role !== "owner") redirect("/business/cleaners?error=forbidden");
+  const onboarding = text(form, "returnTo") === "onboarding";
   const { data: onboardingAccount, error: onboardingStateError } = await supabase
     .from("business_accounts")
     .select("onboarding_step,onboarding_completed_at")
     .eq("id", accountId)
     .maybeSingle();
-  if (onboardingStateError) redirect("/business/cleaners/new?error=save");
+  if (onboardingStateError) redirect(onboarding ? "/business/onboarding?error=state" : "/business/cleaners/new?error=save");
   if (onboardingAccount?.onboarding_step === "complete" || onboardingAccount?.onboarding_completed_at)
     redirect("/business/dashboard");
   const displayName = text(form, "displayName");
   const email = optional(form, "email") ? normaliseEmail(optional(form, "email")!) : null;
   const mobile = optional(form, "mobile");
   if (!displayName || !email || !/^\S+@\S+\.\S+$/.test(email)) {
-    redirect("/business/cleaners/new?error=required");
+    redirect(onboarding ? "/business/onboarding?error=save" : "/business/cleaners/new?error=required");
   }
-  const onboarding = text(form, "returnTo") === "onboarding";
   const created = await createWorkerAndInvite({ supabase, accountId, createdBy: user.id, displayName, email, mobile, companyName: optional(form, "companyName"), deferEmail: onboarding });
   if (!created.workerId) {
     const code = created.error?.includes("duplicate_worker_contact")
       ? "duplicate"
       : "save";
-    redirect(`/business/cleaners/new?error=${code}`);
+    redirect(onboarding ? "/business/onboarding?error=save" : `/business/cleaners/new?error=${code}`);
   }
   const workerId = created.workerId;
   if (created.existing) {
     if (text(form, "returnTo") === "onboarding") {
-      await supabase.from("business_accounts").update({ onboarding_step: "complete", onboarding_completed_at: new Date().toISOString() }).eq("id", accountId);
+      const { error: completionError } = await supabase.from("business_accounts").update({ onboarding_step: "complete", onboarding_completed_at: new Date().toISOString() }).eq("id", accountId);
+      if (completionError) redirect("/business/onboarding?error=save");
       redirect("/business/dashboard");
     }
     redirect(`/business/cleaners/${workerId}?existing=1`);
@@ -225,7 +226,7 @@ export async function addWorker(form: FormData) {
     redirect(`/business/cleaners/${workerId}?invited=1&email=${emailState}&link=1`);
   }
   if (onboarding) {
-    await supabase
+    const completionResult = await supabase
       .from("business_accounts")
       .update({
         onboarding_step: "complete",
@@ -239,6 +240,7 @@ export async function addWorker(form: FormData) {
       })
       .eq("worker_id", workerId)
       .eq("event_type", "cleaner_invited");
+    if (completionResult.error) redirect("/business/onboarding?error=save");
     redirect("/business/dashboard");
   }
   await supabase
