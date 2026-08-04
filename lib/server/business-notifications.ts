@@ -9,7 +9,8 @@ import {
 function admin() {
   const u = process.env.NEXT_PUBLIC_SUPABASE_URL,
     k = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!u || !k) throw new Error("Missing Supabase notification configuration");
+  if (!u) throw new Error("supabase_url_missing");
+  if (!k) throw new Error("supabase_service_role_key_missing");
   return createClient(u, k, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -23,6 +24,10 @@ type TransactionalEmailInput = {
   subject: string;
   html: string;
 };
+type TransactionalEmailResult =
+  | { sent: true; status: "sent"; reason?: never; deliveryId?: string | null }
+  | { sent: false; status: "failed"; reason: string; deliveryId?: string | null }
+  | { sent: false; status: "skipped"; reason: "already_sent" | "delivery_in_progress"; deliveryId?: string | null };
 
 function recipientDomain(recipient: string) {
   return recipient.trim().toLowerCase().split("@").at(-1) || "unknown";
@@ -61,9 +66,18 @@ function deliveryEvent(input: TransactionalEmailInput, status: string, details: 
   });
 }
 
-async function sendTransactionalEmail(input: TransactionalEmailInput) {
+async function sendTransactionalEmail(input: TransactionalEmailInput): Promise<TransactionalEmailResult> {
   let db: ReturnType<typeof admin> | null = null;
   let deliveryId: string | null = null;
+  let sendAttempted = false;
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = getResendFromEmail();
+  const configuration = {
+    resend_api_key_present: Boolean(apiKey),
+    resend_from_email_present: Boolean(from),
+    supabase_service_role_key_present: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+    configured_from_address: from ? senderAddress(from) : null,
+  };
   try {
     db = admin();
     const { data: reserved, error: reserveError } = await db
@@ -87,16 +101,16 @@ async function sendTransactionalEmail(input: TransactionalEmailInput) {
         .maybeSingle();
       if (previousError || !previous) {
         deliveryEvent(input, "failed", { deliveryId, sendAttempted: false, failureCategory: "delivery_record_conflict" });
-        return { sent: false as const, reason: "reservation_failed" as const };
+        return { sent: false as const, status: "failed" as const, reason: "reservation_failed", deliveryId };
       }
       deliveryId = previous.id;
       if (previous.delivery_status === "sent") {
         deliveryEvent(input, "skipped", { deliveryId, sendAttempted: false, skippedDueToIdempotency: true, failureCategory: "already_sent" });
-        return { sent: false as const, reason: "duplicate" as const };
+        return { sent: false as const, status: "skipped" as const, reason: "already_sent" as const, deliveryId };
       }
       if (previous.delivery_status === "pending") {
         deliveryEvent(input, "skipped", { deliveryId, sendAttempted: false, skippedDueToIdempotency: true, failureCategory: "delivery_in_progress" });
-        return { sent: false as const, reason: "duplicate" as const };
+        return { sent: false as const, status: "skipped" as const, reason: "delivery_in_progress" as const, deliveryId };
       }
       const { data: claimed, error: retryError } = await db
         .from("transactional_email_deliveries")
@@ -107,34 +121,30 @@ async function sendTransactionalEmail(input: TransactionalEmailInput) {
         .maybeSingle();
       if (retryError) {
         deliveryEvent(input, "failed", { deliveryId, sendAttempted: false, failureCategory: "delivery_record_conflict" });
-        return { sent: false as const, reason: "reservation_failed" as const };
+        return { sent: false as const, status: "failed" as const, reason: "reservation_failed", deliveryId };
       }
       if (!claimed) {
         deliveryEvent(input, "skipped", { deliveryId, sendAttempted: false, skippedDueToIdempotency: true, failureCategory: "delivery_in_progress" });
-        return { sent: false as const, reason: "duplicate" as const };
+        return { sent: false as const, status: "skipped" as const, reason: "delivery_in_progress" as const, deliveryId };
       }
     } else if (reserveError) {
       deliveryEvent(input, "failed", { deliveryId, sendAttempted: false, failureCategory: "delivery_record_conflict" });
-      return { sent: false as const, reason: "reservation_failed" as const };
+      return { sent: false as const, status: "failed" as const, reason: "reservation_failed", deliveryId };
     }
-    const apiKey = process.env.RESEND_API_KEY;
-    const from = getResendFromEmail();
     const replyTo = getResendReplyToEmail();
-    const configuration = {
-      resend_api_key_present: Boolean(apiKey),
-      configured_from_address: from ? senderAddress(from) : null,
-    };
     if (!apiKey || !from) {
-      await db.from("transactional_email_deliveries").update({ delivery_status: "failed", error_category: !apiKey ? "resend_api_key_missing" : "invalid_sender" }).eq("id", deliveryId);
-      deliveryEvent(input, "skipped", { deliveryId, sendAttempted: false, skippedDueToIdempotency: false, failureCategory: !apiKey ? "resend_api_key_missing" : "invalid_sender", ...configuration });
-      return { sent: false as const, reason: "not_configured" as const };
+      const failureCategory = !apiKey ? "resend_api_key_missing" : "resend_from_email_missing";
+      await db.from("transactional_email_deliveries").update({ delivery_status: "failed", error_category: failureCategory }).eq("id", deliveryId);
+      deliveryEvent(input, "failed", { deliveryId, sendAttempted: false, skippedDueToIdempotency: false, failureCategory, ...configuration });
+      return { sent: false as const, status: "failed" as const, reason: failureCategory, deliveryId };
     }
     if (!/^\S+@\S+\.\S+$/.test(senderAddress(from))) {
       await db.from("transactional_email_deliveries").update({ delivery_status: "failed", error_category: "invalid_sender" }).eq("id", deliveryId);
-      deliveryEvent(input, "skipped", { deliveryId, sendAttempted: false, skippedDueToIdempotency: false, failureCategory: "invalid_sender", ...configuration });
-      return { sent: false as const, reason: "not_configured" as const };
+      deliveryEvent(input, "failed", { deliveryId, sendAttempted: false, skippedDueToIdempotency: false, failureCategory: "invalid_sender", ...configuration });
+      return { sent: false as const, status: "failed" as const, reason: "invalid_sender", deliveryId };
     }
     deliveryEvent(input, "attempting", { deliveryId, sendAttempted: true, skippedDueToIdempotency: false, ...configuration });
+    sendAttempted = true;
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -169,16 +179,16 @@ async function sendTransactionalEmail(input: TransactionalEmailInput) {
     const providerMessageId = typeof body.id === "string" ? body.id : null;
     await db.from("transactional_email_deliveries").update({ delivery_status: "sent", sent_at: new Date().toISOString(), provider_message_id: providerMessageId, error_category: null }).eq("id", deliveryId);
     deliveryEvent(input, "sent", { deliveryId, sendAttempted: true, providerAccepted: true, providerMessageId });
-    return { sent: true as const };
+    return { sent: true as const, status: "sent" as const, deliveryId };
   } catch (error) {
+    const failureCategory = error instanceof Error ? error.message : "unknown_delivery_error";
     try {
       db ||= admin();
-      const failureCategory = error instanceof Error ? error.message : "unknown_delivery_error";
       await db.from("transactional_email_deliveries").update({ delivery_status: "failed", error_category: failureCategory }).eq("id", deliveryId);
-      deliveryEvent(input, "failed", { deliveryId, sendAttempted: true, providerAccepted: false, failureCategory });
     } catch { /* email failure must not affect the business action */ }
-    console.error("transactional_email_failed", { eventType: input.eventType, accountId: input.accountId, deliveryId, recipientDomain: recipientDomain(input.recipient), failureCategory: error instanceof Error ? error.message : "unknown_delivery_error" });
-    return { sent: false as const, reason: "delivery_failed" as const };
+    deliveryEvent(input, "failed", { deliveryId, sendAttempted, providerAccepted: false, failureCategory, ...configuration });
+    console.error("transactional_email_failed", { eventType: input.eventType, accountId: input.accountId, deliveryId, recipientDomain: recipientDomain(input.recipient), failureCategory });
+    return { sent: false as const, status: "failed" as const, reason: failureCategory, deliveryId };
   }
 }
 
@@ -222,7 +232,7 @@ export async function sendCleanerInvitationEmail({
   workspaceName: string;
   invitationToken: string;
   expiresAt: string;
-}) {
+}): Promise<TransactionalEmailResult> {
   const acceptUrl = buildAbsoluteAppUrl(`/invite/${encodeURIComponent(invitationToken)}`);
   const tokenHash = cryptoHash(invitationToken);
   return sendTransactionalEmail({ accountId, eventType: "cleaner_invitation", entityId: workerId, recipient: email, idempotencyKey: `cleaner_invitation:${workerId}:${tokenHash}`, subject: `${workspaceName} invited you to Quickola`, html: `<div style="font-family:Arial,sans-serif;color:#071638"><p style="font-size:18px;font-weight:800">Quickola</p><h1>${escapeHtml(workspaceName)} invited you</h1><p>You’ll receive cleaning jobs from ${escapeHtml(workspaceName)} through Quickola.</p><p><a style="display:inline-block;background:#071f49;color:white;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold" href="${acceptUrl}">Accept invitation</a></p><p style="color:#657089;font-size:14px">Sent to ${escapeHtml(email)}. This invitation expires ${escapeHtml(new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/London" }).format(new Date(expiresAt)))}.</p></div>` });

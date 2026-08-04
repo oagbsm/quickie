@@ -137,23 +137,27 @@ test("development completion shortcut is guarded, assigned-cleaner scoped, and i
   assert.doesNotMatch(helper, /sendOperatorTurnoverEmail|sendCleanerInvitationEmail/);
 });
 
-test("business clean test-data fill is development-only, owned, and checklist-idempotent", () => {
+test("cleaner test-data fill is development-only, assigned-clean scoped, and checklist-safe", () => {
   assert.match(actions, /export async function fillTestCleanData/);
   const helper = actions.slice(
     actions.indexOf("export async function fillTestCleanData"),
-    actions.indexOf("async function insertPropertyChecklistTask"),
+    actions.indexOf("export async function sendTestCleanerEmail"),
   );
   assert.match(helper, /process\.env\.NODE_ENV !== "development"/);
-  assert.match(helper, /requireBusinessUser\(\)/);
-  assert.match(helper, /\.eq\("account_id", accountId\)/);
-  assert.match(helper, /access_notes/);
-  assert.match(helper, /linen_requirements/);
-  assert.match(helper, /consumables_instructions/);
-  assert.match(helper, /existingLabels/);
-  assert.match(
-    readFileSync(new URL("../app/business/turnovers/[id]/page.tsx", import.meta.url), "utf8"),
-    /process\.env\.NODE_ENV === "development"[\s\S]*Fill test clean data/,
-  );
+  assert.match(helper, /requireCleanerUser\(\)/);
+  assert.match(helper, /assignments\.worker_id/);
+  assert.match(helper, /assignment\.worker_id !== workerId/);
+  assert.match(helper, /\["arrived", "in_progress"\]/);
+  assert.match(helper, /checklist_tasks/);
+  assert.match(helper, /\.update\(patch\)/);
+  assert.doesNotMatch(helper, /requireBusinessUser\(\)/);
+  const operatorPage = readFileSync(new URL("../app/business/turnovers/[id]/page.tsx", import.meta.url), "utf8");
+  const cleanerPage = readFileSync(new URL("../app/cleaner/turnovers/[id]/page.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(operatorPage, /Fill test clean data/);
+  assert.match(cleanerPage, /showTestDataHelper/);
+  assert.match(cleanerPage, /Fill test clean data/);
+  assert.match(cleanerPage, /process\.env\.NODE_ENV === "development"/);
+  assert.match(cleanerPage, /\["arrived", "in_progress"\]/);
 });
 
 test("development cleaner email diagnostic is not exposed in production", () => {

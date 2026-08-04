@@ -25,7 +25,18 @@ export function turnoverActionReason(item:{status:string;turnover_date:string;re
  return item.status.replaceAll("_"," ").replace(/^./,letter=>letter.toUpperCase());
 }
 export function isImplausibleTurnoverDate(date:string,now=new Date()){
- const value=new Date(`${date}T12:00:00Z`),past=new Date(now),future=new Date(now);
- past.setUTCFullYear(past.getUTCFullYear()-1);future.setUTCFullYear(future.getUTCFullYear()+2);
- return Number.isNaN(value.getTime())||value<past||value>future;
+ const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+ if (!match) return true;
+ const [, yearText, monthText, dayText] = match;
+ const year = Number(yearText), month = Number(monthText), day = Number(dayText);
+ const value = new Date(Date.UTC(year, month - 1, day, 12));
+ if (
+  Number.isNaN(value.getTime()) ||
+  value.getUTCFullYear() !== year ||
+  value.getUTCMonth() !== month - 1 ||
+  value.getUTCDate() !== day
+ ) return true;
+ const past = new Date(now);
+ past.setUTCFullYear(past.getUTCFullYear() - 1);
+ return value < past;
 }

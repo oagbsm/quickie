@@ -59,3 +59,21 @@ test("clean detail supports scoped checklist additions", () => {
   assert.match(actions, /from\("checklist_tasks"\)\.insert/);
   assert.match(actions, /insertPropertyChecklistTask\(supabase, accountId, turnover\.property_id/);
 });
+
+test("business development tools are absent and issues use operator-facing workflow labels", () => {
+  assert.doesNotMatch(page, /Development tools/);
+  assert.doesNotMatch(page, /Send test cleaner email/);
+  assert.doesNotMatch(page, /testEmail/);
+  assert.match(page, /const issueCategoryLabels/);
+  assert.match(page, /missing_item: "Missing item"/);
+  assert.doesNotMatch(page, /\{issue\.issue_type\}/);
+  assert.match(page, /issueStatus\(issue\.status\)/);
+  assert.match(page, /issue\.status === "open"/);
+  assert.match(page, /Acknowledge issue/);
+  assert.match(page, /\["acknowledged", "waiting_for_owner"\]/);
+  assert.match(page, /Mark resolved/);
+  assert.match(page, /name="ownerResponse"/);
+  assert.match(page, /name="resolution"/);
+  assert.match(page, /const readyIssueCopy/);
+  assert.match(page, /Property ready · \{readyIssueCopy\}/);
+});

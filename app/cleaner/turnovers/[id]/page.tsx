@@ -4,7 +4,7 @@ import { requireCleanerUser } from "@/lib/cleaner/auth";
 import CleanerStatus from "@/app/cleaner/CleanerStatus";
 import PendingButton from "@/app/components/PendingButton";
 import { getCleanerLifecycle } from "@/lib/cleaner/lifecycle";
-import { completeTestTurnover, reportIssue, transitionTurnover, updateChecklistTask, uploadEvidence } from "@/app/business/str-actions";
+import { completeTestTurnover, fillTestCleanData, reportIssue, transitionTurnover, updateChecklistTask, uploadEvidence } from "@/app/business/str-actions";
 import { formatDisplayAddress } from "@/lib/display-address";
 
 const imageAccept = "image/jpeg,image/png,image/webp,image/heic";
@@ -55,9 +55,9 @@ function journeyIndex(status: string) {
   return Math.max(0, journey.findIndex(([key]) => key === status));
 }
 
-export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; testData?: string }> }) {
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, testData } = await searchParams;
   const { supabase, workerId } = await requireCleanerUser();
   const base = "id,property_public_name,property_general_area,turnover_date,access_start_at,window_end_at,status,ready_at,actual_completed_at,required_evidence_count,assignments!inner(status,worker_id),checklist_tasks(id,label,section_title,mandatory,completed,response_type,response,photo_required,note_required,note),evidence_submissions(id,evidence_type,checklist_task_id),operational_issues(id,status,blocking)";
   const { data: summary } = await supabase
@@ -130,6 +130,9 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     task_save: "We could not save that task. Try again.",
     update: "We could not update the clean. Try again.",
     action_required: "The clean was saved, but some completion requirements still need attention.",
+    test_data_unavailable: "Test data is unavailable for this clean.",
+    test_data_forbidden: "Test data can only be filled for your arrived or active assigned clean.",
+    test_data_failed: "The test data could not be saved. Try again.",
   };
 
   if (item.status === "ready") {
@@ -154,12 +157,15 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const linenContent = [property?.linen_requirements, property?.towel_requirements, property?.bed_configuration, property?.consumables_instructions, property?.waste_instructions].some(Boolean);
   const propertyNotes = property?.cleaning_notes;
   const currentAction = getCleanerLifecycle(item.status).primaryAction;
+  const testDataAlreadyFilled = tasks.some((task) => task.note === "Development test completion");
+  const showTestDataHelper = process.env.NODE_ENV === "development" && ["arrived", "in_progress"].includes(item.status) && !testDataAlreadyFilled;
   return <div className="mx-auto max-w-6xl pb-24 lg:pb-8">
     <div className="mb-4 flex items-center justify-between gap-3">
       <Link href="/cleaner/today" className="text-sm font-bold text-[#526078]">← Back to today</Link>
       <span className="text-sm font-extrabold text-[#071f49]">Quickola</span>
     </div>
     {error && errorText[error] && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-800">{errorText[error]}</p>}
+    {testData === "1" && <p role="status" className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm font-bold text-emerald-900">Development test clean data filled.</p>}
     {process.env.NODE_ENV === "development" && <section className="mb-4 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-4"><p className="text-xs font-extrabold uppercase tracking-wide text-amber-900">Development only</p><form action={completeTestTurnover} className="mt-2"><input type="hidden" name="turnoverId" value={id} /><PendingButton idle="Complete test clean" pending="Completing test clean…" className="min-h-11 rounded-lg bg-amber-700 px-4 text-sm font-extrabold text-white" /></form></section>}
 
     <header className="rounded-2xl border bg-white p-5 shadow-sm sm:p-7">
@@ -220,6 +226,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       </dl></section>}
 
       {propertyNotes && <section className="mt-5 rounded-2xl border bg-white p-5 shadow-sm sm:p-6"><h2 className="text-lg font-extrabold">Property notes</h2><p className="mt-3 whitespace-pre-wrap text-sm">{propertyNotes}</p></section>}
+
+      {showTestDataHelper && <section className="mt-5 rounded-2xl border border-dashed border-amber-300 bg-amber-50 p-5 shadow-sm sm:p-6"><p className="text-xs font-extrabold uppercase tracking-wide text-amber-900">Development only</p><form action={fillTestCleanData} className="mt-2"><input type="hidden" name="turnoverId" value={id} /><PendingButton idle="Fill test clean data" pending="Filling test clean data…" className="min-h-11 rounded-lg bg-amber-700 px-4 text-sm font-extrabold text-white" /></form></section>}
 
       {accepted && tasks.length > 0 && <section className="mt-5 rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
         <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-extrabold">Cleaning checklist</h2><span className="font-extrabold">{completedCount}/{tasks.length}</span></div>

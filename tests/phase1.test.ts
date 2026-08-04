@@ -179,6 +179,10 @@ test("business email confirmation uses the secure PKCE callback flow", () => {
     /Email confirmed\. Sign in to continue\./,
   );
   assert.match(signup, /router\.push\("\/business\/continue"\)/);
+  const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(home, /query\.code/);
+  assert.match(home, /\/auth\/callback\?purpose=signup-confirmation&code=/);
+  assert.doesNotMatch(home, /exchangeCodeForSession/);
 });
 
 test("email confirmation sends users to sign in with trusted email prefill only", () => {

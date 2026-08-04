@@ -12,6 +12,21 @@ test("invitation email is attempted after invitation creation and resend", () =>
   assert.match(mailer, /Accept invitation/);
 });
 
+test("invitation delivery results are classified without using sent=false as failure proof", () => {
+  const addWorkerStart = actions.indexOf("export async function addWorker");
+  const turnoverWorkerStart = actions.indexOf("export async function addWorkerForTurnover");
+  const addWorker = actions.slice(addWorkerStart, turnoverWorkerStart);
+  assert.match(mailer, /status: "sent"/);
+  assert.match(mailer, /status: "failed"/);
+  assert.match(mailer, /status: "skipped"/);
+  assert.match(addWorker, /created\.deliveryStatus === "failed"/);
+  assert.match(addWorker, /created\.deliveryStatus === "skipped"/);
+  assert.doesNotMatch(addWorker, /if \(!created\.deliverySent\)/);
+  assert.match(addWorker, /created\.deliveryReason === "already_sent" \? "already_sent" : "processing"/);
+  assert.match(addWorker, /email=\$\{emailState\}/);
+  assert.match(addWorker, /email=sent/);
+});
+
 test("onboarding defers only delivery while preserving the invitation generation", () => {
   assert.match(actions, /after\(async \(\) => \{\s*const \{ data: account \} = await accountPromise/);
   assert.match(actions, /target_token_hash: tokenHash/);
@@ -23,6 +38,9 @@ test("onboarding defers only delivery while preserving the invitation generation
 test("shared delivery diagnostics expose safe configuration and provider state", () => {
   assert.match(mailer, /resend_api_key_present: Boolean\(apiKey\)/);
   assert.match(mailer, /configured_from_address: from \? senderAddress\(from\) : null/);
+  assert.match(mailer, /resend_from_email_present: Boolean\(from\)/);
+  assert.match(mailer, /supabase_service_role_key_present: Boolean\(process\.env\.SUPABASE_SERVICE_ROLE_KEY\)/);
+  assert.match(mailer, /supabase_service_role_key_missing/);
   assert.match(mailer, /deliveryId/);
   assert.match(mailer, /sendAttempted/);
   assert.match(mailer, /skippedDueToIdempotency/);
@@ -77,7 +95,7 @@ test("email failure is isolated from business actions", () => {
 
 test("cleaner invitation email diagnostics do not include secrets or raw tokens", () => {
   assert.match(mailer, /response\.status/);
-  assert.match(mailer, /failureCategory: error instanceof Error/);
+  assert.match(mailer, /const failureCategory = error instanceof Error/);
   assert.doesNotMatch(mailer, /console\.error\([^\n]*apiKey/);
   assert.doesNotMatch(mailer, /console\.error\([^\n]*invitationToken/);
   assert.match(mailer, /recipientDomain/);

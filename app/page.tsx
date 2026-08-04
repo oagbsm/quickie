@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "STR turnover coordination and property-ready proof | Quickola",
@@ -50,7 +51,14 @@ const faqs = [
   ],
 ];
 
-export default function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Promise<{ code?: string }>;
+}) {
+  const query = searchParams ? await searchParams : {};
+  if (query.code)
+    redirect(`/auth/callback?purpose=signup-confirmation&code=${encodeURIComponent(query.code)}`);
   return (
     <main className="min-h-screen bg-white text-[#071638]">
       <PublicNav />

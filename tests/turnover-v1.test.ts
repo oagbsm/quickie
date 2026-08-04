@@ -34,10 +34,14 @@ test("turnover action reasons explain overdue and unassigned records", () => {
   assert.equal(turnoverActionReason({ status: "unassigned", turnover_date: "2026-07-27" }, "2026-07-26"), "Cleaner not assigned");
 });
 
-test("implausible turnover dates are rejected", () => {
+test("turnover dates reject malformed and stale values without an arbitrary future ceiling", () => {
   const now = new Date("2026-07-26T12:00:00Z");
-  assert.equal(isImplausibleTurnoverDate("2090-01-01", now), true);
+  assert.equal(isImplausibleTurnoverDate("not-a-date", now), true);
+  assert.equal(isImplausibleTurnoverDate("2026-02-30", now), true);
+  assert.equal(isImplausibleTurnoverDate("2025-07-25", now), true);
   assert.equal(isImplausibleTurnoverDate("2026-08-01", now), false);
+  assert.equal(isImplausibleTurnoverDate("2028-09-05", now), false);
+  assert.equal(isImplausibleTurnoverDate("2090-01-01", now), false);
 });
 
 test("canonical lifecycle allows only sequential cleaner progression", () => {

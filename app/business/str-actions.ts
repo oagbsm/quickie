@@ -18,6 +18,50 @@ const text = (form: FormData, name: string) =>
 const optional = (form: FormData, name: string) => text(form, name) || null;
 const normaliseEmail = (value: string) => value.trim().toLowerCase();
 
+function safeDiagnosticError(error: unknown) {
+  const value = error && typeof error === "object" ? error as { code?: unknown; message?: unknown } : {};
+  const rawMessage = typeof value.message === "string" ? value.message : "unknown_error";
+  return {
+    errorCode: typeof value.code === "string" ? value.code.slice(0, 80) : null,
+    safeErrorMessage: rawMessage.replace(/[\r\n\t]+/g, " ").replace(/https?:\/\/\S+/gi, "[url]").slice(0, 240),
+  };
+}
+
+function turnoverCreateLog(stage: string, details: Record<string, unknown>) {
+  console.info("clean_turnover_create", {
+    event: "clean_turnover_create",
+    stage,
+    ...details,
+  });
+}
+
+function turnoverAssignmentLog(stage: string, details: Record<string, unknown>) {
+  console.info("clean_turnover_assignment", {
+    event: "clean_turnover_assignment",
+    stage,
+    ...details,
+  });
+}
+
+function turnoverAssignmentEmailLog(stage: string, details: Record<string, unknown>) {
+  console.info("clean_turnover_assignment_email", {
+    event: "clean_turnover_assignment_email",
+    stage,
+    ...details,
+  });
+}
+
+function turnoverDateReason(date: string) {
+  if (!date) return "missing_date";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "invalid_date_format";
+  const value = new Date(`${date}T12:00:00Z`);
+  if (Number.isNaN(value.getTime())) return "date_parse_failed";
+  const now = new Date();
+  const earliest = new Date(now);
+  earliest.setUTCFullYear(earliest.getUTCFullYear() - 1);
+  return value < earliest ? "past_date_rejected" : "date_rejected";
+}
+
 async function storeManualInviteLink(workerId: string, token: string, expiresAt: string) {
   const cookieStore = await cookies();
   cookieStore.set(`quickola-invite-${workerId}`, Buffer.from(JSON.stringify({ token, expiresAt })).toString("base64url"), {
@@ -103,7 +147,7 @@ async function createWorkerAndInvite({
     const { data: account } = await accountPromise;
     const invitationEmail = { accountId, workerId: existingWorker.id, email: normalisedEmail, workspaceName: account?.name || "Your cleaning team", invitationToken: token, expiresAt };
     const delivery = await sendCleanerInvitationEmail(invitationEmail);
-    return { workerId: existingWorker.id, token, expiresAt, deliverySent: delivery.sent };
+    return { workerId: existingWorker.id, token, expiresAt, deliverySent: delivery.sent, deliveryStatus: delivery.status, deliveryReason: delivery.reason };
   }
   const token = crypto.randomBytes(32).toString("base64url");
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
@@ -133,7 +177,7 @@ async function createWorkerAndInvite({
   const { data: account } = await accountPromise;
   const invitationEmail = { accountId, workerId, email: normalisedEmail, workspaceName: account?.name || "Your cleaning team", invitationToken: token, expiresAt };
   const delivery = await sendCleanerInvitationEmail(invitationEmail);
-  return { workerId, token, expiresAt, deliverySent: delivery.sent };
+  return { workerId, token, expiresAt, deliverySent: delivery.sent, deliveryStatus: delivery.status, deliveryReason: delivery.reason };
 }
 
 export async function addWorker(form: FormData) {
@@ -171,10 +215,14 @@ export async function addWorker(form: FormData) {
   }
   const token = created.token;
   const expiresAt = created.expiresAt;
-  const deliverySent = created.deliverySent;
-  if (!created.deliveryDeferred && !deliverySent) {
+  if (!created.deliveryDeferred && created.deliveryStatus === "failed") {
     await storeManualInviteLink(workerId, token!, expiresAt!);
     redirect(`/business/cleaners/${workerId}?invited=1&email=failed&link=1`);
+  }
+  if (!created.deliveryDeferred && created.deliveryStatus === "skipped") {
+    await storeManualInviteLink(workerId, token!, expiresAt!);
+    const emailState = created.deliveryReason === "already_sent" ? "already_sent" : "processing";
+    redirect(`/business/cleaners/${workerId}?invited=1&email=${emailState}&link=1`);
   }
   if (onboarding) {
     await supabase
@@ -205,7 +253,7 @@ export async function addWorker(form: FormData) {
   revalidatePath("/business/activity");
   revalidatePath("/business/dashboard");
   await storeManualInviteLink(workerId, token!, expiresAt!);
-  redirect(`/business/cleaners/${workerId}?invited=1&link=1`);
+  redirect(`/business/cleaners/${workerId}?invited=1&email=sent&link=1`);
 }
 
 export async function addWorkerForTurnover(form: FormData) {
@@ -269,29 +317,67 @@ export async function createTurnover(form: FormData) {
   const { supabase, accountId, user } = await requireBusinessUser();
   const propertyId = text(form, "propertyId");
   const date = text(form, "date");
-  if (isImplausibleTurnoverDate(date))
+  const rawCheckoutTime = text(form, "checkoutTime");
+  const rawAccessTime = text(form, "accessTime");
+  const rawCheckinTime = text(form, "checkinTime");
+  const workerId = optional(form, "workerId");
+  const timezone = "Europe/London";
+  const baseLog = {
+    accountId,
+    propertyId: propertyId || null,
+    workerId,
+    rawDate: date,
+    rawStartTime: rawCheckoutTime,
+    rawReadyBy: rawCheckinTime,
+    rawCheckoutTime,
+    rawAccessTime,
+    rawCheckinTime,
+    timezone,
+    cleanType: text(form, "cleaningType") || "standard_turnover",
+  };
+  turnoverCreateLog("start", baseLog);
+  if (isImplausibleTurnoverDate(date)) {
+    turnoverCreateLog("validation_failed", { ...baseLog, reason: turnoverDateReason(date), parsedStartAt: null, parsedDeadlineAt: null });
     redirect("/business/turnovers/new?error=date");
+  }
   let checkout: Date, access: Date, checkin: Date;
+  let parsedStartAt: string | null = null;
+  let parsedReadyBy: string | null = null;
+  let parsedDeadlineAt: string | null = null;
   try {
-    checkout = londonLocalToUtc(date, text(form, "checkoutTime"));
-    access = londonLocalToUtc(date, text(form, "accessTime"));
-    checkin = londonLocalToUtc(date, text(form, "checkinTime"));
-  } catch {
+    checkout = londonLocalToUtc(date, rawCheckoutTime);
+    parsedStartAt = checkout.toISOString();
+  } catch (error) {
+    turnoverCreateLog("validation_failed", { ...baseLog, reason: "invalid_checkout_time", parsedStartAt, parsedReadyBy, parsedDeadlineAt, ...safeDiagnosticError(error) });
+    redirect("/business/turnovers/new?error=schedule");
+  }
+  try {
+    access = londonLocalToUtc(date, rawAccessTime);
+    parsedReadyBy = access.toISOString();
+  } catch (error) {
+    turnoverCreateLog("validation_failed", { ...baseLog, reason: "invalid_access_time", parsedStartAt, parsedReadyBy, parsedDeadlineAt, ...safeDiagnosticError(error) });
+    redirect("/business/turnovers/new?error=schedule");
+  }
+  try {
+    checkin = londonLocalToUtc(date, rawCheckinTime);
+    parsedDeadlineAt = checkin.toISOString();
+  } catch (error) {
+    turnoverCreateLog("validation_failed", { ...baseLog, reason: "invalid_checkin_time", parsedStartAt, parsedReadyBy, parsedDeadlineAt, ...safeDiagnosticError(error) });
     redirect("/business/turnovers/new?error=schedule");
   }
   const duration = Number(text(form, "durationMinutes"));
-  const workerId = optional(form, "workerId");
   const risk = hasTurnoverWindowRisk(checkout, checkin, duration);
-  if (
-    !propertyId ||
-    !date ||
-    !Number.isFinite(duration) ||
-    checkout > access ||
-    access >= checkin
-  ) {
+  let validationReason: string | null = null;
+  if (!propertyId) validationReason = "missing_property";
+  else if (!date) validationReason = "missing_date";
+  else if (!Number.isFinite(duration)) validationReason = "invalid_duration";
+  else if (checkout > access || access >= checkin) validationReason = "clean_window_invalid";
+  if (validationReason) {
+    turnoverCreateLog("validation_failed", { ...baseLog, reason: validationReason, parsedStartAt, parsedReadyBy, parsedDeadlineAt });
     redirect("/business/turnovers/new?error=schedule");
   }
   if (risk && form.get("riskAcknowledged") !== "on") {
+    turnoverCreateLog("validation_failed", { ...baseLog, reason: "risk_not_acknowledged", parsedStartAt, parsedReadyBy, parsedDeadlineAt });
     redirect("/business/turnovers/new?error=risk");
   }
   const { data: property } = await supabase
@@ -303,8 +389,13 @@ export async function createTurnover(form: FormData) {
     .eq("account_id", accountId)
     .eq("status", "active")
     .maybeSingle();
-  if (!property) redirect("/business/turnovers/new?error=property");
+  if (!property) {
+    turnoverCreateLog("validation_failed", { ...baseLog, reason: "property_not_found", parsedStartAt, parsedReadyBy, parsedDeadlineAt });
+    redirect("/business/turnovers/new?error=property");
+  }
 
+  turnoverCreateLog("validated", { ...baseLog, parsedStartAt, parsedReadyBy, parsedDeadlineAt });
+  turnoverCreateLog("db_create_attempt", { ...baseLog, parsedStartAt, parsedReadyBy, parsedDeadlineAt });
   const { data: item, error } = await supabase
     .from("work_items")
     .insert({
@@ -329,7 +420,11 @@ export async function createTurnover(form: FormData) {
     })
     .select("id")
     .single();
-  if (error || !item) redirect("/business/turnovers/new?error=save");
+  if (error || !item) {
+    turnoverCreateLog("db_create_failed", { ...baseLog, ...safeDiagnosticError(error), parsedStartAt, parsedReadyBy, parsedDeadlineAt });
+    redirect("/business/turnovers/new?error=save");
+  }
+  turnoverCreateLog("db_create_success", { ...baseLog, turnoverId: item.id });
 
   const { data: template } = await supabase
     .from("checklist_templates")
@@ -365,22 +460,35 @@ export async function createTurnover(form: FormData) {
   if (tasks.length) {
     const { error: checklistError } = await supabase.from("checklist_tasks").insert(tasks);
     if (checklistError) {
+      turnoverCreateLog("db_create_failed", { accountId, propertyId, workerId, turnoverId: item.id, ...safeDiagnosticError(checklistError), errorCode: "checklist_insert_failed" });
       await supabase.from("work_items").delete().eq("id", item.id).eq("account_id", accountId);
       redirect("/business/turnovers/new?error=checklist");
     }
   }
-  if (workerId)
-    await supabase.rpc("assign_work_item_worker", {
+  if (workerId) {
+    turnoverAssignmentLog("assignment_attempt", { accountId, turnoverId: item.id, workerId });
+    const { error: assignmentError } = await supabase.rpc("assign_work_item_worker", {
       target_work_item: item.id,
       target_worker: workerId,
     });
+    if (assignmentError) {
+      turnoverAssignmentLog("assignment_failed", { accountId, turnoverId: item.id, workerId, ...safeDiagnosticError(assignmentError) });
+    } else {
+      turnoverAssignmentLog("assignment_success", { accountId, turnoverId: item.id, workerId });
+    }
+  }
   if (workerId) {
     const [{ data: assigned }, { data: worker }] = await Promise.all([
       supabase.from("assignments").select("id").eq("work_item_id", item.id).eq("worker_id", workerId).eq("status", "pending").order("assigned_at", { ascending: false }).limit(1).maybeSingle(),
       supabase.from("workers").select("email,display_name").eq("id", workerId).eq("account_id", accountId).maybeSingle(),
     ]);
-    if (assigned && worker?.email)
-      await sendCleanerAssignmentEmail({ accountId, turnoverId: item.id, workerId, assignmentId: assigned.id, cleanerEmail: worker.email, cleanerName: worker.display_name, propertyName: property.nickname, turnoverDate: date, checkoutAt: checkout.toISOString(), accessStartAt: access.toISOString(), deadlineAt: checkin.toISOString() });
+    if (assigned && worker?.email) {
+      turnoverAssignmentEmailLog("attempt", { accountId, turnoverId: item.id, workerId });
+      const delivery = await sendCleanerAssignmentEmail({ accountId, turnoverId: item.id, workerId, assignmentId: assigned.id, cleanerEmail: worker.email, cleanerName: worker.display_name, propertyName: property.nickname, turnoverDate: date, checkoutAt: checkout.toISOString(), accessStartAt: access.toISOString(), deadlineAt: checkin.toISOString() });
+      turnoverAssignmentEmailLog("result", { accountId, turnoverId: item.id, workerId, status: delivery.status, reason: delivery.reason || null, deliveryId: delivery.deliveryId || null });
+    } else {
+      turnoverAssignmentEmailLog("result", { accountId, turnoverId: item.id, workerId, status: "skipped", reason: assigned ? "worker_email_missing" : "assignment_not_found", deliveryId: null });
+    }
   }
   await supabase.from("activity_events").insert({
     account_id: accountId,
@@ -821,51 +929,24 @@ export async function completeTestTurnover(form: FormData) {
 export async function fillTestCleanData(form: FormData) {
   const turnoverId = text(form, "turnoverId");
   if (process.env.NODE_ENV !== "development")
-    redirect(`/business/turnovers/${turnoverId}?error=test_data_unavailable`);
-  const { supabase, accountId } = await requireBusinessUser();
+    redirect(`/cleaner/turnovers/${turnoverId}?error=test_data_unavailable`);
+  const { supabase, user, workerId } = await requireCleanerUser();
   const { data: item } = await supabase
     .from("work_items")
-    .select("id,property_id")
+    .select("id,account_id,property_id,status,assignments!inner(worker_id,status)")
     .eq("id", turnoverId)
-    .eq("account_id", accountId)
+    .eq("assignments.worker_id", workerId)
     .maybeSingle();
-  if (!item?.property_id)
-    redirect(`/business/turnovers/${turnoverId}?error=test_data_unavailable`);
-
+  const assignment = Array.isArray(item?.assignments) ? item.assignments[0] : item?.assignments;
+  if (!item || !item.property_id || !assignment || assignment.worker_id !== workerId || assignment.status !== "accepted" || !["arrived", "in_progress"].includes(item.status))
+    redirect(`/cleaner/turnovers/${turnoverId}?error=test_data_forbidden`);
   const { data: property } = await supabase
     .from("properties")
     .select("id")
     .eq("id", item.property_id)
-    .eq("account_id", accountId)
     .maybeSingle();
   if (!property)
-    redirect(`/business/turnovers/${turnoverId}?error=test_data_unavailable`);
-
-  const { error: propertyError } = await supabase
-    .from("properties")
-    .update({
-      access_notes: "Use the lockbox beside the front door.",
-      key_instructions:
-        "Code 2468. Return the key to the lockbox after locking the property.",
-      key_return_instructions:
-        "Check the key is secured in the lockbox before leaving.",
-      parking_notes: "Use visitor bay 4 if available.",
-      floor_lift_notes: "The property is on the second floor; use the lift.",
-      linen_requirements: "Fresh linen is in the hallway cupboard.",
-      towel_requirements: "Leave one bath towel and one hand towel per guest.",
-      bed_configuration: "Make the main bed with fresh linen and two pillows.",
-      consumables_instructions:
-        "Restock toilet roll, hand soap, and kitchen basics from the utility cupboard.",
-      waste_instructions:
-        "Empty kitchen and bathroom bins into the external black bin.",
-      cleaning_notes:
-        "Check the fridge, reset cushions, and confirm all windows are closed before leaving.",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", property.id)
-    .eq("account_id", accountId);
-  if (propertyError)
-    redirect(`/business/turnovers/${turnoverId}?error=test_data_failed`);
+    redirect(`/cleaner/turnovers/${turnoverId}?error=test_data_unavailable`);
 
   const checklist = [
     ["Access", "Check access and record the initial condition"],
@@ -875,32 +956,21 @@ export async function fillTestCleanData(form: FormData) {
   ] as const;
   const { data: existingTasks } = await supabase
     .from("checklist_tasks")
-    .select("label")
+    .select("id,label,response_type,note_required,note,response,completed")
     .eq("work_item_id", turnoverId)
-    .eq("account_id", accountId);
-  const existingLabels = new Set((existingTasks || []).map((task) => task.label));
-  let position = existingTasks?.length || 0;
-  for (const [sectionTitle, label] of checklist) {
-    if (existingLabels.has(label)) continue;
-    const { error } = await supabase.from("checklist_tasks").insert({
-      account_id: accountId,
-      work_item_id: turnoverId,
-      section_title: sectionTitle,
-      label,
-      position: position++,
-      response_type: "checkbox",
-      mandatory: false,
-      photo_required: false,
-      note_required: false,
-      blocking: false,
-    });
-    if (error)
-      redirect(`/business/turnovers/${turnoverId}?error=test_data_failed`);
+    .eq("account_id", item.account_id);
+  const testLabels = new Set(checklist.map(([, label]) => label));
+  for (const task of existingTasks || []) {
+    if (!testLabels.has(task.label) || task.completed) continue;
+    const patch: Record<string, string | boolean> = { completed: true, completed_by: user.id, completed_at: new Date().toISOString() };
+    if (task.response_type !== "checkbox" && !task.response) patch.response = task.response_type === "yes_no" ? "yes" : "pass";
+    if (task.note_required && !task.note?.trim()) patch.note = "Development test completion";
+    const { error } = await supabase.from("checklist_tasks").update(patch).eq("id", task.id).eq("work_item_id", turnoverId);
+    if (error) redirect(`/cleaner/turnovers/${turnoverId}?error=test_data_failed`);
   }
 
-  revalidatePath(`/business/turnovers/${turnoverId}`);
   revalidatePath(`/cleaner/turnovers/${turnoverId}`);
-  redirect(`/business/turnovers/${turnoverId}?testData=1`);
+  redirect(`/cleaner/turnovers/${turnoverId}?testData=1`);
 }
 
 export async function sendTestCleanerEmail(form: FormData) {
@@ -1290,13 +1360,18 @@ export async function resendWorkerInvitation(form: FormData) {
     .eq("id", workerId)
     .eq("account_id", accountId);
   const { data: account } = await supabase.from("business_accounts").select("name").eq("id", accountId).maybeSingle();
-  const delivery = worker.email ? await sendCleanerInvitationEmail({ accountId, workerId, email: worker.email, workspaceName: account?.name || "Your cleaning team", invitationToken: token, expiresAt }) : { sent: false as const };
-  if (!delivery.sent) {
+  const delivery = worker.email ? await sendCleanerInvitationEmail({ accountId, workerId, email: worker.email, workspaceName: account?.name || "Your cleaning team", invitationToken: token, expiresAt }) : { sent: false as const, status: "failed" as const, reason: "worker_email_missing" };
+  if (delivery.status === "failed") {
     await storeManualInviteLink(workerId, token, expiresAt);
     redirect(`/business/cleaners/${workerId}?resent=1&email=failed&link=1`);
   }
+  if (delivery.status === "skipped") {
+    await storeManualInviteLink(workerId, token, expiresAt);
+    const emailState = delivery.reason === "already_sent" ? "already_sent" : "processing";
+    redirect(`/business/cleaners/${workerId}?resent=1&email=${emailState}&link=1`);
+  }
   await storeManualInviteLink(workerId, token, expiresAt);
-  redirect(`/business/cleaners/${workerId}?resent=1&link=1`);
+  redirect(`/business/cleaners/${workerId}?resent=1&email=sent&link=1`);
 }
 
 export async function generateWorkerInviteLink(form: FormData) {
