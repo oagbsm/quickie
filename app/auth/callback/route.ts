@@ -7,6 +7,12 @@ import {
   supabaseAuthCookieNames,
 } from "@/lib/supabase/auth-recovery";
 
+const SIGNUP_CONFIRMATION_PURPOSES = new Set([
+  "signup-confirmation",
+  // Keep confirmation links issued before this fix usable.
+  "signup_confirmation",
+]);
+
 function expireAuthCookies(response: NextResponse, names: string[]) {
   names.forEach((name) =>
     response.cookies.set(name, "", {
@@ -44,7 +50,8 @@ function successfulCallbackDestination(
   user: User,
   appOrigin: string,
 ) {
-  if (purpose !== "signup_confirmation") return new URL(next, appOrigin);
+  if (!SIGNUP_CONFIRMATION_PURPOSES.has(purpose || ""))
+    return new URL(next, appOrigin);
 
   const signIn = new URL("/business/sign-in", appOrigin);
   signIn.searchParams.set("confirmed", "1");
@@ -110,7 +117,7 @@ export async function GET(request: NextRequest) {
       : response;
   }
 
-  if (purpose === "signup_confirmation" && !hadExistingAuthSession)
+  if (SIGNUP_CONFIRMATION_PURPOSES.has(purpose || "") && !hadExistingAuthSession)
     await supabase.auth.signOut();
 
   return NextResponse.redirect(

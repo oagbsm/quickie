@@ -2,6 +2,7 @@
 
 import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { requireBusinessUser } from "@/lib/business/auth";
@@ -36,6 +37,7 @@ async function createWorkerAndInvite({
   email,
   mobile,
   companyName,
+  deferEmail = false,
 }: {
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
   accountId: string;
@@ -44,6 +46,7 @@ async function createWorkerAndInvite({
   email: string;
   mobile: string | null;
   companyName: string | null;
+  deferEmail?: boolean;
 }) {
   const normalisedEmail = normaliseEmail(email);
   const accountPromise = supabase
@@ -90,8 +93,16 @@ async function createWorkerAndInvite({
       .update({ invitation_status: "pending", status: "active", updated_at: new Date().toISOString() })
       .eq("id", existingWorker.id)
       .eq("account_id", accountId);
+    if (deferEmail) {
+      after(async () => {
+        const { data: account } = await accountPromise;
+        await sendCleanerInvitationEmail({ accountId, workerId: existingWorker.id, email: normalisedEmail, workspaceName: account?.name || "Your cleaning team", invitationToken: token, expiresAt });
+      });
+      return { workerId: existingWorker.id, token, expiresAt, deliveryDeferred: true };
+    }
     const { data: account } = await accountPromise;
-    const delivery = await sendCleanerInvitationEmail({ accountId, workerId: existingWorker.id, email: normalisedEmail, workspaceName: account?.name || "Your cleaning team", invitationToken: token, expiresAt });
+    const invitationEmail = { accountId, workerId: existingWorker.id, email: normalisedEmail, workspaceName: account?.name || "Your cleaning team", invitationToken: token, expiresAt };
+    const delivery = await sendCleanerInvitationEmail(invitationEmail);
     return { workerId: existingWorker.id, token, expiresAt, deliverySent: delivery.sent };
   }
   const token = crypto.randomBytes(32).toString("base64url");
@@ -112,8 +123,16 @@ async function createWorkerAndInvite({
     },
   );
   if (error || !workerId) return { error: error?.message || "save" };
+  if (deferEmail) {
+    after(async () => {
+      const { data: account } = await accountPromise;
+      await sendCleanerInvitationEmail({ accountId, workerId, email: normalisedEmail, workspaceName: account?.name || "Your cleaning team", invitationToken: token, expiresAt });
+    });
+    return { workerId, token, expiresAt, deliveryDeferred: true };
+  }
   const { data: account } = await accountPromise;
-  const delivery = await sendCleanerInvitationEmail({ accountId, workerId, email, workspaceName: account?.name || "Your cleaning team", invitationToken: token, expiresAt });
+  const invitationEmail = { accountId, workerId, email: normalisedEmail, workspaceName: account?.name || "Your cleaning team", invitationToken: token, expiresAt };
+  const delivery = await sendCleanerInvitationEmail(invitationEmail);
   return { workerId, token, expiresAt, deliverySent: delivery.sent };
 }
 
@@ -134,7 +153,8 @@ export async function addWorker(form: FormData) {
   if (!displayName || !email || !/^\S+@\S+\.\S+$/.test(email)) {
     redirect("/business/cleaners/new?error=required");
   }
-  const created = await createWorkerAndInvite({ supabase, accountId, createdBy: user.id, displayName, email, mobile, companyName: optional(form, "companyName") });
+  const onboarding = text(form, "returnTo") === "onboarding";
+  const created = await createWorkerAndInvite({ supabase, accountId, createdBy: user.id, displayName, email, mobile, companyName: optional(form, "companyName"), deferEmail: onboarding });
   if (!created.workerId) {
     const code = created.error?.includes("duplicate_worker_contact")
       ? "duplicate"
@@ -152,9 +172,26 @@ export async function addWorker(form: FormData) {
   const token = created.token;
   const expiresAt = created.expiresAt;
   const deliverySent = created.deliverySent;
-  if (!deliverySent) {
+  if (!created.deliveryDeferred && !deliverySent) {
     await storeManualInviteLink(workerId, token!, expiresAt!);
     redirect(`/business/cleaners/${workerId}?invited=1&email=failed&link=1`);
+  }
+  if (onboarding) {
+    await supabase
+      .from("business_accounts")
+      .update({
+        onboarding_step: "complete",
+        onboarding_completed_at: new Date().toISOString(),
+      })
+      .eq("id", accountId);
+    await supabase
+      .from("activity_events")
+      .update({
+        metadata: { invitation_path: `/invite/[redacted]`, delivery: created.deliveryDeferred ? "queued" : "email" },
+      })
+      .eq("worker_id", workerId)
+      .eq("event_type", "cleaner_invited");
+    redirect("/business/dashboard");
   }
   await supabase
     .from("activity_events")
@@ -163,17 +200,6 @@ export async function addWorker(form: FormData) {
     })
     .eq("worker_id", workerId)
     .eq("event_type", "cleaner_invited");
-  if (text(form, "returnTo") === "onboarding") {
-    await supabase
-      .from("business_accounts")
-      .update({
-        onboarding_step: "complete",
-        onboarding_completed_at: new Date().toISOString(),
-      })
-      .eq("id", accountId);
-    revalidatePath("/business/dashboard");
-    redirect("/business/dashboard");
-  }
   revalidatePath("/business/cleaners");
   revalidatePath("/business/turnovers/new");
   revalidatePath("/business/activity");
@@ -354,7 +380,7 @@ export async function createTurnover(form: FormData) {
       supabase.from("workers").select("email,display_name").eq("id", workerId).eq("account_id", accountId).maybeSingle(),
     ]);
     if (assigned && worker?.email)
-      await sendCleanerAssignmentEmail({ accountId, turnoverId: item.id, workerId, cleanerEmail: worker.email, cleanerName: worker.display_name, propertyName: property.nickname, turnoverDate: date, checkoutAt: checkout.toISOString(), accessStartAt: access.toISOString(), deadlineAt: checkin.toISOString() });
+      await sendCleanerAssignmentEmail({ accountId, turnoverId: item.id, workerId, assignmentId: assigned.id, cleanerEmail: worker.email, cleanerName: worker.display_name, propertyName: property.nickname, turnoverDate: date, checkoutAt: checkout.toISOString(), accessStartAt: access.toISOString(), deadlineAt: checkin.toISOString() });
   }
   await supabase.from("activity_events").insert({
     account_id: accountId,
@@ -877,6 +903,40 @@ export async function fillTestCleanData(form: FormData) {
   redirect(`/business/turnovers/${turnoverId}?testData=1`);
 }
 
+export async function sendTestCleanerEmail(form: FormData) {
+  const turnoverId = text(form, "turnoverId");
+  if (process.env.NODE_ENV !== "development")
+    redirect(`/business/turnovers/${turnoverId}?testEmail=unavailable`);
+  const { supabase, accountId, role } = await requireBusinessUser();
+  if (role !== "owner" || !turnoverId)
+    redirect(`/business/turnovers/${turnoverId}?testEmail=unavailable`);
+  const { data: item } = await supabase
+    .from("work_items")
+    .select("id,property_public_name,turnover_date,guest_checkout_at,access_start_at,window_end_at,assignments(status,worker_id,workers(email,display_name))")
+    .eq("id", turnoverId)
+    .eq("account_id", accountId)
+    .maybeSingle();
+  const assignments = Array.isArray(item?.assignments) ? item.assignments : [];
+  const assignment = assignments.find((entry: { status?: string }) => ["pending", "accepted"].includes(entry.status || ""));
+  const worker = Array.isArray(assignment?.workers) ? assignment.workers[0] : assignment?.workers;
+  if (!item || !assignment || !worker?.email)
+    redirect(`/business/turnovers/${turnoverId}?testEmail=unavailable`);
+  const delivery = await sendCleanerAssignmentEmail({
+    accountId,
+    turnoverId,
+    workerId: assignment.worker_id,
+    cleanerEmail: worker.email,
+    cleanerName: worker.display_name || "Cleaner",
+    propertyName: item.property_public_name,
+    turnoverDate: item.turnover_date,
+    checkoutAt: item.guest_checkout_at,
+    accessStartAt: item.access_start_at,
+    deadlineAt: item.window_end_at,
+    idempotencyKey: `development_test_cleaner:${turnoverId}:${assignment.worker_id}:${Date.now()}`,
+  });
+  redirect(`/business/turnovers/${turnoverId}?testEmail=${delivery.sent ? "sent" : "failed"}`);
+}
+
 async function insertPropertyChecklistTask(supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>, accountId: string, propertyId: string, label: string, sectionTitle: string, options = { responseType: "checkbox", mandatory: false, photoRequired: false, noteRequired: false, blocking: false }) {
   let { data: template } = await supabase
     .from("checklist_templates")
@@ -1125,7 +1185,7 @@ export async function assignWorker(form: FormData) {
   const { data: assigned } = await supabase.from("assignments").select("id").eq("work_item_id", turnoverId).eq("worker_id", workerId).eq("status", "pending").order("assigned_at", { ascending: false }).limit(1).maybeSingle();
   const { data: turnover } = await supabase.from("work_items").select("property_public_name,turnover_date,guest_checkout_at,access_start_at,window_end_at").eq("id", turnoverId).eq("account_id", accountId).maybeSingle();
   if (assigned && turnover && worker.email)
-    await sendCleanerAssignmentEmail({ accountId, turnoverId, workerId, cleanerEmail: worker.email, cleanerName: worker.display_name, propertyName: turnover.property_public_name, turnoverDate: turnover.turnover_date, checkoutAt: turnover.guest_checkout_at, accessStartAt: turnover.access_start_at, deadlineAt: turnover.window_end_at });
+    await sendCleanerAssignmentEmail({ accountId, turnoverId, workerId, assignmentId: assigned.id, cleanerEmail: worker.email, cleanerName: worker.display_name, propertyName: turnover.property_public_name, turnoverDate: turnover.turnover_date, checkoutAt: turnover.guest_checkout_at, accessStartAt: turnover.access_start_at, deadlineAt: turnover.window_end_at });
   if (invitationToken && invitationExpiresAt) {
     const { data: account } = await supabase
       .from("business_accounts")

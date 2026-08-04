@@ -7,11 +7,7 @@ export function getSignUpConfirmationRedirect(
   environment?: AppOriginEnvironment,
 ) {
   const callback = new URL(buildAbsoluteAppUrl("/auth/callback", environment));
-  callback.searchParams.set(
-    "next",
-    "/business/sign-in?confirmed=1",
-  );
-  callback.searchParams.set("purpose", "signup_confirmation");
+  callback.searchParams.set("purpose", "signup-confirmation");
   return callback.toString();
 }
 

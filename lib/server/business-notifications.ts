@@ -33,6 +33,21 @@ function senderAddress(from: string) {
   return (match?.[1] || from).trim();
 }
 
+function safeProviderMessage(value: unknown) {
+  if (typeof value !== "string") return "provider_rejected";
+  return value.replace(/[\r\n\t]+/g, " ").replace(/https?:\/\/\S+/gi, "[url]").slice(0, 240);
+}
+
+function safeProviderCode(body: unknown) {
+  if (!body || typeof body !== "object") return null;
+  const value = (body as { name?: unknown; code?: unknown }).name ?? (body as { code?: unknown }).code;
+  return typeof value === "string" ? value.slice(0, 80) : null;
+}
+
+function emailEnvironment() {
+  return process.env.NODE_ENV === "production" ? "production" : "development";
+}
+
 function deliveryEvent(input: TransactionalEmailInput, status: string, details: Record<string, unknown> = {}) {
   console.info("transactional_email_delivery", {
     event: input.eventType === "cleaner_invitation" ? "cleaner_invitation_email" : "transactional_email",
@@ -41,22 +56,29 @@ function deliveryEvent(input: TransactionalEmailInput, status: string, details: 
     accountId: input.accountId,
     entityId: input.entityId || null,
     recipientDomain: recipientDomain(input.recipient),
+    environment: emailEnvironment(),
     ...details,
   });
 }
 
 async function sendTransactionalEmail(input: TransactionalEmailInput) {
   let db: ReturnType<typeof admin> | null = null;
+  let deliveryId: string | null = null;
   try {
     db = admin();
-    const { error: reserveError } = await db.from("transactional_email_deliveries").insert({
-      account_id: input.accountId,
-      event_type: input.eventType,
-      entity_id: input.entityId || null,
-      recipient: input.recipient,
-      idempotency_key: input.idempotencyKey,
-      delivery_status: "pending",
-    });
+    const { data: reserved, error: reserveError } = await db
+      .from("transactional_email_deliveries")
+      .insert({
+        account_id: input.accountId,
+        event_type: input.eventType,
+        entity_id: input.entityId || null,
+        recipient: input.recipient,
+        idempotency_key: input.idempotencyKey,
+        delivery_status: "pending",
+      })
+      .select("id")
+      .maybeSingle();
+    deliveryId = reserved?.id || null;
     if (reserveError?.code === "23505") {
       const { data: previous, error: previousError } = await db
         .from("transactional_email_deliveries")
@@ -64,44 +86,55 @@ async function sendTransactionalEmail(input: TransactionalEmailInput) {
         .eq("idempotency_key", input.idempotencyKey)
         .maybeSingle();
       if (previousError || !previous) {
-        deliveryEvent(input, "failed", { failureCategory: "delivery_record_conflict" });
+        deliveryEvent(input, "failed", { deliveryId, sendAttempted: false, failureCategory: "delivery_record_conflict" });
         return { sent: false as const, reason: "reservation_failed" as const };
       }
+      deliveryId = previous.id;
       if (previous.delivery_status === "sent") {
-        deliveryEvent(input, "skipped", { failureCategory: "already_sent" });
+        deliveryEvent(input, "skipped", { deliveryId, sendAttempted: false, skippedDueToIdempotency: true, failureCategory: "already_sent" });
         return { sent: false as const, reason: "duplicate" as const };
       }
       if (previous.delivery_status === "pending") {
-        deliveryEvent(input, "skipped", { failureCategory: "delivery_in_progress" });
+        deliveryEvent(input, "skipped", { deliveryId, sendAttempted: false, skippedDueToIdempotency: true, failureCategory: "delivery_in_progress" });
         return { sent: false as const, reason: "duplicate" as const };
       }
-      const { error: retryError } = await db
+      const { data: claimed, error: retryError } = await db
         .from("transactional_email_deliveries")
         .update({ delivery_status: "pending", error_category: null })
         .eq("idempotency_key", input.idempotencyKey)
-        .eq("delivery_status", "failed");
+        .eq("delivery_status", "failed")
+        .select("id")
+        .maybeSingle();
       if (retryError) {
-        deliveryEvent(input, "failed", { failureCategory: "delivery_record_conflict" });
+        deliveryEvent(input, "failed", { deliveryId, sendAttempted: false, failureCategory: "delivery_record_conflict" });
         return { sent: false as const, reason: "reservation_failed" as const };
       }
+      if (!claimed) {
+        deliveryEvent(input, "skipped", { deliveryId, sendAttempted: false, skippedDueToIdempotency: true, failureCategory: "delivery_in_progress" });
+        return { sent: false as const, reason: "duplicate" as const };
+      }
     } else if (reserveError) {
-      deliveryEvent(input, "failed", { failureCategory: "delivery_record_conflict" });
+      deliveryEvent(input, "failed", { deliveryId, sendAttempted: false, failureCategory: "delivery_record_conflict" });
       return { sent: false as const, reason: "reservation_failed" as const };
     }
     const apiKey = process.env.RESEND_API_KEY;
     const from = getResendFromEmail();
     const replyTo = getResendReplyToEmail();
+    const configuration = {
+      resend_api_key_present: Boolean(apiKey),
+      configured_from_address: from ? senderAddress(from) : null,
+    };
     if (!apiKey || !from) {
-      await db.from("transactional_email_deliveries").update({ delivery_status: "failed", error_category: !apiKey ? "resend_api_key_missing" : "invalid_sender" }).eq("idempotency_key", input.idempotencyKey);
-      deliveryEvent(input, "skipped", { failureCategory: !apiKey ? "resend_api_key_missing" : "invalid_sender" });
+      await db.from("transactional_email_deliveries").update({ delivery_status: "failed", error_category: !apiKey ? "resend_api_key_missing" : "invalid_sender" }).eq("id", deliveryId);
+      deliveryEvent(input, "skipped", { deliveryId, sendAttempted: false, skippedDueToIdempotency: false, failureCategory: !apiKey ? "resend_api_key_missing" : "invalid_sender", ...configuration });
       return { sent: false as const, reason: "not_configured" as const };
     }
     if (!/^\S+@\S+\.\S+$/.test(senderAddress(from))) {
-      await db.from("transactional_email_deliveries").update({ delivery_status: "failed", error_category: "invalid_sender" }).eq("idempotency_key", input.idempotencyKey);
-      deliveryEvent(input, "skipped", { failureCategory: "invalid_sender" });
+      await db.from("transactional_email_deliveries").update({ delivery_status: "failed", error_category: "invalid_sender" }).eq("id", deliveryId);
+      deliveryEvent(input, "skipped", { deliveryId, sendAttempted: false, skippedDueToIdempotency: false, failureCategory: "invalid_sender", ...configuration });
       return { sent: false as const, reason: "not_configured" as const };
     }
-    deliveryEvent(input, "attempting");
+    deliveryEvent(input, "attempting", { deliveryId, sendAttempted: true, skippedDueToIdempotency: false, ...configuration });
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -109,9 +142,8 @@ async function sendTransactionalEmail(input: TransactionalEmailInput) {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const providerMessage = body && typeof body === "object" && "message" in body && typeof body.message === "string"
-        ? body.message.slice(0, 240)
-        : "provider_rejected";
+      const providerMessage = safeProviderMessage(body && typeof body === "object" && "message" in body ? body.message : null);
+      const providerCode = safeProviderCode(body);
       const failureCategory = response.status === 401
         ? "resend_api_key_invalid"
         : response.status === 403
@@ -129,21 +161,23 @@ async function sendTransactionalEmail(input: TransactionalEmailInput) {
         accountId: input.accountId,
         status: response.status,
         failureCategory,
+        providerCode,
         message: providerMessage,
       });
       throw new Error(failureCategory);
     }
-    await db.from("transactional_email_deliveries").update({ delivery_status: "sent", sent_at: new Date().toISOString(), provider_message_id: typeof body.id === "string" ? body.id : null, error_category: null }).eq("idempotency_key", input.idempotencyKey);
-    deliveryEvent(input, "sent", { resendResponseId: typeof body.id === "string" ? body.id : null });
+    const providerMessageId = typeof body.id === "string" ? body.id : null;
+    await db.from("transactional_email_deliveries").update({ delivery_status: "sent", sent_at: new Date().toISOString(), provider_message_id: providerMessageId, error_category: null }).eq("id", deliveryId);
+    deliveryEvent(input, "sent", { deliveryId, sendAttempted: true, providerAccepted: true, providerMessageId });
     return { sent: true as const };
   } catch (error) {
     try {
       db ||= admin();
       const failureCategory = error instanceof Error ? error.message : "unknown_delivery_error";
-      await db.from("transactional_email_deliveries").update({ delivery_status: "failed", error_category: failureCategory }).eq("idempotency_key", input.idempotencyKey);
-      deliveryEvent(input, "failed", { failureCategory });
+      await db.from("transactional_email_deliveries").update({ delivery_status: "failed", error_category: failureCategory }).eq("id", deliveryId);
+      deliveryEvent(input, "failed", { deliveryId, sendAttempted: true, providerAccepted: false, failureCategory });
     } catch { /* email failure must not affect the business action */ }
-    console.error("transactional_email_failed", { eventType: input.eventType, accountId: input.accountId, recipientDomain: recipientDomain(input.recipient), failureCategory: error instanceof Error ? error.message : "unknown_delivery_error" });
+    console.error("transactional_email_failed", { eventType: input.eventType, accountId: input.accountId, deliveryId, recipientDomain: recipientDomain(input.recipient), failureCategory: error instanceof Error ? error.message : "unknown_delivery_error" });
     return { sent: false as const, reason: "delivery_failed" as const };
   }
 }
@@ -156,9 +190,9 @@ async function ownerEmail(accountId: string) {
   return user?.email || null;
 }
 
-export async function sendCleanerAssignmentEmail({ accountId, turnoverId, workerId, cleanerEmail, cleanerName, propertyName, turnoverDate, checkoutAt, accessStartAt, deadlineAt }: { accountId: string; turnoverId: string; workerId: string; cleanerEmail: string; cleanerName: string; propertyName: string; turnoverDate: string; checkoutAt: string; accessStartAt: string; deadlineAt: string }) {
+export async function sendCleanerAssignmentEmail({ accountId, turnoverId, workerId, assignmentId, cleanerEmail, cleanerName, propertyName, turnoverDate, checkoutAt, accessStartAt, deadlineAt, idempotencyKey }: { accountId: string; turnoverId: string; workerId: string; assignmentId?: string; cleanerEmail: string; cleanerName: string; propertyName: string; turnoverDate: string; checkoutAt: string; accessStartAt: string; deadlineAt: string; idempotencyKey?: string }) {
   const site = getAppOrigin();
-  return sendTransactionalEmail({ accountId, eventType: "turnover_assigned", entityId: turnoverId, recipient: cleanerEmail, idempotencyKey: `turnover_assigned:${turnoverId}:${workerId}`, subject: `New turnover assignment: ${propertyName}`, html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>New turnover assignment</h1><p>${escapeHtml(cleanerName)}, you have a new assignment for <strong>${escapeHtml(propertyName)}</strong>.</p><p><strong>Date:</strong> ${escapeHtml(formatLondon(turnoverDate))}<br><strong>Checkout:</strong> ${escapeHtml(formatLondon(checkoutAt))}<br><strong>Cleaner access:</strong> ${escapeHtml(formatLondon(accessStartAt))}<br><strong>Complete by:</strong> ${escapeHtml(formatLondon(deadlineAt))}</p><p><a href="${site}/cleaner/turnovers/${encodeURIComponent(turnoverId)}">Review and accept or decline</a></p></div>` });
+  return sendTransactionalEmail({ accountId, eventType: "turnover_assigned", entityId: turnoverId, recipient: cleanerEmail, idempotencyKey: idempotencyKey || `turnover_assigned:${turnoverId}:${assignmentId || workerId}`, subject: `New turnover assignment: ${propertyName}`, html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>New turnover assignment</h1><p>${escapeHtml(cleanerName)}, you have a new assignment for <strong>${escapeHtml(propertyName)}</strong>.</p><p><strong>Date:</strong> ${escapeHtml(formatLondon(turnoverDate))}<br><strong>Checkout:</strong> ${escapeHtml(formatLondon(checkoutAt))}<br><strong>Cleaner access:</strong> ${escapeHtml(formatLondon(accessStartAt))}<br><strong>Complete by:</strong> ${escapeHtml(formatLondon(deadlineAt))}</p><p><a href="${site}/cleaner/turnovers/${encodeURIComponent(turnoverId)}">Review and accept or decline</a></p></div>` });
 }
 
 export async function sendOperatorTurnoverEmail({ accountId, turnoverId, eventType, idempotencyKey, subject, cleanerName, propertyName, turnoverDate, summary, completedCount, evidenceCount }: { accountId: string; turnoverId: string; eventType: string; idempotencyKey: string; subject: string; cleanerName: string; propertyName: string; turnoverDate: string; summary: string; completedCount?: number; evidenceCount?: number }) {

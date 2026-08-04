@@ -73,7 +73,8 @@ test("existing accounts use the invitation acceptance path instead of signup", (
 });
 
 test("invitation callback remains safe while creation does not depend on verification", () => {
-  assert.match(callback, /purpose !== "signup_confirmation"[\s\S]*return new URL\(next, appOrigin\)/);
+  assert.match(callback, /SIGNUP_CONFIRMATION_PURPOSES/);
+  assert.match(callback, /return new URL\(next, appOrigin\)/);
   assert.match(callback, /next\.startsWith\("\/invite\/"\)/);
   assert.equal(safeInternalNextPath("/invite/secure_token"), "/invite/secure_token");
   assert.doesNotMatch(invitationActions, /token_hash|verification_type/);

@@ -156,6 +156,12 @@ test("business clean test-data fill is development-only, owned, and checklist-id
   );
 });
 
+test("development cleaner email diagnostic is not exposed in production", () => {
+  assert.match(operatorPage, /process\.env\.NODE_ENV === "development"[\s\S]*Send test cleaner email/);
+  assert.match(actions, /sendTestCleanerEmail/);
+  assert.match(actions, /testEmail=unavailable/);
+});
+
 test("development shortcut keeps normal completion validation intact", () => {
   assert.match(actions, /evaluate_work_item_readiness/);
   assert.match(actions, /next_status: "evidence_submitted"/);

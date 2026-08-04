@@ -125,12 +125,12 @@ test("sign-up and password recovery use production callback URLs", () => {
   assert.equal(signupRedirect.origin, "https://www.quickola.co.uk");
   assert.equal(signupRedirect.pathname, "/auth/callback");
   assert.equal(
-    signupRedirect.searchParams.get("next"),
-    "/business/sign-in?confirmed=1",
+    signupRedirect.searchParams.get("purpose"),
+    "signup-confirmation",
   );
   assert.equal(
-    signupRedirect.searchParams.get("purpose"),
-    "signup_confirmation",
+    getSignUpConfirmationRedirect(environment),
+    "https://www.quickola.co.uk/auth/callback?purpose=signup-confirmation",
   );
   assert.equal(
     getPasswordRecoveryRedirect(environment),
@@ -139,6 +139,10 @@ test("sign-up and password recovery use production callback URLs", () => {
   assert.doesNotMatch(
     `${getSignUpConfirmationRedirect(environment)} ${getPasswordRecoveryRedirect(environment)}`,
     /localhost|127\.0\.0\.1/,
+  );
+  assert.equal(
+    getSignUpConfirmationRedirect({ nodeEnv: "development" }),
+    "http://localhost:3000/auth/callback?purpose=signup-confirmation",
   );
 });
 test("business email confirmation uses the secure PKCE callback flow", () => {
@@ -165,10 +169,11 @@ test("business email confirmation uses the secure PKCE callback flow", () => {
   assert.doesNotMatch(signup, /quickola\.co\.uk\/auth\/callback/);
   assert.match(browserAuth, /flowType: "pkce"/);
   assert.match(callback, /exchangeCodeForSession\(code\)/);
-  assert.match(callback, /purpose !== "signup_confirmation"/);
+  assert.match(callback, /signup-confirmation/);
   assert.match(callback, /user\.email/);
   assert.match(callback, /\/business\/sign-in/);
-  assert.match(callback, /purpose === "signup_confirmation" && !hadExistingAuthSession/);
+  assert.match(callback, /SIGNUP_CONFIRMATION_PURPOSES\.has\(purpose \|\| ""\) && !hadExistingAuthSession/);
+  assert.doesNotMatch(callback, /new URL\("\/", appOrigin\)/);
   assert.match(
     readFileSync(new URL("../app/business/sign-in/SignInForm.tsx", import.meta.url), "utf8"),
     /Email confirmed\. Sign in to continue\./,

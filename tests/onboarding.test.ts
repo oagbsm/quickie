@@ -73,3 +73,15 @@ test("onboarding routes and actions re-check authoritative completion state", ()
   assert.doesNotMatch(strActions, /export async function saveOnboardingStandard/);
   assert.match(strActions, /onboardingAccount\?\.onboarding_step === "complete"/);
 });
+
+test("cleaner onboarding uses a pending action and redirects after required writes", () => {
+  const actions = readFileSync(new URL("../app/business/str-actions.ts", import.meta.url), "utf8");
+  assert.match(onboarding, /PendingButton/);
+  assert.match(onboarding, /pending="Adding cleaner…"/);
+  assert.match(actions, /deferEmail: onboarding/);
+  assert.match(actions, /after\(async \(\) => \{\s*const \{ data: account \} = await accountPromise/);
+  assert.match(actions, /onboarding_completed_at: new Date\(\)\.toISOString\(\)/);
+  assert.match(actions, /\.eq\("id", accountId\);\s*\n\s*await supabase[\s\S]*activity_events/);
+  assert.match(actions, /redirect\("\/business\/dashboard"\)/);
+  assert.doesNotMatch(actions, /revalidatePath\("\/business\/dashboard"\);\s*redirect\("\/business\/dashboard"\)/);
+});

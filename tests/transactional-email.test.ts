@@ -12,10 +12,44 @@ test("invitation email is attempted after invitation creation and resend", () =>
   assert.match(mailer, /Accept invitation/);
 });
 
+test("onboarding defers only delivery while preserving the invitation generation", () => {
+  assert.match(actions, /after\(async \(\) => \{\s*const \{ data: account \} = await accountPromise/);
+  assert.match(actions, /target_token_hash: tokenHash/);
+  assert.match(actions, /worker_invitations/);
+  assert.match(actions, /deliveryDeferred: true/);
+  assert.match(actions, /delivery: created\.deliveryDeferred \? "queued" : "email"/);
+});
+
+test("shared delivery diagnostics expose safe configuration and provider state", () => {
+  assert.match(mailer, /resend_api_key_present: Boolean\(apiKey\)/);
+  assert.match(mailer, /configured_from_address: from \? senderAddress\(from\) : null/);
+  assert.match(mailer, /deliveryId/);
+  assert.match(mailer, /sendAttempted/);
+  assert.match(mailer, /skippedDueToIdempotency/);
+  assert.match(mailer, /providerAccepted/);
+  assert.match(mailer, /providerMessageId/);
+  assert.match(mailer, /safeProviderMessage/);
+  assert.doesNotMatch(mailer, /console\.(info|error)\([^\n]*(apiKey|invitationToken|password)/);
+});
+
+test("failed delivery retry claims are atomic and do not duplicate sends", () => {
+  assert.match(mailer, /eq\("delivery_status", "failed"\)[\s\S]*select\("id"\)[\s\S]*maybeSingle\(\)/);
+  assert.match(mailer, /if \(!claimed\)[\s\S]*delivery_in_progress/);
+});
+
+test("development email diagnostic uses the shared assignment sender and server guard", () => {
+  assert.match(actions, /export async function sendTestCleanerEmail/);
+  assert.match(actions, /process\.env\.NODE_ENV !== "development"/);
+  assert.match(actions, /requireBusinessUser\(\)/);
+  assert.match(actions, /sendCleanerAssignmentEmail/);
+  assert.match(actions, /development_test_cleaner:/);
+});
+
 test("assignment email is idempotent per assignment", () => {
   assert.match(actions, /sendCleanerAssignmentEmail/);
   assert.match(mailer, /eventType: "turnover_assigned"/);
-  assert.match(mailer, /turnover_assigned:\$\{turnoverId\}:\$\{workerId\}/);
+  assert.match(mailer, /turnover_assigned:\$\{turnoverId\}:\$\{assignmentId \|\| workerId\}/);
+  assert.match(actions, /assignmentId: assigned\.id/);
   assert.match(migration, /idempotency_key text not null unique/);
 });
 
