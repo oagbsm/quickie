@@ -141,6 +141,7 @@ export default async function Page({
     ? await listReservations("upcoming", id)
     : [];
   const calendarsHealthy = calendarConnections.length > 0 && !calendarConnections.some(hasTechnicalCalendarIssue);
+  const activeCalendarConnections = calendarConnections.filter((connection) => connection.is_active);
   const rejectedConflicts: RejectedImportConflict[] = calendarConnections.flatMap((connection) =>
     connection.open_issues
       .filter((issue) => issue.issue_type === "overlap_conflict")
@@ -220,17 +221,17 @@ export default async function Page({
           role="status"
           className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-950"
         >
-          <h2 className="text-lg font-extrabold">Property created successfully</h2>
-          <p className="mt-1 text-sm">
-            Your clean standard and checklist are ready. Connect a booking
-            calendar to import bookings and create cleans automatically.
-          </p>
-          <Link
-            href={`/business/properties/${id}?tab=reservations`}
-            className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-[#071f49] px-4 font-extrabold text-white"
-          >
-            Connect booking calendar
-          </Link>
+          {activeCalendarConnections.length === 0 ? <>
+            <h2 className="text-lg font-extrabold">Property created successfully</h2>
+            <p className="mt-1 text-sm">Your property is ready. Connect a booking calendar to import bookings and create cleans automatically.</p>
+            <Link href={`/business/properties/${id}?tab=reservations&created=1`} className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-[#071f49] px-4 font-extrabold text-white">Connect booking calendar</Link>
+          </> : <>
+            <h2 className="text-lg font-extrabold">Property ready</h2>
+            <p className="mt-1 text-sm">Your property has been created and your booking calendar is connected.</p>
+            <p className="mt-2 text-sm font-bold">Calendar connected · {activeCalendarConnections[0].display_name || ({ airbnb: "Airbnb", booking_com: "Booking.com", vrbo: "Vrbo", expedia: "Expedia", other: "Other calendar" }[activeCalendarConnections[0].provider])}</p>
+            {typeof activeCalendarConnections[0].last_sync_summary.imported === "number" && activeCalendarConnections[0].last_sync_summary.imported > 0 ? <p className="mt-1 text-sm">{activeCalendarConnections[0].last_sync_summary.imported} bookings imported.</p> : <p className="mt-1 text-sm">Calendar connected successfully. New bookings will appear here automatically.</p>}
+            <div className="mt-4 flex flex-wrap gap-3"><Link href={`/business/properties/${id}?tab=reservations`} className="inline-flex min-h-11 items-center rounded-lg bg-[#071f49] px-4 font-extrabold text-white">View bookings</Link><Link href={`/business/properties/${id}?tab=reservations#manage-calendars`} className="inline-flex min-h-11 items-center rounded-lg border border-emerald-300 px-4 font-extrabold">Manage calendars</Link></div>
+          </>}
         </section>
       )}
       {updated && (
@@ -333,9 +334,8 @@ export default async function Page({
           <PropertyReservations propertyId={id} reservations={propertyReservations} hasConnections={calendarConnections.length > 0} calendarsHealthy={calendarsHealthy} rejectedConflicts={rejectedConflicts} />
           <details id="manage-calendars" open={calendarConnections.length === 0} className="mt-8 rounded-xl border border-[#dfe6ef] bg-white shadow-sm">
             <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-extrabold text-[#071f49] outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-[#2d67b2]/20 sm:px-6">
-              <span>Connected calendars</span><span className="text-sm font-bold text-[#657089]">{calendarConnections.length ? `${calendarConnections.length} connected` : "No calendar connected"}</span>
+              <span>Calendars</span><span className="text-sm font-bold text-[#657089]">{calendarConnections.length ? `${calendarConnections.length} connected · ${calendarsHealthy ? "All healthy" : "Needs attention"}` : "No calendar connected"}</span>
             </summary>
-            {calendarConnections.length > 0 && <div className="grid gap-2 border-t border-[#e7ebf0] px-5 py-4 sm:px-6"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-extrabold text-[#657089]">Calendar health</p><p className="text-sm font-bold text-[#657089]">{calendarsHealthy ? "All healthy" : `${calendarConnections.filter((connection) => connection.sync_status !== "healthy").length} issue${calendarConnections.filter((connection) => connection.sync_status !== "healthy").length === 1 ? "" : "s"}`}</p></div><p className="text-sm font-extrabold text-[#16467e]">Manage calendars</p>{calendarConnections.map((connection) => <p key={connection.id} className="text-sm font-bold text-[#273752]">{connection.display_name || ({ airbnb: "Airbnb", booking_com: "Booking.com", vrbo: "Vrbo", expedia: "Expedia", other: "Other" }[connection.provider])} · {connection.sync_status === "healthy" ? "Healthy" : connection.sync_status === "disabled" ? "Disabled" : "Sync issue"}</p>)}</div>}
             <div className="border-t border-[#e7ebf0] px-1 pb-2"><CalendarSources propertyId={id} connections={calendarConnections} /></div>
           </details>
         </>

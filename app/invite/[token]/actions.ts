@@ -80,7 +80,6 @@ export async function acceptCleanerInvitation({
       session.user.email?.trim().toLowerCase() !== invitation.invitedEmail
     )
       return { status: "email_mismatch" };
-    if (session.portal) return { status: "role_conflict" };
     if (session.status === "error") return { status: "unavailable" };
 
     const { error } = await session.supabase.rpc("accept_worker_invitation", {

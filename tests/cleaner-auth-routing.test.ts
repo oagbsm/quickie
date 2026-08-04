@@ -108,12 +108,13 @@ test("worker invitation becomes cleaner access only after acceptance", () => {
   assert.equal(accepted.hops, 0);
 });
 
-test("legacy dual-role users deterministically resolve to business", () => {
+test("dual-role users keep business as default but can open cleaner routes", () => {
   assert.equal(resolveCanonicalPortal(bothRoles), "business");
   const fromCleaner = followPortalRedirects(bothRoles, "/cleaner/today");
-  assert.equal(fromCleaner.path, "/business/dashboard");
   assert.equal(fromCleaner.decision.kind, "allow");
-  assert.equal(fromCleaner.hops, 1);
+  assert.equal(fromCleaner.path, "/cleaner/today");
+  assert.equal(fromCleaner.hops, 0);
+  assert.equal(postLoginDestination(bothRoles, "/cleaner/today"), "/cleaner/today");
 });
 
 test("post-login routing never accepts an external portal-looking URL", () => {

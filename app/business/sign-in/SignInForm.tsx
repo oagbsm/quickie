@@ -18,7 +18,9 @@ export default function SignInForm() {
     [message, setMessage] = useState(
       params.get("error") === "confirmation"
         ? "That confirmation link could not establish a session. Request a new link or sign in."
-        : params.get("reset") === "success"
+        : params.get("confirmed") === "1"
+          ? "Email confirmed. Sign in to continue."
+          : params.get("reset") === "success"
           ? "Password updated successfully. Sign in with your new password."
           : "",
     );

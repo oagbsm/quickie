@@ -38,14 +38,31 @@ function failedCallbackDestination(
   return signIn;
 }
 
+function successfulCallbackDestination(
+  next: string,
+  purpose: string | null,
+  user: User,
+  appOrigin: string,
+) {
+  if (purpose !== "signup_confirmation") return new URL(next, appOrigin);
+
+  const signIn = new URL("/business/sign-in", appOrigin);
+  signIn.searchParams.set("confirmed", "1");
+  if (user.email) signIn.searchParams.set("email", user.email);
+  return signIn;
+}
+
 export async function GET(request: NextRequest) {
   const url = request.nextUrl;
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type") as EmailOtpType | null;
   const next = safeInternalNextPath(url.searchParams.get("next"));
+  const purpose = url.searchParams.get("purpose");
   const email = url.searchParams.get("email");
   const appOrigin = getAppOrigin();
+  const hadExistingAuthSession =
+    supabaseAuthCookieNames(request.cookies.getAll()).length > 0;
   const supabase = await createSupabaseServerClient();
   let verificationFailed = false;
   let staleSession = false;
@@ -93,5 +110,10 @@ export async function GET(request: NextRequest) {
       : response;
   }
 
-  return NextResponse.redirect(new URL(next, appOrigin));
+  if (purpose === "signup_confirmation" && !hadExistingAuthSession)
+    await supabase.auth.signOut();
+
+  return NextResponse.redirect(
+    successfulCallbackDestination(next, purpose, user, appOrigin),
+  );
 }

@@ -7,15 +7,19 @@ import { evaluateReadiness } from "../lib/turnovers/readiness.ts";
 const page = readFileSync(new URL("../app/cleaner/turnovers/[id]/page.tsx", import.meta.url), "utf8");
 const today = readFileSync(new URL("../app/cleaner/today/page.tsx", import.meta.url), "utf8");
 const navigation = readFileSync(new URL("../app/cleaner/CleanerNavigation.tsx", import.meta.url), "utf8");
+const cards = readFileSync(new URL("../app/cleaner/TurnoverCards.tsx", import.meta.url), "utf8");
 const actions = readFileSync(new URL("../app/business/str-actions.ts", import.meta.url), "utf8");
 const operatorPage = readFileSync(new URL("../app/business/turnovers/[id]/page.tsx", import.meta.url), "utf8");
 const integrityMigration = readFileSync(new URL("../supabase/migrations/202608010003_completion_integrity.sql", import.meta.url), "utf8");
+const idempotencyMigration = readFileSync(new URL("../supabase/migrations/202608040001_idempotent_cleaner_transitions.sql", import.meta.url), "utf8");
 
 test("canonical cleaner lifecycle has one deterministic action", () => {
   assert.deepEqual(getCleanerLifecycle("awaiting_response").primaryAction, { label: "Accept", nextStatus: "accepted" });
   assert.equal(getCleanerLifecycle("accepted").label, "Accepted");
   assert.equal(getCleanerLifecycle("en_route").label, "En route");
   assert.equal(getCleanerLifecycle("arrived").primaryAction?.nextStatus, "in_progress");
+  assert.equal(getCleanerLifecycle("arrived").primaryAction?.label, "Start cleaning");
+  assert.equal(getCleanerLifecycle("in_progress").primaryAction?.label, "Mark as done");
   assert.equal(getCleanerLifecycle("action_required").checklistActive, true);
   assert.equal(getCleanerLifecycle("ready").terminal, true);
 });
@@ -28,7 +32,7 @@ test("Today selection prefers current work and otherwise the next assignment", (
 
 test("pre-start pages do not render checklist blockers or raw task IDs", () => {
   assert.doesNotMatch(page, /after you mark Arrived|Not available until arrival|Task \$\{/);
-  assert.doesNotMatch(page, /Save task|Upload task photo|Final completion evidence|Development-only/);
+  assert.doesNotMatch(page, /Save task|Upload task photo|Final completion evidence/);
 });
 
 test("task completion is one action and photo upload auto-completes after successful evidence", () => {
@@ -47,8 +51,30 @@ test("server remains authoritative for readiness and rejects pre-start mutations
 });
 
 test("completed/property-ready detail has no sticky completion action", () => {
-  assert.match(page, /i\.status !== \"action_required\"/);
-  assert.match(page, /state\.primaryAction/);
+  assert.match(page, /item\.status === \"in_progress\" && blockers\.length === 0/);
+  assert.match(page, /idle=\"Mark as done\"/);
+  assert.doesNotMatch(page, /sticky bottom-0/);
+});
+
+test("Today keeps acceptance on detail and active details expose the next action", () => {
+  assert.doesNotMatch(cards, /Next: Accept/);
+  assert.match(cards, /href=\{`\/cleaner\/turnovers\/\$\{item\.id\}`\}/);
+  assert.match(page, /idle=\{currentAction\.label\}/);
+  assert.match(page, /\["accepted", "en_route", "arrived"\]\.includes\(item\.status\)/);
+});
+
+test("cleaner detail uses the canonical operational linen and access fields", () => {
+  assert.match(page, /linen_requirements/);
+  assert.match(page, /towel_requirements/);
+  assert.match(page, /bed_configuration/);
+  assert.match(page, /consumables_instructions/);
+  assert.match(page, /waste_instructions/);
+  assert.match(page, /Linen &amp; supplies/);
+  assert.match(page, /parking_notes/);
+  assert.match(page, /floor_lift_notes/);
+  assert.match(page, /Property notes/);
+  assert.match(page, /accepted && tasks\.length > 0/);
+  assert.match(page, /activeWork && !task\.completed/);
 });
 
 test("completed cleaner and operator views are read-only receipts", () => {
@@ -73,10 +99,48 @@ test("pre-acceptance query excludes sensitive access fields and accepted view re
   const fullQuery = page.indexOf('properties(nickname,address_line_1,city,postcode,access_notes,key_instructions');
   assert.ok(firstQuery >= 0);
   assert.ok(fullQuery > firstQuery);
-  assert.match(page, /const accepted = !\["awaiting_response", "declined"\]/);
+  assert.match(page, /const acceptedStatuses =/);
   assert.match(page, /if \(accepted\)/);
-  assert.match(page, /Access and property notes/);
+  assert.match(page, /<h2 className=\"text-lg font-extrabold\">Access<\/h2>/);
   assert.doesNotMatch(page, /Today \/ Upcoming \/ Completed \/ Profile/);
+});
+
+test("cleaner transitions clear stale errors and retrying an accepted request is idempotent", () => {
+  assert.match(actions, /revalidatePath\(`\/cleaner\/turnovers\/\$\{id\}`\);[\s\S]*redirect\(`\/cleaner\/turnovers\/\$\{id\}`\)/);
+  assert.match(idempotencyMigration, /if current_row\.status = next_status then/);
+  assert.match(idempotencyMigration, /without duplicating side effects/);
+  assert.match(idempotencyMigration, /return current_row;/);
+});
+
+test("cleaner detail keeps access protected and renders real travel context", () => {
+  assert.match(page, /formatDisplayAddress\(\[property\?\.address_line_1, property\?\.city, property\?\.postcode\]/);
+  assert.match(page, /https:\/\/www\.google\.com\/maps\/search/);
+  assert.match(page, /Ready by/);
+  assert.match(page, /Available after acceptance/);
+  assert.match(page, /accepted && <section/);
+});
+
+test("development completion shortcut is guarded, assigned-cleaner scoped, and idempotent", () => {
+  const helper = actions.slice(actions.indexOf("export async function completeTestTurnover"), actions.indexOf("async function insertPropertyChecklistTask"));
+  assert.match(page, /process\.env\.NODE_ENV === "development"/);
+  assert.match(page, /Complete test clean/);
+  assert.match(helper, /export async function completeTestTurnover/);
+  assert.match(helper, /process\.env\.NODE_ENV !== "development"/);
+  assert.match(helper, /requireCleanerUser\(\)/);
+  assert.match(helper, /eq\("assignments\.worker_id", workerId\)/);
+  assert.match(helper, /transition_work_item/);
+  assert.match(helper, /development-test:/);
+  assert.match(helper, /issue_type: "missing_item"/);
+  assert.match(helper, /No clean hand towel was available/);
+  assert.match(helper, /if \(!existingIssue\)/);
+  assert.doesNotMatch(helper, /sendOperatorTurnoverEmail|sendCleanerInvitationEmail/);
+});
+
+test("development shortcut keeps normal completion validation intact", () => {
+  assert.match(actions, /evaluate_work_item_readiness/);
+  assert.match(actions, /next_status: "evidence_submitted"/);
+  assert.match(integrityMigration, /required_results_missing/);
+  assert.match(integrityMigration, /required_notes_missing/);
 });
 
 test("mobile cleaner cleanup removes explicit form encoding, dense Today chrome, and uses fixed nav", () => {

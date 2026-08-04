@@ -121,9 +121,16 @@ test("sign-up and password recovery use production callback URLs", () => {
     siteUrl: "https://quickola.co.uk/",
     nodeEnv: "production",
   };
+  const signupRedirect = new URL(getSignUpConfirmationRedirect(environment));
+  assert.equal(signupRedirect.origin, "https://www.quickola.co.uk");
+  assert.equal(signupRedirect.pathname, "/auth/callback");
   assert.equal(
-    getSignUpConfirmationRedirect(environment),
-    "https://www.quickola.co.uk/auth/callback?next=/business/continue",
+    signupRedirect.searchParams.get("next"),
+    "/business/sign-in?confirmed=1",
+  );
+  assert.equal(
+    signupRedirect.searchParams.get("purpose"),
+    "signup_confirmation",
   );
   assert.equal(
     getPasswordRecoveryRedirect(environment),
@@ -153,12 +160,51 @@ test("business email confirmation uses the secure PKCE callback flow", () => {
   );
   assert.match(
     signup,
-    /\$\{canonicalOrigin\}\/auth\/callback\?next=\/business\/continue/,
+    /getSignUpConfirmationRedirect\(\)/,
   );
   assert.doesNotMatch(signup, /quickola\.co\.uk\/auth\/callback/);
   assert.match(browserAuth, /flowType: "pkce"/);
   assert.match(callback, /exchangeCodeForSession\(code\)/);
+  assert.match(callback, /purpose !== "signup_confirmation"/);
+  assert.match(callback, /user\.email/);
+  assert.match(callback, /\/business\/sign-in/);
+  assert.match(callback, /purpose === "signup_confirmation" && !hadExistingAuthSession/);
+  assert.match(
+    readFileSync(new URL("../app/business/sign-in/SignInForm.tsx", import.meta.url), "utf8"),
+    /Email confirmed\. Sign in to continue\./,
+  );
   assert.match(signup, /router\.push\("\/business\/continue"\)/);
+});
+
+test("email confirmation sends users to sign in with trusted email prefill only", () => {
+  const callback = readFileSync(
+    new URL("../app/auth/callback/route.ts", import.meta.url),
+    "utf8",
+  );
+  const signIn = readFileSync(
+    new URL("../app/business/sign-in/SignInForm.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(callback, /successfulCallbackDestination/);
+  assert.match(callback, /signIn\.searchParams\.set\("email", user\.email\)/);
+  const successDestination = callback.slice(
+    callback.indexOf("function successfulCallbackDestination"),
+    callback.indexOf("export async function GET"),
+  );
+  assert.doesNotMatch(successDestination, /searchParams\.get\("email"\)/);
+  assert.match(signIn, /defaultValue=\{params\.get\("email"\) \|\| ""\}/);
+  assert.match(signIn, /name="password"[\s\S]*type="password"/);
+  assert.doesNotMatch(signIn, /name="password"[\s\S]*defaultValue/);
+  assert.match(signIn, /signInWithPassword/);
+});
+test("completed business accounts with no properties enter the first-property wizard", () => {
+  const portal = readFileSync(new URL("../app/auth/portal/page.tsx", import.meta.url), "utf8");
+  const continuation = readFileSync(new URL("../app/business/continue/page.tsx", import.meta.url), "utf8");
+  assert.match(portal, /from\("properties"\)/);
+  assert.match(portal, /properties\/new\?first=1/);
+  assert.match(portal, /redirect\("\/business\/continue"\)/);
+  assert.match(continuation, /count \|\| 0\) === 0/);
+  assert.match(continuation, /properties\/new\?first=1/);
 });
 test("UK property postcodes are validated and normalised", () => {
   assert.equal(normaliseUkPostcode(" sl11aa "), "SL1 1AA");

@@ -97,10 +97,10 @@ export default async function Page({
       {(query.invited || query.resent || query.manual) && manualInvite?.token && (
         <section className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-5">
           <h2 className="font-extrabold text-blue-950">
-            {query.manual ? "New invite link generated" : query.resent ? "Invitation ready" : "Invitation created"}
+            {query.manual ? "New invite link generated" : query.email === "failed" ? "Invitation created, but the email could not be sent" : query.resent ? "Invitation sent again" : "Invitation sent"}
           </h2>
           <p className="mt-1 text-sm text-blue-900">
-            Invited cleaner: <strong>{worker.email}</strong>
+            {query.email === "failed" ? "You can copy the invitation link and share it manually." : "An invitation was sent to"} <strong>{worker.email}</strong>.
           </p>
           {manualInvite?.expiresAt && <p className="mt-1 text-sm text-blue-900">Expires {new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short" }).format(new Date(manualInvite.expiresAt))}</p>}
           <p className="mt-2 text-sm text-blue-900">Copy this private link and share it manually with the invited cleaner.</p>

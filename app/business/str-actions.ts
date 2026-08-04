@@ -358,6 +358,7 @@ export async function transitionTurnover(form: FormData) {
   revalidatePath(`/cleaner/turnovers/${id}`);
   revalidatePath(`/business/turnovers/${id}`);
   revalidatePath("/business/dashboard");
+  redirect(`/cleaner/turnovers/${id}`);
 }
 
 export async function updateChecklistTask(form: FormData) {
@@ -676,13 +677,34 @@ export async function uploadEvidence(form: FormData) {
 
 export async function completeTestTurnover(form: FormData) {
   const turnoverId = text(form, "turnoverId");
-  if (process.env.NODE_ENV !== "development" || process.env.QUICKOLA_TEST_SHORTCUTS !== "1")
+  if (process.env.NODE_ENV !== "development")
     redirect(`/cleaner/turnovers/${turnoverId}?error=shortcut_unavailable`);
   const { supabase, user, workerId } = await requireCleanerUser();
   const { data: item } = await supabase.from("work_items").select("id,account_id,status,required_evidence_count,assignments!inner(worker_id,status)").eq("id", turnoverId).eq("assignments.worker_id", workerId).maybeSingle();
   const assignment = Array.isArray(item?.assignments) ? item.assignments[0] : item?.assignments;
-  if (!item || !assignment || !["pending", "accepted"].includes(assignment.status) || !["arrived", "in_progress", "action_required"].includes(item.status))
+  if (!item || !assignment || !["pending", "accepted"].includes(assignment.status) || !["awaiting_response", "accepted", "en_route", "arrived", "in_progress", "action_required", "evidence_submitted", "ready"].includes(item.status))
     redirect(`/cleaner/turnovers/${turnoverId}?error=shortcut_forbidden`);
+
+  if (item.status === "ready") {
+    revalidatePath(`/cleaner/turnovers/${turnoverId}`);
+    redirect(`/cleaner/turnovers/${turnoverId}`);
+  }
+
+  let currentStatus = item.status;
+  const transition = async (nextStatus: string, errorCode = "shortcut_failed") => {
+    const { error } = await supabase.rpc("transition_work_item", { target_work_item: turnoverId, next_status: nextStatus });
+    if (error) redirect(`/cleaner/turnovers/${turnoverId}?error=${errorCode}`);
+    currentStatus = nextStatus;
+  };
+  if (currentStatus === "awaiting_response") await transition("accepted");
+  if (currentStatus === "accepted") await transition("en_route");
+  if (currentStatus === "en_route") await transition("arrived");
+  if (currentStatus === "arrived" || currentStatus === "action_required") await transition("in_progress");
+  if (currentStatus === "evidence_submitted") {
+    await transition("action_required");
+    await transition("in_progress");
+  }
+
   const { data: tasks } = await supabase.from("checklist_tasks").select("id,label,mandatory,response_type,note_required,note,response,completed,photo_required").eq("work_item_id", turnoverId);
   const { data: evidence } = await supabase.from("evidence_submissions").select("checklist_task_id,evidence_type").eq("work_item_id", turnoverId);
   const marker = "[DEVELOPMENT TEST EVIDENCE]";
@@ -695,23 +717,37 @@ export async function completeTestTurnover(form: FormData) {
       patch.completed_by = user.id;
       patch.completed_at = new Date().toISOString();
     }
-    if (Object.keys(patch).length) await supabase.from("checklist_tasks").update(patch).eq("id", task.id).eq("work_item_id", turnoverId);
-    if (task.photo_required && !(evidence || []).some((entry) => entry.checklist_task_id === task.id))
-      await supabase.from("evidence_submissions").insert({ account_id: item.account_id, work_item_id: turnoverId, checklist_task_id: task.id, uploader_id: user.id, storage_path: `development-test://${crypto.randomUUID()}`, evidence_type: "completion_photo", caption: marker });
+    if (Object.keys(patch).length) {
+      const { error } = await supabase.from("checklist_tasks").update(patch).eq("id", task.id).eq("work_item_id", turnoverId);
+      if (error) redirect(`/cleaner/turnovers/${turnoverId}?error=shortcut_failed`);
+    }
+    if (task.photo_required && !(evidence || []).some((entry) => entry.checklist_task_id === task.id)) {
+      const { error } = await supabase.from("evidence_submissions").insert({ account_id: item.account_id, work_item_id: turnoverId, checklist_task_id: task.id, uploader_id: user.id, storage_path: `development-test://${crypto.randomUUID()}`, evidence_type: "completion_photo", caption: marker });
+      if (error) redirect(`/cleaner/turnovers/${turnoverId}?error=shortcut_failed`);
+    }
   }
   const completionCount = (evidence || []).filter((entry) => entry.evidence_type === "completion_photo" && !entry.checklist_task_id).length;
-  for (let index = completionCount; index < item.required_evidence_count; index++)
-    await supabase.from("evidence_submissions").insert({ account_id: item.account_id, work_item_id: turnoverId, uploader_id: user.id, storage_path: `development-test://${crypto.randomUUID()}`, evidence_type: "completion_photo", caption: marker });
-  const keyTask = (tasks || []).some((task) => task.mandatory && /key.*return/i.test(task.label || ""));
-  if (keyTask && !(evidence || []).some((entry) => entry.evidence_type === "key_return"))
-    await supabase.from("evidence_submissions").insert({ account_id: item.account_id, work_item_id: turnoverId, uploader_id: user.id, storage_path: `development-test://${crypto.randomUUID()}`, evidence_type: "key_return", caption: marker });
-  if (item.status !== "in_progress") {
-    const { error } = await supabase.rpc("transition_work_item", { target_work_item: turnoverId, next_status: "in_progress" });
+  for (let index = completionCount; index < item.required_evidence_count; index++) {
+    const { error } = await supabase.from("evidence_submissions").insert({ account_id: item.account_id, work_item_id: turnoverId, uploader_id: user.id, storage_path: `development-test://${crypto.randomUUID()}`, evidence_type: "completion_photo", caption: marker });
     if (error) redirect(`/cleaner/turnovers/${turnoverId}?error=shortcut_failed`);
   }
+  const keyTask = (tasks || []).some((task) => task.mandatory && /key.*return/i.test(task.label || ""));
+  if (keyTask && !(evidence || []).some((entry) => entry.evidence_type === "key_return")) {
+    const { error } = await supabase.from("evidence_submissions").insert({ account_id: item.account_id, work_item_id: turnoverId, uploader_id: user.id, storage_path: `development-test://${crypto.randomUUID()}`, evidence_type: "key_return", caption: marker });
+    if (error) redirect(`/cleaner/turnovers/${turnoverId}?error=shortcut_failed`);
+  }
+
+  const { data: existingIssue } = await supabase.from("operational_issues").select("id").eq("work_item_id", turnoverId).eq("account_id", item.account_id).eq("issue_type", "missing_item").eq("description", "No clean hand towel was available in the downstairs bathroom.").limit(1).maybeSingle();
+  if (!existingIssue) {
+    const { error } = await supabase.from("operational_issues").insert({ account_id: item.account_id, work_item_id: turnoverId, issue_type: "missing_item", severity: "medium", description: "No clean hand towel was available in the downstairs bathroom.", status: "open", blocking: false, created_by: user.id });
+    if (error) redirect(`/cleaner/turnovers/${turnoverId}?error=shortcut_failed`);
+  }
+
   const { error } = await supabase.rpc("transition_work_item", { target_work_item: turnoverId, next_status: "evidence_submitted" });
   if (error) redirect(`/cleaner/turnovers/${turnoverId}?error=action_required`);
   revalidatePath(`/cleaner/turnovers/${turnoverId}`);
+  revalidatePath(`/business/turnovers/${turnoverId}`);
+  revalidatePath("/business/dashboard");
   redirect(`/cleaner/turnovers/${turnoverId}`);
 }
 

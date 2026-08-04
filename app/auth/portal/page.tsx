@@ -15,8 +15,25 @@ export default async function Page({
 
   if (session.status === "unauthenticated")
     redirect(signInDestination(requestedNext || "/auth/portal"));
-  if (session.status === "resolved")
+  if (session.status === "resolved") {
+    if (session.portal === "business" && !requestedNext && session.business) {
+      const [{ count }, { data: account }] = await Promise.all([
+        session.supabase
+          .from("properties")
+          .select("id", { count: "exact", head: true })
+          .eq("account_id", session.business.account_id),
+        session.supabase
+          .from("business_accounts")
+          .select("onboarding_step,onboarding_completed_at")
+          .eq("id", session.business.account_id)
+          .maybeSingle(),
+      ]);
+      if (account?.onboarding_step !== "complete" && !account?.onboarding_completed_at)
+        redirect("/business/continue");
+      if ((count || 0) === 0) redirect("/business/properties/new?first=1");
+    }
     redirect(postLoginDestination(session, requestedNext));
+  }
 
   const pendingInvitation =
     session.status === "unassigned" &&

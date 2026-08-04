@@ -120,12 +120,7 @@ export default function CalendarSources({ propertyId, connections }: { propertyI
   const selectedProviderLabel = providerOptions.find((option) => option.value === selectedProvider)?.label;
   const connectFormVisible = connections.length === 0 || (showConnectForm && state.status !== "success");
   return (
-    <section className="mt-6 grid gap-4" aria-labelledby="reservation-sources-title">
-      <div>
-        <h2 id="reservation-sources-title" className="text-xl font-extrabold">Booking calendar</h2>
-        <p className="mt-1 text-sm text-[#657089]">Import bookings automatically from your reservation calendars.</p>
-      </div>
-      {connections.length > 0 && <h3 className="text-sm font-extrabold text-[#657089]">Connected calendars</h3>}
+    <section className="grid gap-4" aria-label="Calendar connections">
       {connections.map((connection) => (
         <article key={connection.id} className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
           {(() => {

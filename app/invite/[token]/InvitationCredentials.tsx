@@ -16,7 +16,7 @@ function invitationMessage(
   if (result.status === "email_mismatch")
     return `This invitation was sent to ${email}. Sign in with that email.`;
   if (result.status === "role_conflict")
-    return "This account already belongs to another Quickola portal and cannot accept this invitation.";
+    return "This account cannot accept this invitation. Check that you are signed in with the invited email.";
   if (result.status === "invitation_unavailable")
     return "This invitation is no longer available. Ask the business to resend it.";
   return "We couldn’t finish accepting the invitation. Please try again.";

@@ -43,10 +43,19 @@ test("email failure is isolated from business actions", () => {
 
 test("cleaner invitation email diagnostics do not include secrets or raw tokens", () => {
   assert.match(mailer, /response\.status/);
-  assert.match(mailer, /reason: error instanceof Error/);
+  assert.match(mailer, /failureCategory: error instanceof Error/);
   assert.doesNotMatch(mailer, /console\.error\([^\n]*apiKey/);
   assert.doesNotMatch(mailer, /console\.error\([^\n]*invitationToken/);
+  assert.match(mailer, /recipientDomain/);
   assert.match(actions, /const normaliseEmail =/);
+});
+
+test("failed invitation deliveries can be retried without reusing a successful send", () => {
+  assert.match(mailer, /previous\.delivery_status === "sent"/);
+  assert.match(mailer, /previous\.delivery_status === "pending"/);
+  assert.match(mailer, /delivery_status: "pending", error_category: null/);
+  assert.match(mailer, /resend_api_key_invalid/);
+  assert.match(mailer, /sender_domain_not_verified/);
 });
 
 test("links use the configured application origin", () => {

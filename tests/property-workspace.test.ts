@@ -28,7 +28,7 @@ test("overview includes next clean, default cleaner, calendar and recent clean a
 });
 
 test("calendar setup is host-facing and does not request connection names", () => {
-  assert.match(calendar, /Booking calendar/);
+  assert.match(calendar, /Calendar connections/);
   assert.match(calendar, /Calendar URL/);
   assert.doesNotMatch(calendar, /Connection name/);
 });
@@ -36,7 +36,7 @@ test("calendar setup is host-facing and does not request connection names", () =
 test("property bookings prioritise reservations and linked cleaning windows", () => {
   assert.match(page, /listReservations\("upcoming", id\)/);
   assert.match(page, /PropertyReservations propertyId=\{id\} reservations=\{propertyReservations\}/);
-  assert.match(page, /Connected calendars/);
+  assert.match(page, /<span>Calendars<\/span>/);
   assert.match(propertyReservations, /Calendar/);
   assert.match(propertyReservations, /List/);
   assert.match(propertyReservations, /Cleaning window/);
@@ -80,6 +80,16 @@ test("property overview keeps the single-source label and counts multiple calend
   assert.match(page, /calendarConnections\.length > 1/);
   assert.match(page, /\$\{calendarConnections\.length\} calendars connected/);
   assert.match(page, /: "Calendar connected"/);
+});
+
+test("property creation success reflects the real active calendar state", () => {
+  assert.match(page, /activeCalendarConnections = calendarConnections\.filter/);
+  assert.match(page, /Property created successfully/);
+  assert.match(page, /Property ready/);
+  assert.match(page, /Calendar connected successfully/);
+  assert.match(page, /View bookings/);
+  assert.match(page, /Connect booking calendar/);
+  assert.match(page, /created=1/);
 });
 
 test("checklist editing controls are edit-mode only and access omits empty values", () => {

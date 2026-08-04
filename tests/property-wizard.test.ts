@@ -62,6 +62,27 @@ test("unconfigured address lookup is not rendered, while configured support rema
   assert.doesNotMatch(wizard, /Address lookup is not configured/);
 });
 
+test("property creation entry is decided from the fresh account-scoped property count", () => {
+  assert.match(page, /select\("id", \{ count: "exact", head: true \}\)/);
+  assert.match(page, /\.eq\("account_id", accountId\)/);
+  assert.match(page, /first === "1" && \(propertyCount \?\? 0\) > 0/);
+  assert.match(page, /redirect\("\/business\/properties"\)/);
+  assert.match(page, /\(propertyCount \?\? 0\) === 0 \? \(/);
+  assert.match(page, /<PropertyWizard error=\{error\}/);
+  assert.match(page, /<PropertyForm onboarding=\{false\} \/>/);
+});
+
+test("the dedicated onboarding property entry is protected by the current property rows", () => {
+  const onboardingPage = readFileSync(
+    new URL("../app/business/onboarding/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(onboardingPage, /from\("properties"\)/);
+  assert.match(onboardingPage, /\.eq\("account_id", accountId\)/);
+  assert.match(onboardingPage, /q\.step === "property" && \(properties\?\.length \?\? 0\) > 0/);
+  assert.match(onboardingPage, /redirect\("\/business\/properties"\)/);
+});
+
 test("portal wizard has two steps and creates from the final calendar step", () => {
   assert.match(wizard, /"Property details"/);
   assert.match(wizard, /"Connect calendar"/);

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireBusinessUser } from "@/lib/business/auth";
 import PropertyForm from "../../components/PropertyForm";
 import PropertyWizard from "../../components/PropertyWizard";
@@ -6,10 +7,26 @@ import PropertyWizard from "../../components/PropertyWizard";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ duplicate?: string; error?: string; existing?: string }>;
+  searchParams: Promise<{
+    duplicate?: string;
+    error?: string;
+    existing?: string;
+    first?: string;
+  }>;
 }) {
-  const { duplicate, error } = await searchParams;
+  const { duplicate, error, first } = await searchParams;
   const { supabase, accountId } = await requireBusinessUser();
+  const {
+    count: propertyCount,
+    error: propertyCountError,
+  } = await supabase
+    .from("properties")
+    .select("id", { count: "exact", head: true })
+    .eq("account_id", accountId);
+  if (propertyCountError)
+    throw new Error(`property_count_query_failed:${propertyCountError.code}`);
+  if (first === "1" && (propertyCount ?? 0) > 0)
+    redirect("/business/properties");
   const { data: source } = duplicate
     ? await supabase
         .from("properties")
@@ -48,8 +65,10 @@ export default async function Page({
           onboarding={false}
           duplicatePropertyId={source.id}
         />
-      ) : (
+      ) : (propertyCount ?? 0) === 0 ? (
         <PropertyWizard error={error} addressLookupEnabled={Boolean(process.env.GETADDRESS_API_KEY)} />
+      ) : (
+        <PropertyForm onboarding={false} />
       )}
     </div>
   );

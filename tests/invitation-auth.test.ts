@@ -28,6 +28,9 @@ const businessSignIn = read("../app/business/sign-in/SignInForm.tsx");
 const roleExclusivity = read(
   "../supabase/migrations/202608010002_portal_role_exclusivity.sql",
 );
+const existingUserMigration = read(
+  "../supabase/migrations/202608040002_existing_user_cleaner_invitations.sql",
+);
 const invitationRpc = read(
   "../supabase/migrations/202607310001_sprint_2a_cleaner_security.sql",
 );
@@ -58,8 +61,19 @@ test("existing cleaner signs in, accepts once, and lands on cleaner today", () =
   assert.doesNotMatch(oldBusinessActions, /acceptWorkerInvitation/);
 });
 
+test("existing accounts use the invitation acceptance path instead of signup", () => {
+  assert.match(credentials, /signInWithPassword/);
+  assert.match(invitationActions, /email_exists|user_already_exists/);
+  assert.match(oldBusinessActions, /const normalisedEmail = normaliseEmail/);
+  assert.doesNotMatch(oldBusinessActions, /auth\.admin\.createUser/);
+  assert.match(existingUserMigration, /drop index if exists public\.workers_user_id_unique/);
+  assert.match(existingUserMigration, /workers_user_account_unique/);
+  assert.match(existingUserMigration, /quickola\.accepting_cleaner_invitation/);
+  assert.match(existingUserMigration, /business_user_cannot_become_cleaner/);
+});
+
 test("invitation callback remains safe while creation does not depend on verification", () => {
-  assert.match(callback, /NextResponse\.redirect\(new URL\(next, appOrigin\)\)/);
+  assert.match(callback, /purpose !== "signup_confirmation"[\s\S]*return new URL\(next, appOrigin\)/);
   assert.match(callback, /next\.startsWith\("\/invite\/"\)/);
   assert.equal(safeInternalNextPath("/invite/secure_token"), "/invite/secure_token");
   assert.doesNotMatch(invitationActions, /token_hash|verification_type/);
@@ -118,13 +132,10 @@ test("invitation acceptance links the worker to the authenticated user atomicall
   assert.match(invitationRpc, /set user_id=auth\.uid\(\)/);
   assert.match(invitationRpc, /accepted_at=now\(\)/);
   assert.match(invitationRpc, /lower\(worker\.email\).*signed_in_email/);
-  assert.match(roleExclusivity, /workers_user_id_unique/);
   assert.match(roleExclusivity, /reject_cross_portal_role_write/);
-  assert.match(roleExclusivity, /cleaner_user_cannot_become_business_member/);
-  assert.match(
-    roleExclusivity,
-    /business_user_cannot_accept_cleaner_invitation/,
-  );
+  assert.match(existingUserMigration, /set user_id = auth\.uid\(\)/);
+  assert.match(existingUserMigration, /worker\.user_id = auth\.uid\(\) then return worker\.id/);
+  assert.match(existingUserMigration, /worker_already_linked/);
 });
 
 test("cleaner invitation never provisions or enters operator onboarding", () => {
@@ -132,7 +143,7 @@ test("cleaner invitation never provisions or enters operator onboarding", () => 
   assert.doesNotMatch(invitationActions, /quickola_business/);
   assert.doesNotMatch(invitePage, /business\/sign-up|business\/onboarding/);
   assert.doesNotMatch(credentials, /business\/sign-up|Create account/);
-  assert.match(invitationActions, /if \(session\.portal\)/);
+  assert.doesNotMatch(invitationActions, /if \(session\.portal\)/);
   assert.match(roleExclusivity, /business_portal_role_required/);
 });
 

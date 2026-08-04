@@ -105,21 +105,7 @@ export default async function Page({
         )}
         {valid &&
           session?.user &&
-          emailMatches &&
-          session.portal !== null && (
-            <p
-              role="alert"
-              className="mt-7 rounded-lg bg-amber-50 p-4 font-bold"
-            >
-              This account already belongs to the {session.portal} portal and
-              cannot accept another portal role. Ask {invitation.businessName} to
-              invite a different email.
-            </p>
-          )}
-        {valid &&
-          session?.user &&
-          emailMatches &&
-          session.portal === null && (
+          emailMatches && (
             <InvitationAcceptButton
               email={invitation.invitedEmail}
               token={token}

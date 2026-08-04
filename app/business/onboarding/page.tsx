@@ -9,11 +9,14 @@ const field = "mt-1.5 min-h-12 w-full rounded-lg border border-[#cfd7e3] bg-whit
 export default async function Page({ searchParams }: { searchParams: Promise<{ step?: string; property?: string; error?: string }> }) {
   const { supabase, accountId } = await requireBusinessUser();
   const q = await searchParams;
-  const [{ data: properties }, { data: account, error: accountError }] = await Promise.all([
+  const [{ data: properties, error: propertiesError }, { data: account, error: accountError }] = await Promise.all([
     supabase.from("properties").select("id,nickname").eq("account_id", accountId).order("created_at"),
     supabase.from("business_accounts").select("onboarding_step,onboarding_completed_at").eq("id", accountId).maybeSingle(),
   ]);
+  if (propertiesError) throw new Error(`property_count_query_failed:${propertiesError.code}`);
   if (accountError) throw new Error(`onboarding_state_query_failed:${accountError.code}`);
+  if (q.step === "property" && (properties?.length ?? 0) > 0)
+    redirect("/business/properties");
   if (account?.onboarding_step === "complete" || account?.onboarding_completed_at) redirect("/business/dashboard");
 
   const step = q.step || (properties?.length ? "cleaner" : "property");

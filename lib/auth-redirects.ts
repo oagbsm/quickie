@@ -6,10 +6,13 @@ import {
 export function getSignUpConfirmationRedirect(
   environment?: AppOriginEnvironment,
 ) {
-  return buildAbsoluteAppUrl(
-    "/auth/callback?next=/business/continue",
-    environment,
+  const callback = new URL(buildAbsoluteAppUrl("/auth/callback", environment));
+  callback.searchParams.set(
+    "next",
+    "/business/sign-in?confirmed=1",
   );
+  callback.searchParams.set("purpose", "signup_confirmation");
+  return callback.toString();
 }
 
 export function getPasswordRecoveryRedirect(

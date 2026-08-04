@@ -31,8 +31,8 @@ export default async function Page({
           Add cleaner or contractor
         </h1>
         <p className="mt-2 text-[#657089]">
-          Quickola creates a private seven-day invitation link for you to share.
-          Automated email and SMS delivery are not enabled.
+          Quickola creates a private seven-day invitation link and sends it by email.
+          You can also copy the link as a fallback.
         </p>
       </div>
       {error && (

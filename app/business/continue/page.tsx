@@ -21,7 +21,9 @@ export default async function Page() {
       .maybeSingle(),
   ]);
   if (accountError) throw new Error(`onboarding_state_query_failed:${accountError.code}`);
-  if (account?.onboarding_step === "complete" || account?.onboarding_completed_at) redirect("/business/dashboard");
+  if (account?.onboarding_step === "complete" || account?.onboarding_completed_at) {
+    redirect((count || 0) === 0 ? "/business/properties/new?first=1" : "/business/dashboard");
+  }
   if ((count || 0) > 0 && terms) redirect("/business/dashboard");
   redirect("/business/onboarding");
 }

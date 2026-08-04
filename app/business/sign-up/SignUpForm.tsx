@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getAppOrigin } from "@/lib/app-url";
+import { getSignUpConfirmationRedirect } from "@/lib/auth-redirects";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export default function SignUpForm() {
@@ -14,9 +14,7 @@ export default function SignUpForm() {
   const [sent, setSent] = useState(false);
   const [existing, setExisting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const canonicalOrigin = getAppOrigin();
-  const confirmationRedirect =
-    `${canonicalOrigin}/auth/callback?next=/business/continue`;
+  const confirmationRedirect = getSignUpConfirmationRedirect();
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

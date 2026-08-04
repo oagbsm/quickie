@@ -11,8 +11,8 @@ export const PORTAL_HOME: Record<Portal, string> = {
 };
 
 /**
- * A user may only have one canonical product portal. Business wins when legacy
- * data contains both roles; invitation acceptance prevents new overlaps.
+ * Business remains the default destination when both roles exist, while the
+ * requested portal is allowed when the user has explicitly earned that role.
  */
 export function resolveCanonicalPortal(
   evidence: PortalRoleEvidence,
@@ -64,7 +64,11 @@ export function decidePortalNavigation({
 
   const portal = resolveCanonicalPortal(evidence);
   if (!portal) return { kind: "unassigned", destination: "/auth/portal" };
-  if (portalForPath(requestedPath) === portal) return { kind: "allow", portal };
+  const requestedPortal = portalForPath(requestedPath);
+  if (requestedPortal === "cleaner" && evidence.hasAcceptedCleanerMembership)
+    return { kind: "allow", portal: "cleaner" };
+  if (requestedPortal === "business" && evidence.hasBusinessMembership)
+    return { kind: "allow", portal: "business" };
   return { kind: "redirect", destination: PORTAL_HOME[portal], portal };
 }
 
@@ -74,7 +78,10 @@ export function postLoginDestination(
 ) {
   const portal = resolveCanonicalPortal(evidence);
   if (!portal) return "/auth/portal";
-  return requestedNext && portalForPath(requestedNext) === portal
-    ? requestedNext
-    : PORTAL_HOME[portal];
+  const requestedPortal = requestedNext ? portalForPath(requestedNext) : null;
+  if (requestedNext && requestedPortal === "cleaner" && evidence.hasAcceptedCleanerMembership)
+    return requestedNext;
+  if (requestedNext && requestedPortal === "business" && evidence.hasBusinessMembership)
+    return requestedNext;
+  return PORTAL_HOME[portal];
 }
