@@ -31,6 +31,7 @@ async function storeManualInviteLink(workerId: string, token: string, expiresAt:
 async function createWorkerAndInvite({
   supabase,
   accountId,
+  createdBy,
   displayName,
   email,
   mobile,
@@ -38,21 +39,61 @@ async function createWorkerAndInvite({
 }: {
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
   accountId: string;
+  createdBy: string;
   displayName: string;
   email: string;
   mobile: string | null;
   companyName: string | null;
 }) {
   const normalisedEmail = normaliseEmail(email);
+  const accountPromise = supabase
+    .from("business_accounts")
+    .select("name")
+    .eq("id", accountId)
+    .maybeSingle();
   const { data: existingWorker, error: existingWorkerError } = await supabase
     .from("workers")
-    .select("id,invitation_status")
+    .select("id,user_id,invitation_status")
     .eq("account_id", accountId)
     .ilike("email", normalisedEmail)
     .neq("status", "inactive")
     .maybeSingle();
   if (existingWorkerError) return { error: "lookup" };
-  if (existingWorker) return { workerId: existingWorker.id, existing: true, deliverySent: existingWorker.invitation_status === "accepted" };
+  if (existingWorker) {
+    const { data: activeInvitation } = await supabase
+      .from("worker_invitations")
+      .select("id")
+      .eq("worker_id", existingWorker.id)
+      .eq("account_id", accountId)
+      .is("accepted_at", null)
+      .is("revoked_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    if (activeInvitation || (existingWorker.invitation_status === "accepted" && existingWorker.user_id))
+      return { workerId: existingWorker.id, existing: true, deliverySent: existingWorker.invitation_status === "accepted" };
+
+    const token = crypto.randomBytes(32).toString("base64url");
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const expiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString();
+    const { error: invitationError } = await supabase
+      .from("worker_invitations")
+      .insert({
+        account_id: accountId,
+        worker_id: existingWorker.id,
+        token_hash: tokenHash,
+        expires_at: expiresAt,
+        created_by: createdBy,
+      });
+    if (invitationError) return { error: invitationError.message };
+    await supabase
+      .from("workers")
+      .update({ invitation_status: "pending", status: "active", updated_at: new Date().toISOString() })
+      .eq("id", existingWorker.id)
+      .eq("account_id", accountId);
+    const { data: account } = await accountPromise;
+    const delivery = await sendCleanerInvitationEmail({ accountId, workerId: existingWorker.id, email: normalisedEmail, workspaceName: account?.name || "Your cleaning team", invitationToken: token, expiresAt });
+    return { workerId: existingWorker.id, token, expiresAt, deliverySent: delivery.sent };
+  }
   const token = crypto.randomBytes(32).toString("base64url");
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   const expiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString();
@@ -71,13 +112,13 @@ async function createWorkerAndInvite({
     },
   );
   if (error || !workerId) return { error: error?.message || "save" };
-  const { data: account } = await supabase.from("business_accounts").select("name").eq("id", accountId).maybeSingle();
+  const { data: account } = await accountPromise;
   const delivery = await sendCleanerInvitationEmail({ accountId, workerId, email, workspaceName: account?.name || "Your cleaning team", invitationToken: token, expiresAt });
   return { workerId, token, expiresAt, deliverySent: delivery.sent };
 }
 
 export async function addWorker(form: FormData) {
-  const { supabase, accountId, role } = await requireBusinessUser();
+  const { supabase, accountId, role, user } = await requireBusinessUser();
   if (role !== "owner") redirect("/business/cleaners?error=forbidden");
   const { data: onboardingAccount, error: onboardingStateError } = await supabase
     .from("business_accounts")
@@ -93,7 +134,7 @@ export async function addWorker(form: FormData) {
   if (!displayName || !email || !/^\S+@\S+\.\S+$/.test(email)) {
     redirect("/business/cleaners/new?error=required");
   }
-  const created = await createWorkerAndInvite({ supabase, accountId, displayName, email, mobile, companyName: optional(form, "companyName") });
+  const created = await createWorkerAndInvite({ supabase, accountId, createdBy: user.id, displayName, email, mobile, companyName: optional(form, "companyName") });
   if (!created.workerId) {
     const code = created.error?.includes("duplicate_worker_contact")
       ? "duplicate"
@@ -142,7 +183,7 @@ export async function addWorker(form: FormData) {
 }
 
 export async function addWorkerForTurnover(form: FormData) {
-  const { supabase, accountId, role } = await requireBusinessUser();
+  const { supabase, accountId, role, user } = await requireBusinessUser();
   const turnoverId = text(form, "turnoverId");
   if (role !== "owner" || !turnoverId) return;
   const { data: turnover } = await supabase.from("work_items").select("id").eq("id", turnoverId).eq("account_id", accountId).maybeSingle();
@@ -150,7 +191,7 @@ export async function addWorkerForTurnover(form: FormData) {
   const displayName = text(form, "displayName");
   const email = optional(form, "email") ? normaliseEmail(optional(form, "email")!) : null;
   if (!displayName || !email || !/^\S+@\S+\.\S+$/.test(email)) redirect(`/business/turnovers/${turnoverId}?error=cleaner_required`);
-  const created = await createWorkerAndInvite({ supabase, accountId, displayName, email, mobile: optional(form, "mobile"), companyName: optional(form, "companyName") });
+  const created = await createWorkerAndInvite({ supabase, accountId, createdBy: user.id, displayName, email, mobile: optional(form, "mobile"), companyName: optional(form, "companyName") });
   const workerId = created.workerId;
   if (!workerId) redirect(`/business/turnovers/${turnoverId}?error=cleaner_${created.error?.includes("duplicate_worker_contact") ? "duplicate" : "save"}`);
   if (created.existing) redirect(`/business/turnovers/${turnoverId}?error=cleaner_exists&workerId=${encodeURIComponent(workerId)}`);
@@ -749,6 +790,91 @@ export async function completeTestTurnover(form: FormData) {
   revalidatePath(`/business/turnovers/${turnoverId}`);
   revalidatePath("/business/dashboard");
   redirect(`/cleaner/turnovers/${turnoverId}`);
+}
+
+export async function fillTestCleanData(form: FormData) {
+  const turnoverId = text(form, "turnoverId");
+  if (process.env.NODE_ENV !== "development")
+    redirect(`/business/turnovers/${turnoverId}?error=test_data_unavailable`);
+  const { supabase, accountId } = await requireBusinessUser();
+  const { data: item } = await supabase
+    .from("work_items")
+    .select("id,property_id")
+    .eq("id", turnoverId)
+    .eq("account_id", accountId)
+    .maybeSingle();
+  if (!item?.property_id)
+    redirect(`/business/turnovers/${turnoverId}?error=test_data_unavailable`);
+
+  const { data: property } = await supabase
+    .from("properties")
+    .select("id")
+    .eq("id", item.property_id)
+    .eq("account_id", accountId)
+    .maybeSingle();
+  if (!property)
+    redirect(`/business/turnovers/${turnoverId}?error=test_data_unavailable`);
+
+  const { error: propertyError } = await supabase
+    .from("properties")
+    .update({
+      access_notes: "Use the lockbox beside the front door.",
+      key_instructions:
+        "Code 2468. Return the key to the lockbox after locking the property.",
+      key_return_instructions:
+        "Check the key is secured in the lockbox before leaving.",
+      parking_notes: "Use visitor bay 4 if available.",
+      floor_lift_notes: "The property is on the second floor; use the lift.",
+      linen_requirements: "Fresh linen is in the hallway cupboard.",
+      towel_requirements: "Leave one bath towel and one hand towel per guest.",
+      bed_configuration: "Make the main bed with fresh linen and two pillows.",
+      consumables_instructions:
+        "Restock toilet roll, hand soap, and kitchen basics from the utility cupboard.",
+      waste_instructions:
+        "Empty kitchen and bathroom bins into the external black bin.",
+      cleaning_notes:
+        "Check the fridge, reset cushions, and confirm all windows are closed before leaving.",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", property.id)
+    .eq("account_id", accountId);
+  if (propertyError)
+    redirect(`/business/turnovers/${turnoverId}?error=test_data_failed`);
+
+  const checklist = [
+    ["Access", "Check access and record the initial condition"],
+    ["Bedrooms and linen", "Make every required bed to the property standard"],
+    ["Bedrooms and linen", "Place the required towels and linen"],
+    ["Final checks", "Confirm windows are closed and keys are returned"],
+  ] as const;
+  const { data: existingTasks } = await supabase
+    .from("checklist_tasks")
+    .select("label")
+    .eq("work_item_id", turnoverId)
+    .eq("account_id", accountId);
+  const existingLabels = new Set((existingTasks || []).map((task) => task.label));
+  let position = existingTasks?.length || 0;
+  for (const [sectionTitle, label] of checklist) {
+    if (existingLabels.has(label)) continue;
+    const { error } = await supabase.from("checklist_tasks").insert({
+      account_id: accountId,
+      work_item_id: turnoverId,
+      section_title: sectionTitle,
+      label,
+      position: position++,
+      response_type: "checkbox",
+      mandatory: false,
+      photo_required: false,
+      note_required: false,
+      blocking: false,
+    });
+    if (error)
+      redirect(`/business/turnovers/${turnoverId}?error=test_data_failed`);
+  }
+
+  revalidatePath(`/business/turnovers/${turnoverId}`);
+  revalidatePath(`/cleaner/turnovers/${turnoverId}`);
+  redirect(`/business/turnovers/${turnoverId}?testData=1`);
 }
 
 async function insertPropertyChecklistTask(supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>, accountId: string, propertyId: string, label: string, sectionTitle: string, options = { responseType: "checkbox", mandatory: false, photoRequired: false, noteRequired: false, blocking: false }) {

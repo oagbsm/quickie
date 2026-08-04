@@ -9,17 +9,17 @@ const field = "mt-1.5 min-h-12 w-full rounded-lg border border-[#cfd7e3] bg-whit
 export default async function Page({ searchParams }: { searchParams: Promise<{ step?: string; property?: string; error?: string }> }) {
   const { supabase, accountId } = await requireBusinessUser();
   const q = await searchParams;
-  const [{ data: properties, error: propertiesError }, { data: account, error: accountError }] = await Promise.all([
-    supabase.from("properties").select("id,nickname").eq("account_id", accountId).order("created_at"),
+  const [{ data: properties, count: propertyCount, error: propertiesError }, { data: account, error: accountError }] = await Promise.all([
+    supabase.from("properties").select("id,nickname", { count: "exact" }).eq("account_id", accountId).order("created_at").limit(1),
     supabase.from("business_accounts").select("onboarding_step,onboarding_completed_at").eq("id", accountId).maybeSingle(),
   ]);
   if (propertiesError) throw new Error(`property_count_query_failed:${propertiesError.code}`);
   if (accountError) throw new Error(`onboarding_state_query_failed:${accountError.code}`);
-  if (q.step === "property" && (properties?.length ?? 0) > 0)
+  if (q.step === "property" && (propertyCount ?? 0) > 0)
     redirect("/business/properties");
   if (account?.onboarding_step === "complete" || account?.onboarding_completed_at) redirect("/business/dashboard");
 
-  const step = q.step || (properties?.length ? "cleaner" : "property");
+  const step = q.step || ((propertyCount ?? 0) > 0 ? "cleaner" : "property");
   const propertyId = q.property || properties?.[0]?.id;
   if (step === "cleaner" && !propertyId) redirect("/business/onboarding?step=property");
   const number = step === "property" ? 1 : 2;

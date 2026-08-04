@@ -375,8 +375,8 @@ test("database reconciliation reuses Sprint 1A turnover lifecycle and cautious m
 });
 
 test("property source component has accessible actions and never renders a raw URL", () => {
-  assert.match(sourceComponent, /Booking calendar/);
-  assert.match(sourceComponent, /Connected calendars/);
+  assert.match(sourceComponent, /Calendar URL/);
+  assert.match(sourceComponent, /Calendar connections/);
   assert.match(sourceComponent, /Connect calendar/);
   assert.match(sourceComponent, /Automatic sync/);
   assert.doesNotMatch(sourceComponent, /Pending scheduler/);

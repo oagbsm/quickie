@@ -62,14 +62,21 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const base = "id,property_public_name,property_general_area,turnover_date,access_start_at,window_end_at,status,ready_at,actual_completed_at,required_evidence_count,assignments!inner(status,worker_id),checklist_tasks(id,label,section_title,mandatory,completed,response_type,response,photo_required,note_required,note),evidence_submissions(id,evidence_type,checklist_task_id),operational_issues(id,status,blocking)";
   const { data: summary } = await supabase
     .from("work_items")
-    .select(`${base},properties(nickname,address_line_1,city,postcode)`)
+    .select(`${base},properties(nickname)`)
     .eq("id", id)
     .eq("assignments.worker_id", workerId)
     .maybeSingle();
   if (!summary) notFound();
 
   const acceptedStatuses = ["accepted", "en_route", "arrived", "in_progress", "action_required", "evidence_submitted", "ready"];
-  const accepted = acceptedStatuses.includes(summary.status);
+  const summaryAssignments = (summary as unknown as {
+    assignments?: Array<{ status?: string }> | { status?: string } | null;
+  }).assignments;
+  const assignmentStatus = Array.isArray(summaryAssignments)
+    ? summaryAssignments[0]?.status
+    : summaryAssignments?.status;
+  const accepted =
+    acceptedStatuses.includes(summary.status) || assignmentStatus === "accepted";
   let item = summary as unknown as DetailItem;
   if (accepted) {
     const { data: full } = await supabase

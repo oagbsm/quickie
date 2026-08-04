@@ -58,6 +58,13 @@ test("failed invitation deliveries can be retried without reusing a successful s
   assert.match(mailer, /sender_domain_not_verified/);
 });
 
+test("reset auth users can receive a new invitation generation without weakening active deduplication", () => {
+  assert.match(actions, /select\("id,user_id,invitation_status"\)/);
+  assert.match(actions, /activeInvitation/);
+  assert.match(actions, /existingWorker\.invitation_status === "accepted" && existingWorker\.user_id/);
+  assert.match(mailer, /cleaner_invitation:\$\{workerId\}:\$\{tokenHash\}/);
+});
+
 test("links use the configured application origin", () => {
   assert.match(mailer, /const site = getAppOrigin\(\)/);
   assert.match(mailer, /site}\/cleaner\/turnovers/);

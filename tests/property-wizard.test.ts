@@ -79,7 +79,8 @@ test("the dedicated onboarding property entry is protected by the current proper
   );
   assert.match(onboardingPage, /from\("properties"\)/);
   assert.match(onboardingPage, /\.eq\("account_id", accountId\)/);
-  assert.match(onboardingPage, /q\.step === "property" && \(properties\?\.length \?\? 0\) > 0/);
+  assert.match(onboardingPage, /select\("id,nickname", \{ count: "exact" \}\)/);
+  assert.match(onboardingPage, /q\.step === "property" && \(propertyCount \?\? 0\) > 0/);
   assert.match(onboardingPage, /redirect\("\/business\/properties"\)/);
 });
 

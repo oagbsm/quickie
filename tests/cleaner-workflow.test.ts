@@ -95,11 +95,12 @@ test("readiness integrity validates required results, task evidence and stored p
 });
 
 test("pre-acceptance query excludes sensitive access fields and accepted view restores them", () => {
-  const firstQuery = page.indexOf('select(`${base},properties(nickname,address_line_1,city,postcode)`)');
+  const firstQuery = page.indexOf('select(`${base},properties(nickname)`)');
   const fullQuery = page.indexOf('properties(nickname,address_line_1,city,postcode,access_notes,key_instructions');
   assert.ok(firstQuery >= 0);
   assert.ok(fullQuery > firstQuery);
   assert.match(page, /const acceptedStatuses =/);
+  assert.match(page, /assignmentStatus === "accepted"/);
   assert.match(page, /if \(accepted\)/);
   assert.match(page, /<h2 className=\"text-lg font-extrabold\">Access<\/h2>/);
   assert.doesNotMatch(page, /Today \/ Upcoming \/ Completed \/ Profile/);
@@ -134,6 +135,25 @@ test("development completion shortcut is guarded, assigned-cleaner scoped, and i
   assert.match(helper, /No clean hand towel was available/);
   assert.match(helper, /if \(!existingIssue\)/);
   assert.doesNotMatch(helper, /sendOperatorTurnoverEmail|sendCleanerInvitationEmail/);
+});
+
+test("business clean test-data fill is development-only, owned, and checklist-idempotent", () => {
+  assert.match(actions, /export async function fillTestCleanData/);
+  const helper = actions.slice(
+    actions.indexOf("export async function fillTestCleanData"),
+    actions.indexOf("async function insertPropertyChecklistTask"),
+  );
+  assert.match(helper, /process\.env\.NODE_ENV !== "development"/);
+  assert.match(helper, /requireBusinessUser\(\)/);
+  assert.match(helper, /\.eq\("account_id", accountId\)/);
+  assert.match(helper, /access_notes/);
+  assert.match(helper, /linen_requirements/);
+  assert.match(helper, /consumables_instructions/);
+  assert.match(helper, /existingLabels/);
+  assert.match(
+    readFileSync(new URL("../app/business/turnovers/[id]/page.tsx", import.meta.url), "utf8"),
+    /process\.env\.NODE_ENV === "development"[\s\S]*Fill test clean data/,
+  );
 });
 
 test("development shortcut keeps normal completion validation intact", () => {
