@@ -30,6 +30,8 @@ import {
 } from "../lib/business/portal-display.ts";
 import {
   buildAbsoluteAppUrl,
+  getTransactionalEmailOrigin,
+  isLocalDevelopmentOrigin,
   resolveAppOrigin,
   safeInternalNextPath,
 } from "../lib/app-url.ts";
@@ -58,25 +60,25 @@ test("application origins are canonical and never local in production", () => {
       siteUrl: "https://quickola.co.uk/",
       nodeEnv: "production",
     }),
-    "https://www.quickola.co.uk",
+    "https://quickola.co.uk",
   );
   assert.equal(
     resolveAppOrigin({
       siteUrl: "http://localhost:3000",
       nodeEnv: "production",
     }),
-    "https://www.quickola.co.uk",
+    "https://quickola.co.uk",
   );
   assert.equal(
     resolveAppOrigin({
       siteUrl: "https://quickola.com",
       nodeEnv: "production",
     }),
-    "https://www.quickola.co.uk",
+    "https://quickola.co.uk",
   );
   assert.equal(
     resolveAppOrigin({ siteUrl: "not a URL", nodeEnv: "production" }),
-    "https://www.quickola.co.uk",
+    "https://quickola.co.uk",
   );
   assert.equal(
     resolveAppOrigin({ nodeEnv: "development" }),
@@ -101,7 +103,7 @@ test("authentication URLs use production origin and reject external next paths",
       "/auth/callback?next=/business/update-password",
       environment,
     ),
-    "https://www.quickola.co.uk/auth/callback?next=/business/update-password",
+    "https://quickola.co.uk/auth/callback?next=/business/update-password",
   );
   assert.equal(
     safeInternalNextPath("/business/onboarding?step=setup"),
@@ -122,7 +124,7 @@ test("sign-up and password recovery use production callback URLs", () => {
     nodeEnv: "production",
   };
   const signupRedirect = new URL(getSignUpConfirmationRedirect(environment));
-  assert.equal(signupRedirect.origin, "https://www.quickola.co.uk");
+  assert.equal(signupRedirect.origin, "https://quickola.co.uk");
   assert.equal(signupRedirect.pathname, "/auth/callback");
   assert.equal(
     signupRedirect.searchParams.get("purpose"),
@@ -130,11 +132,11 @@ test("sign-up and password recovery use production callback URLs", () => {
   );
   assert.equal(
     getSignUpConfirmationRedirect(environment),
-    "https://www.quickola.co.uk/auth/callback?purpose=signup-confirmation",
+    "https://quickola.co.uk/auth/callback?purpose=signup-confirmation",
   );
   assert.equal(
     getPasswordRecoveryRedirect(environment),
-    "https://www.quickola.co.uk/auth/callback?next=/business/update-password",
+    "https://quickola.co.uk/auth/callback?next=/business/update-password",
   );
   assert.doesNotMatch(
     `${getSignUpConfirmationRedirect(environment)} ${getPasswordRecoveryRedirect(environment)}`,
@@ -144,6 +146,24 @@ test("sign-up and password recovery use production callback URLs", () => {
     getSignUpConfirmationRedirect({ nodeEnv: "development" }),
     "http://localhost:3000/auth/callback?purpose=signup-confirmation",
   );
+});
+
+test("transactional email origins preserve invite tokens and block local production links", () => {
+  const token = "token/with?reserved+chars";
+  const inviteUrl = buildAbsoluteAppUrl(`/invite/${encodeURIComponent(token)}?source=email`, {
+    appUrl: "https://quickola.co.uk",
+    nodeEnv: "production",
+  });
+  assert.equal(inviteUrl, "https://quickola.co.uk/invite/token%2Fwith%3Freserved%2Bchars?source=email");
+  assert.equal(
+    getTransactionalEmailOrigin({ appUrl: "http://localhost:3000", nodeEnv: "development" }),
+    "http://localhost:3000",
+  );
+  assert.equal(
+    getTransactionalEmailOrigin({ appUrl: "http://localhost:3000", nodeEnv: "production" }),
+    null,
+  );
+  assert.equal(isLocalDevelopmentOrigin("http://127.0.0.1:3000"), true);
 });
 test("business email confirmation uses the secure PKCE callback flow", () => {
   const signup = readFileSync(

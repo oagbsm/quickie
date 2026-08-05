@@ -118,7 +118,7 @@ test("reset auth users can receive a new invitation generation without weakening
 });
 
 test("links use the configured application origin", () => {
-  assert.match(mailer, /const site = getAppOrigin\(\)/);
+  assert.match(mailer, /const site = transactionalEmailOrigin\(\)/);
   assert.match(mailer, /site}\/cleaner\/turnovers/);
   assert.match(mailer, /site}\/business\/turnovers/);
 });

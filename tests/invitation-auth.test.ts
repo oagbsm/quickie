@@ -169,6 +169,9 @@ test("invitation email is cleaner-focused and production URLs cannot be localhos
     }),
     PRODUCTION_ORIGIN,
   );
+  assert.match(notifications, /transactional_email_invalid_app_origin/);
+  assert.match(notifications, /reason: "configured_origin_is_local"/);
+  assert.match(notifications, /reason: "invalid_app_origin"/);
 });
 
 test("the canonical invitation route is /invite and legacy team links redirect", () => {

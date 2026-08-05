@@ -1,7 +1,7 @@
 import "server-only";
 import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { buildAbsoluteAppUrl, getAppOrigin } from "@/lib/app-url";
+import { buildAbsoluteAppUrl, getTransactionalEmailOrigin } from "@/lib/app-url";
 import {
   getResendFromEmail,
   getResendReplyToEmail,
@@ -200,8 +200,24 @@ async function ownerEmail(accountId: string) {
   return user?.email || null;
 }
 
+function transactionalEmailOrigin() {
+  const origin = getTransactionalEmailOrigin({
+    appUrl: process.env.APP_URL,
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+    nodeEnv: process.env.NODE_ENV,
+  });
+  if (!origin && process.env.NODE_ENV === "production") {
+    console.error("transactional_email_invalid_app_origin", {
+      environment: "production",
+      reason: "configured_origin_is_local",
+    });
+  }
+  return origin;
+}
+
 export async function sendCleanerAssignmentEmail({ accountId, turnoverId, workerId, assignmentId, cleanerEmail, cleanerName, propertyName, turnoverDate, checkoutAt, accessStartAt, deadlineAt, idempotencyKey }: { accountId: string; turnoverId: string; workerId: string; assignmentId?: string; cleanerEmail: string; cleanerName: string; propertyName: string; turnoverDate: string; checkoutAt: string; accessStartAt: string; deadlineAt: string; idempotencyKey?: string }) {
-  const site = getAppOrigin();
+  const site = transactionalEmailOrigin();
+  if (!site) return { sent: false as const, status: "failed" as const, reason: "invalid_app_origin" as const };
   return sendTransactionalEmail({ accountId, eventType: "turnover_assigned", entityId: turnoverId, recipient: cleanerEmail, idempotencyKey: idempotencyKey || `turnover_assigned:${turnoverId}:${assignmentId || workerId}`, subject: `New turnover assignment: ${propertyName}`, html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>New turnover assignment</h1><p>${escapeHtml(cleanerName)}, you have a new assignment for <strong>${escapeHtml(propertyName)}</strong>.</p><p><strong>Date:</strong> ${escapeHtml(formatLondon(turnoverDate))}<br><strong>Checkout:</strong> ${escapeHtml(formatLondon(checkoutAt))}<br><strong>Cleaner access:</strong> ${escapeHtml(formatLondon(accessStartAt))}<br><strong>Complete by:</strong> ${escapeHtml(formatLondon(deadlineAt))}</p><p><a href="${site}/cleaner/turnovers/${encodeURIComponent(turnoverId)}">Review and accept or decline</a></p></div>` });
 }
 
@@ -209,7 +225,8 @@ export async function sendOperatorTurnoverEmail({ accountId, turnoverId, eventTy
   let recipient: string | null = null;
   try { recipient = await ownerEmail(accountId); } catch { return { sent: false as const, reason: "notification_config" as const }; }
   if (!recipient) return { sent: false as const, reason: "no_recipient" as const };
-  const site = getAppOrigin();
+  const site = transactionalEmailOrigin();
+  if (!site) return { sent: false as const, status: "failed" as const, reason: "invalid_app_origin" as const };
   const proof = completedCount === undefined ? "" : `<p><strong>Completed checklist tasks:</strong> ${completedCount}<br><strong>Evidence files:</strong> ${evidenceCount || 0}</p>`;
   return sendTransactionalEmail({ accountId, eventType, entityId: turnoverId, recipient, idempotencyKey, subject, html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>${escapeHtml(subject)}</h1><p><strong>Property:</strong> ${escapeHtml(propertyName)}<br><strong>Cleaner:</strong> ${escapeHtml(cleanerName)}<br><strong>Turnover date:</strong> ${escapeHtml(formatLondon(turnoverDate))}</p><p>${escapeHtml(summary)}</p>${proof}<p><a href="${site}/business/turnovers/${encodeURIComponent(turnoverId)}">Open turnover</a></p></div>` });
 }
@@ -233,7 +250,9 @@ export async function sendCleanerInvitationEmail({
   invitationToken: string;
   expiresAt: string;
 }): Promise<TransactionalEmailResult> {
-  const acceptUrl = buildAbsoluteAppUrl(`/invite/${encodeURIComponent(invitationToken)}`);
+  const site = transactionalEmailOrigin();
+  if (!site) return { sent: false, status: "failed", reason: "invalid_app_origin" };
+  const acceptUrl = buildAbsoluteAppUrl(`/invite/${encodeURIComponent(invitationToken)}`, { appUrl: site, nodeEnv: process.env.NODE_ENV });
   const tokenHash = cryptoHash(invitationToken);
   return sendTransactionalEmail({ accountId, eventType: "cleaner_invitation", entityId: workerId, recipient: email, idempotencyKey: `cleaner_invitation:${workerId}:${tokenHash}`, subject: `${workspaceName} invited you to Quickola`, html: `<div style="font-family:Arial,sans-serif;color:#071638"><p style="font-size:18px;font-weight:800">Quickola</p><h1>${escapeHtml(workspaceName)} invited you</h1><p>You’ll receive cleaning jobs from ${escapeHtml(workspaceName)} through Quickola.</p><p><a style="display:inline-block;background:#071f49;color:white;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold" href="${acceptUrl}">Accept invitation</a></p><p style="color:#657089;font-size:14px">Sent to ${escapeHtml(email)}. This invitation expires ${escapeHtml(new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/London" }).format(new Date(expiresAt)))}.</p></div>` });
 }
@@ -254,10 +273,11 @@ export async function sendBookingReceivedEmail({
   service: string;
   scheduledStart: string;
 }) {
+  const site = transactionalEmailOrigin();
+  if (!site) return { sent: false, reason: "invalid_app_origin" };
   const apiKey = process.env.RESEND_API_KEY,
     from = getResendFromEmail(),
-    replyTo = getResendReplyToEmail(),
-    site = getAppOrigin();
+    replyTo = getResendReplyToEmail();
   const db = admin(),
     { data: member } = await db
       .from("business_members")
@@ -350,10 +370,11 @@ export async function sendPropertyReadyEmail({
   completedAt: string;
   service: string;
 }) {
+  const site = transactionalEmailOrigin();
+  if (!site) return { sent: false, reason: "invalid_app_origin" };
   const apiKey = process.env.RESEND_API_KEY,
     from = getResendFromEmail(),
-    replyTo = getResendReplyToEmail(),
-    site = getAppOrigin();
+    replyTo = getResendReplyToEmail();
   if (!apiKey || !from) return { sent: false, reason: "not_configured" };
   const db = admin(),
     { data: member } = await db

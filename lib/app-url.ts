@@ -1,12 +1,23 @@
 export type AppOriginEnvironment = {
+  appUrl?: string;
   siteUrl?: string;
   vercelUrl?: string;
   nodeEnv?: string;
   browserOrigin?: string;
 };
 
-export const PRODUCTION_ORIGIN = "https://www.quickola.co.uk";
+export const PRODUCTION_ORIGIN = "https://quickola.co.uk";
 const LOCAL_ORIGIN = "http://localhost:3000";
+
+export function isLocalDevelopmentOrigin(value: string | undefined) {
+  if (!value) return false;
+  try {
+    const hostname = new URL(value.includes("://") ? value : `https://${value}`).hostname.toLowerCase();
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "0.0.0.0" || hostname.endsWith(".local");
+  } catch {
+    return false;
+  }
+}
 
 function validOrigin(value: string | undefined, production: boolean) {
   if (!value) return null;
@@ -34,6 +45,7 @@ export function resolveAppOrigin(environment: AppOriginEnvironment = {}) {
     : null;
   return (
     browserOrigin ||
+    validOrigin(environment.appUrl, production) ||
     validOrigin(environment.siteUrl, production) ||
     (!production ? validOrigin(environment.vercelUrl, false) : null) ||
     (!production
@@ -44,12 +56,21 @@ export function resolveAppOrigin(environment: AppOriginEnvironment = {}) {
 
 export function getAppOrigin() {
   return resolveAppOrigin({
+    appUrl: process.env.APP_URL,
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
     vercelUrl: process.env.VERCEL_PROJECT_PRODUCTION_URL,
     nodeEnv: process.env.NODE_ENV,
     browserOrigin:
       typeof window === "undefined" ? undefined : window.location.origin,
   });
+}
+
+export function getTransactionalEmailOrigin(environment: AppOriginEnvironment = {}) {
+  const production = environment.nodeEnv === "production";
+  const configuredOrigin = environment.appUrl || environment.siteUrl;
+  if (production && isLocalDevelopmentOrigin(configuredOrigin)) return null;
+  const origin = resolveAppOrigin(environment);
+  return production && isLocalDevelopmentOrigin(origin) ? null : origin;
 }
 
 export function safeInternalNextPath(
