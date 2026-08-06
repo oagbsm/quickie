@@ -37,11 +37,15 @@ const accessExpiry = readFileSync(
   ),
   "utf8",
 );
+const cleanerEvidence = readFileSync(new URL("../supabase/migrations/202608060001_cleaner_evidence_select.sql", import.meta.url), "utf8");
+const cleanerEvidenceInsert = readFileSync(new URL("../supabase/migrations/202608060002_cleaner_evidence_insert_policy.sql", import.meta.url), "utf8");
+const cleanerCompletedChecklist = readFileSync(new URL("../supabase/migrations/202608060003_cleaner_completed_checklist_select.sql", import.meta.url), "utf8");
+const assignmentProtection = readFileSync(new URL("../supabase/migrations/202608060004_protect_accepted_assignments.sql", import.meta.url), "utf8");
 const invitationEmailGuard = readFileSync(new URL("../supabase/migrations/202607260008_invitation_email_guard.sql", import.meta.url), "utf8");
 const sprint2aSecurity = readFileSync(new URL("../supabase/migrations/202607310001_sprint_2a_cleaner_security.sql", import.meta.url), "utf8");
 const invitationActions = readFileSync(new URL("../app/business/str-actions.ts", import.meta.url), "utf8");
 const cleanerPage = readFileSync(new URL("../app/business/cleaners/[id]/page.tsx", import.meta.url), "utf8");
-const sql = `${core}\n${hardening}\n${atomic}\n${ownerChecklist}\n${accessExpiry}\n${invitationEmailGuard}\n${sprint2aSecurity}`;
+const sql = `${core}\n${hardening}\n${atomic}\n${ownerChecklist}\n${accessExpiry}\n${cleanerEvidence}\n${cleanerEvidenceInsert}\n${cleanerCompletedChecklist}\n${assignmentProtection}\n${invitationEmailGuard}\n${sprint2aSecurity}`;
 
 test("neutral reusable core objects avoid Airbnb-specific table names", () => {
   for (const table of [
@@ -115,6 +119,44 @@ test("evidence storage is private and uploads require an accepted assignment", (
   assert.match(sql, /values\('turnover-evidence','turnover-evidence',false/);
   assert.match(hardening, /accepted workers upload turnover evidence/);
   assert.match(hardening, /public\.is_accepted_worker\(wi\.id\)/);
+});
+
+test("assigned cleaners can read evidence for their current clean without weakening insert security", () => {
+  assert.match(cleanerEvidence, /workers view assigned evidence/);
+  assert.match(cleanerEvidence, /for select to authenticated/);
+  assert.match(cleanerEvidence, /public\.is_assigned_worker\(work_item_id\)/);
+  assert.match(hardening, /workers add accepted evidence[\s\S]*uploader_id=auth\.uid\(\)/);
+});
+
+test("cleaner evidence INSERT is account, assignment, uploader and task scoped", () => {
+  assert.match(cleanerEvidenceInsert, /uploader_id = auth\.uid\(\)/);
+  assert.match(cleanerEvidenceInsert, /item\.account_id = evidence_submissions\.account_id/);
+  assert.match(cleanerEvidenceInsert, /worker\.user_id = auth\.uid\(\)/);
+  assert.match(cleanerEvidenceInsert, /assignment\.status in \('pending', 'accepted'\)/);
+  assert.match(cleanerEvidenceInsert, /task\.work_item_id = evidence_submissions\.work_item_id/);
+  assert.match(cleanerEvidenceInsert, /task\.account_id = evidence_submissions\.account_id/);
+  assert.match(
+    cleanerEvidenceInsert,
+    /checklist_task_id is null and evidence_submissions\.evidence_type = 'completion_photo'/,
+  );
+});
+
+test("cleaners can read only their own completed checklist history", () => {
+  assert.match(cleanerCompletedChecklist, /workers view completed assigned checklist tasks/);
+  assert.match(cleanerCompletedChecklist, /for select to authenticated/);
+  assert.match(cleanerCompletedChecklist, /public\.is_assigned_worker\(work_item_id\)/);
+  assert.match(cleanerCompletedChecklist, /item\.status = 'ready'/);
+  assert.match(cleanerCompletedChecklist, /assignment\.status = 'accepted'/);
+  assert.match(cleanerCompletedChecklist, /worker\.user_id = auth\.uid\(\)/);
+  assert.doesNotMatch(cleanerCompletedChecklist, /for all/);
+});
+
+test("business assignment removal and replacement stop after cleaner acceptance", () => {
+  assert.match(assignmentProtection, /item\.status not in \('unassigned', 'awaiting_response'\)/);
+  assert.match(assignmentProtection, /item\.status <> 'awaiting_response'/);
+  assert.match(assignmentProtection, /status = 'cancelled'/);
+  assert.match(assignmentProtection, /assignment_cancelled/);
+  assert.match(assignmentProtection, /create or replace function public\.assign_work_item_worker/);
 });
 
 test("invitation acceptance enforces expiry, revocation and one worker identity", () => {

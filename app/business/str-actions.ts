@@ -43,6 +43,10 @@ function turnoverAssignmentLog(stage: string, details: Record<string, unknown>) 
   });
 }
 
+function cleanerEvidenceLog(stage: string, details: Record<string, unknown>) {
+  console.info("cleaner_task_evidence", { event: "cleaner_task_evidence", stage, ...details });
+}
+
 function turnoverAssignmentEmailLog(stage: string, details: Record<string, unknown>) {
   console.info("clean_turnover_assignment_email", {
     event: "clean_turnover_assignment_email",
@@ -788,10 +792,12 @@ export async function setPropertyDefaultWorker(form: FormData) {
 }
 
 export async function uploadEvidence(form: FormData) {
-  const { supabase, user } = await requireCleanerUser();
+  const { supabase, user, workerId } = await requireCleanerUser();
   const turnoverId = text(form, "turnoverId");
   const taskId = optional(form, "taskId");
   const type = text(form, "evidenceType") || "completion_photo";
+  if (taskId && !["completion_photo", "key_return"].includes(type))
+    redirect(`/cleaner/turnovers/${turnoverId}?error=evidence`);
   const file = form.get("file");
   if (
     !(file instanceof File) ||
@@ -803,12 +809,60 @@ export async function uploadEvidence(form: FormData) {
   }
   const { data: item } = await supabase
     .from("work_items")
-    .select("account_id,status")
+    .select("account_id,status,assignments!inner(worker_id,status)")
     .eq("id", turnoverId)
+    .eq("assignments.worker_id", workerId)
     .maybeSingle();
   if (!item) redirect(`/cleaner/turnovers/${turnoverId}?error=not_found`);
   if (!["in_progress", "action_required"].includes(item.status))
     redirect(`/cleaner/turnovers/${turnoverId}?error=pre_arrival`);
+  const itemAssignment = Array.isArray(item.assignments) ? item.assignments[0] : item.assignments;
+  cleanerEvidenceLog("validated_work_item", {
+    workItemId: turnoverId,
+    checklistTaskId: taskId,
+    authUserId: user.id,
+    workerId,
+    accountId: item.account_id,
+    assignmentWorkerId: itemAssignment?.worker_id,
+    assignmentStatus: itemAssignment?.status,
+  });
+  let task: { id: string; response_type: string; note_required: boolean; note: string | null; response: string | null; completed: boolean; photo_required: boolean; label: string } | null = null;
+  if (taskId) {
+    const { data: taskData } = await supabase
+      .from("checklist_tasks")
+      .select("id,response_type,note_required,note,response,completed,photo_required,label")
+      .eq("id", taskId)
+      .eq("work_item_id", turnoverId)
+      .maybeSingle();
+    task = taskData;
+    if (!task || (type === "completion_photo" && !task.photo_required && !/key.*return/i.test(task.label || "")) || (type === "key_return" && !/key.*return/i.test(task.label || "")))
+      redirect(`/cleaner/turnovers/${turnoverId}?error=task`);
+    const response = optional(form, "response");
+    const note = optional(form, "note");
+    const responseReady = task.response_type === "checkbox" || Boolean(response || task.response);
+    const noteReady = !task.note_required || Boolean(note || task.note?.trim());
+    if (task.response_type === "yes_no" && !["yes", "no"].includes(response || task.response || "")) redirect(`/cleaner/turnovers/${turnoverId}?error=task_requirements`);
+    if (task.response_type === "pass_fail" && !["pass", "fail"].includes(response || task.response || "")) redirect(`/cleaner/turnovers/${turnoverId}?error=task_requirements`);
+    if (!responseReady || !noteReady) redirect(`/cleaner/turnovers/${turnoverId}?error=task_requirements`);
+    const { data: existingEvidence } = await supabase
+      .from("evidence_submissions")
+      .select("id,storage_path")
+      .eq("work_item_id", turnoverId)
+      .eq("checklist_task_id", taskId)
+      .eq("evidence_type", type)
+      .limit(1)
+      .maybeSingle();
+    if (existingEvidence?.id && existingEvidence.storage_path?.trim()) {
+      if (!task.completed) {
+        const { data: updatedTask, error: taskError } = await supabase.from("checklist_tasks").update({ completed: true, response: response || task.response, note: note || task.note, completed_by: user.id, completed_at: new Date().toISOString() }).eq("id", task.id).eq("work_item_id", turnoverId).select("id").maybeSingle();
+        if (taskError || !updatedTask) redirect(`/cleaner/turnovers/${turnoverId}?error=task_save`);
+      }
+      cleanerEvidenceLog("duplicate_ignored", { workItemId: turnoverId, checklistTaskId: taskId, evidenceId: existingEvidence.id });
+      await supabase.rpc("evaluate_work_item_readiness", { target_work_item: turnoverId });
+      revalidatePath(`/cleaner/turnovers/${turnoverId}`);
+      redirect(`/cleaner/turnovers/${turnoverId}`);
+    }
+  }
   const extension =
     file.name
       .split(".")
@@ -819,8 +873,11 @@ export async function uploadEvidence(form: FormData) {
   const { error } = await supabase.storage
     .from("turnover-evidence")
     .upload(path, file, { contentType: file.type, upsert: false });
-  if (error) redirect(`/cleaner/turnovers/${turnoverId}?error=storage`);
-  const { error: evidenceError } = await supabase.from("evidence_submissions").insert({
+  if (error) {
+    cleanerEvidenceLog("storage_failed", { workItemId: turnoverId, checklistTaskId: taskId, reason: "storage_upload" });
+    redirect(`/cleaner/turnovers/${turnoverId}?error=storage`);
+  }
+  const evidencePayload = {
     account_id: item.account_id,
     work_item_id: turnoverId,
     checklist_task_id: taskId,
@@ -828,26 +885,59 @@ export async function uploadEvidence(form: FormData) {
     storage_path: path,
     evidence_type: type,
     caption: optional(form, "caption"),
-  });
-  if (evidenceError) redirect(`/cleaner/turnovers/${turnoverId}?error=evidence`);
-  if (taskId && ["completion_photo", "key_return"].includes(type)) {
-    const { data: task } = await supabase
-      .from("checklist_tasks")
-      .select("id,response_type,note_required,note,response,completed,photo_required,label")
-      .eq("id", taskId)
-      .eq("work_item_id", turnoverId)
-      .maybeSingle();
+  };
+  const { data: savedEvidence, error: evidenceError } = await supabase.from("evidence_submissions").insert(evidencePayload).select("id,work_item_id,checklist_task_id,uploader_id,evidence_type").single();
+  if (evidenceError || !savedEvidence || savedEvidence.work_item_id !== turnoverId || savedEvidence.checklist_task_id !== taskId || savedEvidence.uploader_id !== user.id || savedEvidence.evidence_type !== type || (taskId && !savedEvidence.checklist_task_id)) {
+    cleanerEvidenceLog("database_failed", {
+      workItemId: turnoverId,
+      checklistTaskId: taskId,
+      reason: evidenceError ? "evidence_insert" : "association_verification",
+      insertColumns: Object.keys(evidencePayload),
+      errorCode: evidenceError?.code,
+      errorMessage: evidenceError?.message,
+      errorDetails: evidenceError?.details,
+      errorHint: evidenceError?.hint,
+    });
+    await supabase.storage.from("turnover-evidence").remove([path]);
+    redirect(`/cleaner/turnovers/${turnoverId}?error=evidence`);
+  }
+  cleanerEvidenceLog("persisted", { workItemId: turnoverId, checklistTaskId: taskId, evidenceId: savedEvidence.id });
+  if (taskId && task) {
     const response = optional(form, "response");
     const note = optional(form, "note");
-    const responseReady = !task || task.response_type === "checkbox" || Boolean(response || task.response);
-    const noteReady = !task || !task.note_required || Boolean(note || task.note?.trim());
-    if (task && task.response_type === "yes_no" && !["yes", "no"].includes(response || task.response || "")) redirect(`/cleaner/turnovers/${turnoverId}?error=task_requirements`);
-    if (task && task.response_type === "pass_fail" && !["pass", "fail"].includes(response || task.response || "")) redirect(`/cleaner/turnovers/${turnoverId}?error=task_requirements`);
-    if (task && !task.completed && responseReady && noteReady) await supabase.from("checklist_tasks").update({ completed: true, response: response || task.response, note: note || task.note, completed_by: user.id, completed_at: new Date().toISOString() }).eq("id", task.id).eq("work_item_id", turnoverId);
+    if (!task.completed) {
+      const { data: updatedTask, error: taskError } = await supabase.from("checklist_tasks").update({ completed: true, response: response || task.response, note: note || task.note, completed_by: user.id, completed_at: new Date().toISOString() }).eq("id", task.id).eq("work_item_id", turnoverId).select("id").maybeSingle();
+      if (taskError || !updatedTask) redirect(`/cleaner/turnovers/${turnoverId}?error=task_save`);
+    }
   }
   await supabase.rpc("evaluate_work_item_readiness", {
     target_work_item: turnoverId,
   });
+  revalidatePath(`/cleaner/turnovers/${turnoverId}`);
+  revalidatePath(`/business/turnovers/${turnoverId}`);
+  redirect(`/cleaner/turnovers/${turnoverId}`);
+}
+
+export async function removeEvidence(form: FormData) {
+  const { supabase, user, workerId } = await requireCleanerUser();
+  const turnoverId = text(form, "turnoverId");
+  const evidenceId = text(form, "evidenceId");
+  const { data: evidence } = await supabase
+    .from("evidence_submissions")
+    .select("id,work_item_id,storage_path,evidence_type,checklist_task_id,uploader_id,work_items!inner(status,assignments!inner(worker_id))")
+    .eq("id", evidenceId)
+    .eq("work_item_id", turnoverId)
+    .eq("uploader_id", user.id)
+    .eq("work_items.assignments.worker_id", workerId)
+    .maybeSingle();
+  const item = evidence?.work_items as unknown as { status?: string; assignments?: Array<{ worker_id?: string }> } | null;
+  if (!evidence || evidence.evidence_type !== "completion_photo" || evidence.checklist_task_id || !item || !["in_progress", "action_required"].includes(item.status || ""))
+    redirect(`/cleaner/turnovers/${turnoverId}?error=evidence_forbidden`);
+  const { error: storageError } = await supabase.storage.from("turnover-evidence").remove([evidence.storage_path]);
+  if (storageError) redirect(`/cleaner/turnovers/${turnoverId}?error=storage`);
+  const { error } = await supabase.from("evidence_submissions").delete().eq("id", evidenceId).eq("work_item_id", turnoverId).eq("uploader_id", user.id);
+  if (error) redirect(`/cleaner/turnovers/${turnoverId}?error=evidence`);
+  await supabase.rpc("evaluate_work_item_readiness", { target_work_item: turnoverId });
   revalidatePath(`/cleaner/turnovers/${turnoverId}`);
   revalidatePath(`/business/turnovers/${turnoverId}`);
 }
@@ -972,7 +1062,7 @@ export async function fillTestCleanData(form: FormData) {
   }
 
   revalidatePath(`/cleaner/turnovers/${turnoverId}`);
-  redirect(`/cleaner/turnovers/${turnoverId}?testData=1`);
+  redirect(`/cleaner/turnovers/${turnoverId}`);
 }
 
 export async function sendTestCleanerEmail(form: FormData) {
@@ -1286,9 +1376,10 @@ export async function cancelAssignment(form: FormData) {
   const { supabase } = await requireBusinessUser();
   const turnoverId = text(form, "turnoverId");
   if (!turnoverId) return;
-  await supabase.rpc("cancel_work_item_assignment", {
+  const { error } = await supabase.rpc("cancel_work_item_assignment", {
     target_work_item: turnoverId,
   });
+  if (error) redirect(`/business/turnovers/${turnoverId}?error=assignment_locked`);
   revalidatePath("/business/dashboard");
   revalidatePath("/business/turnovers");
   revalidatePath(`/business/turnovers/${turnoverId}`);

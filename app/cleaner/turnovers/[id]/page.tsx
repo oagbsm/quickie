@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireCleanerUser } from "@/lib/cleaner/auth";
 import CleanerStatus from "@/app/cleaner/CleanerStatus";
+import TaskPhotoUpload from "@/app/cleaner/TaskPhotoUpload";
 import PendingButton from "@/app/components/PendingButton";
 import { getCleanerLifecycle } from "@/lib/cleaner/lifecycle";
-import { completeTestTurnover, fillTestCleanData, reportIssue, transitionTurnover, updateChecklistTask, uploadEvidence } from "@/app/business/str-actions";
+import { hasRequiredTaskPhoto, isTaskEffectivelyComplete } from "@/lib/cleaner/task-completion";
+import { removeEvidence, reportIssue, transitionTurnover, updateChecklistTask, uploadEvidence } from "@/app/business/str-actions";
 import { formatDisplayAddress } from "@/lib/display-address";
 
 const imageAccept = "image/jpeg,image/png,image/webp,image/heic";
@@ -17,6 +19,7 @@ type CleanerTask = {
   label: string;
   section_title: string;
   mandatory: boolean;
+  blocking: boolean;
   completed: boolean;
   response_type: string;
   response: string | null;
@@ -38,7 +41,7 @@ type DetailItem = {
   required_evidence_count: number;
   properties: unknown;
   checklist_tasks: CleanerTask[];
-  evidence_submissions: Array<{ id: string; evidence_type: string; checklist_task_id: string | null }>;
+  evidence_submissions: Array<{ id: string; work_item_id: string; evidence_type: string; checklist_task_id: string | null; storage_path: string }>;
   operational_issues: Array<{ id: string; status: string; blocking: boolean }>;
 };
 
@@ -55,11 +58,11 @@ function journeyIndex(status: string) {
   return Math.max(0, journey.findIndex(([key]) => key === status));
 }
 
-export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; testData?: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const { id } = await params;
-  const { error, testData } = await searchParams;
+  const { error } = await searchParams;
   const { supabase, workerId } = await requireCleanerUser();
-  const base = "id,property_public_name,property_general_area,turnover_date,access_start_at,window_end_at,status,ready_at,actual_completed_at,required_evidence_count,assignments!inner(status,worker_id),checklist_tasks(id,label,section_title,mandatory,completed,response_type,response,photo_required,note_required,note),evidence_submissions(id,evidence_type,checklist_task_id),operational_issues(id,status,blocking)";
+  const base = "id,property_public_name,property_general_area,turnover_date,access_start_at,window_end_at,status,ready_at,actual_completed_at,required_evidence_count,assignments!inner(status,worker_id),checklist_tasks(id,label,section_title,mandatory,blocking,completed,response_type,response,photo_required,note_required,note),evidence_submissions(id,work_item_id,evidence_type,checklist_task_id,storage_path),operational_issues(id,status,blocking)";
   const { data: summary } = await supabase
     .from("work_items")
     .select(`${base},properties(nickname)`)
@@ -108,18 +111,39 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const address = formatDisplayAddress([property?.address_line_1, property?.city, property?.postcode], item.property_general_area || "");
   const mapsUrl = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : null;
   const tasks = item.checklist_tasks || [];
-  const completedCount = tasks.filter((task) => task.completed).length;
-  const completionPhotos = (item.evidence_submissions || []).filter((entry) => entry.evidence_type === "completion_photo").length;
+  const persistedEvidence = item.evidence_submissions || [];
+  const completedCount = tasks.filter((task) => isTaskEffectivelyComplete(task, item.id, persistedEvidence)).length;
+  const completionPhotos = persistedEvidence.filter((entry) => entry.work_item_id === item.id && entry.evidence_type === "completion_photo" && !entry.checklist_task_id && entry.storage_path?.trim()).length;
   const activeWork = ["in_progress", "action_required"].includes(item.status);
   const blockingIssues = (item.operational_issues || []).filter((issue) => issue.blocking && !["resolved", "closed"].includes(issue.status)).length;
+  const taskPhotoMissingTasks = tasks.filter((task) => task.photo_required && !hasRequiredTaskPhoto(task.id, item.id, persistedEvidence));
+  const taskPhotoMissing = taskPhotoMissingTasks.length;
+  const keyReturnTask = tasks.find((task) => task.mandatory && /key.*return/i.test(task.label));
+  const keyReturnMissing = Boolean(keyReturnTask && !persistedEvidence.some((entry) => entry.work_item_id === item.id && entry.evidence_type === "key_return" && entry.storage_path?.trim()));
   const blockers = activeWork ? [
-    ...tasks.filter((task) => task.mandatory && !task.completed).map((task) => `${task.label} is incomplete`),
+    ...tasks.filter((task) => task.mandatory && !isTaskEffectivelyComplete(task, item.id, persistedEvidence) && !task.photo_required).map((task) => `${task.label} is incomplete`),
     ...tasks.filter((task) => task.note_required && !task.note?.trim()).map((task) => `${task.label} needs a note`),
+    ...(taskPhotoMissing ? [`${taskPhotoMissing} task photo${taskPhotoMissing === 1 ? "" : "s"} missing`] : []),
+    ...tasks.filter((task) => task.blocking && task.completed && ["no", "fail"].includes(task.response || "")).map((task) => `${task.label} needs attention`),
     ...(completionPhotos < item.required_evidence_count ? [`${item.required_evidence_count - completionPhotos} completion photo${item.required_evidence_count - completionPhotos === 1 ? "" : "s"} still needed`] : []),
+    ...(keyReturnMissing ? ["Key-return confirmation is missing"] : []),
     ...(blockingIssues ? [`${blockingIssues} blocking issue${blockingIssues === 1 ? "" : "s"} remain${blockingIssues === 1 ? "s" : ""}`] : []),
   ] : [];
-  const grouped = new Map<string, CleanerTask[]>();
-  for (const task of tasks) grouped.set(task.section_title, [...(grouped.get(task.section_title) || []), task]);
+  const taskIsActionable = (task: CleanerTask) => {
+    const taskPhotoMissingForTask = taskPhotoMissingTasks.some((missingTask) => missingTask.id === task.id);
+    const keyReturnMissingForTask = keyReturnTask?.id === task.id && keyReturnMissing;
+    const failedBlockingTask = task.blocking && task.completed && ["no", "fail"].includes(task.response || "");
+    return !isTaskEffectivelyComplete(task, item.id, persistedEvidence) || taskPhotoMissingForTask || keyReturnMissingForTask || failedBlockingTask || (task.note_required && !task.note?.trim());
+  };
+  const activeTasks = tasks.filter(taskIsActionable);
+  const completedTasks = tasks.filter((task) => !taskIsActionable(task));
+  const groupTasks = (list: CleanerTask[]) => {
+    const result = new Map<string, CleanerTask[]>();
+    for (const task of list) result.set(task.section_title, [...(result.get(task.section_title) || []), task]);
+    return result;
+  };
+  const activeGrouped = groupTasks(activeTasks);
+  const completedGrouped = groupTasks(completedTasks);
   const canComplete = item.status === "in_progress" && blockers.length === 0;
   const errorText: Record<string, string> = {
     invalid_file: "That photo is not supported. Use a JPG, PNG, WebP or HEIC image under 10 MB.",
@@ -127,12 +151,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     evidence: "The photo could not be linked. Try again.",
     task_photo_required: "Take the required task photo before completing this task.",
     task_requirements: "Complete the required result and note before completing this task.",
+    evidence_forbidden: "That evidence cannot be removed from this clean.",
     task_save: "We could not save that task. Try again.",
     update: "We could not update the clean. Try again.",
     action_required: "The clean was saved, but some completion requirements still need attention.",
-    test_data_unavailable: "Test data is unavailable for this clean.",
-    test_data_forbidden: "Test data can only be filled for your arrived or active assigned clean.",
-    test_data_failed: "The test data could not be saved. Try again.",
   };
 
   if (item.status === "ready") {
@@ -144,7 +166,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
         <p className="mt-1 text-[#657089]">Your checklist and evidence have been submitted.</p>
         <div className="mt-6 grid gap-4 border-t pt-5 sm:grid-cols-3">
           <div><p className="text-xs font-bold text-[#748096]">CHECKLIST</p><p className="mt-1 font-extrabold">{completedCount}/{tasks.length} tasks completed</p></div>
-          <div><p className="text-xs font-bold text-[#748096]">EVIDENCE</p><p className="mt-1 font-extrabold">{item.evidence_submissions.length} photos submitted</p></div>
+          <div><p className="text-xs font-bold text-[#748096]">EVIDENCE</p><p className="mt-1 font-extrabold">{persistedEvidence.filter((entry) => entry.work_item_id === item.id && entry.storage_path?.trim()).length} photos submitted</p></div>
           <div><p className="text-xs font-bold text-[#748096]">COMPLETED</p><p className="mt-1 font-extrabold">{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/London" }).format(new Date(item.ready_at || item.actual_completed_at || item.window_end_at))}</p></div>
         </div>
         <Link href="/cleaner/today" className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-[#071f49] px-4 font-extrabold text-white">Back to Today</Link>
@@ -157,16 +179,36 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const linenContent = [property?.linen_requirements, property?.towel_requirements, property?.bed_configuration, property?.consumables_instructions, property?.waste_instructions].some(Boolean);
   const propertyNotes = property?.cleaning_notes;
   const currentAction = getCleanerLifecycle(item.status).primaryAction;
-  const testDataAlreadyFilled = tasks.some((task) => task.note === "Development test completion");
-  const showTestDataHelper = process.env.NODE_ENV === "development" && ["arrived", "in_progress"].includes(item.status) && !testDataAlreadyFilled;
+  const photoUploadError = ["invalid_file", "storage", "evidence", "task", "task_save"].includes(error || "");
+  const renderTaskGroups = (groups: Map<string, CleanerTask[]>, openSections: boolean) => Array.from(groups.entries()).map(([section, sectionTasks]) => <details key={section} open={openSections} className="rounded-lg border">
+    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 py-3 text-sm font-extrabold"><span>{section}</span><span>{sectionTasks.filter((task) => isTaskEffectivelyComplete(task, item.id, persistedEvidence)).length}/{sectionTasks.length}</span></summary>
+    <div className="divide-y border-t">{sectionTasks.map((task) => {
+      const taskPhotoMissingForTask = taskPhotoMissingTasks.some((missingTask) => missingTask.id === task.id);
+      const keyReturnTaskForTask = keyReturnTask?.id === task.id;
+      const failedBlockingTask = task.blocking && task.completed && ["no", "fail"].includes(task.response || "");
+      const needsEvidenceAction = taskPhotoMissingForTask || (keyReturnTaskForTask && keyReturnMissing);
+      const needsTaskEdit = !task.completed || failedBlockingTask || (task.note_required && !task.note?.trim());
+      const taskEvidenceSaved = hasRequiredTaskPhoto(task.id, item.id, persistedEvidence);
+      const taskComplete = isTaskEffectivelyComplete(task, item.id, persistedEvidence);
+      return <div key={task.id} id={`task-${task.id}`} className="scroll-mt-5 p-3 text-sm">
+        <p className={taskComplete ? "font-bold text-emerald-700" : "font-bold"}>{taskComplete ? "✓" : "○"} {task.label}</p>
+        {!taskComplete && <p className="mt-1 text-xs text-[#657089]">{task.photo_required ? "Photo required" : task.note_required ? "Note required" : "Ready to complete when finished"}</p>}
+        {taskEvidenceSaved && <p className="mt-1 text-xs font-bold text-emerald-700">Required photo saved</p>}
+        {activeWork && needsEvidenceAction ? <TaskPhotoUpload turnoverId={id} taskId={task.id} evidenceType={keyReturnTaskForTask ? "key_return" : "completion_photo"} responseType={task.response_type} response={task.response} noteRequired={task.note_required} note={task.note} saved={taskEvidenceSaved} uploadError={photoUploadError} /> : activeWork && needsTaskEdit ? <form action={updateChecklistTask} className="mt-3 grid gap-2">
+          <input type="hidden" name="turnoverId" value={id} /><input type="hidden" name="taskId" value={task.id} /><input type="hidden" name="completed" value="on" />
+          {task.response_type !== "checkbox" && <select name="response" defaultValue={task.response || ""} required className="min-h-10 rounded-lg border px-2"><option value="" disabled>Select result</option><option value={task.response_type === "yes_no" ? "yes" : "pass"}>{task.response_type === "yes_no" ? "Yes" : "Pass"}</option><option value={task.response_type === "yes_no" ? "no" : "fail"}>{task.response_type === "yes_no" ? "No" : "Fail"}</option></select>}
+          {task.note_required && <textarea name="note" defaultValue={task.note || ""} required placeholder="Required note" className="rounded-lg border p-2" />}
+          <PendingButton idle="Complete task" pending="Saving…" className="min-h-10 rounded-lg bg-[#071f49] px-3 font-extrabold text-white" />
+        </form> : null}
+      </div>;
+    })}</div>
+  </details>);
   return <div className="mx-auto max-w-6xl pb-24 lg:pb-8">
     <div className="mb-4 flex items-center justify-between gap-3">
       <Link href="/cleaner/today" className="text-sm font-bold text-[#526078]">← Back to today</Link>
       <span className="text-sm font-extrabold text-[#071f49]">Quickola</span>
     </div>
     {error && errorText[error] && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-800">{errorText[error]}</p>}
-    {testData === "1" && <p role="status" className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm font-bold text-emerald-900">Development test clean data filled.</p>}
-    {process.env.NODE_ENV === "development" && <section className="mb-4 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-4"><p className="text-xs font-extrabold uppercase tracking-wide text-amber-900">Development only</p><form action={completeTestTurnover} className="mt-2"><input type="hidden" name="turnoverId" value={id} /><PendingButton idle="Complete test clean" pending="Completing test clean…" className="min-h-11 rounded-lg bg-amber-700 px-4 text-sm font-extrabold text-white" /></form></section>}
 
     <header className="rounded-2xl border bg-white p-5 shadow-sm sm:p-7">
       <div className="flex items-start justify-between gap-3">
@@ -227,36 +269,28 @@ export default async function Page({ params, searchParams }: { params: Promise<{
 
       {propertyNotes && <section className="mt-5 rounded-2xl border bg-white p-5 shadow-sm sm:p-6"><h2 className="text-lg font-extrabold">Property notes</h2><p className="mt-3 whitespace-pre-wrap text-sm">{propertyNotes}</p></section>}
 
-      {showTestDataHelper && <section className="mt-5 rounded-2xl border border-dashed border-amber-300 bg-amber-50 p-5 shadow-sm sm:p-6"><p className="text-xs font-extrabold uppercase tracking-wide text-amber-900">Development only</p><form action={fillTestCleanData} className="mt-2"><input type="hidden" name="turnoverId" value={id} /><PendingButton idle="Fill test clean data" pending="Filling test clean data…" className="min-h-11 rounded-lg bg-amber-700 px-4 text-sm font-extrabold text-white" /></form></section>}
-
       {accepted && tasks.length > 0 && <section className="mt-5 rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-extrabold">Cleaning checklist</h2><span className="font-extrabold">{completedCount}/{tasks.length}</span></div>
-        <p className="mt-1 text-sm text-[#657089]">{completedCount} of {tasks.length} tasks complete</p>
+        <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-extrabold">Tasks</h2><span className="font-extrabold">{completedCount}/{tasks.length}</span></div>
+        <p className="mt-1 text-sm text-[#657089]">Checklist: {completedCount} of {tasks.length} tasks complete</p>
+        {activeWork && <p className="mt-1 text-sm font-bold text-[#657089]">Completion evidence: {completionPhotos} of {item.required_evidence_count} final photos added{taskPhotoMissing ? ` · ${taskPhotoMissing} task photo${taskPhotoMissing === 1 ? "" : "s"} still needed` : ""}</p>}
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#e8edf3]"><div className="h-full rounded-full bg-[#079448]" style={{ width: `${tasks.length ? (completedCount / tasks.length) * 100 : 0}%` }} /></div>
-        <div className="mt-5 grid gap-2">{Array.from(grouped.entries()).map(([section, sectionTasks]) => <details key={section} open={activeWork && sectionTasks.some((task) => !task.completed)} className="rounded-lg border">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 py-3 text-sm font-extrabold"><span>{section}</span><span>{sectionTasks.filter((task) => task.completed).length}/{sectionTasks.length}</span></summary>
-          <div className="divide-y border-t">{sectionTasks.map((task) => <div key={task.id} className="p-3 text-sm">
-            <p className={task.completed ? "font-bold text-emerald-700" : "font-bold"}>{task.completed ? "✓" : "○"} {task.label}</p>
-            {!task.completed && <p className="mt-1 text-xs text-[#657089]">{task.photo_required ? "Photo required" : task.note_required ? "Note required" : "Ready to complete when finished"}</p>}
-            {activeWork && !task.completed && (task.photo_required || /key.*return/i.test(task.label)) ? <form action={uploadEvidence} className="mt-3 grid gap-2">
-              <input type="hidden" name="turnoverId" value={id} /><input type="hidden" name="taskId" value={task.id} /><input type="hidden" name="evidenceType" value={/key.*return/i.test(task.label) ? "key_return" : "completion_photo"} />
-              {task.response_type !== "checkbox" && <select name="response" defaultValue={task.response || ""} required className="min-h-10 rounded-lg border px-2"><option value="" disabled>Select result</option><option value={task.response_type === "yes_no" ? "yes" : "pass"}>{task.response_type === "yes_no" ? "Yes" : "Pass"}</option><option value={task.response_type === "yes_no" ? "no" : "fail"}>{task.response_type === "yes_no" ? "No" : "Fail"}</option></select>}
-              {task.note_required && <textarea name="note" defaultValue={task.note || ""} required placeholder="Required note" className="rounded-lg border p-2" />}
-              <label className="cursor-pointer rounded-lg border px-3 py-2 text-center font-bold">Add photo<input name="file" type="file" accept={imageAccept} capture="environment" className="sr-only" required /></label>
-              <PendingButton idle="Complete with photo" pending="Saving…" className="min-h-10 rounded-lg bg-[#071f49] px-3 font-extrabold text-white" />
-            </form> : activeWork && !task.completed ? <form action={updateChecklistTask} className="mt-3 grid gap-2">
-              <input type="hidden" name="turnoverId" value={id} /><input type="hidden" name="taskId" value={task.id} /><input type="hidden" name="completed" value="on" />
-              {task.response_type !== "checkbox" && <select name="response" defaultValue={task.response || ""} required className="min-h-10 rounded-lg border px-2"><option value="" disabled>Select result</option><option value={task.response_type === "yes_no" ? "yes" : "pass"}>{task.response_type === "yes_no" ? "Yes" : "Pass"}</option><option value={task.response_type === "yes_no" ? "no" : "fail"}>{task.response_type === "yes_no" ? "No" : "Fail"}</option></select>}
-              {task.note_required && <textarea name="note" defaultValue={task.note || ""} required placeholder="Required note" className="rounded-lg border p-2" />}
-              <PendingButton idle="Complete task" pending="Saving…" className="min-h-10 rounded-lg bg-[#071f49] px-3 font-extrabold text-white" />
-            </form> : null}
-          </div>)}</div>
-        </details>)}</div>
+        <div className="mt-5"><p className="mb-2 text-sm font-extrabold text-[#071f49]">Active</p>{activeGrouped.size > 0 ? <div className="grid gap-2">{renderTaskGroups(activeGrouped, true)}</div> : <p className="rounded-lg bg-[#f7f9fc] p-3 text-sm text-[#657089]">All checklist tasks are complete.</p>}</div>
+        <details className="mt-4 rounded-lg border"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 py-3 text-sm font-extrabold"><span>Completed</span><span>{completedTasks.length}</span></summary><div className="grid gap-2 border-t p-2">{completedGrouped.size > 0 ? renderTaskGroups(completedGrouped, false) : <p className="p-2 text-sm text-[#657089]">No completed tasks yet.</p>}</div></details>
       </section>}
 
-      {activeWork && <section className="mt-5 rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
+      {item.status === "in_progress" && <section className="mt-5 rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
         <h2 className="text-lg font-extrabold">Finish clean</h2>
-        {canComplete ? <form action={transitionTurnover} className="mt-3"><input type="hidden" name="turnoverId" value={id} /><input type="hidden" name="nextStatus" value="evidence_submitted" /><PendingButton idle="Mark as done" pending="Saving…" className="min-h-12 w-full rounded-lg bg-[#071f49] px-4 font-extrabold text-white" /></form> : <p className="mt-1 text-sm text-[#657089]">Complete all required tasks and evidence before finishing.</p>}
+        {blockers.length > 0 && <div className="mt-3 rounded-lg bg-[#f7f9fc] p-3 text-sm"><p className="font-extrabold text-[#071f49]">Finish these items before submitting:</p><ul className="mt-2 space-y-2 text-[#526078]">
+          {tasks.filter((task) => task.mandatory && !task.completed).map((task) => <li key={`mandatory-${task.id}`}><a href={`#task-${task.id}`} className="font-bold text-[#2d67b2] underline">Complete {task.label}</a></li>)}
+          {tasks.filter((task) => task.note_required && !task.note?.trim()).map((task) => <li key={`note-${task.id}`}><a href={`#task-${task.id}`} className="font-bold text-[#2d67b2] underline">Add the required note for {task.label}</a></li>)}
+          {taskPhotoMissingTasks.map((task) => <li key={`photo-${task.id}`}><a href={`#task-${task.id}`} className="font-bold text-[#2d67b2] underline">Add the required photo for {task.label}</a></li>)}
+          {tasks.filter((task) => task.blocking && task.completed && ["no", "fail"].includes(task.response || "")).map((task) => <li key={`blocking-${task.id}`}><a href={`#task-${task.id}`} className="font-bold text-[#2d67b2] underline">Review {task.label}</a></li>)}
+          {completionPhotos < item.required_evidence_count && <li><a href="#completion-photos" className="font-bold text-[#2d67b2] underline">Add {item.required_evidence_count - completionPhotos} more completion photo{item.required_evidence_count - completionPhotos === 1 ? "" : "s"}</a></li>}
+          {keyReturnMissing && keyReturnTask && <li><a href={`#task-${keyReturnTask.id}`} className="font-bold text-[#2d67b2] underline">Confirm key return</a></li>}
+          {blockingIssues > 0 && <li>Blocking issue{blockingIssues === 1 ? "" : "s"} need operator attention before this clean can be marked ready.</li>}
+        </ul></div>}
+        {item.required_evidence_count > 0 && <div id="completion-photos" className="mt-4 scroll-mt-5 rounded-lg border p-3"><div className="flex items-center justify-between gap-3"><div><p className="font-extrabold">Completion photos</p><p className="text-sm text-[#657089]">{completionPhotos} of {item.required_evidence_count} photos added</p></div></div>{completionPhotos > 0 && <ul className="mt-3 space-y-2 text-sm">{(item.evidence_submissions || []).filter((entry) => entry.evidence_type === "completion_photo" && !entry.checklist_task_id).map((entry, index) => <li key={entry.id} className="flex items-center justify-between gap-3 rounded-lg bg-[#f7f9fc] px-3 py-2"><span>Completion photo {index + 1}</span><form action={removeEvidence}><input type="hidden" name="turnoverId" value={id} /><input type="hidden" name="evidenceId" value={entry.id} /><button className="font-bold text-[#526078] underline">Remove</button></form></li>)}</ul>}<form action={uploadEvidence} className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center"><input type="hidden" name="turnoverId" value={id} /><input type="hidden" name="evidenceType" value="completion_photo" /><label className="cursor-pointer rounded-lg border px-3 py-2 text-center text-sm font-bold">Add completion photo<input name="file" type="file" accept={imageAccept} capture="environment" className="sr-only" required /></label><PendingButton idle="Upload photo" pending="Uploading…" className="min-h-10 rounded-lg bg-[#071f49] px-3 text-sm font-extrabold text-white" /></form></div>}
+        <form action={transitionTurnover} className="mt-3"><input type="hidden" name="turnoverId" value={id} /><input type="hidden" name="nextStatus" value="evidence_submitted" /><PendingButton idle="Complete clean" pending="Completing clean…" disabled={!canComplete} className="min-h-12 w-full rounded-lg bg-[#071f49] px-4 font-extrabold text-white" /></form>
       </section>}
 
       {activeWork && <details className="mt-5 rounded-2xl border bg-white p-5 shadow-sm"><summary className="cursor-pointer text-lg font-extrabold">Report an issue</summary><form action={reportIssue} className="mt-4 grid gap-3">

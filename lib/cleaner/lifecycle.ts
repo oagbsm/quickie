@@ -11,7 +11,7 @@ const states: Record<string, CleanerLifecycle> = {
   accepted: { key: "accepted", label: "Accepted", primaryAction: { label: "I’m en route", nextStatus: "en_route" }, checklistActive: false, terminal: false },
   en_route: { key: "en_route", label: "En route", primaryAction: { label: "I’ve arrived", nextStatus: "arrived" }, checklistActive: false, terminal: false },
   arrived: { key: "arrived", label: "Arrived", primaryAction: { label: "Start cleaning", nextStatus: "in_progress" }, checklistActive: false, terminal: false },
-  in_progress: { key: "in_progress", label: "In progress", primaryAction: { label: "Mark as done", nextStatus: "evidence_submitted" }, checklistActive: true, terminal: false },
+  in_progress: { key: "in_progress", label: "In progress", primaryAction: { label: "Complete clean", nextStatus: "evidence_submitted" }, checklistActive: true, terminal: false },
   action_required: { key: "action_required", label: "Action required", checklistActive: true, terminal: false },
   ready: { key: "property_ready", label: "Property ready", checklistActive: false, terminal: true },
   evidence_submitted: { key: "property_ready", label: "Property ready", checklistActive: false, terminal: true },

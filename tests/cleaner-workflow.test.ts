@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { getCleanerLifecycle, selectRelevantCleanerJobs } from "../lib/cleaner/lifecycle.ts";
+import { hasRequiredTaskPhoto, isTaskEffectivelyComplete } from "../lib/cleaner/task-completion.ts";
 import { evaluateReadiness } from "../lib/turnovers/readiness.ts";
 
 const page = readFileSync(new URL("../app/cleaner/turnovers/[id]/page.tsx", import.meta.url), "utf8");
+const taskPhoto = readFileSync(new URL("../app/cleaner/TaskPhotoUpload.tsx", import.meta.url), "utf8");
 const today = readFileSync(new URL("../app/cleaner/today/page.tsx", import.meta.url), "utf8");
 const navigation = readFileSync(new URL("../app/cleaner/CleanerNavigation.tsx", import.meta.url), "utf8");
 const cards = readFileSync(new URL("../app/cleaner/TurnoverCards.tsx", import.meta.url), "utf8");
@@ -19,7 +21,7 @@ test("canonical cleaner lifecycle has one deterministic action", () => {
   assert.equal(getCleanerLifecycle("en_route").label, "En route");
   assert.equal(getCleanerLifecycle("arrived").primaryAction?.nextStatus, "in_progress");
   assert.equal(getCleanerLifecycle("arrived").primaryAction?.label, "Start cleaning");
-  assert.equal(getCleanerLifecycle("in_progress").primaryAction?.label, "Mark as done");
+  assert.equal(getCleanerLifecycle("in_progress").primaryAction?.label, "Complete clean");
   assert.equal(getCleanerLifecycle("action_required").checklistActive, true);
   assert.equal(getCleanerLifecycle("ready").terminal, true);
 });
@@ -30,17 +32,64 @@ test("Today selection prefers current work and otherwise the next assignment", (
   assert.equal(jobs.secondary.length, 2);
 });
 
+test("one task photo only completes the exact task", () => {
+  const tasks = [
+    { id: "task-a", completed: true, photo_required: true },
+    { id: "task-b", completed: true, photo_required: true },
+    { id: "task-c", completed: false, photo_required: true },
+  ];
+  const evidence = [{ work_item_id: "clean-1", checklist_task_id: "task-a", evidence_type: "completion_photo", storage_path: "account/clean-1/a.jpg" }];
+  assert.equal(isTaskEffectivelyComplete(tasks[0], "clean-1", evidence), true);
+  assert.equal(isTaskEffectivelyComplete(tasks[1], "clean-1", evidence), false);
+  assert.equal(isTaskEffectivelyComplete(tasks[2], "clean-1", evidence), false);
+  assert.equal(tasks.filter((task) => isTaskEffectivelyComplete(task, "clean-1", evidence)).length, 1);
+});
+
+test("task evidence is isolated by task and turnover", () => {
+  const evidence = [{ work_item_id: "clean-old", checklist_task_id: "task-a", evidence_type: "completion_photo", storage_path: "old/a.jpg" }];
+  assert.equal(hasRequiredTaskPhoto("task-a", "clean-old", evidence), true);
+  assert.equal(hasRequiredTaskPhoto("task-b", "clean-old", evidence), false);
+  assert.equal(hasRequiredTaskPhoto("task-a", "clean-new", evidence), false);
+  assert.equal(hasRequiredTaskPhoto("task-a", "clean-old", [{ work_item_id: "clean-old", checklist_task_id: "task-a", evidence_type: "completion_photo", storage_path: " " }]), false);
+});
+
 test("pre-start pages do not render checklist blockers or raw task IDs", () => {
   assert.doesNotMatch(page, /after you mark Arrived|Not available until arrival|Task \$\{/);
-  assert.doesNotMatch(page, /Save task|Upload task photo|Final completion evidence/);
+  assert.doesNotMatch(page, /Complete test clean|Fill test clean data|testData=1|Development test completion/);
 });
 
 test("task completion is one action and photo upload auto-completes after successful evidence", () => {
   assert.match(page, /Complete task/);
-  assert.match(page, /Complete with photo/);
+  assert.doesNotMatch(page, /Save task photo/);
+  assert.match(page, /Upload photo/);
+  assert.match(page, /removeEvidence/);
+  assert.match(page, /#completion-photos/);
+  assert.match(page, /#task-\$\{task\.id\}/);
   assert.match(page, /className=\"sr-only\"/);
   assert.match(actions, /evidenceError/);
   assert.match(actions, /\["completion_photo", "key_return"\]/);
+  assert.match(actions, /\.eq\("assignments\.worker_id", workerId\)/);
+  assert.match(actions, /checklist_task_id: taskId/);
+  assert.match(actions, /savedEvidence/);
+  assert.match(actions, /savedEvidence\.work_item_id !== turnoverId/);
+  assert.match(actions, /savedEvidence\.checklist_task_id !== taskId/);
+  assert.match(actions, /\.eq\("id", task\.id\)\.eq\("work_item_id", turnoverId\)/);
+  assert.match(actions, /cleanerEvidenceLog/);
+  assert.match(actions, /errorCode: evidenceError\?\.code/);
+  assert.match(actions, /errorMessage: evidenceError\?\.message/);
+  assert.match(actions, /errorDetails: evidenceError\?\.details/);
+  assert.match(actions, /errorHint: evidenceError\?\.hint/);
+  assert.match(actions, /storage\.from\("turnover-evidence"\)\.remove\(\[path\]\)/);
+  assert.match(actions, /redirect\(`\/cleaner\/turnovers\/\$\{turnoverId\}`\)/);
+  assert.match(page, /storage_path/);
+  assert.match(page, /Required photo saved/);
+  assert.match(taskPhoto, /requestSubmit\(\)/);
+  assert.match(taskPhoto, /Uploading…/);
+  assert.match(taskPhoto, /PhotoPicker/);
+  assert.doesNotMatch(taskPhoto, /Save task photo/);
+  assert.match(actions, /export async function removeEvidence/);
+  assert.match(actions, /evidence\.evidence_type !== "completion_photo"/);
+  assert.match(actions, /\.eq\("uploader_id", user\.id\)/);
   assert.match(actions, /completed: true/);
 });
 
@@ -51,9 +100,20 @@ test("server remains authoritative for readiness and rejects pre-start mutations
 });
 
 test("completed/property-ready detail has no sticky completion action", () => {
-  assert.match(page, /item\.status === \"in_progress\" && blockers\.length === 0/);
-  assert.match(page, /idle=\"Mark as done\"/);
+  assert.match(page, /item\.status === \"in_progress\"/);
+  assert.match(page, /idle=\"Complete clean\"/);
+  assert.match(page, /disabled=\{!canComplete\}/);
+  assert.match(page, /blockers\.length > 0/);
   assert.doesNotMatch(page, /sticky bottom-0/);
+});
+
+test("active cleaner tasks are separated from collapsed completed history", () => {
+  assert.match(page, /const activeTasks = tasks\.filter\(taskIsActionable\)/);
+  assert.match(page, /const completedTasks = tasks\.filter\(\(task\) => !taskIsActionable\(task\)\)/);
+  assert.match(page, />Active<\/p>/);
+  assert.match(page, /<span>Completed<\/span>/);
+  assert.match(page, /completedGrouped, false/);
+  assert.match(page, /Checklist: \{completedCount\} of \{tasks\.length\} tasks complete/);
 });
 
 test("Today keeps acceptance on detail and active details expose the next action", () => {
@@ -74,7 +134,7 @@ test("cleaner detail uses the canonical operational linen and access fields", ()
   assert.match(page, /floor_lift_notes/);
   assert.match(page, /Property notes/);
   assert.match(page, /accepted && tasks\.length > 0/);
-  assert.match(page, /activeWork && !task\.completed/);
+  assert.match(page, /activeWork && needsEvidenceAction/);
 });
 
 test("completed cleaner and operator views are read-only receipts", () => {
@@ -123,8 +183,8 @@ test("cleaner detail keeps access protected and renders real travel context", ()
 
 test("development completion shortcut is guarded, assigned-cleaner scoped, and idempotent", () => {
   const helper = actions.slice(actions.indexOf("export async function completeTestTurnover"), actions.indexOf("async function insertPropertyChecklistTask"));
-  assert.match(page, /process\.env\.NODE_ENV === "development"/);
-  assert.match(page, /Complete test clean/);
+  assert.doesNotMatch(page, /process\.env\.NODE_ENV/);
+  assert.doesNotMatch(page, /Complete test clean|Fill test clean data|testData/);
   assert.match(helper, /export async function completeTestTurnover/);
   assert.match(helper, /process\.env\.NODE_ENV !== "development"/);
   assert.match(helper, /requireCleanerUser\(\)/);
@@ -154,10 +214,7 @@ test("cleaner test-data fill is development-only, assigned-clean scoped, and che
   const operatorPage = readFileSync(new URL("../app/business/turnovers/[id]/page.tsx", import.meta.url), "utf8");
   const cleanerPage = readFileSync(new URL("../app/cleaner/turnovers/[id]/page.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(operatorPage, /Fill test clean data/);
-  assert.match(cleanerPage, /showTestDataHelper/);
-  assert.match(cleanerPage, /Fill test clean data/);
-  assert.match(cleanerPage, /process\.env\.NODE_ENV === "development"/);
-  assert.match(cleanerPage, /\["arrived", "in_progress"\]/);
+  assert.doesNotMatch(cleanerPage, /showTestDataHelper|Fill test clean data|process\.env\.NODE_ENV|testData=1/);
 });
 
 test("development cleaner email diagnostic is not exposed in production", () => {
