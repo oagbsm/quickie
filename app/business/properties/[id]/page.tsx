@@ -88,7 +88,7 @@ export default async function Page({
   const { data: p, error: queryError } = await supabase
     .from("properties")
     .select(
-      "*,checklist_templates(id,active,checklist_template_sections(id,title,position,checklist_template_tasks(id,label,position,mandatory,photo_required,note_required,blocking))),work_items(id,turnover_date,status,ready_at,assignments(workers(display_name)),operational_issues(status)),property_workers(is_default,workers(id,display_name)),activity_events(id,description,created_at)",
+      "*,checklist_templates(id,active,checklist_template_sections(id,title,room_type,position,checklist_template_tasks(id,label,position,mandatory,photo_required,note_required,blocking))),work_items(id,turnover_date,status,ready_at,assignments(workers(display_name)),operational_issues(status)),property_workers(is_default,workers(id,display_name)),activity_events(id,description,created_at)",
     )
     .eq("id", id)
     .eq("account_id", accountId)
@@ -585,6 +585,7 @@ export default async function Page({
               (section: {
                 id: string;
                 title: string;
+                room_type?: string | null;
                 checklist_template_tasks: Array<{
                   id: string;
                   label: string;
@@ -595,7 +596,7 @@ export default async function Page({
               }) => {
                 const tasks = [...(section.checklist_template_tasks || [])].sort((a, b) => a.position - b.position);
                 return <section key={section.id} className="overflow-visible rounded-xl border border-[#e1e7ef] bg-[#fbfcfe]">
-                  <div className="flex items-center justify-between gap-3 border-b border-[#e7ebf1] px-4 py-3"><h3 className="font-extrabold text-[#071f49]">{section.title}</h3><span className="shrink-0 rounded-full bg-[#eef2f7] px-2.5 py-1 text-xs font-bold text-[#657089]">{tasks.length} {tasks.length === 1 ? "item" : "items"}</span></div>
+                  <div className="flex items-center justify-between gap-3 border-b border-[#e7ebf1] px-4 py-3"><div><h3 className="font-extrabold text-[#071f49]">{section.title}</h3>{section.room_type && ["bedroom", "bathroom"].includes(section.room_type) && <p className="mt-1 text-xs font-semibold text-[#657089]">Applies to each {section.room_type}</p>}</div><span className="shrink-0 rounded-full bg-[#eef2f7] px-2.5 py-1 text-xs font-bold text-[#657089]">{tasks.length} {tasks.length === 1 ? "item" : "items"}</span></div>
                   <div className="divide-y divide-[#e7ebf1] px-3">
                     {tasks.map((task) => (
                       <div key={task.id} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2.5 py-3 sm:gap-3">

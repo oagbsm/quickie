@@ -41,11 +41,12 @@ const cleanerEvidence = readFileSync(new URL("../supabase/migrations/20260806000
 const cleanerEvidenceInsert = readFileSync(new URL("../supabase/migrations/202608060002_cleaner_evidence_insert_policy.sql", import.meta.url), "utf8");
 const cleanerCompletedChecklist = readFileSync(new URL("../supabase/migrations/202608060003_cleaner_completed_checklist_select.sql", import.meta.url), "utf8");
 const assignmentProtection = readFileSync(new URL("../supabase/migrations/202608060004_protect_accepted_assignments.sql", import.meta.url), "utf8");
+const roomChecklist = readFileSync(new URL("../supabase/migrations/202608070001_room_instance_checklists.sql", import.meta.url), "utf8");
 const invitationEmailGuard = readFileSync(new URL("../supabase/migrations/202607260008_invitation_email_guard.sql", import.meta.url), "utf8");
 const sprint2aSecurity = readFileSync(new URL("../supabase/migrations/202607310001_sprint_2a_cleaner_security.sql", import.meta.url), "utf8");
 const invitationActions = readFileSync(new URL("../app/business/str-actions.ts", import.meta.url), "utf8");
 const cleanerPage = readFileSync(new URL("../app/business/cleaners/[id]/page.tsx", import.meta.url), "utf8");
-const sql = `${core}\n${hardening}\n${atomic}\n${ownerChecklist}\n${accessExpiry}\n${cleanerEvidence}\n${cleanerEvidenceInsert}\n${cleanerCompletedChecklist}\n${assignmentProtection}\n${invitationEmailGuard}\n${sprint2aSecurity}`;
+const sql = `${core}\n${hardening}\n${atomic}\n${ownerChecklist}\n${accessExpiry}\n${cleanerEvidence}\n${cleanerEvidenceInsert}\n${cleanerCompletedChecklist}\n${assignmentProtection}\n${roomChecklist}\n${invitationEmailGuard}\n${sprint2aSecurity}`;
 
 test("neutral reusable core objects avoid Airbnb-specific table names", () => {
   for (const table of [
@@ -157,6 +158,17 @@ test("business assignment removal and replacement stop after cleaner acceptance"
   assert.match(assignmentProtection, /status = 'cancelled'/);
   assert.match(assignmentProtection, /assignment_cancelled/);
   assert.match(assignmentProtection, /create or replace function public\.assign_work_item_worker/);
+});
+
+test("room checklist snapshots are additive, repeated, and historical-safe", () => {
+  assert.match(roomChecklist, /add column if not exists room_type/);
+  assert.match(roomChecklist, /add column if not exists room_index/);
+  assert.match(roomChecklist, /add column if not exists room_instance_id/);
+  assert.match(roomChecklist, /when 'bedroom' then/);
+  assert.match(roomChecklist, /when 'bathroom' then/);
+  assert.match(roomChecklist, /for room_index in 1\.\.room_count/);
+  assert.match(roomChecklist, /room_instance_id/);
+  assert.match(roomChecklist, /if exists \(select 1 from public\.checklist_tasks where work_item_id = item\.id\) then/);
 });
 
 test("invitation acceptance enforces expiry, revocation and one worker identity", () => {

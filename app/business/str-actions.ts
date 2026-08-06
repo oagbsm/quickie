@@ -432,44 +432,11 @@ export async function createTurnover(form: FormData) {
   }
   turnoverCreateLog("db_create_success", { ...baseLog, turnoverId: item.id });
 
-  const { data: template } = await supabase
-    .from("checklist_templates")
-    .select(
-      "id,checklist_template_sections(id,title,position,checklist_template_tasks(id,label,description,position,response_type,mandatory,photo_required,note_required,blocking))",
-    )
-    .eq("property_id", propertyId)
-    .eq("active", true)
-    .order("version", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const sections = (template?.checklist_template_sections || []) as Array<
-    Record<string, unknown>
-  >;
-  const tasks = sections.flatMap((section) =>
-    (
-      (section.checklist_template_tasks || []) as Array<Record<string, unknown>>
-    ).map((task) => ({
-      account_id: accountId,
-      work_item_id: item.id,
-      source_task_id: task.id,
-      section_title: section.title,
-      label: task.label,
-      description: task.description,
-      position: Number(section.position) * 100 + Number(task.position),
-      response_type: task.response_type,
-      mandatory: task.mandatory,
-      photo_required: task.photo_required,
-      note_required: task.note_required,
-      blocking: task.blocking,
-    })),
-  );
-  if (tasks.length) {
-    const { error: checklistError } = await supabase.from("checklist_tasks").insert(tasks);
-    if (checklistError) {
-      turnoverCreateLog("db_create_failed", { accountId, propertyId, workerId, turnoverId: item.id, ...safeDiagnosticError(checklistError), errorCode: "checklist_insert_failed" });
-      await supabase.from("work_items").delete().eq("id", item.id).eq("account_id", accountId);
-      redirect("/business/turnovers/new?error=checklist");
-    }
+  const { error: checklistError } = await supabase.rpc("snapshot_work_item_checklist", { target_work_item: item.id });
+  if (checklistError) {
+    turnoverCreateLog("db_create_failed", { accountId, propertyId, workerId, turnoverId: item.id, ...safeDiagnosticError(checklistError), errorCode: "checklist_snapshot_failed" });
+    await supabase.from("work_items").delete().eq("id", item.id).eq("account_id", accountId);
+    redirect("/business/turnovers/new?error=checklist");
   }
   if (workerId) {
     turnoverAssignmentLog("assignment_attempt", { accountId, turnoverId: item.id, workerId });

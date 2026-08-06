@@ -71,7 +71,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       errorMessage: signedEvidenceError?.message,
     });
   }
-  const taskLabels = new Map<string, string>((item.checklist_tasks || []).map((task: { id: string; label: string }) => [task.id, task.label] as [string, string]));
+  const taskLabels = new Map<string, string>((item.checklist_tasks || []).map((task: { id: string; label: string; section_title?: string | null }) => [task.id, task.section_title ? `${task.section_title} · ${task.label}` : task.label] as [string, string]));
   const openIssues = issues.filter((i: { status: string }) => !["resolved", "closed"].includes(i.status));
   const readyWithOpenIssues = item.status === "ready" && openIssues.length > 0;
   const readyIssueCopy = openIssues.every((issue: { blocking: boolean }) => !issue.blocking)
