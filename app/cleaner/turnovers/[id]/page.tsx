@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireCleanerUser } from "@/lib/cleaner/auth";
 import CleanerStatus from "@/app/cleaner/CleanerStatus";
 import CleanerNetworkGuard from "@/app/cleaner/CleanerNetworkGuard";
-import TaskPhotoUpload from "@/app/cleaner/TaskPhotoUpload";
+import TaskPhotoUpload from "../../TaskPhotoUpload";
 import PendingButton from "@/app/components/PendingButton";
 import { getCleanerLifecycle } from "@/lib/cleaner/lifecycle";
 import { hasRequiredTaskPhoto, isTaskEffectivelyComplete } from "@/lib/cleaner/task-completion";

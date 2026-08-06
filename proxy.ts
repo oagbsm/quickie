@@ -51,9 +51,13 @@ function expireAuthCookies(response: NextResponse, names: string[]) {
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
   let staleCookieNames: string[] = [];
+  const protectedPortalPath = isProtectedPortalPath(request.nextUrl.pathname);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (url && key) {
+  // Public auth pages must remain stable even when the browser still carries
+  // an invalid session cookie. Protected routes perform the authoritative
+  // lookup and clear that cookie before redirecting once to sign-in.
+  if (url && key && protectedPortalPath) {
     const auth = createServerClient(url, key, {
       cookies: {
         getAll: () => request.cookies.getAll(),
@@ -81,7 +85,7 @@ export async function proxy(request: NextRequest) {
         expireAuthCookies(response, staleCookieNames);
       }
     }
-    if (isProtectedPortalPath(request.nextUrl.pathname) && !user) {
+    if (protectedPortalPath && !user) {
       const loginUrl = new URL("/business/sign-in", request.url);
       loginUrl.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
       return expireAuthCookies(NextResponse.redirect(loginUrl), staleCookieNames);
