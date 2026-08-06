@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireCleanerUser } from "@/lib/cleaner/auth";
 import CleanerStatus from "@/app/cleaner/CleanerStatus";
+import CleanerNetworkGuard from "@/app/cleaner/CleanerNetworkGuard";
 import TaskPhotoUpload from "@/app/cleaner/TaskPhotoUpload";
 import PendingButton from "@/app/components/PendingButton";
 import { getCleanerLifecycle } from "@/lib/cleaner/lifecycle";
@@ -153,12 +154,13 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     task_requirements: "Complete the required result and note before completing this task.",
     evidence_forbidden: "That evidence cannot be removed from this clean.",
     task_save: "We could not save that task. Try again.",
+    network: "Connection interrupted. Try the photo again when you are back online.",
     update: "We could not update the clean. Try again.",
     action_required: "The clean was saved, but some completion requirements still need attention.",
   };
 
   if (item.status === "ready") {
-    return <div className="mx-auto max-w-5xl">
+    return <CleanerNetworkGuard><div className="mx-auto max-w-5xl">
       <Link href="/cleaner/today" className="text-sm font-bold text-[#526078]">← Today</Link>
       <section className="mt-5 rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm sm:p-8">
         <p className="text-sm font-extrabold text-emerald-700">Clean completed ✓</p>
@@ -171,7 +173,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
         </div>
         <Link href="/cleaner/today" className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-[#071f49] px-4 font-extrabold text-white">Back to Today</Link>
       </section>
-    </div>;
+    </div></CleanerNetworkGuard>;
   }
 
   const currentJourney = journeyIndex(item.status);
@@ -179,7 +181,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const linenContent = [property?.linen_requirements, property?.towel_requirements, property?.bed_configuration, property?.consumables_instructions, property?.waste_instructions].some(Boolean);
   const propertyNotes = property?.cleaning_notes;
   const currentAction = getCleanerLifecycle(item.status).primaryAction;
-  const photoUploadError = ["invalid_file", "storage", "evidence", "task", "task_save"].includes(error || "");
+  const photoUploadError = ["invalid_file", "storage", "evidence", "task", "task_save", "network"].includes(error || "");
   const renderTaskGroups = (groups: Map<string, CleanerTask[]>, openSections: boolean) => Array.from(groups.entries()).map(([section, sectionTasks]) => <details key={section} open={openSections} className="rounded-lg border">
     <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 py-3 text-sm font-extrabold"><span>{section}</span><span>{sectionTasks.filter((task) => isTaskEffectivelyComplete(task, item.id, persistedEvidence)).length}/{sectionTasks.length}</span></summary>
     <div className="divide-y border-t">{sectionTasks.map((task) => {
@@ -203,7 +205,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       </div>;
     })}</div>
   </details>);
-  return <div className="mx-auto max-w-6xl pb-24 lg:pb-8">
+  return <CleanerNetworkGuard><div className="mx-auto max-w-6xl pb-24 lg:pb-8">
     <div className="mb-4 flex items-center justify-between gap-3">
       <Link href="/cleaner/today" className="text-sm font-bold text-[#526078]">← Back to today</Link>
       <span className="text-sm font-extrabold text-[#071f49]">Quickola</span>
@@ -297,5 +299,5 @@ export default async function Page({ params, searchParams }: { params: Promise<{
         <input type="hidden" name="turnoverId" value={id} /><select name="issueType" required className="min-h-11 rounded-lg border px-3"><option value="">Choose an issue</option><option>Access problem</option><option>Damage</option><option>Missing item</option><option>Cleaning problem</option><option>Linen/supplies</option><option>Other</option></select><textarea name="description" required placeholder="What needs attention?" className="rounded-lg border p-3" /><button className="min-h-11 rounded-lg border px-4 font-extrabold">Report issue</button>
       </form></details>}
     </>}
-  </div>;
+  </div></CleanerNetworkGuard>;
 }
