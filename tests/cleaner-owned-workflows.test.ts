@@ -54,9 +54,13 @@ test("issue photos remain tied to the same issue and work item", () => {
 test("public report access hashes and validates only the supplied expiring token", () => {
   assert.match(publicReport, /createHash\("sha256"\)/);
   assert.match(publicReport, /eq\("token_hash", hash\)/);
-  assert.match(publicReport, /share\.revoked_at/);
-  assert.match(publicReport, /share\.expires_at/);
-  assert.doesNotMatch(publicReport, /access_notes|key_instructions|lockbox|service_role/i);
+  assert.match(publicReport, /share\?\.revoked_at/);
+  assert.match(publicReport, /share\?\.expires_at/);
+  assert.match(publicReport, /public_report_route_reached/);
+  assert.match(publicReport, /public_report_lookup_failed/);
+  assert.match(publicReport, /lookupFailed\("configuration"/);
+  assert.match(publicReport, /Report temporarily unavailable/);
+  assert.doesNotMatch(publicReport, /access_notes|key_instructions|lockbox/i);
 });
 
 test("public report route is deployable, unauthenticated, and token-safe", () => {
