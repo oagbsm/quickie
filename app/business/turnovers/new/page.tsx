@@ -36,11 +36,10 @@ export default async function Page({
       <div className="mb-7 mt-4">
         <p className="text-sm font-extrabold text-[#2d67b2]">MANUAL CLEAN</p>
         <h1 className="mt-1 text-3xl font-extrabold tracking-[-.03em] sm:text-4xl">
-          Add guest arrival
+          Add clean
         </h1>
         <p className="mt-2 text-[#657089]">
-          Set the arrival window, apply the property standard and invite your
-          cleaner to confirm the readiness work.
+          Schedule a clean, set the cleaning window and assign a cleaner.
         </p>
       </div>
       {properties?.length ? (

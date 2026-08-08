@@ -49,8 +49,8 @@ export default function TurnoverForm({ properties, workers, initialPropertyId }:
       <p className="text-xs font-extrabold uppercase tracking-[.12em] text-[#2d67b2]">2 · Schedule</p>
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
         <label className="font-bold">Clean date<input name="date" type="date" min={new Date().toISOString().slice(0,10)} className={field} required /></label>
-        <label className="font-bold">Guest checkout<input name="checkoutTime" type="time" value={checkout} onChange={e => setCheckout(e.target.value)} className={field} required /></label>
-        <label className="font-bold">Next check-in<input name="checkinTime" type="time" value={checkin} onChange={e => setCheckin(e.target.value)} className={field} required /></label>
+        <label className="font-bold">Clean can start<input name="checkoutTime" type="time" value={checkout} onChange={e => setCheckout(e.target.value)} className={field} required /><span className="mt-1 block text-sm font-normal text-[#647086]">Usually after guest checkout</span></label>
+        <label className="font-bold">Clean must be finished by<input name="checkinTime" type="time" value={checkin} onChange={e => setCheckin(e.target.value)} className={field} required /><span className="mt-1 block text-sm font-normal text-[#647086]">Usually before next guest check-in</span></label>
       </div>
       <input type="hidden" name="accessTime" value={checkout} />
       <label className="mt-4 block max-w-xs font-bold">Typical cleaning time<select value={customDuration ? "custom" : duration} onChange={e => { if (e.target.value === "custom") setCustomDuration(true); else { setCustomDuration(false); setDuration(Number(e.target.value)); } }} className={field}>{[60,90,120,150,180,210,240].map(value => <option key={value} value={value}>{formatDuration(value)}</option>)}<option value="custom">Custom</option></select></label>
@@ -73,10 +73,10 @@ export default function TurnoverForm({ properties, workers, initialPropertyId }:
       <p className="text-xs font-extrabold uppercase tracking-[.12em] text-[#2d67b2]">4 · Assign cleaner</p>
       <label className="mt-4 block font-bold">Cleaner or contractor<select name="workerId" value={workerId} onChange={e => setWorkerId(e.target.value)} className={field}><option value="">Leave unassigned</option>{workers.map(w => <option key={w.id} value={w.id}>{w.display_name}{w.company_name ? ` · ${w.company_name}` : ""}</option>)}</select></label>
       <p className="mt-2 text-sm text-[#647086]">You can assign or change the cleaner later. Quickola does not select a cleaner for you.</p>
-      <div className="mt-5 grid grid-cols-[auto_1fr] gap-2 sm:hidden"><button type="button" onClick={() => setStep(3)} className="min-h-12 rounded-lg border px-4 font-bold">Back</button><button disabled={pending} className="min-h-12 rounded-lg bg-[#071f49] px-5 font-extrabold text-white disabled:opacity-60">{pending ? "Creating…" : "Create turnover"}</button></div>
+      <div className="mt-5 grid grid-cols-[auto_1fr] gap-2 sm:hidden"><button type="button" onClick={() => setStep(3)} className="min-h-12 rounded-lg border px-4 font-bold">Back</button><button disabled={pending} className="min-h-12 rounded-lg bg-[#071f49] px-5 font-extrabold text-white disabled:opacity-60">{pending ? "Creating…" : "Create clean"}</button></div>
     </section>
     <section className="hidden flex-col justify-between gap-4 rounded-xl bg-[#071f49] p-5 text-white sm:flex sm:flex-row sm:items-center sm:p-7">
-      <div><p className="font-extrabold">Review and add arrival</p><p className="mt-1 text-sm text-white/70">The property checklist and evidence rules will be copied into this readiness workflow.</p></div>
+      <div><p className="font-extrabold">Review clean</p><p className="mt-1 text-sm text-white/70">The property checklist and evidence rules will be copied into this clean.</p></div>
       <button disabled={pending} className="min-h-12 rounded-lg bg-white px-6 font-extrabold text-[#071f49] focus-visible:ring-4 focus-visible:ring-white/40 disabled:opacity-60">{pending ? "Creating…" : "Create clean"}</button>
     </section>
   </form>;
