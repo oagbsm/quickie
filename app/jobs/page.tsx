@@ -11,11 +11,11 @@ export default async function JobsPage() {
   if (!user) redirect("/sign-in?next=/jobs");
   const admin = createSupabaseAdminClient();
   const browseFilters = { status: ["posted", "finding_provider"] } as const;
-  let { data: jobs, error: browseError } = await admin.from("marketplace_jobs").select("id,public_token,service,service_subtype,postcode,optional_note,requested_timing,map_latitude,map_longitude,created_at,marketplace_quotes(count)").in("status", browseFilters.status).order("created_at", { ascending: false }).limit(80);
-  if (browseError?.code === "42703" && /map_(latitude|longitude)/i.test(browseError.message)) {
+  let { data: jobs, error: browseError } = await admin.from("marketplace_jobs").select("id,public_token,service,service_subtype,postcode,optional_note,requested_timing,budget_amount,map_latitude,map_longitude,created_at,marketplace_quotes(count)").in("status", browseFilters.status).order("created_at", { ascending: false }).limit(80);
+  if (browseError?.code === "42703" && /(map_(latitude|longitude)|budget_amount)/i.test(browseError.message)) {
     const fallback = await admin.from("marketplace_jobs").select("id,public_token,service,service_subtype,postcode,optional_note,requested_timing,created_at,marketplace_quotes(count)").in("status", browseFilters.status).order("created_at", { ascending: false }).limit(80);
     browseError = fallback.error;
-    jobs = fallback.data?.map((job) => ({ ...job, map_latitude: null, map_longitude: null })) ?? null;
+    jobs = fallback.data?.map((job) => ({ ...job, budget_amount: null, map_latitude: null, map_longitude: null })) ?? null;
   }
   if (browseError) console.error("marketplace_browse_failed", { code: browseError.code, message: browseError.message });
   const shaped = (jobs || []).map((job) => ({ ...job, offer_count: Array.isArray(job.marketplace_quotes) ? Number(job.marketplace_quotes[0]?.count || 0) : 0 }));
