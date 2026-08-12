@@ -1,0 +1,9 @@
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import MarketplaceHeader from "@/app/components/marketplace/MarketplaceHeader";
+import { marketplaceServices } from "@/app/data/marketplace";
+
+export const metadata: Metadata = { title: "Local services | Quickola", description: "Explore the local service categories Quickola is building for practical jobs around the home.", alternates: { canonical: "/services" } };
+
+export default function ServicesPage() { return <main className="min-h-screen bg-[#f7f8fa] text-[#061b3f]"><MarketplaceHeader /><section className="bg-[#061b3f] px-5 py-16 text-white sm:px-8"><div className="mx-auto max-w-[1120px]"><p className="text-xs font-black uppercase tracking-[.16em] text-[#23dc63]">SERVICES</p><h1 className="mt-4 max-w-3xl text-5xl font-black tracking-[-.06em] sm:text-6xl">What do you need help with?</h1><p className="mt-5 max-w-2xl text-lg leading-8 text-white/70">Choose a service, share the useful details and let the right local next step become clearer.</p></div></section><section className="px-5 py-12 sm:px-8 sm:py-16"><div className="mx-auto grid max-w-[1120px] gap-4 sm:grid-cols-2 lg:grid-cols-3">{marketplaceServices.map((service) => <Link key={service.slug} href={`/services/${service.slug}`} className="group rounded-2xl bg-white p-4 shadow-[0_8px_28px_rgba(6,27,63,.05)] ring-1 ring-[#e9edf1] transition hover:-translate-y-1"><div className="grid h-36 place-items-center rounded-xl bg-[#f0f7f2] p-6"><Image src={service.image} alt="" width={120} height={120} className="h-full w-full object-contain" /></div><h2 className="mt-4 text-xl font-black group-hover:text-[#167d3c]">{service.name}</h2><p className="mt-2 text-sm leading-6 text-[#707b8d]">{service.description}</p><span className="mt-4 inline-block text-sm font-black text-[#167d3c]">Explore {service.name.toLowerCase()} →</span></Link>)}</div></section></main>; }

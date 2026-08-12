@@ -11,23 +11,23 @@ const nunito = Nunito_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.quickola.co.uk"),
   title: {
-    default: "Quickola | STR turnover coordination",
+    default: "Quickola | Fair prices. Local pros.",
     template: "%s",
   },
   description:
-    "Coordinate short-term-rental turnovers with the cleaners you already use and receive proof when each property is guest-ready.",
+    "Find local professionals for practical jobs around your home with Quickola.",
   applicationName: "Quickola",
   authors: [{ name: "Quickola" }],
   creator: "Quickola",
   publisher: "Quickola",
   icons: {
     icon: [
-      { url: "/quickola/favicon.png", type: "image/png", sizes: "32x32" },
+      { url: "/quickola/logo-mark.png", type: "image/png", sizes: "32x32" },
       { url: "/quickola/logo-mark.png", type: "image/png" },
     ],
-    shortcut: "/quickola/favicon.png",
+    shortcut: "/quickola/logo-mark.png",
     apple: {
-      url: "/quickola/apple-touch-icon.png",
+      url: "/quickola/logo-mark.png",
       sizes: "180x180",
       type: "image/png",
     },
@@ -36,9 +36,9 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://www.quickola.co.uk",
     siteName: "Quickola",
-    title: "Quickola | STR turnover coordination",
+    title: "Quickola | Fair prices. Local pros.",
     description:
-      "Coordinate short-term-rental turnovers and verify when each property is guest-ready.",
+      "Find local professionals for practical jobs around your home with Quickola.",
     images: [
       {
         url: "/quickola/logo-mark.png",
@@ -50,9 +50,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Quickola | STR turnover coordination",
+    title: "Quickola | Fair prices. Local pros.",
     description:
-      "Coordinate STR turnovers with your own cleaners and collect guest-ready evidence.",
+      "Find local professionals for practical jobs around your home with Quickola.",
     images: ["/quickola/logo-mark.png"],
   },
   robots: {
@@ -76,11 +76,11 @@ export default function RootLayout({
       <head>
         <link
           rel="icon"
-          href="/quickola/favicon.png"
+          href="/quickola/logo-mark.png"
           type="image/png"
           sizes="32x32"
         />
-        <link rel="shortcut icon" href="/quickola/favicon.png" />
+        <link rel="shortcut icon" href="/quickola/logo-mark.png" />
         <link
           rel="apple-touch-icon"
           href="/quickola/apple-touch-icon.png"

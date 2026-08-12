@@ -90,8 +90,8 @@ export default function SignUpForm() {
         <h1 className="text-3xl font-black">Account already exists</h1>
         <p className="mt-4 leading-7 text-[#657089]">An account already exists for this email. Sign in or reset your password.</p>
         <div className="mt-7 grid gap-3">
-          <Link href={`/business/sign-in?email=${encodeURIComponent(email)}`} className="rounded-xl bg-[#079448] p-3 text-center font-black text-white">Sign in</Link>
-          <Link href={`/business/sign-in?email=${encodeURIComponent(email)}&reset=1`} className="rounded-xl border p-3 text-center font-black">Reset password</Link>
+          <Link href={`/auth/portal/sign-in?email=${encodeURIComponent(email)}`} className="rounded-xl bg-[#079448] p-3 text-center font-black text-white">Sign in</Link>
+          <Link href={`/auth/portal/sign-in?email=${encodeURIComponent(email)}&reset=1`} className="rounded-xl border p-3 text-center font-black">Reset password</Link>
         </div>
       </section>
     );
@@ -132,7 +132,7 @@ export default function SignUpForm() {
             Change email
           </button>
           <Link
-            href="/business/sign-in"
+            href="/auth/portal/sign-in"
             className="p-2 text-center text-sm font-black text-[#079448]"
           >
             Return to sign in
@@ -212,7 +212,7 @@ export default function SignUpForm() {
       <p className="text-center text-sm font-semibold text-[#657089]">
         Already registered?{" "}
         <Link
-          href="/business/sign-in"
+          href="/auth/portal/sign-in"
           className="font-black text-[#079448]"
         >
           Sign in

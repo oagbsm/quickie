@@ -111,11 +111,11 @@ test("authentication URLs use production origin and reject external next paths",
   );
   assert.equal(
     safeInternalNextPath("https://evil.example/business/dashboard"),
-    "/auth/portal",
+    "/portal",
   );
   assert.equal(
     safeInternalNextPath("//evil.example/business/dashboard"),
-    "/auth/portal",
+    "/portal",
   );
 });
 test("sign-up and password recovery use production callback URLs", () => {
@@ -191,7 +191,7 @@ test("business email confirmation uses the secure PKCE callback flow", () => {
   assert.match(callback, /exchangeCodeForSession\(code\)/);
   assert.match(callback, /signup-confirmation/);
   assert.match(callback, /user\.email/);
-  assert.match(callback, /\/business\/sign-in/);
+  assert.match(callback, /\/auth\/portal\/sign-in/);
   assert.match(callback, /SIGNUP_CONFIRMATION_PURPOSES\.has\(purpose \|\| ""\) && !hadExistingAuthSession/);
   assert.doesNotMatch(callback, /new URL\("\/", appOrigin\)/);
   assert.match(

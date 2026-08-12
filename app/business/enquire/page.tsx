@@ -33,7 +33,7 @@ export default function Page() {
             <p className="mt-8 text-sm text-[#657089]">
               Already have an account?{" "}
               <Link
-                href="/business/sign-in"
+                href="/auth/portal/sign-in"
                 className="font-black text-[#079448]"
               >
                 Business login

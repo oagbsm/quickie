@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin/auth";
-import TurnoverStatus from "@/app/business/components/TurnoverStatus";
+import TurnoverStatus from "@/app/admin/components/TurnoverStatus";
 import {
   adminCleaner,
   adminRisk,

@@ -14,8 +14,11 @@ export function getSignUpConfirmationRedirect(
 export function getPasswordRecoveryRedirect(
   environment?: AppOriginEnvironment,
 ) {
-  return buildAbsoluteAppUrl(
-    "/auth/callback?next=/business/update-password",
-    environment,
-  );
+  return buildAbsoluteAppUrl("/sign-in", environment);
+}
+
+export function getCustomerSignUpRedirect(draftToken: string, environment?: AppOriginEnvironment) {
+  const callback = new URL(buildAbsoluteAppUrl("/auth/callback", environment));
+  callback.searchParams.set("draft", draftToken);
+  return callback.toString();
 }

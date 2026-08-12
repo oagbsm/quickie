@@ -41,7 +41,7 @@ export function portalForPath(path: string): Portal | null {
 }
 
 export function signInDestination(nextPath: string) {
-  return `/business/sign-in?next=${encodeURIComponent(nextPath)}`;
+  return `/auth/portal/sign-in?next=${encodeURIComponent(nextPath)}`;
 }
 
 export type PortalNavigationDecision =

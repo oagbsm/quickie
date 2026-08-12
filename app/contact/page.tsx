@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Footer from "../components/Footer";
+import MarketplaceHeader from "@/app/components/marketplace/MarketplaceHeader";
 import { escapeHtml, sendAdminNotifications } from "@/lib/server/notifications";
 
 function clean(value: FormDataEntryValue | null) {
@@ -83,9 +84,9 @@ function StatusMessage({ status }: { status?: string }) {
 }
 
 export const metadata = {
-  title: "Contact Quickola Property Services",
+  title: "Help and support | Quickola",
   description:
-    "Contact Quickola about cleaning bookings, managed properties or property service support in Slough.",
+    "Contact Quickola for account help, existing bookings and business enquiries.",
 };
 
 export default async function ContactPage({
@@ -97,7 +98,7 @@ export default async function ContactPage({
   const status = resolvedSearchParams?.status;
 
   return (
-    <main className="min-h-screen bg-[#f7f9fb] text-[#071638]">
+    <main className="min-h-screen bg-[#f7f9fb] text-[#071638]"><MarketplaceHeader />
       <section className="relative overflow-hidden bg-[#071638] px-4 py-16 text-white sm:px-6 lg:px-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(63,196,118,0.25),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(54,124,255,0.22),transparent_36%)]" />
         <div className="relative mx-auto grid max-w-[1120px] gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
@@ -112,11 +113,10 @@ export default async function ContactPage({
               Contact Quickola
             </div>
             <h1 className="mt-6 max-w-[760px] text-[44px] font-black leading-[0.96] tracking-[-0.065em] sm:text-[64px]">
-              How can we help your business?
+              Help and support
             </h1>
             <p className="mt-5 max-w-[620px] text-[18px] font-medium leading-[1.65] text-white/76">
-              Contact Quickola about an existing business booking, managed
-              property or cleaning requirement.
+              Contact Quickola about an existing account, booking or business enquiry. To post a new local service job, start from the homepage.
             </p>
           </div>
 

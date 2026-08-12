@@ -98,6 +98,7 @@ export default function Sidebar({
           alt="Quickola"
           width={40}
           height={40}
+          style={{ width: "auto", height: "auto" }}
           className="h-10 w-10 shrink-0 object-contain"
         />
         <div className="min-w-0">

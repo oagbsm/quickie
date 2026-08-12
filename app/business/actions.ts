@@ -621,5 +621,5 @@ export async function acceptTerms(f: FormData) {
 export async function signOut() {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
-  redirect("/business/sign-in");
+  redirect("/auth/portal/sign-in");
 }

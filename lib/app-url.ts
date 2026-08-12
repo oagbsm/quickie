@@ -75,7 +75,7 @@ export function getTransactionalEmailOrigin(environment: AppOriginEnvironment = 
 
 export function safeInternalNextPath(
   value: string | null | undefined,
-  fallback = "/auth/portal",
+  fallback = "/portal",
 ) {
   if (
     !value ||
@@ -89,10 +89,11 @@ export function safeInternalNextPath(
     const parsed = new URL(value, "https://internal.quickola");
     if (parsed.origin !== "https://internal.quickola") return fallback;
     if (
-      !parsed.pathname.startsWith("/business/") &&
-      !parsed.pathname.startsWith("/cleaner/") &&
-      !parsed.pathname.startsWith("/team/invite/") &&
-      !parsed.pathname.startsWith("/invite/") &&
+      !parsed.pathname.startsWith("/auth/customer") &&
+      !parsed.pathname.startsWith("/jobs/") &&
+      !parsed.pathname.startsWith("/messages/") &&
+      parsed.pathname !== "/my-jobs" &&
+      parsed.pathname !== "/portal" &&
       parsed.pathname !== "/admin"
     )
       return fallback;
@@ -105,7 +106,7 @@ export function safeInternalNextPath(
 export function buildAbsoluteAppUrl(
   path: string,
   environment?: AppOriginEnvironment,
-) {
+  ) {
   if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\"))
     throw new Error("Application URL path must be internal.");
   const url = new URL(path, resolveAppOrigin(environment));

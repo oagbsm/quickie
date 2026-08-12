@@ -39,7 +39,7 @@ export default async function Page({
               Return home
             </Link>
             <Link
-              href="/business/sign-in"
+              href="/auth/portal/sign-in"
               className="rounded-xl border px-5 py-3 text-center font-black"
             >
               Business login

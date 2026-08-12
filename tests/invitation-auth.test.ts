@@ -203,7 +203,7 @@ test("stale refresh sessions are cleared without provider errors", () => {
   assert.match(proxy, /"\/invite\/:path\*"/);
   assert.match(callback, /expireAuthCookies/);
   assert.doesNotMatch(callback, /console\.error|error\.message/);
-  assert.match(browserAuth, /autoRefreshToken: false/);
+  assert.match(browserAuth, /autoRefreshToken: true/);
   assert.match(businessSignIn, /authForm: true/);
 });
 

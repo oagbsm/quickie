@@ -135,7 +135,7 @@ export default function InvitationCredentials({
       </button>
       {message.startsWith("An account already") && (
         <Link
-          href={`/business/sign-in?email=${encodeURIComponent(email)}&next=${encodeURIComponent(`/invite/${token}`)}&reset=1`}
+          href={`/auth/portal/sign-in?email=${encodeURIComponent(email)}&next=${encodeURIComponent(`/invite/${token}`)}&reset=1`}
           className="min-h-11 py-3 text-center text-sm font-bold text-[#079448]"
         >
           Forgot password?

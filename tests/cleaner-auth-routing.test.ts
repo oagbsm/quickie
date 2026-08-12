@@ -188,10 +188,10 @@ test("unauthenticated direct portal URLs preserve the requested path", () => {
   assert.deepEqual(cleaner, {
     kind: "sign-in",
     destination:
-      "/business/sign-in?next=%2Fcleaner%2Ftoday%3Fdate%3D2026-08-01",
+      "/auth/portal/sign-in?next=%2Fcleaner%2Ftoday%3Fdate%3D2026-08-01",
   });
   assert.deepEqual(business, {
     kind: "sign-in",
-    destination: "/business/sign-in?next=%2Fbusiness%2Fdashboard",
+    destination: "/auth/portal/sign-in?next=%2Fbusiness%2Fdashboard",
   });
 });

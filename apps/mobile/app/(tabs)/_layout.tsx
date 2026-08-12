@@ -1,0 +1,8 @@
+import { Redirect, Tabs } from "expo-router";
+import { View } from "react-native";
+import { useAuth } from "@/lib/auth";
+import { colors } from "@/lib/theme";
+import { Icon } from "@/components/ui";
+
+export default function TabsLayout() { const { session, cleanerAccess, loading } = useAuth(); if (loading) return null; if (!session) return <Redirect href="/sign-in" />; if (!cleanerAccess) return <Redirect href="/onboarding" />; return <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: colors.navy, tabBarInactiveTintColor: colors.muted, tabBarLabelStyle: { fontWeight: "700", fontSize: 11 }, tabBarStyle: { height: 78, paddingBottom: 11, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.white } }}><Tabs.Screen name="today" options={{ title: "Home", tabBarIcon: ({ color }) => <Icon name="today" color={color} size={22} /> }} /><Tabs.Screen name="jobs" options={{ title: "Jobs", tabBarIcon: ({ color }) => <Icon name="jobs" color={color} size={22} /> }} /><Tabs.Screen name="quick-actions" options={{ title: "", tabBarLabel: "", tabBarIcon: () => <View style={plusButton}><Icon name="add" color={colors.white} size={27} /></View> }} /><Tabs.Screen name="clients" options={{ title: "Clients", tabBarIcon: ({ color }) => <Icon name="host" color={color} size={21} /> }} /><Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ({ color }) => <Icon name="profile" color={color} size={21} /> }} /></Tabs>; }
+const plusButton = { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.navy, alignItems: "center" as const, justifyContent: "center" as const, marginTop: -18, shadowColor: colors.ink, shadowOpacity: 0.14, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 };
