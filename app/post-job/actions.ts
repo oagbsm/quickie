@@ -6,7 +6,6 @@ import { marketplaceJobUrl, sendMarketplaceCustomerEmail } from "@/lib/server/ma
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getJob } from "@/app/data/marketplace";
-import { estimateMarketplacePrice } from "@/lib/marketplacePricing";
 
 const text = (form: FormData, key: string) => String(form.get(key) || "").trim();
 const normaliseMobile = (value: string) => { const compact = value.replace(/[^\d+]/g, ""); return compact.startsWith("07") ? `+44${compact.slice(1)}` : compact; };
@@ -17,7 +16,7 @@ function persistenceError(stage: string, error: unknown) {
   return new Error(`draft_persistence_failed:${stage}`);
 }
 
-type DraftPayload = { category: string; service: string; answers: Record<string, string | number>; postcode: string; when: string; description: string; mobile: string; name: string; estimate: ReturnType<typeof estimateMarketplacePrice> };
+type DraftPayload = { category: string; service: string; answers: Record<string, string | number>; postcode: string; when: string; description: string; mobile: string; name: string };
 
 async function persistDraft(payload: DraftPayload, photos: File[], submissionKey: string) {
   const admin = createSupabaseAdminClient();
@@ -69,8 +68,7 @@ export async function publishPendingMarketplaceJob(draftToken: string) {
   } else {
     await admin.from("marketplace_customers").update({ email: customer.email || user.email || null, display_name: payload.name || user.user_metadata?.full_name || null, mobile: payload.mobile ? normaliseMobile(payload.mobile) : undefined, updated_at: new Date().toISOString() }).eq("id", customer.id);
   }
-  const estimate = payload.estimate;
-  const insertedJob = await admin.from("marketplace_jobs").insert({ published_draft_id: draft.id, customer_id: customer.id, service: payload.category, service_subtype: payload.service, pricing_answers: payload.answers, postcode: payload.postcode, approximate_area: payload.postcode.split(/\s+/)[0].toUpperCase(), requested_at: payload.when && /^\d{4}-\d{2}-\d{2}$/.test(payload.when) ? `${payload.when}T09:00:00.000Z` : null, requested_timing: payload.when || null, optional_note: payload.description || null, estimated_price_pence: estimate.estimatedPricePence, estimated_price_max_pence: estimate.priceRangeHighPence, booking_fee_pence: estimate.bookingFeePence, pricing_confidence: estimate.pricingConfidence, contact_method: user.email ? "email" : payload.mobile ? "phone" : null, contact_value: user.email || (payload.mobile ? normaliseMobile(payload.mobile) : null), contact_name: payload.name || user.user_metadata?.full_name || null }).select("id,public_token").single();
+  const insertedJob = await admin.from("marketplace_jobs").insert({ published_draft_id: draft.id, customer_id: customer.id, service: payload.category, service_subtype: payload.service, pricing_answers: payload.answers, postcode: payload.postcode, approximate_area: payload.postcode.split(/\s+/)[0].toUpperCase(), requested_at: payload.when && /^\d{4}-\d{2}-\d{2}$/.test(payload.when) ? `${payload.when}T09:00:00.000Z` : null, requested_timing: payload.when || null, optional_note: payload.description || null, estimated_price_pence: null, estimated_price_max_pence: null, booking_fee_pence: null, pricing_confidence: "not_configured", contact_method: user.email ? "email" : payload.mobile ? "phone" : null, contact_value: user.email || (payload.mobile ? normaliseMobile(payload.mobile) : null), contact_name: payload.name || user.user_metadata?.full_name || null }).select("id,public_token").single();
   let job = insertedJob.data;
   if (insertedJob.error?.code === "23505") job = (await admin.from("marketplace_jobs").select("id,public_token").eq("published_draft_id", draft.id).single()).data;
   if (insertedJob.error && insertedJob.error.code !== "23505") return { error: "job_persistence_failed" as const };
@@ -95,7 +93,7 @@ export async function submitConsumerJob(_state: { message: string }, form: FormD
   if (!selectedJob || !postcode) return { message: "Check the job type and postcode, then try again." };
   let answers: Record<string, string | number> = {};
   try { const parsed = JSON.parse(text(form, "answers") || "{}"); if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) answers = parsed; } catch { /* optional answers remain empty */ }
-  const payload: DraftPayload = { category, service, answers, postcode, when, description, mobile, name, estimate: estimateMarketplacePrice(selectedJob, answers) };
+  const payload: DraftPayload = { category, service, answers, postcode, when, description, mobile, name };
   let draft: { id: string; draft_token: string };
   try { draft = await persistDraft(payload, form.getAll("photos").filter((value): value is File => value instanceof File && value.size > 0), text(form, "submissionKey")); }
   catch (error) { return { message: error instanceof Error && error.message.startsWith("draft_persistence_failed") ? "We couldn’t save this job yet. Your details are still on this page; please try again." : "We couldn’t save this job yet. Please try again." }; }
