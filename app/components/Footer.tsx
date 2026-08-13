@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-const groups = [["Marketplace", [["Browse jobs", "/jobs"], ["Post a job", "/#job-composer"], ["My jobs", "/my-jobs"]]], ["Services", [["Cleaning", "/services/cleaning"], ["Gardening", "/services/gardening"], ["Handyman", "/services/handyman"], ["Plumbing", "/services/plumbing"]]], ["Company", [["Help", "/help"], ["Contact", "/contact"]]], ["Legal", [["Privacy", "/privacy-policy"], ["Terms", "/terms"]]]];
+const groups = [["Marketplace", [["Post a job", "/#job-composer"], ["My jobs", "/my-jobs"]]], ["Services", [["Cleaning", "/services/cleaning"], ["Gardening", "/services/gardening"], ["Handyman", "/services/handyman"], ["Plumbing", "/services/plumbing"]]], ["Company", [["Help", "/help"], ["Contact", "/contact"]]], ["Legal", [["Privacy", "/privacy-policy"], ["Terms", "/terms"]]]];
 export default function Footer() {
   return (
     <footer className="border-t border-[#dfe6eb] bg-white px-5 py-14 text-[#071638] sm:px-8">

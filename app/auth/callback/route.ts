@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
 
   if (draft) {
     const published = await publishPendingMarketplaceJob(draft);
-    if (published.token) return NextResponse.redirect(new URL(`/jobs/${published.token}`, appOrigin));
+    if (published.token) return NextResponse.redirect(new URL("/my-jobs", appOrigin));
     return NextResponse.redirect(new URL(`/sign-in?draft=${encodeURIComponent(draft)}&error=${published.error || "publish"}`, appOrigin));
   }
 

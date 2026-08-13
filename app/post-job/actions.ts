@@ -53,7 +53,7 @@ export async function publishPendingMarketplaceJob(draftToken: string) {
   try { user = (await supabase.auth.getUser()).data.user; } catch (error) { persistenceError("auth_session_lookup", error); }
   if (!user) return { error: "authentication_required" as const };
   const admin = createSupabaseAdminClient();
-  const { data: draft, error: draftError } = await admin.from("marketplace_job_drafts").select("id,draft_token,payload,photo_paths,published_job_id,expires_at").eq("draft_token", draftToken).maybeSingle();
+  const { data: draft, error: draftError } = await admin.from("marketplace_job_drafts").select("id,draft_token,payload,photo_paths,published_job_id,expires_at,user_id,customer_id").eq("draft_token", draftToken).maybeSingle();
   if (draftError || !draft || new Date(draft.expires_at).getTime() < Date.now()) return { error: "draft_expired" as const };
   if (draft.published_job_id) {
     const { data: existing } = await admin.from("marketplace_jobs").select("public_token").eq("id", draft.published_job_id).maybeSingle();
@@ -68,6 +68,11 @@ export async function publishPendingMarketplaceJob(draftToken: string) {
   } else {
     await admin.from("marketplace_customers").update({ email: customer.email || user.email || null, display_name: payload.name || user.user_metadata?.full_name || null, mobile: payload.mobile ? normaliseMobile(payload.mobile) : undefined, updated_at: new Date().toISOString() }).eq("id", customer.id);
   }
+  const draftOwnerUpdate = await admin.from("marketplace_job_drafts").update({ user_id: user.id, customer_id: customer.id, updated_at: new Date().toISOString() }).eq("id", draft.id);
+  if (draftOwnerUpdate.error) {
+    persistenceError("draft_owner_update", draftOwnerUpdate.error);
+    return { error: "draft_persistence_failed" as const };
+  }
   const insertedJob = await admin.from("marketplace_jobs").insert({ published_draft_id: draft.id, customer_id: customer.id, service: payload.category, service_subtype: payload.service, pricing_answers: payload.answers, postcode: payload.postcode, approximate_area: payload.postcode.split(/\s+/)[0].toUpperCase(), requested_at: payload.when && /^\d{4}-\d{2}-\d{2}$/.test(payload.when) ? `${payload.when}T09:00:00.000Z` : null, requested_timing: payload.when || null, optional_note: payload.description || null, budget_amount: payload.budget ? Number(payload.budget) : null, estimated_price_pence: null, estimated_price_max_pence: null, booking_fee_pence: null, pricing_confidence: "not_configured", contact_method: user.email ? "email" : payload.mobile ? "phone" : null, contact_value: user.email || (payload.mobile ? normaliseMobile(payload.mobile) : null), contact_name: payload.name || user.user_metadata?.full_name || null }).select("id,public_token").single();
   let job = insertedJob.data;
   if (insertedJob.error?.code === "23505") job = (await admin.from("marketplace_jobs").select("id,public_token").eq("published_draft_id", draft.id).single()).data;
@@ -79,7 +84,12 @@ export async function publishPendingMarketplaceJob(draftToken: string) {
     const finalPath = moved.error ? path : `${job.id}/${path.split("/").pop()}`;
     await admin.from("marketplace_job_photos").upsert({ job_id: job.id, storage_path: finalPath }, { onConflict: "storage_path" });
   }
-  await admin.from("marketplace_job_drafts").update({ published_job_id: job.id, updated_at: new Date().toISOString() }).eq("id", draft.id);
+  const draftPublishedUpdate = await admin.from("marketplace_job_drafts").update({ published_job_id: job.id, user_id: user.id, customer_id: customer.id, consumed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", draft.id).is("published_job_id", null);
+  if (draftPublishedUpdate.error) {
+    persistenceError("draft_publish_update", draftPublishedUpdate.error);
+    const existing = await admin.from("marketplace_job_drafts").select("published_job_id").eq("id", draft.id).maybeSingle();
+    if (!existing.data?.published_job_id) return { error: "draft_persistence_failed" as const };
+  }
   const result = await sendAdminNotifications({ telegramHtml: ["🧰 <b>New Quickola consumer job request</b>", `Category: <b>${escapeHtml(payload.category.replaceAll("-", " "))}</b>`, `Job: <b>${escapeHtml(payload.service.replaceAll("-", " "))}</b>`, `When: ${escapeHtml(payload.when || "Not specified")}`, `Postcode: ${escapeHtml(payload.postcode)}`, `Email: ${escapeHtml(user.email || "Not provided")}`, payload.mobile ? `Mobile: ${escapeHtml(payload.mobile)}` : "", payload.description ? `<b>Job details</b>\n${escapeHtml(payload.description)}` : "No extra job note provided"].join("\n") });
   if (!result.telegramSent) console.warn("marketplace_job_notification_failed");
   if (user.email) await sendMarketplaceCustomerEmail({ customerId: customer.id, jobId: job.id, eventType: "job_posted", recipient: user.email, idempotencyKey: `job_posted:${job.id}`, subject: "Your Quickola job is live", html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>Your job is live</h1><p>We’ll let you know when local professionals send quotes.</p><p><a href="${marketplaceJobUrl(job.public_token)}">View your job</a></p></div>` });
@@ -99,7 +109,7 @@ export async function submitConsumerJob(_state: { message: string }, form: FormD
   try { draft = await persistDraft(payload, form.getAll("photos").filter((value): value is File => value instanceof File && value.size > 0), text(form, "submissionKey")); }
   catch (error) { return { message: error instanceof Error && error.message.startsWith("draft_persistence_failed") ? "We couldn’t save this job yet. Your details are still on this page; please try again." : "We couldn’t save this job yet. Please try again." }; }
   const published = await publishPendingMarketplaceJob(draft!.draft_token);
-  if (published.token) redirect(`/jobs/${published.token}`);
+  if (published.token) redirect("/my-jobs");
   if (published.error === "authentication_required") redirect(`/sign-in?draft=${draft!.draft_token}`);
   if (published.error) return { message: "We couldn’t complete posting this job. Your details are still on this page; please try again." };
   return { message: "" };
@@ -107,6 +117,6 @@ export async function submitConsumerJob(_state: { message: string }, form: FormD
 
 export async function publishPendingMarketplaceJobAndRedirect(draftToken: string) {
   const result = await publishPendingMarketplaceJob(draftToken);
-  if (result.token) redirect(`/jobs/${result.token}`);
+  if (result.token) redirect("/my-jobs");
   redirect(`/sign-in?draft=${encodeURIComponent(draftToken)}&error=${result.error || "publish_failed"}`);
 }

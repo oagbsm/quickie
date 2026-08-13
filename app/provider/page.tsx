@@ -1,9 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import MarketplaceHeader from "@/app/components/marketplace/MarketplaceHeader";
-export default async function ProviderPage() {
-  const supabase = await createSupabaseServerClient(); const { data: { user } } = await supabase.auth.getUser(); if (!user) redirect("/auth/portal/sign-in?next=/provider");
-  const { data: opportunities } = await supabase.rpc("get_marketplace_opportunities");
-  return <main className="min-h-screen bg-[#f7f8fa] text-[#061b3f]"><MarketplaceHeader /><section className="mx-auto max-w-5xl px-5 py-10 sm:px-8"><p className="text-xs font-black uppercase tracking-[.16em] text-[#159548]">Provider marketplace</p><h1 className="mt-2 text-4xl font-black">Browse local jobs</h1><p className="mt-2 text-[#657089]">Send private offers for work that matches your services and area.</p><div className="mt-8 grid gap-4 sm:grid-cols-2">{(opportunities || []).map((job: { id: string; job_type_slug: string; postcode_district: string; requested_timing: string | null; optional_note: string | null; photo_count: number }) => <Link key={job.id} href={`/provider/jobs/${job.id}`} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#e9edf1]"><p className="text-xs font-black uppercase tracking-[.12em] text-[#159548]">Open · {job.postcode_district}</p><h2 className="mt-2 text-xl font-black">{job.job_type_slug.replaceAll("-", " ")}</h2><p className="mt-2 text-sm text-[#657089]">{job.requested_timing || "Flexible timing"}{job.photo_count ? ` · ${job.photo_count} photos` : ""}</p>{job.optional_note && <p className="mt-3 line-clamp-2 text-sm text-[#39465b]">{job.optional_note}</p>}<span className="mt-5 inline-block font-black text-[#167d3c]">View job →</span></Link>)}{!opportunities?.length && <div className="rounded-2xl bg-white p-6 text-[#657089]">No jobs nearby right now.</div>}</div></section></main>;
+
+export default function ProviderPage() {
+  redirect("/my-jobs");
 }

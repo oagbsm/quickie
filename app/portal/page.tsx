@@ -1,23 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import MarketplaceHeader from "@/app/components/marketplace/MarketplaceHeader";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export default async function PortalPage() {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in?next=/portal");
-  const admin = createSupabaseAdminClient();
-  const { data: customer } = await admin.from("marketplace_customers").select("display_name").eq("auth_user_id", user.id).maybeSingle();
-  let { data: jobs, error: jobsError } = await admin.from("marketplace_jobs").select("id,public_token,service,service_subtype,postcode,requested_timing,budget_amount,created_at").in("status", ["posted", "finding_provider"]).order("created_at", { ascending: false }).limit(6);
-  if (jobsError?.code === "42703" && /budget_amount/i.test(jobsError.message)) {
-    const fallback = await admin.from("marketplace_jobs").select("id,public_token,service,service_subtype,postcode,requested_timing,created_at").in("status", ["posted", "finding_provider"]).order("created_at", { ascending: false }).limit(6);
-    jobs = fallback.data?.map((job) => ({ ...job, budget_amount: null })) ?? null;
-    jobsError = fallback.error;
-  }
-  const name = (customer?.display_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "there").trim().split(/\s+/)[0];
-  return <main className="min-h-screen bg-[#f7f8fa] text-[#061b3f]"><MarketplaceHeader /><section className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14"><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p className="text-sm font-black text-[#159548]">QUICKOLA MARKETPLACE</p><h1 className="mt-2 text-4xl font-black tracking-[-.05em]">Hi {name} 👋</h1><p className="mt-2 text-lg text-[#526078]">Post a job or find local work near you.</p></div><Link href="/#job-composer" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#23a955] px-6 font-black text-[#061b3f]">Post a job</Link></div><div className="mt-8 flex flex-col gap-3 sm:flex-row"><Link href="/jobs" className="flex min-h-14 flex-1 items-center rounded-2xl border border-[#dbe1ea] bg-white px-5 text-[#657089]">Search jobs or services…</Link><Link href="/my-jobs" className="flex min-h-14 items-center justify-center rounded-2xl border border-[#dbe1ea] bg-white px-6 font-black">My jobs</Link></div><div className="mt-10 flex items-end justify-between"><div><h2 className="text-2xl font-black">Jobs near you</h2><p className="mt-1 text-[#657089]">People nearby are looking for help.</p></div><Link href="/jobs" className="font-black text-[#167d3c]">See all →</Link></div><div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{jobs?.map((job) => <Link key={job.id} href={`/jobs/${job.public_token}`} className="rounded-3xl border border-[#e7ebef] bg-white p-5 hover:border-[#23a955]"><p className="text-xs font-black uppercase tracking-[.1em] text-[#159548]">{job.service}</p><h3 className="mt-2 text-xl font-black capitalize">{(job.service_subtype || job.service).replaceAll("-", " ")}</h3><p className="mt-3 text-sm text-[#526078]">📍 {job.postcode} · {job.requested_timing || "Flexible"}</p><p className="mt-4 font-black text-[#167d3c]">{job.budget_amount == null ? "Open budget" : `Budget · £${Number(job.budget_amount).toFixed(2).replace(/\.00$/, "")}`}</p><p className="mt-4 text-sm font-black text-[#167d3c]">View job · Make an offer</p></Link>)}{!jobs?.length && <div className="rounded-3xl border border-dashed border-[#cfd8d2] bg-white p-8 md:col-span-2 lg:col-span-3">No open jobs nearby yet. You can post the first one.</div>}</div></section><MobileNav /></main>;
+  redirect("/my-jobs");
 }
-
-function MobileNav() { return <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-[#e7ebef] bg-white/95 p-2 text-center text-xs font-black backdrop-blur md:hidden"><Link href="/portal" className="p-3 text-[#167d3c]">Home</Link><Link href="/my-jobs" className="p-3">My Jobs</Link><Link href="/#job-composer" className="-mt-5 mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#23a955] text-2xl text-[#061b3f]">+</Link><Link href="/messages" className="p-3">Messages</Link></nav>; }
