@@ -1,11 +1,14 @@
 "use server";
+
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-access";
 
-export async function submitProviderOffer(formData: FormData) {
-  const jobId = String(formData.get("jobId") || ""); const amount = Number(formData.get("amount") || 0); const message = String(formData.get("message") || "").trim();
-  if (!jobId || !Number.isFinite(amount) || amount <= 0) redirect(`/provider/jobs/${jobId}?error=validation`);
+export async function submitWorkOffer(formData: FormData) {
+  const jobId = String(formData.get("jobId") || "");
+  const amount = Number(formData.get("amount") || 0);
+  const message = String(formData.get("message") || "").trim();
+  if (!jobId || !Number.isFinite(amount) || amount <= 0) redirect(`/work/jobs/${jobId}?error=validation`);
   const provider = await getApprovedMarketplaceProvider();
   if (!provider) redirect("/pro/login?error=not-approved");
   const supabase = await createSupabaseServerClient();

@@ -111,6 +111,7 @@ export async function GET(request: NextRequest) {
   const type = url.searchParams.get("type") as EmailOtpType | null;
   const next = safeInternalNextPath(url.searchParams.get("next"), "/portal");
   const draft = url.searchParams.get("draft");
+  const providerInvite = url.searchParams.get("provider_invite");
   const purpose = url.searchParams.get("purpose");
   const email = url.searchParams.get("email");
   const appOrigin = getAppOrigin();
@@ -160,6 +161,15 @@ export async function GET(request: NextRequest) {
           supabaseAuthCookieNames(request.cookies.getAll()),
         )
       : response;
+  }
+
+  if (providerInvite) {
+    return NextResponse.redirect(
+      new URL(
+        `/provider/invite/accept?token=${encodeURIComponent(providerInvite)}`,
+        appOrigin,
+      ),
+    );
   }
 
   if (SIGNUP_CONFIRMATION_PURPOSES.has(purpose || "") && !hadExistingAuthSession)

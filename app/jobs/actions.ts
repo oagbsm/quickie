@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { sendMarketplaceCustomerEmail } from "@/lib/server/marketplace-notifications";
+import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-access";
 
 export async function submitMarketplaceOffer(formData: FormData) {
   const token = String(formData.get("token") || "");
@@ -11,13 +12,13 @@ export async function submitMarketplaceOffer(formData: FormData) {
   const message = String(formData.get("message") || "").trim();
   const availability = String(formData.get("availability") || "Flexible").trim();
   if (!token || !Number.isFinite(amount) || amount <= 0) redirect(`/jobs/${token}?error=offer`);
+  const provider = await getApprovedMarketplaceProvider();
+  if (!provider) redirect("/pro/login?error=not-approved");
   const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(`/sign-in?next=${encodeURIComponent(`/jobs/${token}`)}`);
   const admin = createSupabaseAdminClient();
   const { data: job } = await admin.from("marketplace_jobs").select("id").eq("public_token", token).maybeSingle();
   if (!job) redirect(`/jobs/${token}?error=offer`);
-  const { error } = await supabase.rpc("submit_marketplace_offer", { target_job: job.id, offer_amount: amount, offer_message: message || null, offer_availability: availability });
+  const { error } = await supabase.rpc("submit_marketplace_quote", { target_job: job.id, quote_amount: amount, quote_availability: "flexible", quote_availability_text: availability, quote_message: message || null });
   if (error) redirect(`/jobs/${token}?error=offer`);
   redirect(`/jobs/${token}?offered=1`);
 }

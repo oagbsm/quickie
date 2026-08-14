@@ -20,7 +20,7 @@ The canonical list is maintained in `next.config.ts`.
 ## Internal routes
 
 - `/admin/bookings/**` → `/admin/turnovers`
-- `/admin/providers` → `/admin/cleaners`
+- `/admin/cleaners` → `/admin/providers`
 - `/admin/customers/**` → `/admin/accounts`
 - `/admin/enquiries` → `/admin/accounts`
 - `/qk-ops-7f3a/**` → `/admin`

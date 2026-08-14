@@ -1,74 +1,23 @@
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/admin/auth";
-import { createProvider, updateProvider } from "@/app/admin/actions";
-export default async function Page() {
-  const { supabase } = await requireAdmin(),
-    { data } = await supabase
-      .from("service_providers")
-      .select("id,name,email,phone,status,service_area,internal_notes")
-      .order("name");
-  const c = "min-h-11 rounded-xl border px-3";
-  return (
-    <div>
-      <h1 className="text-3xl font-black">Providers</h1>
-      <p className="mt-1 text-[#657089]">
-        Cleaners available for business bookings.
-      </p>
-      <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_360px]">
-        <div className="overflow-hidden rounded-2xl border bg-white">
-          {data?.length ? (
-            data.map((p) => (
-              <details
-                key={p.id}
-                className="border-b p-4 last:border-0"
-              >
-                <summary className="flex cursor-pointer justify-between gap-4"><div>
-                  <p className="font-black">{p.name}</p>
-                  <p className="text-sm text-[#657089]">
-                    {p.phone || p.email || "No contact details"} · {p.service_area.join(", ")}
-                  </p>
-                </div>
-                <span className="text-sm font-bold">{p.status}</span>
-                </summary>
-                <form action={updateProvider} className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-2">
-                  <input type="hidden" name="providerId" value={p.id}/>
-                  <input name="name" defaultValue={p.name} required className={c}/><input name="phone" defaultValue={p.phone||""} className={c}/>
-                  <input name="email" type="email" defaultValue={p.email||""} className={c}/><input name="serviceArea" defaultValue={p.service_area.join(", ")} required className={c}/>
-                  <textarea name="internalNotes" defaultValue={p.internal_notes||""} placeholder="Internal notes" className="rounded-xl border p-3"/>
-                  <select name="status" defaultValue={p.status} className={c}><option value="active">Active</option><option value="paused">Paused</option><option value="archived">Archived</option></select>
-                  <button className="min-h-11 rounded-xl bg-[#071638] font-black text-white sm:col-span-2">Save provider</button>
-                </form>
-              </details>
-            ))
-          ) : (
-            <p className="p-8 text-center text-[#657089]">
-              No providers yet. Add the first cleaner to enable assignment.
-            </p>
-          )}
-        </div>
-        <form
-          action={createProvider}
-          className="grid h-fit gap-3 rounded-2xl border bg-white p-5"
-        >
-          <h2 className="text-lg font-black">Add provider</h2>
-          <label className="font-bold">
-            Name
-            <input name="name" required className={`mt-2 w-full ${c}`} />
-          </label>
-          <label className="font-bold">
-            Phone
-            <input name="phone" type="tel" className={`mt-2 w-full ${c}`} />
-          </label>
-          <label className="font-bold">
-            Email
-            <input name="email" type="email" className={`mt-2 w-full ${c}`} />
-          </label>
-          <label className="font-bold">Service areas<input name="serviceArea" defaultValue="SL1, SL2, SL3" required className={`mt-2 w-full ${c}`} /></label>
-          <label className="font-bold">Internal notes<textarea name="internalNotes" rows={3} className="mt-2 w-full rounded-xl border p-3" /></label>
-          <button className="min-h-11 rounded-xl bg-[#079448] font-black text-white">
-            Add provider
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+import { createMarketplaceProviderInvitation, resendMarketplaceProviderInvitation, revokeMarketplaceProviderInvitation } from "@/app/admin/actions";
+
+export default async function Page({ searchParams }: { searchParams: Promise<{ q?: string; success?: string; error?: string }> }) {
+  await requireAdmin();
+  const query = await searchParams;
+  const admin = createSupabaseAdminClient();
+  const [{ data: providers }, { data: invites }, { data: offers }, { data: bookings }] = await Promise.all([
+    admin.from("cleaner_profiles").select("user_id,display_name,business_name,marketplace_active,service_area,created_at,marketplace_provider_services(category_slug,job_type_slug,active),marketplace_provider_service_areas(postcode_district,active)").order("created_at", { ascending: false }),
+    admin.from("marketplace_provider_invitations").select("id,email,invited_name,phone,category_slug,service_area,status,expires_at,sent_at,last_send_error,created_at").order("created_at", { ascending: false }),
+    admin.from("marketplace_quotes").select("provider_id,status"),
+    admin.from("marketplace_bookings").select("provider_id,status"),
+  ]);
+  const needle = (query.q || "").trim().toLowerCase();
+  const matches = (value: unknown) => !needle || String(value || "").toLowerCase().includes(needle);
+  const filteredProviders = (providers || []).filter((provider) => matches(provider.display_name) || matches(provider.business_name) || matches(provider.service_area));
+  const filteredInvites = (invites || []).filter((invite) => matches(invite.invited_name) || matches(invite.email) || matches(invite.phone));
+  const offerCount = (id: string) => (offers || []).filter((offer) => offer.provider_id === id).length;
+  const completedCount = (id: string) => (bookings || []).filter((booking) => booking.provider_id === id && booking.status === "completed").length;
+  const field = "mt-1 min-h-11 w-full rounded-xl border px-3";
+  return <div><div className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-3xl font-black">Providers</h1><p className="mt-1 text-[#657089]">Approved marketplace providers and invitations.</p></div><form><input name="q" defaultValue={query.q || ""} placeholder="Search providers" className="min-h-11 rounded-xl border px-4" /></form></div>{(query.success || query.error) && <p className={`mt-4 rounded-xl p-3 text-sm font-bold ${query.error ? "bg-red-50 text-red-800" : "bg-[#eef8f1] text-[#167d3c]"}`}>{query.error === "email_failed" ? "Email failed — resend" : query.error === "duplicate_invite" ? "An active invitation already exists for this email." : query.error === "duplicate_provider" ? "A provider account already exists for this email." : query.success === "invited" ? "Invitation sent" : query.success === "resent" ? "Invitation resent" : query.success === "revoked" ? "Invitation revoked" : query.error ? "The provider action could not be completed." : "Done"}</p>}<section className="mt-6 grid gap-4"><h2 className="text-xl font-black">Registered providers</h2>{filteredProviders.map((provider) => <article key={provider.user_id} className="rounded-2xl border bg-white p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><h3 className="font-black">{provider.display_name || provider.business_name || "Unnamed provider"}</h3><p className="mt-1 text-sm text-[#657089]">{provider.service_area || "No service area"} · Joined {new Date(provider.created_at).toLocaleDateString("en-GB")}</p></div><span className={`rounded-full px-3 py-1 text-xs font-black ${provider.marketplace_active ? "bg-[#eef8f1] text-[#167d3c]" : "bg-[#f1f3f6] text-[#657089]"}`}>{provider.marketplace_active ? "Active" : "Inactive"}</span></div><p className="mt-3 text-sm">Services: {(provider.marketplace_provider_services || []).filter((service) => service.active).map((service) => service.job_type_slug).join(", ") || "Not configured"} · Areas: {(provider.marketplace_provider_service_areas || []).filter((area) => area.active).map((area) => area.postcode_district).join(", ") || "Not configured"}</p><p className="mt-3 text-sm font-bold text-[#167d3c]">{offerCount(provider.user_id)} offers · {completedCount(provider.user_id)} completed jobs</p></article>)}{!filteredProviders.length && <p className="rounded-2xl border border-dashed bg-white p-6 text-[#657089]">No registered marketplace providers found.</p>}</section><section className="mt-10 grid gap-5 lg:grid-cols-[1fr_360px]"><div><h2 className="text-xl font-black">Invitations</h2><div className="mt-4 grid gap-3">{filteredInvites.map((invite) => <article key={invite.id} className="rounded-2xl border bg-white p-5"><div className="flex flex-wrap justify-between gap-3"><div><h3 className="font-black">{invite.invited_name}</h3><p className="text-sm text-[#657089]">{invite.email} · {invite.category_slug || "No category"} · {invite.service_area || "No area"}</p></div><span className="rounded-full bg-[#f1f3f6] px-3 py-1 text-xs font-black capitalize">{invite.status}</span></div><p className="mt-3 text-xs text-[#657089]">{invite.sent_at ? `Sent ${new Date(invite.sent_at).toLocaleDateString("en-GB")}` : "Not sent"}{invite.last_send_error ? ` · ${invite.last_send_error}` : ""}</p>{invite.status !== "accepted" && invite.status !== "revoked" && <div className="mt-4 flex flex-wrap gap-3"><form action={resendMarketplaceProviderInvitation}><input type="hidden" name="invitationId" value={invite.id} /><button className="min-h-10 rounded-xl bg-[#071638] px-4 text-sm font-black text-white">{invite.status === "failed" ? "Send new invitation" : "Resend invitation"}</button></form><form action={revokeMarketplaceProviderInvitation}><input type="hidden" name="invitationId" value={invite.id} /><button className="min-h-10 px-2 text-sm font-black text-red-700">Revoke</button></form></div>}</article>)}{!filteredInvites.length && <p className="rounded-2xl border border-dashed bg-white p-6 text-[#657089]">No invitations found.</p>}</div></div><form action={createMarketplaceProviderInvitation} className="grid h-fit gap-3 rounded-2xl border bg-white p-5"><h2 className="text-lg font-black">+ Add provider</h2><label className="font-bold">Name<input name="name" required className={field} /></label><label className="font-bold">Email<input name="email" type="email" required className={field} /></label><label className="font-bold">Phone optional<input name="phone" type="tel" className={field} /></label><label className="font-bold">Service/category optional<input name="category" placeholder="cleaning" className={field} /></label><label className="font-bold">Service area/postcodes optional<input name="serviceArea" placeholder="SL1, SL2" className={field} /></label><button className="mt-2 min-h-11 rounded-xl bg-[#079448] font-black text-white">Send invitation</button></form></section></div>;
 }

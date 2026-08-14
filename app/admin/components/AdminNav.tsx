@@ -3,12 +3,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const items = [
-  ["Operations", "/admin"],
-  ["Arrivals", "/admin/turnovers"],
-  ["Properties", "/admin/properties"],
-  ["Team", "/admin/cleaners"],
-  ["Issues", "/admin/issues"],
-  ["Customers", "/admin/accounts"],
+  ["Dashboard", "/admin"],
+  ["Jobs", "/admin/jobs"],
+  ["Customers", "/admin/customers"],
+  ["Providers", "/admin/providers"],
+  ["Offers", "/admin/offers"],
+  ["Messages", "/admin/messages"],
   ["Activity", "/admin/activity"],
   ["Settings", "/admin/settings"],
 ];

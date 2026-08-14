@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { randomBytes } from "node:crypto";
+import { hashProviderInviteToken, sendProviderInvitationEmail } from "@/lib/server/provider-invitations";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim();
 function refresh(id?: string) {
   revalidatePath("/admin");
@@ -251,6 +253,47 @@ export async function updateProvider(f: FormData) {
     redirect(`/admin/providers?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/admin/providers");
   redirect("/admin/providers?success=updated");
+}
+
+export async function createMarketplaceProviderInvitation(f: FormData) {
+  const { user } = await requireAdmin();
+  const admin = createSupabaseAdminClient();
+  const email = value(f, "email").toLowerCase();
+  const name = value(f, "name");
+  if (!/^\S+@\S+\.\S+$/.test(email) || name.length < 2) redirect("/admin/providers?error=invalid_invite");
+  const existing = await admin.from("marketplace_provider_invitations").select("id,status").eq("email", email).in("status", ["pending", "failed"]).maybeSingle();
+  if (existing.data) redirect("/admin/providers?error=duplicate_invite");
+  const accepted = await admin.from("marketplace_provider_invitations").select("id").eq("email", email).eq("status", "accepted").maybeSingle();
+  if (accepted.data) redirect("/admin/providers?error=duplicate_provider");
+  const token = randomBytes(32).toString("base64url");
+  const invitation = await admin.from("marketplace_provider_invitations").insert({ email, invited_name: name, phone: value(f, "phone") || null, category_slug: value(f, "category").toLowerCase() || null, service_area: value(f, "serviceArea").toUpperCase() || null, token_hash: hashProviderInviteToken(token), expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), invited_by: user.id }).select("id").single();
+  if (invitation.error || !invitation.data) redirect("/admin/providers?error=invite_create");
+  const sent = await sendProviderInvitationEmail({ invitationId: invitation.data.id, recipient: email, invitedName: name, token });
+  revalidatePath("/admin/providers");
+  redirect(`/admin/providers?${sent.sent ? "success=invited" : "error=email_failed"}`);
+}
+
+export async function revokeMarketplaceProviderInvitation(f: FormData) {
+  await requireAdmin();
+  const id = value(f, "invitationId");
+  const admin = createSupabaseAdminClient();
+  await admin.from("marketplace_provider_invitations").update({ status: "revoked", revoked_at: new Date().toISOString() }).eq("id", id).in("status", ["pending", "failed"]);
+  revalidatePath("/admin/providers");
+  redirect("/admin/providers?success=revoked");
+}
+
+export async function resendMarketplaceProviderInvitation(f: FormData) {
+  const { user } = await requireAdmin();
+  const id = value(f, "invitationId");
+  const admin = createSupabaseAdminClient();
+  const { data: old } = await admin.from("marketplace_provider_invitations").select("email,invited_name,status").eq("id", id).maybeSingle();
+  if (!old || ["accepted", "revoked"].includes(old.status)) redirect("/admin/providers?error=invite_unavailable");
+  const token = randomBytes(32).toString("base64url");
+  const updated = await admin.from("marketplace_provider_invitations").update({ token_hash: hashProviderInviteToken(token), status: "pending", expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), invited_by: user.id, revoked_at: null, accepted_at: null }).eq("id", id);
+  if (updated.error) redirect("/admin/providers?error=invite_update");
+  const sent = await sendProviderInvitationEmail({ invitationId: id, recipient: old.email, invitedName: old.invited_name, token });
+  revalidatePath("/admin/providers");
+  redirect(`/admin/providers?${sent.sent ? "success=resent" : "error=email_failed"}`);
 }
 export async function inviteBusiness(f: FormData) {
   const { supabase, user } = await requireAdmin();

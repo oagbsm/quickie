@@ -40,11 +40,6 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: "/admin/providers",
-        destination: "/admin/cleaners",
-        permanent: true,
-      },
-      {
         source: "/admin/customers",
         destination: "/admin/accounts",
         permanent: true,

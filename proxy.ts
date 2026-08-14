@@ -5,17 +5,6 @@ import {
   supabaseAuthCookieNames,
 } from "@/lib/supabase/auth-recovery";
 
-const ADMIN_COOKIE = "quickola_admin";
-const OPS_LOGIN = "/admin/login";
-
-async function adminCookieValue() {
-  const password = process.env.ADMIN_PASSWORD;
-  if (!password) return "";
-  const bytes = new TextEncoder().encode(password);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
 function expireAuthCookies(response: NextResponse, names: string[]) {
   names.forEach((name) =>
     response.cookies.set(name, "", {
@@ -33,17 +22,6 @@ export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
   let staleCookieNames: string[] = [];
   const pathname = request.nextUrl.pathname;
-
-  if (pathname.startsWith("/admin")) {
-    const expected = await adminCookieValue();
-    const supplied = request.cookies.get(ADMIN_COOKIE)?.value || "";
-
-    if (expected && supplied === expected) return response;
-
-    const loginUrl = new URL(OPS_LOGIN, request.url);
-    loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
-    return NextResponse.redirect(loginUrl);
-  }
 
   // Only refresh the session for pages that require it. Public pages and
   // OAuth/sign-in routes must not make an auth request just to render.
@@ -89,6 +67,5 @@ export const config = {
     "/jobs",
     "/my-jobs",
     "/messages/:path*",
-    "/admin/:path*",
   ],
 };

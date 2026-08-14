@@ -94,7 +94,9 @@ export function safeInternalNextPath(
       !parsed.pathname.startsWith("/messages/") &&
       parsed.pathname !== "/my-jobs" &&
       parsed.pathname !== "/portal" &&
-      parsed.pathname !== "/admin"
+      parsed.pathname !== "/admin" &&
+      parsed.pathname !== "/work" &&
+      !parsed.pathname.startsWith("/work/")
     )
       return fallback;
     return `${parsed.pathname}${parsed.search}${parsed.hash}`;
