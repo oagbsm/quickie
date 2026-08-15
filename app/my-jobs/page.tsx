@@ -3,11 +3,13 @@ import { redirect } from "next/navigation";
 import MarketplaceHeader from "@/app/components/marketplace/MarketplaceHeader";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-access";
 
 export default async function MyJobsPage() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in?next=/my-jobs");
+  if (await getApprovedMarketplaceProvider()) redirect("/work");
   const admin = createSupabaseAdminClient();
   const { data: customer } = await admin.from("marketplace_customers").select("id").eq("auth_user_id", user.id).maybeSingle();
   let { data: posted, error: postedError } = customer ? await admin.from("marketplace_jobs").select("id,public_token,service,service_subtype,postcode,budget_amount,status,created_at,marketplace_quotes(count)").eq("customer_id", customer.id).order("created_at", { ascending: false }) : { data: [], error: null };

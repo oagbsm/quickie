@@ -8,6 +8,7 @@ import {
   isStaleSupabaseSessionError,
   supabaseAuthCookieNames,
 } from "@/lib/supabase/auth-recovery";
+import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-access";
 
 const SIGNUP_CONFIRMATION_PURPOSES = new Set([
   "signup-confirmation",
@@ -171,6 +172,9 @@ export async function GET(request: NextRequest) {
       ),
     );
   }
+
+  if (!url.searchParams.has("next") && !draft && !purpose && await getApprovedMarketplaceProvider())
+    return NextResponse.redirect(new URL("/work", appOrigin));
 
   if (SIGNUP_CONFIRMATION_PURPOSES.has(purpose || "") && !hadExistingAuthSession)
     await supabase.auth.signOut();
