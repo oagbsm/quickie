@@ -19,5 +19,13 @@ export function getStripeWebhookSecret() {
 }
 
 export function getSiteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const configured = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").trim().replace(/\/+$/, "");
+  let url: URL;
+  try {
+    url = new URL(configured);
+  } catch {
+    throw new Error("stripe_site_url_invalid");
+  }
+  if (!['http:', 'https:'].includes(url.protocol)) throw new Error("stripe_site_url_invalid");
+  return url.toString().replace(/\/+$/, "");
 }

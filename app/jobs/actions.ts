@@ -42,6 +42,7 @@ export async function chooseMarketplaceQuote(formData: FormData) {
   try {
     getStripe();
   } catch (error) {
+    console.error("[marketplace-payment] Stripe configuration check failed", { stage: "accept-offer", token, quoteId, userId: user.id, reason: error instanceof Error ? error.message : "unknown" });
     if (error instanceof Error && ["stripe_not_configured", "stripe_test_key_required"].includes(error.message)) redirect(`/jobs/${token}?error=stripe_config`);
     redirect(`/jobs/${token}?error=selection`);
   }
@@ -49,10 +50,14 @@ export async function chooseMarketplaceQuote(formData: FormData) {
   const { error: paymentSchemaError } = await admin.from("marketplace_bookings").select("payment_status").limit(1);
   if (paymentSchemaError) {
     const missingPaymentSchema = paymentSchemaError.code === "42703" || /payment_status|schema cache|column .* does not exist/i.test(paymentSchemaError.message || "");
+    console.error("[marketplace-payment] Booking payment schema check failed", { stage: "accept-offer", token, quoteId, userId: user.id, code: paymentSchemaError.code, reason: paymentSchemaError.message });
     redirect(`/jobs/${token}?error=${missingPaymentSchema ? "payment_setup" : "selection"}`);
   }
   const { error } = await supabase.rpc("accept_marketplace_offer", { target_quote: quoteId });
-  if (error) redirect(returnTo.startsWith("/") ? `${returnTo}?error=selection` : `/jobs/${token}?error=selection`);
+  if (error) {
+    console.error("[marketplace-payment] Offer acceptance failed", { stage: "accept-offer", token, quoteId, userId: user.id, code: error.code, reason: error.message });
+    redirect(returnTo.startsWith("/") ? `${returnTo}?error=selection` : `/jobs/${token}?error=selection`);
+  }
   if (customer.email) await sendMarketplaceCustomerEmail({ customerId: customer.id, jobId: job.id, eventType: "quote_selected", recipient: customer.email, idempotencyKey: `quote_selected:${quoteId}`, subject: "Your Quickola professional has been selected", html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>Professional selected</h1><p>Review the service price and booking details for your Quickola job.</p><p><a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://quickola.co.uk"}/jobs/${encodeURIComponent(token)}">Review your job</a></p></div>` });
   revalidatePath(returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : `/jobs/${token}`);
   const checkoutData = new FormData();
