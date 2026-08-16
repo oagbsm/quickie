@@ -7,6 +7,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { sendMarketplaceCustomerEmail } from "@/lib/server/marketplace-notifications";
 import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-access";
 import { getOrCreateMarketplaceConversation } from "@/lib/marketplace/conversations";
+import { getStripe } from "@/lib/server/marketplace-payments";
+import { createMarketplaceCheckout } from "@/app/jobs/payment-actions";
 
 export async function submitMarketplaceOffer(formData: FormData) {
   const token = String(formData.get("token") || "");
@@ -37,18 +39,27 @@ export async function chooseMarketplaceQuote(formData: FormData) {
   const { data: customer } = await admin.from("marketplace_customers").select("id,email").eq("auth_user_id", user.id).maybeSingle();
   const { data: job } = await admin.from("marketplace_jobs").select("id,customer_id").eq("public_token", token).maybeSingle();
   if (!customer || !job || job.customer_id !== customer.id) redirect(`/jobs/${token}?error=ownership`);
+  try {
+    getStripe();
+  } catch (error) {
+    if (error instanceof Error && ["stripe_not_configured", "stripe_test_key_required"].includes(error.message)) redirect(`/jobs/${token}?error=stripe_config`);
+    redirect(`/jobs/${token}?error=selection`);
+  }
+  // Keep the existing offer unchanged if the payment migration is still pending.
+  const { error: paymentSchemaError } = await admin.from("marketplace_bookings").select("payment_status").limit(1);
+  if (paymentSchemaError) {
+    const missingPaymentSchema = paymentSchemaError.code === "42703" || /payment_status|schema cache|column .* does not exist/i.test(paymentSchemaError.message || "");
+    redirect(`/jobs/${token}?error=${missingPaymentSchema ? "payment_setup" : "selection"}`);
+  }
   const { error } = await supabase.rpc("accept_marketplace_offer", { target_quote: quoteId });
   if (error) redirect(returnTo.startsWith("/") ? `${returnTo}?error=selection` : `/jobs/${token}?error=selection`);
   if (customer.email) await sendMarketplaceCustomerEmail({ customerId: customer.id, jobId: job.id, eventType: "quote_selected", recipient: customer.email, idempotencyKey: `quote_selected:${quoteId}`, subject: "Your Quickola professional has been selected", html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>Professional selected</h1><p>Review the service price and booking details for your Quickola job.</p><p><a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://quickola.co.uk"}/jobs/${encodeURIComponent(token)}">Review your job</a></p></div>` });
-  const { data: selectedQuote } = await admin.from("marketplace_quotes").select("provider_id,bidder_user_id").eq("id", quoteId).maybeSingle();
-  const selectedProvider = selectedQuote?.provider_id || selectedQuote?.bidder_user_id;
-  if (returnTo.startsWith("/")) {
-    revalidatePath(returnTo);
-    redirect(returnTo);
-  }
-  const { data: conversation } = selectedProvider ? await admin.from("marketplace_conversations").select("id").eq("job_id", job.id).or(`provider_id.eq.${selectedProvider},bidder_user_id.eq.${selectedProvider}`).maybeSingle() : { data: null };
-  if (conversation?.id) redirect(`/messages/${conversation.id}`);
-  redirect(`/jobs/${token}`);
+  revalidatePath(returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : `/jobs/${token}`);
+  const checkoutData = new FormData();
+  checkoutData.set("token", token);
+  checkoutData.set("quoteId", quoteId);
+  checkoutData.set("returnTo", returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : `/jobs/${token}`);
+  return createMarketplaceCheckout(checkoutData);
 }
 
 export async function startCustomerConversation(formData: FormData) {
