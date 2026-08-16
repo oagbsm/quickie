@@ -15,7 +15,7 @@ export async function submitWorkOffer(formData: FormData) {
   if (!provider) redirect("/pro/login?error=not-approved");
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("submit_marketplace_quote", { target_job: jobId, quote_amount: Math.round(amount * 100), quote_availability: "flexible", quote_availability_text: "Flexible", quote_message: message || null });
-  if (error) redirect(`/work/jobs/${jobId}?error=offer`);
+  if (error) redirect(`/work/jobs/${jobId}?error=${/booked|locked|not_open/i.test(error.message) ? "locked" : "offer"}`);
   redirect(`/work/jobs/${jobId}?sent=1`);
 }
 
@@ -58,7 +58,7 @@ export async function withdrawWorkOffer(formData: FormData) {
   const provider = await getApprovedMarketplaceProvider();
   if (!provider) redirect("/pro/login?error=not-approved");
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.from("marketplace_quotes").update({ status: "withdrawn", updated_at: new Date().toISOString() }).eq("job_id", jobId).or(`provider_id.eq.${provider.providerId},bidder_user_id.eq.${provider.providerId}`).in("status", ["pending", "submitted"]);
-  if (error) redirect(`/work/jobs/${jobId}?error=offer`);
+  const { error } = await supabase.rpc("withdraw_marketplace_quote", { target_job: jobId });
+  if (error) redirect(`/work/jobs/${jobId}?error=${/booked|locked/i.test(error.message) ? "locked" : "offer"}`);
   redirect(`/work/jobs/${jobId}`);
 }
