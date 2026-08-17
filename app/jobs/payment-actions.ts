@@ -65,6 +65,9 @@ export async function createMarketplaceCheckout(formData: FormData) {
       stripeStage = "existing-session-retrieval";
       const existingSession = await stripe.checkout.sessions.retrieve(booking.stripe_checkout_session_id);
       if (existingSession.status === "open" && existingSession.url) checkoutUrl = existingSession.url;
+      if (existingSession.status === "complete" || existingSession.payment_status === "paid") {
+        redirect(`${returnTo}?payment=success`);
+      }
     }
     if (!checkoutUrl) {
       stripeStage = "checkout-creation";
