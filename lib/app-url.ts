@@ -43,25 +43,32 @@ export function resolveAppOrigin(environment: AppOriginEnvironment = {}) {
   const browserOrigin = !production
     ? validOrigin(environment.browserOrigin, false)
     : null;
+  const configuredOrigins = [environment.appUrl, environment.siteUrl]
+    .map((value) => validOrigin(value, false))
+    .filter((value): value is string => Boolean(value));
+  const developmentConfiguredOrigin = configuredOrigins.find(
+    (value) => !value.startsWith(PRODUCTION_ORIGIN),
+  );
   return (
     browserOrigin ||
-    validOrigin(environment.appUrl, production) ||
-    validOrigin(environment.siteUrl, production) ||
-    (!production ? validOrigin(environment.vercelUrl, false) : null) ||
+    (production
+      ? validOrigin(environment.appUrl, true) || validOrigin(environment.siteUrl, true)
+      : developmentConfiguredOrigin) ||
     (!production
       ? LOCAL_ORIGIN
       : PRODUCTION_ORIGIN)
   );
 }
 
-export function getAppOrigin() {
+export function getAppOrigin(environment: AppOriginEnvironment = {}) {
   return resolveAppOrigin({
-    appUrl: process.env.APP_URL,
-    siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
-    vercelUrl: process.env.VERCEL_PROJECT_PRODUCTION_URL,
-    nodeEnv: process.env.NODE_ENV,
+    appUrl: environment.appUrl ?? process.env.APP_URL,
+    siteUrl: environment.siteUrl ?? process.env.NEXT_PUBLIC_SITE_URL,
+    vercelUrl: environment.vercelUrl ?? process.env.VERCEL_URL ?? process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    nodeEnv: environment.nodeEnv ?? process.env.NODE_ENV,
     browserOrigin:
-      typeof window === "undefined" ? undefined : window.location.origin,
+      environment.browserOrigin ??
+      (typeof window === "undefined" ? undefined : window.location.origin),
   });
 }
 
@@ -111,8 +118,9 @@ export function buildAbsoluteAppUrl(
   ) {
   if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\"))
     throw new Error("Application URL path must be internal.");
-  const url = new URL(path, resolveAppOrigin(environment));
-  if (url.origin !== resolveAppOrigin(environment))
+  const origin = environment ? resolveAppOrigin(environment) : getAppOrigin();
+  const url = new URL(path, origin);
+  if (url.origin !== origin)
     throw new Error("Application URL path must be internal.");
   return url.toString();
 }

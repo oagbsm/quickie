@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
   const providerInvite = url.searchParams.get("provider_invite");
   const purpose = url.searchParams.get("purpose");
   const email = url.searchParams.get("email");
-  const appOrigin = getAppOrigin();
+  const appOrigin = getAppOrigin({ browserOrigin: url.origin });
   const hadExistingAuthSession =
     supabaseAuthCookieNames(request.cookies.getAll()).length > 0;
   const supabase = await createSupabaseServerClient();
