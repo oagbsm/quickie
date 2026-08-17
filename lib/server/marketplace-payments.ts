@@ -12,6 +12,12 @@ export function getStripe() {
   return new Stripe(secret);
 }
 
+export function describeStripeError(error: unknown) {
+  if (!(error instanceof Error)) return { name: "UnknownError", message: "unknown" };
+  const details = error as Error & { type?: string; code?: string; statusCode?: number; requestId?: string };
+  return { name: details.name, message: details.message, type: details.type, code: details.code, statusCode: details.statusCode, requestId: details.requestId };
+}
+
 export function getStripeWebhookSecret() {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) throw new Error("stripe_webhook_not_configured");

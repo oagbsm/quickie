@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getStripe, getSiteUrl, MARKETPLACE_PLATFORM_FEE_PERCENT } from "@/lib/server/marketplace-payments";
+import { describeStripeError, getStripe, getSiteUrl, MARKETPLACE_PLATFORM_FEE_PERCENT } from "@/lib/server/marketplace-payments";
 
 export async function createMarketplaceCheckout(formData: FormData) {
   const token = String(formData.get("token") || "");
@@ -42,24 +42,32 @@ export async function createMarketplaceCheckout(formData: FormData) {
   if (!booking) {
     const inserted = await admin.from("marketplace_bookings").insert({ job_id: job.id, quote_id: quote.id, customer_id: customer.id, provider_id: providerId, conversation_id: conversation?.id || null, amount_pence: amountPence, currency: "gbp", platform_fee_pence: platformFeePence, payment_status: "pending_payment", status: "awaiting_booking_fee" }).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id").single();
     if (inserted.error) {
+      console.error("[marketplace-payment] Booking creation failed", { stage: "create-checkout", token, quoteId, userId: user.id, code: inserted.error.code, reason: inserted.error.message });
       const retry = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id").eq("quote_id", quote.id).maybeSingle();
-      if (retry.error || !retry.data) redirect(`/jobs/${token}?error=payment`);
+      if (retry.error || !retry.data) {
+        console.error("[marketplace-payment] Existing booking retry failed", { stage: "create-checkout", token, quoteId, userId: user.id, code: retry.error?.code, reason: retry.error?.message || "booking_not_found" });
+        redirect(`/jobs/${token}?error=payment`);
+      }
       booking = retry.data;
     } else booking = inserted.data;
   } else if (!booking.conversation_id && conversation?.id) {
     const updated = await admin.from("marketplace_bookings").update({ conversation_id: conversation.id }).eq("id", booking.id).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id").single();
+    if (updated.error) console.error("[marketplace-payment] Booking conversation update failed", { stage: "create-checkout", token, quoteId, bookingId: booking.id, userId: user.id, code: updated.error.code, reason: updated.error.message });
     if (!updated.error && updated.data) booking = updated.data;
   }
 
   let checkoutUrl: string | null = null;
   let checkoutSessionId: string | null = null;
+  let stripeStage = "configuration";
   try {
     const stripe = getStripe();
     if (booking.stripe_checkout_session_id) {
+      stripeStage = "existing-session-retrieval";
       const existingSession = await stripe.checkout.sessions.retrieve(booking.stripe_checkout_session_id);
       if (existingSession.status === "open" && existingSession.url) checkoutUrl = existingSession.url;
     }
     if (!checkoutUrl) {
+      stripeStage = "checkout-creation";
       const siteUrl = getSiteUrl();
       const successUrl = new URL(returnTo, `${siteUrl}/`);
       successUrl.searchParams.set("payment", "success");
@@ -78,7 +86,9 @@ export async function createMarketplaceCheckout(formData: FormData) {
       checkoutSessionId = session.id;
     }
   } catch (error) {
-    console.error("[marketplace-payment] Stripe Checkout creation failed", { stage: "create-checkout", token, quoteId, bookingId: booking.id, userId: user.id, reason: error instanceof Error ? error.message : "unknown" });
+    const details = describeStripeError(error);
+    const logLabel = stripeStage === "configuration" ? "Stripe configuration invalid" : stripeStage === "existing-session-retrieval" ? "Existing Stripe session retrieval failed" : "Stripe Checkout creation failed";
+    console.error(`[marketplace-payment] ${logLabel}`, { stage: stripeStage, token, quoteId, bookingId: booking.id, userId: user.id, ...details });
     const reason = error instanceof Error ? error.message : "unknown";
     const setupFailure = ["stripe_not_configured", "stripe_test_key_required", "stripe_site_url_invalid", "stripe_webhook_not_configured"].includes(reason);
     redirect(`${returnTo}?error=${setupFailure ? "payment_setup" : "payment"}`);
@@ -86,7 +96,10 @@ export async function createMarketplaceCheckout(formData: FormData) {
   if (!checkoutUrl) redirect(`${returnTo}?error=payment`);
   if (checkoutSessionId) {
     const { error: saved } = await admin.from("marketplace_bookings").update({ stripe_checkout_session_id: checkoutSessionId, amount_pence: amountPence, platform_fee_pence: platformFeePence }).eq("id", booking.id);
-    if (saved) redirect(`${returnTo}?error=payment`);
+    if (saved) {
+      console.error("[marketplace-payment] Booking update failed", { stage: "save-checkout-session", token, quoteId, bookingId: booking.id, userId: user.id, code: saved.code, reason: saved.message });
+      redirect(`${returnTo}?error=payment`);
+    }
   }
   redirect(checkoutUrl);
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getStripe, getStripeWebhookSecret } from "@/lib/server/marketplace-payments";
+import { describeStripeError, getStripe, getStripeWebhookSecret } from "@/lib/server/marketplace-payments";
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -10,7 +10,8 @@ export async function POST(request: Request) {
   let event: Stripe.Event;
   try {
     event = getStripe().webhooks.constructEvent(body, signature, getStripeWebhookSecret());
-  } catch {
+  } catch (error) {
+    console.error("[marketplace-payment] Webhook signature verification failed", describeStripeError(error));
     return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
   }
   if (event.type !== "checkout.session.completed") return NextResponse.json({ received: true });
