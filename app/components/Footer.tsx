@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-const groups = [["Marketplace", [["Post a job", "/#job-composer"], ["My jobs", "/my-jobs"]]], ["Services", [["Cleaning", "/services/cleaning"], ["Gardening", "/services/gardening"], ["Handyman", "/services/handyman"], ["Plumbing", "/services/plumbing"]]], ["Company", [["Help", "/help"], ["Contact", "/contact"]]], ["Legal", [["Privacy", "/privacy-policy"], ["Terms", "/terms"]]]];
+const groups = [["Marketplace", [["Post a job", "/#job-composer"], ["My jobs", "/my-jobs"]]], ["Services", [["Cleaning", "/services/cleaning"], ["Gardening", "/services/gardening"], ["Handyman", "/services/handyman"], ["Plumbing", "/services/plumbing"], ["Electrical", "/services/electrical"], ["Moving", "/services/removals"], ["Assembly", "/services/furniture-assembly"], ["Painting", "/services/painting"]]], ["Company", [["Help", "/help"], ["Contact", "/contact"]]], ["Legal", [["Privacy", "/privacy-policy"], ["Terms", "/terms"]]]];
 export default function Footer() {
   return (
     <footer className="border-t border-[#dfe6eb] bg-white px-5 py-14 text-[#071638] sm:px-8">
@@ -43,9 +43,8 @@ export default function Footer() {
           ))}
         </div>
       </div>
-      <div className="mx-auto mt-12 grid max-w-[1120px] gap-2 border-t border-[#e5eaed] pt-6 text-[.8125rem] leading-5 text-[#657089] sm:grid-cols-2">
+      <div className="mx-auto mt-12 max-w-[1120px] border-t border-[#e5eaed] pt-6 text-[.8125rem] leading-5 text-[#657089]">
         <p>© {new Date().getFullYear()} Quickola.</p>
-        <p className="sm:text-right">Local help for the jobs you need done.</p>
       </div>
     </footer>
   );
