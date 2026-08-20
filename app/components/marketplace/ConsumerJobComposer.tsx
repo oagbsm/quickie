@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useMemo, useState, type ReactNode } from "react";
 import Image from "next/image";
 import type { Session } from "@supabase/supabase-js";
 import { submitConsumerJob as submitConsumerJobServer } from "@/app/post-job/actions";
@@ -43,7 +43,6 @@ export default function ConsumerJobComposer({ initialService = "", initialPostco
   const [contactOpen, setContactOpen] = useState(false);
   const [mobileStep, setMobileStep] = useState<Step>(initialJob ? 2 : 1);
   const [submissionKey] = useState(() => crypto.randomUUID());
-  const composerRef = useRef<HTMLDivElement>(null);
   const [submissionState, action, pending] = useActionState(submitConsumerJobServer, { message: "" });
   const [authenticated, setAuthenticated] = useState(false);
 
@@ -63,19 +62,8 @@ export default function ConsumerJobComposer({ initialService = "", initialPostco
   const detailReady = detailQuestions.every((question) => !question.required || hasAnswer(question, answers));
   const locationReady = locationQuestions.every((question) => !question.required || hasAnswer(question, answers));
   const setAnswer = (id: string, value: string | number) => setAnswers((current) => ({ ...current, [id]: value }));
-  const scrollToComposerOnMobile = () => {
-    if (!window.matchMedia("(max-width: 767px)").matches) return;
-    requestAnimationFrame(() => {
-      const element = composerRef.current;
-      if (!element) return;
-      const header = document.querySelector("header");
-      const headerHeight = header instanceof HTMLElement ? header.getBoundingClientRect().height : 64;
-      const top = element.getBoundingClientRect().top + window.scrollY - headerHeight - 16;
-      window.scrollTo({ top: Math.max(0, top), behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-    });
-  };
   const preserveSharedAnswers = (current: Record<string, string | number>) => Object.fromEntries(Object.entries(current).filter(([key]) => locationIds.includes(key)));
-  const reset = () => { setCategorySlug(""); setJobSlug(""); setMobileStep(1); scrollToComposerOnMobile(); };
+  const reset = () => { setCategorySlug(""); setJobSlug(""); setMobileStep(1); };
   const selectJob = (slug: string) => {
     const nextJob = getJob(categorySlug, slug);
     setJobSlug(slug);
@@ -84,12 +72,12 @@ export default function ConsumerJobComposer({ initialService = "", initialPostco
     onStarted?.();
   };
 
-  return <div ref={composerRef} id="job-composer" className="relative z-30 scroll-mt-24 rounded-[24px] bg-white p-4 pt-3 text-[#061b3f] shadow-[0_22px_60px_rgba(0,0,0,.24)] md:rounded-[28px] md:p-6 lg:border lg:border-[#e6ebef] lg:p-7 lg:pt-6">
+  return <div id="job-composer" className="relative z-30 scroll-mt-24 rounded-[24px] bg-white p-4 pt-3 text-[#061b3f] shadow-[0_22px_60px_rgba(0,0,0,.24)] md:rounded-[28px] md:p-6 lg:border lg:border-[#e6ebef] lg:p-7 lg:pt-6">
     {selectedJob && <div className="hidden md:block"><DesktopProgress step={2} /></div>}
     <div className="mb-2 md:hidden"><MobileProgress step={selectedJob ? mobileStep : 1} /></div>
     <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#159548]">Your service</p><h2 className="mt-0.5 text-xl font-black tracking-[-.03em]">{selectedJob ? `${selectedJob.name} ✓` : service ? service.name : "What do you need?"}</h2></div>{(service || selectedJob) && <button type="button" onClick={reset} className="min-h-10 rounded-xl px-3 text-sm font-black text-[#526078] hover:bg-[#eef8f1]">Change</button>}</div>
     {error && <p role="alert" className="mt-3 rounded-xl bg-[#fff3e7] p-3 text-base font-bold text-[#974c00]">{error}</p>}
-    {!service ? <CategoryPicker moreOpen={moreOpen} onMore={() => setMoreOpen((value) => !value)} onSelect={(slug) => { setCategorySlug(slug); setJobSlug(""); setMobileStep(1); setAnswers((current) => preserveSharedAnswers(current)); scrollToComposerOnMobile(); }} /> : !selectedJob ? <JobPicker service={service} onSelect={selectJob} /> : <>
+    {!service ? <CategoryPicker moreOpen={moreOpen} onMore={() => setMoreOpen((value) => !value)} onSelect={(slug) => { setCategorySlug(slug); setJobSlug(""); setMobileStep(1); setAnswers((current) => preserveSharedAnswers(current)); }} /> : !selectedJob ? <JobPicker service={service} onSelect={selectJob} /> : <>
       <div className="mt-4 md:hidden"><MobileStepForm step={mobileStep} selectedJob={selectedJob} detailQuestions={detailQuestions} locationQuestions={locationQuestions} answers={answers} detailReady={detailReady} locationReady={locationReady} ready={ready} budgetMode={budgetMode} budget={budget} note={note} noteOpen={noteOpen} setAnswer={setAnswer} setStep={setMobileStep} setBudgetMode={setBudgetMode} setBudget={setBudget} setNote={setNote} setNoteOpen={setNoteOpen} onPost={() => setContactOpen(true)} /></div>
       <div className="mt-4 hidden md:block"><DesktopForm questions={questions} answers={answers} setAnswer={setAnswer} budgetMode={budgetMode} budget={budget} setBudgetMode={setBudgetMode} setBudget={setBudget} note={note} noteOpen={noteOpen} setNote={setNote} setNoteOpen={setNoteOpen} ready={ready} onPost={() => setContactOpen(true)} /></div>
     </>}
