@@ -14,6 +14,20 @@ type BookingSnapshot = {
   stripe_checkout_session_id?: string | null;
 };
 
+export type MarketplacePaymentState = "none" | "payment_required" | "payment_processing" | "paid";
+
+export function normalizeMarketplaceRelation<T>(relation: T | T[] | null | undefined): T[] {
+  if (relation == null) return [];
+  return Array.isArray(relation) ? relation : [relation];
+}
+
+export function getMarketplacePaymentState(booking?: BookingSnapshot | null): MarketplacePaymentState {
+  if (!booking) return "none";
+  if (booking.payment_status === "paid") return "paid";
+  if (booking.stripe_checkout_session_id) return "payment_processing";
+  return "payment_required";
+}
+
 export function getCustomerJobState({
   offerCount,
   acceptedQuote,
@@ -24,9 +38,11 @@ export function getCustomerJobState({
   booking?: BookingSnapshot | null;
 }): CustomerJobState {
   if (!acceptedQuote) return offerCount > 0 ? "offers_received" : "waiting_offers";
-  if (booking?.payment_status === "paid") return "booked";
-  if (booking?.stripe_checkout_session_id) return "payment_processing";
-  return "payment_required";
+  const paymentState = getMarketplacePaymentState(booking);
+  if (paymentState === "paid") return "booked";
+  if (paymentState === "payment_processing") return "payment_processing";
+  if (paymentState === "payment_required") return "payment_required";
+  return "offers_received";
 }
 
 export function getCustomerJobStatusLabel(state: CustomerJobState) {

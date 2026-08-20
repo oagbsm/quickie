@@ -50,6 +50,7 @@ export async function POST(request: Request) {
   }
   console.info("[marketplace-payment] booking marked paid", { eventId: event.id, bookingId, quoteId: booking.quote_id, jobId: booking.job_id, amountPence: booking.amount_pence, currency: booking.currency });
   const jobRelation = Array.isArray(booking.marketplace_jobs) ? booking.marketplace_jobs[0] : booking.marketplace_jobs;
+  revalidatePath("/my-jobs");
   if (jobRelation?.public_token) revalidatePath(`/jobs/${jobRelation.public_token}`);
   if (booking.conversation_id) revalidatePath(`/messages/${booking.conversation_id}`);
   return NextResponse.json({ received: true });
