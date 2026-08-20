@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-type MobileBottomNavProps = { active: "home" | "messages" | "my-jobs" };
+type MobileBottomNavProps = { active?: "home" | "messages" | "my-jobs" };
 
 export default function MobileBottomNav({ active }: MobileBottomNavProps) {
   return <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e7ebef] bg-white/95 px-3 pb-[env(safe-area-inset-bottom)] pt-1.5 shadow-[0_-2px_10px_rgba(6,27,63,0.04)] backdrop-blur" aria-label="Mobile navigation"><div className="mx-auto grid max-w-md grid-cols-4 items-end"><MobileNavItem href="/" label="Home" active={active === "home"}><HomeIcon /></MobileNavItem><MobileNavItem href="/messages" label="Messages" active={active === "messages"}><MessageIcon /></MobileNavItem><MobileNavItem href="/#job-composer" label="Post a job" primary><PlusIcon /></MobileNavItem><MobileNavItem href="/my-jobs" label="My jobs" active={active === "my-jobs"}><JobsIcon /></MobileNavItem></div></nav>;

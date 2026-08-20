@@ -15,6 +15,9 @@ export async function submitMarketplaceOffer(formData: FormData) {
   const amount = Math.round(Number(formData.get("amount") || 0) * 100);
   const message = String(formData.get("message") || "").trim();
   const availability = String(formData.get("availability") || "Flexible").trim();
+  const scheduledDate = String(formData.get("scheduledDate") || "").trim();
+  const arrivalWindowStart = String(formData.get("arrivalWindowStart") || "").trim();
+  const arrivalWindowEnd = String(formData.get("arrivalWindowEnd") || "").trim();
   if (!token || !Number.isFinite(amount) || amount <= 0) redirect(`/jobs/${token}?error=offer`);
   const provider = await getApprovedMarketplaceProvider();
   if (!provider) redirect("/pro/login?error=not-approved");
@@ -22,8 +25,9 @@ export async function submitMarketplaceOffer(formData: FormData) {
   const admin = createSupabaseAdminClient();
   const { data: job } = await admin.from("marketplace_jobs").select("id").eq("public_token", token).maybeSingle();
   if (!job) redirect(`/jobs/${token}?error=offer`);
-  const { error } = await supabase.rpc("submit_marketplace_quote", { target_job: job.id, quote_amount: amount, quote_availability: "flexible", quote_availability_text: availability, quote_message: message || null });
+  const { error } = await supabase.rpc("submit_marketplace_quote", { target_job: job.id, quote_amount: amount, quote_availability: scheduledDate ? "date" : "flexible", quote_available_at: scheduledDate && arrivalWindowStart ? `${scheduledDate}T${arrivalWindowStart}:00Z` : null, quote_availability_text: availability, quote_message: message || null });
   if (error) redirect(`/jobs/${token}?error=${/booked|locked|not_open/i.test(error.message) ? "locked" : "offer"}`);
+  if (scheduledDate && arrivalWindowStart && arrivalWindowEnd) await admin.from("marketplace_quotes").update({ scheduled_date: scheduledDate, arrival_window_start: arrivalWindowStart, arrival_window_end: arrivalWindowEnd }).eq("job_id", job.id).eq("provider_id", provider.providerId);
   redirect(`/jobs/${token}?offered=1`);
 }
 
@@ -86,4 +90,39 @@ export async function startCustomerConversation(formData: FormData) {
     redirect(`/jobs/${token}?error=message`);
   }
   redirect(`/messages/${conversation.id}`);
+}
+
+export async function confirmMarketplaceCompletion(formData: FormData) {
+  const token = String(formData.get("token") || "");
+  const bookingId = String(formData.get("bookingId") || "");
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || !token || !bookingId) redirect(`/jobs/${token}`);
+  const { error } = await supabase.rpc("confirm_marketplace_completion", { target_booking: bookingId });
+  if (error) redirect(`/jobs/${token}?error=completion`);
+  revalidatePath(`/jobs/${token}`);
+  revalidatePath("/my-jobs");
+  redirect(`/jobs/${token}`);
+}
+
+export async function reportMarketplaceCompletionIssue(formData: FormData) {
+  const token = String(formData.get("token") || "");
+  const bookingId = String(formData.get("bookingId") || "");
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("report_marketplace_completion_issue", { target_booking: bookingId });
+  if (error) redirect(`/jobs/${token}?error=completion`);
+  revalidatePath(`/jobs/${token}`);
+  redirect(`/jobs/${token}`);
+}
+
+export async function submitMarketplaceReview(formData: FormData) {
+  const token = String(formData.get("token") || "");
+  const bookingId = String(formData.get("bookingId") || "");
+  const rating = Number(formData.get("rating") || 0);
+  const review = String(formData.get("review") || "").trim();
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("submit_marketplace_review", { target_booking: bookingId, review_rating: rating, review_body: review || null });
+  if (error) redirect(`/jobs/${token}?error=review`);
+  revalidatePath(`/jobs/${token}`);
+  redirect(`/jobs/${token}`);
 }

@@ -15,6 +15,25 @@ type BookingSnapshot = {
 };
 
 export type MarketplacePaymentState = "none" | "payment_required" | "payment_processing" | "paid";
+export type CustomerJobLifecycleState = "waiting_for_offers" | "offers_received" | "provider_selected_unpaid" | "payment_pending" | "booked" | "provider_on_the_way" | "provider_arrived" | "awaiting_customer_completion" | "completed" | "cancelled";
+
+type LifecycleBookingSnapshot = BookingSnapshot & { status?: string | null; completion_status?: string | null };
+
+export function getCustomerJobLifecycleState({ offerCount, acceptedQuote, booking }: { offerCount: number; acceptedQuote?: QuoteSnapshot | null; booking?: LifecycleBookingSnapshot | null }): CustomerJobLifecycleState {
+  if (!acceptedQuote) return offerCount > 0 ? "offers_received" : "waiting_for_offers";
+  const paymentState = getMarketplacePaymentState(booking);
+  if (paymentState !== "paid") return paymentState === "payment_processing" ? "payment_pending" : "provider_selected_unpaid";
+  if (booking?.status === "cancelled") return "cancelled";
+  if (booking?.completion_status === "completed" || booking?.status === "completed") return "completed";
+  if (booking?.status === "awaiting_customer_completion") return "awaiting_customer_completion";
+  if (booking?.status === "arrived" || booking?.status === "in_progress") return "provider_arrived";
+  if (booking?.status === "en_route") return "provider_on_the_way";
+  return "booked";
+}
+
+export function getCustomerJobLifecycleLabel(state: CustomerJobLifecycleState) {
+  return { waiting_for_offers: "Waiting", offers_received: "Offers", provider_selected_unpaid: "Pay now", payment_pending: "Confirming", booked: "Booked", provider_on_the_way: "On the way", provider_arrived: "In progress", awaiting_customer_completion: "Confirm job", completed: "Completed", cancelled: "Cancelled" }[state];
+}
 
 export function normalizeMarketplaceRelation<T>(relation: T | T[] | null | undefined): T[] {
   if (relation == null) return [];
