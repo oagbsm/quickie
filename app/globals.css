@@ -100,6 +100,83 @@ body {
   font-family: var(--font-nunito), Arial, Helvetica, sans-serif;
 }
 
+@media (min-width: 1024px) {
+  #job-composer {
+    padding: 1rem !important;
+    padding-top: 0.75rem !important;
+  }
+
+  #job-composer [aria-label="Step 2 of 3"] {
+    margin-bottom: 0.375rem !important;
+    padding-bottom: 0.375rem !important;
+  }
+
+  #job-composer > div:nth-child(2) {
+    margin-bottom: -0.25rem;
+  }
+
+  #job-composer > div:nth-child(2) p {
+    color: #6f7d8f;
+    font-size: 0.625rem;
+  }
+
+  #job-composer > div:nth-child(2) h2 {
+    font-size: 1.125rem;
+  }
+
+  #job-details-section,
+  #job-location-section {
+    margin-top: -0.25rem;
+  }
+
+  #job-details-section h3,
+  #job-location-section h3,
+  #job-review-section h3 {
+    font-size: 0.9375rem;
+  }
+
+  #job-location-section {
+    padding-top: 0.75rem !important;
+    border-color: #eef2f3 !important;
+  }
+
+  #job-review-section {
+    margin-top: 1rem !important;
+    padding-top: 0.75rem !important;
+    border-color: #eef2f3 !important;
+  }
+
+  #job-details-section .rounded-xl.border,
+  #job-location-section .rounded-xl.border {
+    min-height: 46px !important;
+    border-color: #edf1f2 !important;
+  }
+
+  #job-details-section label.mt-3,
+  #job-location-section label.mt-3,
+  #job-details-section .mt-2,
+  #job-location-section .mt-2 {
+    margin-top: 0.5rem !important;
+  }
+
+  #job-details-section .flex.flex-wrap,
+  #job-location-section .flex.flex-wrap {
+    gap: 0.375rem !important;
+  }
+
+  #job-review-section fieldset {
+    margin-top: 0.75rem !important;
+    padding: 0.375rem 0.5rem !important;
+    border-color: #edf1f2 !important;
+  }
+
+  #job-details-section .min-h-10,
+  #job-location-section .min-h-10 {
+    min-height: 2.5rem !important;
+    border-color: #edf1f2 !important;
+  }
+}
+
 .public-shell {
   min-width: 320px;
   background: #fff;
