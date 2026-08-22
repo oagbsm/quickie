@@ -154,7 +154,11 @@ export async function GET(request: NextRequest) {
   }
 
   if (verificationFailed || !user) {
-    const failureDestination = code || draft ? new URL(`/sign-in?${new URLSearchParams({ ...(draft ? { draft } : {}), error: code ? "oauth" : "confirmation" })}`, appOrigin) : failedCallbackDestination(next, email, appOrigin);
+    const failureDestination = providerInvite
+      ? new URL(`/provider/invite/accept?${new URLSearchParams({ token: providerInvite, error: code ? "oauth" : "confirmation" })}`, appOrigin)
+      : code || draft
+        ? new URL(`/sign-in?${new URLSearchParams({ ...(draft ? { draft } : {}), ...(next !== "/portal" ? { next } : {}), error: code ? "oauth" : "confirmation" })}`, appOrigin)
+        : failedCallbackDestination(next, email, appOrigin);
     const response = NextResponse.redirect(failureDestination);
     return staleSession
       ? expireAuthCookies(

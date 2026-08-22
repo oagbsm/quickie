@@ -13,11 +13,10 @@ export async function providerSignIn(formData: FormData) {
   if (error) redirect("/pro/login?error=credentials");
   const { data: { user } } = await supabase.auth.getUser();
   const admin = createSupabaseAdminClient();
-  const { data: provider } = user
-    ? await admin.from("cleaner_profiles").select("user_id").eq("user_id", user.id).eq("marketplace_active", true).maybeSingle()
-    : { data: null };
-  if (!provider) redirect("/pro/login?error=not-approved");
-  redirect("/work");
+  if (!user || !["quickola_provider", "quickola_cleaner"].includes(String(user.user_metadata?.account_kind || ""))) redirect("/pro/login?error=not-approved");
+  const { data: provider } = await admin.from("cleaner_profiles").select("user_id").eq("user_id", user.id).maybeSingle();
+  if (!provider) await admin.from("cleaner_profiles").insert({ user_id: user.id, display_name: String(user.user_metadata?.full_name || "Provider"), role: "cleaner", provider_status: "draft", stripe_status: "not_started" });
+  redirect("/work/onboarding");
 }
 
 export async function providerSignOut() {

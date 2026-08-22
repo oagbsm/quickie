@@ -2,17 +2,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import ProviderHeader from "@/app/components/marketplace/ProviderHeader";
 import { marketplaceServices } from "@/app/data/marketplace";
-import { getApprovedMarketplaceProvider, getSignedInUser } from "@/lib/marketplace/provider-access";
+import { canProviderOperate, getMarketplaceProvider, getSignedInUser } from "@/lib/marketplace/provider-access";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export default async function WorkPage({ searchParams }: { searchParams: Promise<{ category?: string; sort?: string }> }) {
   const query = await searchParams;
-  const provider = await getApprovedMarketplaceProvider();
+  const provider = await getMarketplaceProvider();
   if (!provider) {
     const user = await getSignedInUser();
     redirect(user ? "/pro/login?error=not-approved" : "/pro/login");
   }
+  if (!canProviderOperate(provider)) return <WorkspaceShell><ProviderStatusCard provider={provider} /></WorkspaceShell>;
   const admin = createSupabaseAdminClient();
   const { data: profile } = await admin.from("cleaner_profiles").select("service_area,marketplace_provider_services(category_slug,active),marketplace_provider_service_areas(postcode_district,active)").eq("user_id", provider.user.id).maybeSingle();
   const activeServices = new Set((profile?.marketplace_provider_services || []).filter((item) => item.active).map((item) => item.category_slug));
@@ -29,3 +30,4 @@ export default async function WorkPage({ searchParams }: { searchParams: Promise
 
 function WorkspaceShell({ children }: { children: React.ReactNode }) { return <main className="min-h-screen bg-[#f7f8fa] text-[#061b3f]"><ProviderHeader /><section className="mx-auto max-w-5xl px-5 py-10 sm:px-8">{children}</section></main>; }
 function EmptyState({ title, action, href }: { title: string; action: string; href: string }) { return <div className="rounded-3xl border border-dashed border-[#cfd8d2] bg-white p-8 text-center text-[#657089]"><p className="mx-auto max-w-xl leading-7">{title}</p><Link href={href} className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-[#23a955] px-5 font-black text-[#061b3f]">{action}</Link></div>; }
+function ProviderStatusCard({ provider }: { provider: Awaited<ReturnType<typeof getMarketplaceProvider>> }) { if (!provider) return null; const status = provider.providerStatus; const stripe = provider.stripeStatus; const title = status === "pending_review" ? "Your profile is being reviewed" : status === "action_required" ? "One change is needed before approval" : status === "suspended" ? "Provider access is suspended" : status === "approved" && stripe !== "ready" ? "Your payout setup needs attention" : "Finish setting up your provider profile"; const body = status === "pending_review" ? "You cannot quote until Quickola approves your profile and Stripe confirms your payout setup." : status === "approved" && stripe === "ready" ? "You’re ready to receive suitable local jobs." : status === "approved" ? "Your Quickola profile is approved, but your Stripe payout account is not ready yet." : status === "action_required" ? String(provider.profile.action_required_reason || "Update the requested profile details, then resubmit for review.") : status === "suspended" ? "Quoting is disabled while this profile is suspended. Contact Quickola if you need help." : "Complete your profile, service areas, terms and payout setup to apply for approval."; return <div className="rounded-3xl border border-[#e7ebef] bg-white p-8"><p className="text-xs font-black uppercase tracking-[.14em] text-[#159548]">PROVIDER STATUS</p><h1 className="mt-2 text-3xl font-black">{title}</h1><p className="mt-3 max-w-xl leading-7 text-[#657089]">{body}</p><div className="mt-6 flex flex-wrap gap-3"><span className="rounded-full bg-[#f1f3f6] px-3 py-2 text-sm font-black">Quickola: {status.replaceAll("_", " ")}</span><span className="rounded-full bg-[#f1f3f6] px-3 py-2 text-sm font-black">Payouts: {stripe.replaceAll("_", " ")}</span></div><Link href="/work/onboarding" className="mt-7 inline-flex min-h-11 items-center rounded-xl bg-[#23a955] px-5 font-black text-[#061b3f]">{status === "approved" ? "Complete payout setup" : "Continue setup"}</Link></div>; }

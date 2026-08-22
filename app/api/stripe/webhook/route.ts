@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import Stripe from "stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { describeStripeError, getStripe, getStripeWebhookSecret } from "@/lib/server/marketplace-payments";
+import { syncProviderStripeStatus } from "@/lib/server/provider-stripe";
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -17,6 +18,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
   }
   console.info("[marketplace-payment] webhook signature verified", { eventId: event.id, eventType: event.type, livemode: event.livemode });
+  if (event.type === "account.updated" && event.account) {
+    try {
+      await syncProviderStripeStatus(event.account, event.data.object as Stripe.Account);
+      revalidatePath("/work");
+      revalidatePath("/work/onboarding");
+      revalidatePath("/admin/providers");
+    } catch (error) {
+      console.error("[provider-stripe] account.updated handling failed", { eventId: event.id, accountId: event.account, reason: error instanceof Error ? error.message : "unknown" });
+      return NextResponse.json({ error: "provider_status_update_failed" }, { status: 500 });
+    }
+    return NextResponse.json({ received: true });
+  }
   if (event.type !== "checkout.session.completed") return NextResponse.json({ received: true });
 
   const session = event.data.object as Stripe.Checkout.Session;

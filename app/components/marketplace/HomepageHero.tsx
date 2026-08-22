@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ConsumerJobComposer from "@/app/components/marketplace/ConsumerJobComposer";
 import PostingHelp from "@/app/components/marketplace/PostingHelp";
 
@@ -21,6 +21,21 @@ export default function HomepageHero({
   error = "",
 }: Props) {
   const [started, setStarted] = useState(Boolean(initialService && initialJob));
+
+  useEffect(() => {
+    const focusComposer = () => {
+      if (window.location.hash !== "#job-composer") return;
+      window.requestAnimationFrame(() => {
+        const composer = document.getElementById("job-composer");
+        if (!composer) return;
+        composer.setAttribute("tabindex", "-1");
+        composer.focus({ preventScroll: true });
+      });
+    };
+    focusComposer();
+    window.addEventListener("hashchange", focusComposer);
+    return () => window.removeEventListener("hashchange", focusComposer);
+  }, []);
 
   return (
     <>

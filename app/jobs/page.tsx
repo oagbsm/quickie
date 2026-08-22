@@ -2,10 +2,10 @@ import { redirect } from "next/navigation";
 import MarketplaceHeader from "@/app/components/marketplace/MarketplaceHeader";
 import MarketplaceBrowseClient from "./MarketplaceBrowseClient";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-access";
+import { getOperationalMarketplaceProvider } from "@/lib/marketplace/provider-access";
 
 export default async function JobsPage() {
-  const provider = await getApprovedMarketplaceProvider();
+  const provider = await getOperationalMarketplaceProvider();
   if (!provider) redirect("/my-jobs");
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin.from("marketplace_jobs").select("id,public_token,service,service_subtype,postcode,optional_note,requested_timing,budget_amount,map_latitude,map_longitude,status,created_at,marketplace_quotes(count)").in("status", ["posted", "finding_provider"]).order("created_at", { ascending: false }).limit(100);

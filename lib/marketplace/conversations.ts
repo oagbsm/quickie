@@ -1,4 +1,6 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { canProviderOperate } from "@/lib/marketplace/provider-access";
+import { normalizeJobSlug } from "@/app/data/marketplace";
 
 type ConversationResult = { id: string };
 
@@ -25,9 +27,9 @@ export async function getOrCreateMarketplaceConversation({
     if (!quote.data) throw new Error("provider has no offer for job");
   } else {
     if (actorUserId !== providerId) throw new Error("provider identity mismatch");
-    const profile = await admin.from("cleaner_profiles").select("user_id").eq("user_id", providerId).eq("marketplace_active", true).maybeSingle();
+    const profile = await admin.from("cleaner_profiles").select("user_id,provider_status,stripe_status,marketplace_active").eq("user_id", providerId).maybeSingle();
     if (profile.error) throw queryFailure("cleaner_profiles lookup", profile.error);
-    if (!profile.data) throw new Error("provider is not active");
+    if (!profile.data || !canProviderOperate(profile.data)) throw new Error("provider is not ready");
     const quote = await admin.from("marketplace_quotes").select("id").eq("job_id", jobId).or(`provider_id.eq.${providerId},bidder_user_id.eq.${providerId}`).limit(1).maybeSingle();
     if (!quote.error && !quote.data) {
       const services = await admin.from("marketplace_provider_services").select("category_slug,job_type_slug,qualification_verified").eq("provider_id", providerId).eq("active", true);
@@ -35,7 +37,7 @@ export async function getOrCreateMarketplaceConversation({
       const areas = await admin.from("marketplace_provider_service_areas").select("postcode_district").eq("provider_id", providerId).eq("active", true);
       if (areas.error) throw queryFailure("marketplace_provider_service_areas lookup", areas.error);
       const outward = String(job.postcode || "").trim().split(/\s+/)[0].toUpperCase();
-      const eligible = (services.data || []).some((service) => service.category_slug === job.service && service.job_type_slug === job.service_subtype && (!["plumbing", "electrical", "smart-home"].includes(job.service) || service.qualification_verified)) && (areas.data || []).some((area) => area.postcode_district.toUpperCase() === outward);
+      const eligible = (services.data || []).some((service) => service.category_slug === job.service && normalizeJobSlug(job.service, service.job_type_slug) === normalizeJobSlug(job.service, job.service_subtype || "") && (!["plumbing", "electrical", "smart-home"].includes(job.service) || service.qualification_verified)) && (areas.data || []).some((area) => area.postcode_district.toUpperCase() === outward);
       if (!eligible) throw new Error("provider is not eligible for job");
     }
   }

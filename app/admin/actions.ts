@@ -295,6 +295,22 @@ export async function resendMarketplaceProviderInvitation(f: FormData) {
   revalidatePath("/admin/providers");
   redirect(`/admin/providers?${sent.sent ? "success=resent" : "error=email_failed"}`);
 }
+
+export async function updateMarketplaceProviderStatus(f: FormData) {
+  const { user } = await requireAdmin();
+  const providerId = value(f, "providerId");
+  const nextStatus = value(f, "status");
+  const reason = value(f, "reason");
+  if (!providerId || !["pending_review", "approved", "action_required", "suspended"].includes(nextStatus) || (nextStatus === "action_required" && reason.length < 5)) redirect("/admin/providers?error=invalid_status");
+  const admin = createSupabaseAdminClient();
+  const { data: current } = await admin.from("cleaner_profiles").select("provider_status,stripe_status").eq("user_id", providerId).maybeSingle();
+  if (!current) redirect("/admin/providers?error=provider_not_found");
+  const update = await admin.from("cleaner_profiles").update({ provider_status: nextStatus, marketplace_active: nextStatus === "approved" && current.stripe_status === "ready", action_required_reason: nextStatus === "action_required" ? reason : null, approved_at: nextStatus === "approved" ? new Date().toISOString() : null, suspended_at: nextStatus === "suspended" ? new Date().toISOString() : null, updated_at: new Date().toISOString() }).eq("user_id", providerId);
+  if (update.error) redirect("/admin/providers?error=status_update");
+  await admin.from("marketplace_provider_status_history").insert({ provider_id: providerId, from_status: current.provider_status, to_status: nextStatus, reason: reason || null, changed_by: user.id });
+  revalidatePath("/admin/providers"); revalidatePath("/work"); revalidatePath("/work/onboarding");
+  redirect("/admin/providers?success=status");
+}
 export async function inviteBusiness(f: FormData) {
   const { supabase, user } = await requireAdmin();
   const enquiryId = value(f, "enquiryId"),

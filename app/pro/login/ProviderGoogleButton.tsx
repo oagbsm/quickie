@@ -10,7 +10,7 @@ export default function ProviderGoogleButton() {
     setPending(true);
     setError("");
     const redirectTo = new URL("/auth/callback", window.location.origin);
-    redirectTo.searchParams.set("next", "/work");
+    redirectTo.searchParams.set("next", "/work/onboarding");
     const result = await createSupabaseBrowserClient().auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: redirectTo.toString() },

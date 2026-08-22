@@ -6,7 +6,7 @@ import MobileBottomNav from "@/app/components/marketplace/MobileBottomNav";
 import { getJob, getService } from "@/app/data/marketplace";
 import { chooseMarketplaceQuote, confirmMarketplaceCompletion, reportMarketplaceCompletionIssue, startCustomerConversation, submitMarketplaceOffer, submitMarketplaceReview } from "@/app/jobs/actions";
 import { createMarketplaceCheckout } from "@/app/jobs/payment-actions";
-import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-access";
+import { getOperationalMarketplaceProvider } from "@/lib/marketplace/provider-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatMarketplaceAmount, getCustomerJobLifecycleLabel, getCustomerJobLifecycleState, getMarketplacePaymentState } from "@/lib/marketplace/customer-job-state";
@@ -23,7 +23,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
   const { data: { user } } = await supabase.auth.getUser();
   const customer = user ? (await admin.from("marketplace_customers").select("id").eq("auth_user_id", user.id).maybeSingle()).data : null;
   const isOwner = Boolean(customer && customer.id === data.customer_id);
-  const provider = user && !isOwner ? await getApprovedMarketplaceProvider() : null;
+  const provider = user && !isOwner ? await getOperationalMarketplaceProvider() : null;
   const service = getService(data.service);
   const selectedJob = getJob(data.service, data.service_subtype);
   const { data: quotes } = await admin.from("marketplace_quotes").select("id,amount_pence,availability_text,message,status,provider_id,bidder_user_id,scheduled_date,arrival_window_start,arrival_window_end,cleaner_profiles(display_name,business_name)").eq("job_id", data.id).in("status", ["pending", "submitted", "selected", "accepted"]).order("created_at", { ascending: true });
