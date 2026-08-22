@@ -5,10 +5,10 @@ import { useState } from "react";
 import { saveProviderOnboarding, startProviderPayoutSetup, refreshProviderPayoutSetup, submitProviderApplication } from "./actions";
 
 type ServiceOption = { slug: string; name: string; jobs: { slug: string; name: string }[] };
-type Props = { services: ServiceOption[]; initial: Record<string, unknown>; initialServices: string[]; initialAreas: string[]; photoUrl: string | null; status: string; stripeStatus: string; actionReason?: string | null; error?: string; saved?: string; payouts?: string };
+type Props = { services: ServiceOption[]; initial: Record<string, unknown>; initialServices: string[]; initialAreas: string[]; photoUrl: string | null; status: string; stripeStatus: string; emailVerified: boolean; actionReason?: string | null; error?: string; saved?: string; payouts?: string };
 const launchAreas = ["SL1", "SL2", "SL3", "SL4", "SL5", "SL6", "SL7", "SL8", "SL9"];
 
-export default function OnboardingForm({ services, initial, initialServices, initialAreas, photoUrl, status, stripeStatus, actionReason, error, saved, payouts }: Props) {
+export default function OnboardingForm({ services, initial, initialServices, initialAreas, photoUrl, status, stripeStatus, emailVerified, actionReason, error, saved, payouts }: Props) {
   const [step, setStep] = useState(1);
   const [selectedServices, setSelectedServices] = useState(initialServices);
   const [selectedAreas, setSelectedAreas] = useState([...new Set(initialAreas.map((area) => area.toUpperCase()))]);
@@ -18,6 +18,7 @@ export default function OnboardingForm({ services, initial, initialServices, ini
   const toggleArea = (value: string) => setSelectedAreas((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
   const addCustomArea = () => { const value = customArea.trim().toUpperCase(); if (/^[A-Z]{1,2}\d{1,2}[A-Z]?$/.test(value)) { setSelectedAreas((current) => [...new Set([...current, value])]); setCustomArea(""); } };
   const checklist = [
+    ["Email verified", emailVerified],
     ["Personal details", Boolean(initial.display_name && initial.phone && initial.base_town)],
     ["Profile photo", Boolean(photoPreview)],
     ["Services selected", selectedServices.length > 0],

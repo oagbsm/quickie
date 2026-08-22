@@ -71,6 +71,7 @@ export async function submitProviderApplication() {
     admin.from("marketplace_provider_services").select("id").eq("provider_id", provider.providerId).eq("active", true),
     admin.from("marketplace_provider_service_areas").select("id").eq("provider_id", provider.providerId).eq("active", true),
   ]);
+  if (!provider.emailConfirmedAt) redirect("/work/onboarding?error=email_unverified");
   if (profileResult.error || !isProviderProfileComplete(profileResult.data || {}, servicesResult.data?.length || 0, areasResult.data?.length || 0)) redirect("/work/onboarding?error=incomplete");
   if (profileResult.data.provider_status === "suspended") redirect("/work/onboarding?error=suspended");
   const update = await admin.from("cleaner_profiles").update({ provider_status: "pending_review", submitted_at: new Date().toISOString(), action_required_reason: null, updated_at: new Date().toISOString() }).eq("user_id", provider.providerId).in("provider_status", ["draft", "action_required"]);

@@ -11,6 +11,7 @@ as $$
       and provider_status = 'approved'
       and stripe_status = 'ready'
       and marketplace_active = true
+      and exists (select 1 from auth.users u where u.id = provider_user and u.email_confirmed_at is not null)
   );
 $$;
 
