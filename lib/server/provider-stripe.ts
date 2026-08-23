@@ -5,15 +5,59 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { describeStripeError, getStripe } from "@/lib/server/marketplace-payments";
 
 export type ProviderStripeState = "not_started" | "onboarding" | "restricted" | "ready";
+type ProviderAccount = Stripe.V2.Core.Account;
 
-export function providerStripeState(account: Pick<Stripe.Account, "details_submitted" | "charges_enabled" | "payouts_enabled" | "requirements">): ProviderStripeState {
-  if (account.charges_enabled && account.payouts_enabled && !(account.requirements?.currently_due || []).length) return "ready";
-  if ((account.requirements?.currently_due || []).length || (account.requirements?.past_due || []).length) return "restricted";
-  return account.details_submitted ? "onboarding" : "onboarding";
+function recipientCapabilityStatus(account: ProviderAccount) {
+  return account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status;
 }
 
-export async function syncProviderStripeStatus(accountId: string, account?: Stripe.Account) {
-  const stripeAccount = account || await getStripe().accounts.retrieve(accountId);
+export function providerStripeState(account: ProviderAccount): ProviderStripeState {
+  const requirements = account.requirements;
+  const capabilityStatus = recipientCapabilityStatus(account);
+  const hasPastDue = Boolean(requirements?.entries?.some((entry) => entry.minimum_deadline.status === "past_due"));
+  const hasCurrentlyDue = Boolean(requirements?.entries?.some((entry) => entry.minimum_deadline.status === "currently_due"));
+
+  if (capabilityStatus === "active" && !hasPastDue && !hasCurrentlyDue) return "ready";
+  if (hasPastDue || capabilityStatus === "restricted" || capabilityStatus === "pending") return "restricted";
+  return "onboarding";
+}
+
+async function retrieveProviderAccount(accountId: string) {
+  return getStripe().v2.core.accounts.retrieve(accountId, {
+    include: ["configuration.recipient", "requirements"],
+  });
+}
+
+async function ensureRecipientConfiguration(accountId: string, providerId: string) {
+  const stripe = getStripe();
+  const account = await retrieveProviderAccount(accountId);
+  const transferCapability = account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers;
+  if (!account.configuration?.recipient || !transferCapability) {
+    console.info("[provider-stripe] adding Accounts v2 recipient configuration", { providerId, accountId });
+    return stripe.v2.core.accounts.update(
+      accountId,
+      {
+        dashboard: "express",
+        configuration: {
+          recipient: {
+            capabilities: {
+              stripe_balance: {
+                stripe_transfers: { requested: true },
+              },
+            },
+          },
+        },
+        metadata: { quickola_provider_id: providerId },
+        include: ["configuration.recipient", "requirements"],
+      },
+      { idempotencyKey: `provider-recipient-config:${providerId}` },
+    );
+  }
+  return account;
+}
+
+export async function syncProviderStripeStatus(accountId: string, account?: ProviderAccount) {
+  const stripeAccount = account || await retrieveProviderAccount(accountId);
   const status = providerStripeState(stripeAccount);
   const admin = createSupabaseAdminClient();
   const { data: current } = await admin.from("cleaner_profiles").select("provider_status").eq("stripe_account_id", stripeAccount.id).maybeSingle();
@@ -32,16 +76,47 @@ export async function createProviderPayoutLink(providerId: string) {
   const stripe = getStripe();
   let accountId = profile.stripe_account_id;
   if (!accountId) {
-    const account = await stripe.accounts.create({ type: "express", capabilities: { transfers: { requested: true } }, metadata: { quickola_provider_id: providerId } });
+    console.info("[provider-stripe] creating Accounts v2 connected account", { providerId });
+    const account = await stripe.v2.core.accounts.create(
+      {
+        dashboard: "express",
+        configuration: {
+          recipient: {
+            capabilities: {
+              stripe_balance: {
+                stripe_transfers: { requested: true },
+              },
+            },
+          },
+        },
+        metadata: { quickola_provider_id: providerId },
+        include: ["configuration.recipient", "requirements"],
+      },
+      { idempotencyKey: `provider-account:${providerId}` },
+    );
     accountId = account.id;
     const update = await admin.from("cleaner_profiles").update({ stripe_account_id: accountId, stripe_status: "onboarding", updated_at: new Date().toISOString() }).eq("user_id", providerId);
     if (update.error) throw new Error("provider_stripe_account_save_failed");
   } else {
+    console.info("[provider-stripe] existing account reused", { providerId, accountId });
+    await ensureRecipientConfiguration(accountId, providerId);
     await syncProviderStripeStatus(accountId);
   }
   const origin = getAppOrigin();
   try {
-    const link = await stripe.accountLinks.create({ account: accountId, type: "account_onboarding", refresh_url: `${origin}/work/onboarding?payouts=refresh`, return_url: `${origin}/work/onboarding?payouts=return`, collection_options: { fields: "eventually_due" } });
+    const link = await stripe.v2.core.accountLinks.create({
+      account: accountId,
+      use_case: {
+        type: "account_onboarding",
+        account_onboarding: {
+          configurations: ["recipient"],
+          refresh_url: `${origin}/work/onboarding?payouts=refresh`,
+          return_url: `${origin}/work/onboarding?payouts=return`,
+          collection_options: { fields: "eventually_due", future_requirements: "include" },
+        },
+      },
+    });
+    console.info("[provider-stripe] onboarding link created", { providerId, accountId });
     return link.url;
   } catch (error) {
     console.error("[provider-stripe] account link failed", { providerId, accountId, ...describeStripeError(error) });
@@ -53,6 +128,5 @@ export async function refreshProviderPayoutStatus(providerId: string) {
   const admin = createSupabaseAdminClient();
   const { data: profile } = await admin.from("cleaner_profiles").select("stripe_account_id").eq("user_id", providerId).maybeSingle();
   if (!profile?.stripe_account_id) return "not_started" as const;
-  const account = await getStripe().accounts.retrieve(profile.stripe_account_id);
-  return syncProviderStripeStatus(profile.stripe_account_id, account);
+  return syncProviderStripeStatus(profile.stripe_account_id);
 }

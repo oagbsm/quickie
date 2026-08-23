@@ -8,6 +8,7 @@ import { getMarketplaceProvider, isProviderProfileComplete, normaliseProviderPos
 import { marketplaceServices } from "@/app/data/marketplace";
 import { isValidUkPostcode } from "@/lib/uk-address";
 import { createProviderPayoutLink, refreshProviderPayoutStatus } from "@/lib/server/provider-stripe";
+import { describeStripeError } from "@/lib/server/marketplace-payments";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const allowedPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -46,7 +47,7 @@ export async function saveProviderOnboarding(formData: FormData) {
     if (upload.error) redirect("/work/onboarding?error=photo");
   }
   const availabilityDays = formData.has("availabilityDayField") ? formData.getAll("availabilityDay").map(String) : provider.profile.availability_days || [];
-  const profileUpdate = await admin.from("cleaner_profiles").update({ display_name: displayName || "Provider", business_name: businessName || null, phone: phone || null, marketplace_bio: bio || null, provider_type: providerType || null, base_town: baseTown || null, postcode, postcode_area: area || null, postcode_district: district || null, years_experience: Number(text(formData, "yearsExperience")) || Number(provider.profile.years_experience) || null, profile_photo_url: photoPath || null, availability_days: availabilityDays, available_now: formData.has("availableNowField") ? formData.get("availableNow") === "on" : provider.profile.available_now !== false, ...(termsAccepted ? { provider_terms_accepted_at: new Date().toISOString(), terms_version: "provider-2026-08" } : {}), updated_at: new Date().toISOString() }).eq("user_id", provider.providerId);
+  const profileUpdate = await admin.from("cleaner_profiles").update({ display_name: displayName || "Provider", business_name: businessName || null, phone: phone || null, marketplace_bio: bio || null, provider_type: providerType || null, base_town: baseTown || null, postcode, postcode_area: area || null, postcode_district: district || null, years_experience: Number(text(formData, "yearsExperience")) || Number(provider.profile.years_experience) || null, profile_photo_url: photoPath || null, availability_days: availabilityDays, available_now: formData.has("availableNowField") ? formData.getAll("availableNow").map(String).includes("on") : provider.profile.available_now !== false, ...(termsAccepted ? { provider_terms_accepted_at: new Date().toISOString(), terms_version: "provider-2026-08" } : {}), updated_at: new Date().toISOString() }).eq("user_id", provider.providerId);
   if (profileUpdate.error) redirect("/work/onboarding?error=save");
   const previousPhotoPath = String(provider.profile.profile_photo_url || "").trim();
   if (photoPath && previousPhotoPath && photoPath !== previousPhotoPath && !previousPhotoPath.startsWith("http")) {
@@ -88,7 +89,7 @@ export async function startProviderPayoutSetup() {
   try {
     url = await createProviderPayoutLink(provider.providerId);
   } catch (error) {
-    console.error("[provider-stripe] setup start failed", { providerId: provider.providerId, message: error instanceof Error ? error.message : "unknown" });
+    console.error("[provider-stripe] setup start failed", { providerId: provider.providerId, ...describeStripeError(error) });
     redirect("/work/onboarding?error=stripe");
   }
   redirect(url);

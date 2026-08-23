@@ -9,8 +9,12 @@ export async function providerSignIn(formData: FormData) {
   const password = String(formData.get("password") || "");
   if (!email || !password) redirect("/pro/login?error=details");
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) redirect("/pro/login?error=credentials");
+  const { error } = await supabase.auth.signInWithPassword({ email: email.toLowerCase(), password });
+  if (error) {
+    const authError = error as { code?: string; message?: string };
+    const unverified = authError.code === "email_not_confirmed" || /email not confirmed|email not verified/i.test(authError.message || "");
+    redirect(`/pro/login?error=${unverified ? "unverified" : "credentials"}`);
+  }
   const { data: { user } } = await supabase.auth.getUser();
   const admin = createSupabaseAdminClient();
   if (!user || !["quickola_provider", "quickola_cleaner"].includes(String(user.user_metadata?.account_kind || ""))) redirect("/pro/login?error=not-approved");

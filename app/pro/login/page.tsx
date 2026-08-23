@@ -4,7 +4,9 @@ import ProviderGoogleButton from "./ProviderGoogleButton";
 
 export default async function ProviderLoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
-  const message = error === "not-approved"
+  const message = error === "unverified"
+    ? "Please verify your email before signing in."
+    : error === "not-approved"
     ? "Provider access isn't enabled for this account."
     : error === "credentials"
       ? "Those sign-in details didn’t work."

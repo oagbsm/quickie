@@ -25,6 +25,12 @@ export function getStripeWebhookSecret() {
   return secret;
 }
 
+export function getStripeConnectWebhookSecret() {
+  const secret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
+  if (!secret) throw new Error("stripe_connect_webhook_not_configured");
+  return secret;
+}
+
 export function getSiteUrl() {
   try {
     return getAppOrigin();
