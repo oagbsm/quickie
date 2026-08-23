@@ -6,6 +6,7 @@ import { describeStripeError, getStripe } from "@/lib/server/marketplace-payment
 
 export type ProviderStripeState = "not_started" | "onboarding" | "restricted" | "ready";
 type ProviderAccount = Stripe.V2.Core.Account;
+const QUICKOLA_PROVIDER_COUNTRY = "GB";
 
 function recipientCapabilityStatus(account: ProviderAccount) {
   return account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status;
@@ -24,7 +25,7 @@ export function providerStripeState(account: ProviderAccount): ProviderStripeSta
 
 async function retrieveProviderAccount(accountId: string) {
   return getStripe().v2.core.accounts.retrieve(accountId, {
-    include: ["configuration.recipient", "requirements", "defaults"],
+    include: ["configuration.recipient", "requirements", "defaults", "identity"],
   });
 }
 
@@ -47,13 +48,15 @@ async function ensureRecipientConfiguration(accountId: string, providerId: strin
   const transferCapability = account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers;
   const responsibilities = account.defaults?.responsibilities;
   const needsContactEmail = !account.contact_email;
+  const needsCountry = account.identity?.country !== QUICKOLA_PROVIDER_COUNTRY;
   const needsRecipientConfiguration = !account.configuration?.recipient || !transferCapability || !responsibilities?.fees_collector || !responsibilities.losses_collector;
-  if (needsContactEmail || needsRecipientConfiguration) {
+  if (needsContactEmail || needsCountry || needsRecipientConfiguration) {
     console.info("[provider-stripe] adding Accounts v2 recipient configuration", { providerId, accountId });
     const updated = await stripe.v2.core.accounts.update(
       accountId,
       {
         ...(needsContactEmail ? { contact_email: providerEmail } : {}),
+        ...(needsCountry ? { identity: { country: QUICKOLA_PROVIDER_COUNTRY } } : {}),
         dashboard: "express",
         ...(needsRecipientConfiguration ? {
           defaults: {
@@ -73,11 +76,12 @@ async function ensureRecipientConfiguration(accountId: string, providerId: strin
           },
         } : {}),
         metadata: { quickola_provider_id: providerId },
-        include: ["configuration.recipient", "requirements", "defaults"],
+        include: ["configuration.recipient", "requirements", "defaults", "identity"],
       },
       { idempotencyKey: `provider-recipient-config:${providerId}` },
     );
     if (needsContactEmail) console.info("[provider-stripe] existing account contact email updated", { providerId, accountId });
+    if (needsCountry) console.info("[provider-stripe] existing account country updated", { providerId, accountId, country: QUICKOLA_PROVIDER_COUNTRY });
     return updated;
   }
   return account;
@@ -108,6 +112,9 @@ export async function createProviderPayoutLink(providerId: string) {
     const account = await stripe.v2.core.accounts.create(
       {
         contact_email: providerEmail,
+        identity: {
+          country: QUICKOLA_PROVIDER_COUNTRY,
+        },
         dashboard: "express",
         defaults: {
           responsibilities: {
@@ -129,6 +136,7 @@ export async function createProviderPayoutLink(providerId: string) {
       },
       { idempotencyKey: `provider-account:${providerId}` },
     );
+    console.info("[provider-stripe] provider country configured", { providerId, accountId: account.id, country: QUICKOLA_PROVIDER_COUNTRY });
     console.info("[provider-stripe] Accounts v2 responsibilities configured", { providerId, accountId: account.id, feesCollector: "application", lossesCollector: "application" });
     accountId = account.id;
     const update = await admin.from("cleaner_profiles").update({ stripe_account_id: accountId, stripe_status: "onboarding", updated_at: new Date().toISOString() }).eq("user_id", providerId);
