@@ -1,16 +1,15 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import ProviderHeader from "@/app/components/marketplace/ProviderHeader";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getOperationalMarketplaceProvider, getSignedInUser } from "@/lib/marketplace/provider-access";
+import { requireProviderWorkspaceAccess } from "@/lib/marketplace/provider-access";
 import { advanceMarketplaceBooking, sendProviderJobMessage, submitWorkOffer, withdrawWorkOffer } from "@/app/work/actions";
 
 export default async function WorkJobPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; edit?: string }> }) {
   const { id } = await params;
   const query = await searchParams;
-  const provider = await getOperationalMarketplaceProvider();
-  if (!provider) { const user = await getSignedInUser(); redirect(user ? "/pro/login?error=not-approved" : "/pro/login"); }
+  const provider = await requireProviderWorkspaceAccess();
   const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
   const { data: job } = await admin.from("marketplace_jobs").select("id,service,service_subtype,postcode,approximate_area,pricing_answers,requested_timing,optional_note,budget_amount,status,created_at").eq("id", id).maybeSingle();

@@ -4,7 +4,6 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getOrCreateMarketplaceProvider } from "@/lib/marketplace/provider-access";
 import { refreshProviderPayoutStatus } from "@/lib/server/provider-stripe";
 import OnboardingForm from "./OnboardingForm";
-import PendingReview from "./PendingReview";
 
 export default async function ProviderOnboardingPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string; payouts?: string; step?: string; submitted?: string }> }) {
   const query = await searchParams;
@@ -20,8 +19,7 @@ export default async function ProviderOnboardingPage({ searchParams }: { searchP
     }
   }
   if (!provider) redirect("/pro/login?next=/work/onboarding");
-  if (provider.providerStatus === "approved") redirect("/work");
-  if (provider.providerStatus === "pending_review") return <PendingReview stripeStatus={provider.stripeStatus} />;
+  if (provider.providerStatus === "pending_review") redirect("/work");
   const admin = createSupabaseAdminClient();
   const [{ data: services }, { data: areas }] = await Promise.all([
     admin.from("marketplace_provider_services").select("category_slug,job_type_slug,active").eq("provider_id", provider.providerId),

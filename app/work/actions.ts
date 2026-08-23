@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getOperationalMarketplaceProvider } from "@/lib/marketplace/provider-access";
+import { requireProviderWorkspaceAccess } from "@/lib/marketplace/provider-access";
 import { getOrCreateMarketplaceConversation } from "@/lib/marketplace/conversations";
 
 export async function submitWorkOffer(formData: FormData) {
@@ -15,8 +15,7 @@ export async function submitWorkOffer(formData: FormData) {
   const arrivalWindowStart = String(formData.get("arrivalWindowStart") || "").trim();
   const arrivalWindowEnd = String(formData.get("arrivalWindowEnd") || "").trim();
   if (!jobId || !Number.isFinite(amount) || amount <= 0) redirect(`/work/jobs/${jobId}?error=validation`);
-  const provider = await getOperationalMarketplaceProvider();
-  if (!provider) redirect("/pro/login?error=not-approved");
+  const provider = await requireProviderWorkspaceAccess();
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("submit_marketplace_quote", { target_job: jobId, quote_amount: Math.round(amount * 100), quote_availability: "date", quote_available_at: scheduledDate && arrivalWindowStart ? `${scheduledDate}T${arrivalWindowStart}:00Z` : null, quote_availability_text: scheduledDate ? `${scheduledDate} · ${arrivalWindowStart}–${arrivalWindowEnd}` : "Schedule to be confirmed", quote_message: message || null });
   if (error) redirect(`/work/jobs/${jobId}?error=${/booked|locked|not_open/i.test(error.message) ? "locked" : "offer"}`);
@@ -31,8 +30,7 @@ export async function sendProviderJobMessage(formData: FormData) {
   const jobId = String(formData.get("jobId") || "");
   const body = String(formData.get("body") || "").trim();
   if (!jobId || !body || body.length > 4000) redirect(`/work/jobs/${jobId}?error=message`);
-  const provider = await getOperationalMarketplaceProvider();
-  if (!provider) redirect("/pro/login?error=not-approved");
+  const provider = await requireProviderWorkspaceAccess();
   const supabase = await createSupabaseServerClient();
 
   let conversation;
@@ -63,8 +61,7 @@ export async function sendProviderJobMessage(formData: FormData) {
 
 export async function withdrawWorkOffer(formData: FormData) {
   const jobId = String(formData.get("jobId") || "");
-  const provider = await getOperationalMarketplaceProvider();
-  if (!provider) redirect("/pro/login?error=not-approved");
+  await requireProviderWorkspaceAccess();
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("withdraw_marketplace_quote", { target_job: jobId });
   if (error) redirect(`/work/jobs/${jobId}?error=${/booked|locked/i.test(error.message) ? "locked" : "offer"}`);
@@ -75,8 +72,8 @@ export async function advanceMarketplaceBooking(formData: FormData) {
   const bookingId = String(formData.get("bookingId") || "");
   const nextStatus = String(formData.get("nextStatus") || "");
   const jobId = String(formData.get("jobId") || "");
-  const provider = await getOperationalMarketplaceProvider();
-  if (!provider || !bookingId || !jobId || !["en_route", "arrived", "in_progress", "awaiting_customer_completion"].includes(nextStatus)) redirect(`/work/jobs/${jobId}?error=booking_transition`);
+  await requireProviderWorkspaceAccess();
+  if (!bookingId || !jobId || !["en_route", "arrived", "in_progress", "awaiting_customer_completion"].includes(nextStatus)) redirect(`/work/jobs/${jobId}?error=booking_transition`);
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("update_marketplace_booking_status", { target_booking: bookingId, next_status: nextStatus });
   if (error) redirect(`/work/jobs/${jobId}?error=booking_transition`);

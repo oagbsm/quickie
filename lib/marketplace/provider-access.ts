@@ -1,4 +1,5 @@
 import type { User } from "@supabase/supabase-js";
+import { redirect } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getPostcodeDistrict, normaliseUkPostcode } from "@/lib/uk-address";
@@ -41,3 +42,14 @@ export function normaliseProviderPostcode(value: string) { const postcode = norm
 export async function getApprovedMarketplaceProvider() { const provider = await getMarketplaceProvider(); return provider && provider.providerStatus === "approved" ? provider : null; }
 export async function getOperationalMarketplaceProvider() { const provider = await getMarketplaceProvider(); return provider && canProviderOperate(provider) ? provider : null; }
 export async function getSignedInUser() { const supabase = await createSupabaseServerClient(); return (await supabase.auth.getUser()).data.user; }
+
+export async function requireProviderWorkspaceAccess() {
+  const provider = await getMarketplaceProvider();
+  if (!provider) {
+    const user = await getSignedInUser();
+    redirect(user ? "/pro/login?error=not-approved" : "/pro/login");
+  }
+  if (provider.providerStatus === "pending_review") redirect("/work");
+  if (!canProviderOperate(provider)) redirect("/work/onboarding");
+  return provider;
+}

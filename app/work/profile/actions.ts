@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { marketplaceServices } from "@/app/data/marketplace";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-access";
+import { requireProviderWorkspaceAccess } from "@/lib/marketplace/provider-access";
 
 const text = (form: FormData, name: string) => String(form.get(name) || "").trim();
 
@@ -30,8 +30,7 @@ function postcodeDistricts(value: string) {
 }
 
 export async function updateProviderProfile(form: FormData) {
-  const provider = await getApprovedMarketplaceProvider();
-  if (!provider) redirect("/pro/login?error=not-approved");
+  const provider = await requireProviderWorkspaceAccess();
   const admin = createSupabaseAdminClient();
   const { data: existingProfile, error: existingProfileError } = await admin
     .from("cleaner_profiles")

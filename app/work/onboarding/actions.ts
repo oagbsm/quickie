@@ -23,6 +23,7 @@ function selectedServices(form: FormData) {
 export async function saveProviderOnboarding(formData: FormData) {
   const provider = await getMarketplaceProvider();
   if (!provider) redirect("/pro/login?next=/work/onboarding");
+  if (provider.providerStatus === "pending_review") redirect("/work");
   const admin = createSupabaseAdminClient();
   const displayName = text(formData, "displayName") || String(provider.profile.display_name || "");
   const businessName = text(formData, "businessName") || String(provider.profile.business_name || "");
@@ -68,6 +69,7 @@ export async function saveProviderOnboarding(formData: FormData) {
 export async function submitProviderApplication() {
   const provider = await getMarketplaceProvider();
   if (!provider) redirect("/pro/login?next=/work/onboarding");
+  if (provider.providerStatus === "pending_review") redirect("/work");
   const admin = createSupabaseAdminClient();
   const [profileResult, servicesResult, areasResult] = await Promise.all([
     admin.from("cleaner_profiles").select("*").eq("user_id", provider.providerId).single(),
@@ -87,6 +89,7 @@ export async function submitProviderApplication() {
 export async function startProviderPayoutSetup() {
   const provider = await getMarketplaceProvider();
   if (!provider) redirect("/pro/login?next=/work/onboarding");
+  if (provider.providerStatus === "pending_review") redirect("/work");
   let url = "";
   try {
     url = await createProviderPayoutLink(provider.providerId);
@@ -100,6 +103,7 @@ export async function startProviderPayoutSetup() {
 export async function refreshProviderPayoutSetup() {
   const provider = await getMarketplaceProvider();
   if (!provider) redirect("/pro/login?next=/work/onboarding");
+  if (provider.providerStatus === "pending_review") redirect("/work");
   try { await refreshProviderPayoutStatus(provider.providerId); } catch (error) { console.error("[provider-stripe] status refresh failed", { providerId: provider.providerId, message: error instanceof Error ? error.message : "unknown" }); }
   revalidatePath("/work/onboarding"); revalidatePath("/work");
   redirect("/work/onboarding?payouts=checked");
