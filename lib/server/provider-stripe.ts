@@ -28,37 +28,57 @@ async function retrieveProviderAccount(accountId: string) {
   });
 }
 
-async function ensureRecipientConfiguration(accountId: string, providerId: string) {
+async function resolveProviderEmail(providerId: string) {
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin.auth.admin.getUserById(providerId);
+  const email = data.user?.email?.trim().toLowerCase() || "";
+  const verified = Boolean(data.user?.email_confirmed_at || data.user?.confirmed_at);
+  if (error || !email || !verified || !email.includes("@")) {
+    console.error("[provider-stripe] provider email missing", { providerId, hasEmail: Boolean(email), verified });
+    throw new Error("provider_email_missing");
+  }
+  console.info("[provider-stripe] provider contact email resolved", { providerId, verified: true });
+  return email;
+}
+
+async function ensureRecipientConfiguration(accountId: string, providerId: string, providerEmail: string) {
   const stripe = getStripe();
   const account = await retrieveProviderAccount(accountId);
   const transferCapability = account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers;
   const responsibilities = account.defaults?.responsibilities;
-  if (!account.configuration?.recipient || !transferCapability || !responsibilities?.fees_collector || !responsibilities.losses_collector) {
+  const needsContactEmail = !account.contact_email;
+  const needsRecipientConfiguration = !account.configuration?.recipient || !transferCapability || !responsibilities?.fees_collector || !responsibilities.losses_collector;
+  if (needsContactEmail || needsRecipientConfiguration) {
     console.info("[provider-stripe] adding Accounts v2 recipient configuration", { providerId, accountId });
-    return stripe.v2.core.accounts.update(
+    const updated = await stripe.v2.core.accounts.update(
       accountId,
       {
+        ...(needsContactEmail ? { contact_email: providerEmail } : {}),
         dashboard: "express",
-        defaults: {
-          responsibilities: {
-            fees_collector: "application",
-            losses_collector: "application",
+        ...(needsRecipientConfiguration ? {
+          defaults: {
+            responsibilities: {
+              fees_collector: "application",
+              losses_collector: "application",
+            },
           },
-        },
-        configuration: {
-          recipient: {
-            capabilities: {
-              stripe_balance: {
-                stripe_transfers: { requested: true },
+          configuration: {
+            recipient: {
+              capabilities: {
+                stripe_balance: {
+                  stripe_transfers: { requested: true },
+                },
               },
             },
           },
-        },
+        } : {}),
         metadata: { quickola_provider_id: providerId },
         include: ["configuration.recipient", "requirements", "defaults"],
       },
       { idempotencyKey: `provider-recipient-config:${providerId}` },
     );
+    if (needsContactEmail) console.info("[provider-stripe] existing account contact email updated", { providerId, accountId });
+    return updated;
   }
   return account;
 }
@@ -81,11 +101,13 @@ export async function createProviderPayoutLink(providerId: string) {
   const { data: profile, error } = await admin.from("cleaner_profiles").select("user_id,stripe_account_id").eq("user_id", providerId).maybeSingle();
   if (error || !profile) throw new Error("provider_not_found");
   const stripe = getStripe();
+  const providerEmail = await resolveProviderEmail(providerId);
   let accountId = profile.stripe_account_id;
   if (!accountId) {
     console.info("[provider-stripe] creating Accounts v2 connected account", { providerId });
     const account = await stripe.v2.core.accounts.create(
       {
+        contact_email: providerEmail,
         dashboard: "express",
         defaults: {
           responsibilities: {
@@ -113,7 +135,7 @@ export async function createProviderPayoutLink(providerId: string) {
     if (update.error) throw new Error("provider_stripe_account_save_failed");
   } else {
     console.info("[provider-stripe] existing account reused", { providerId, accountId });
-    await ensureRecipientConfiguration(accountId, providerId);
+    await ensureRecipientConfiguration(accountId, providerId, providerEmail);
     await syncProviderStripeStatus(accountId);
   }
   const origin = getAppOrigin();

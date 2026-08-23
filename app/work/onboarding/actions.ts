@@ -90,7 +90,7 @@ export async function startProviderPayoutSetup() {
     url = await createProviderPayoutLink(provider.providerId);
   } catch (error) {
     console.error("[provider-stripe] setup start failed", { providerId: provider.providerId, ...describeStripeError(error) });
-    redirect("/work/onboarding?error=stripe");
+    redirect(`/work/onboarding?error=${error instanceof Error && error.message === "provider_email_missing" ? "provider_email_missing" : "stripe"}`);
   }
   redirect(url);
 }
