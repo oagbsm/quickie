@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { buildAbsoluteAppUrl } from "@/lib/app-url";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
-export default function ProviderGoogleButton() {
+export default function ProviderGoogleButton({ next = "/work/onboarding", providerInvite }: { next?: string; providerInvite?: string }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   async function continueWithGoogle() {
     setPending(true);
     setError("");
-    const redirectTo = new URL("/auth/callback", window.location.origin);
-    redirectTo.searchParams.set("next", "/work/onboarding");
+    const redirectTo = new URL(buildAbsoluteAppUrl("/auth/callback", { browserOrigin: window.location.origin }));
+    redirectTo.searchParams.set("next", next);
+    if (providerInvite) redirectTo.searchParams.set("provider_invite", providerInvite);
     const result = await createSupabaseBrowserClient().auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: redirectTo.toString() },

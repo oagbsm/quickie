@@ -11,17 +11,25 @@ export async function submitWorkOffer(formData: FormData) {
   const jobId = String(formData.get("jobId") || "");
   const amount = Number(formData.get("amount") || 0);
   const message = String(formData.get("message") || "").trim();
+  const availabilityMode = String(formData.get("availabilityMode") || "flexible").trim();
   const scheduledDate = String(formData.get("scheduledDate") || "").trim();
-  const arrivalWindowStart = String(formData.get("arrivalWindowStart") || "").trim();
-  const arrivalWindowEnd = String(formData.get("arrivalWindowEnd") || "").trim();
-  if (!jobId || !Number.isFinite(amount) || amount <= 0) redirect(`/work/jobs/${jobId}?error=validation`);
+  if (!jobId || !Number.isFinite(amount) || amount <= 0 || amount > 100000 || !["today", "tomorrow", "choose_date", "flexible"].includes(availabilityMode)) redirect(`/work/jobs/${jobId}?error=validation`);
+  const today = new Date();
+  const dateForOffset = (offset: number) => {
+    const date = new Date(today);
+    date.setDate(date.getDate() + offset);
+    return date.toISOString().slice(0, 10);
+  };
+  const resolvedDate = availabilityMode === "today" ? dateForOffset(0) : availabilityMode === "tomorrow" ? dateForOffset(1) : availabilityMode === "choose_date" ? scheduledDate : "";
+  if (availabilityMode === "choose_date" && (!/^\d{4}-\d{2}-\d{2}$/.test(resolvedDate) || new Date(`${resolvedDate}T23:59:59`).getTime() < Date.now())) redirect(`/work/jobs/${jobId}?error=validation`);
   const provider = await requireProviderWorkspaceAccess();
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.rpc("submit_marketplace_quote", { target_job: jobId, quote_amount: Math.round(amount * 100), quote_availability: "date", quote_available_at: scheduledDate && arrivalWindowStart ? `${scheduledDate}T${arrivalWindowStart}:00Z` : null, quote_availability_text: scheduledDate ? `${scheduledDate} · ${arrivalWindowStart}–${arrivalWindowEnd}` : "Schedule to be confirmed", quote_message: message || null });
+  const availabilityText = availabilityMode === "today" ? "Today" : availabilityMode === "tomorrow" ? "Tomorrow" : availabilityMode === "flexible" ? "Flexible" : new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(`${resolvedDate}T12:00:00`));
+  const { error } = await supabase.rpc("submit_marketplace_quote", { target_job: jobId, quote_amount: Math.round(amount * 100), quote_availability: resolvedDate ? "date" : "flexible", quote_available_at: resolvedDate ? `${resolvedDate}T09:00:00Z` : null, quote_availability_text: availabilityText, quote_message: message || null });
   if (error) redirect(`/work/jobs/${jobId}?error=${/booked|locked|not_open/i.test(error.message) ? "locked" : "offer"}`);
-  if (scheduledDate && arrivalWindowStart && arrivalWindowEnd) {
+  if (resolvedDate) {
     const admin = createSupabaseAdminClient();
-    await admin.from("marketplace_quotes").update({ scheduled_date: scheduledDate, arrival_window_start: arrivalWindowStart, arrival_window_end: arrivalWindowEnd }).eq("job_id", jobId).eq("provider_id", provider.providerId);
+    await admin.from("marketplace_quotes").update({ scheduled_date: resolvedDate, arrival_window_start: null, arrival_window_end: null }).eq("job_id", jobId).eq("provider_id", provider.providerId);
   }
   redirect(`/work/jobs/${jobId}?sent=1`);
 }
