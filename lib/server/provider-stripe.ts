@@ -24,7 +24,7 @@ export function providerStripeState(account: ProviderAccount): ProviderStripeSta
 
 async function retrieveProviderAccount(accountId: string) {
   return getStripe().v2.core.accounts.retrieve(accountId, {
-    include: ["configuration.recipient", "requirements"],
+    include: ["configuration.recipient", "requirements", "defaults"],
   });
 }
 
@@ -32,12 +32,19 @@ async function ensureRecipientConfiguration(accountId: string, providerId: strin
   const stripe = getStripe();
   const account = await retrieveProviderAccount(accountId);
   const transferCapability = account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers;
-  if (!account.configuration?.recipient || !transferCapability) {
+  const responsibilities = account.defaults?.responsibilities;
+  if (!account.configuration?.recipient || !transferCapability || !responsibilities?.fees_collector || !responsibilities.losses_collector) {
     console.info("[provider-stripe] adding Accounts v2 recipient configuration", { providerId, accountId });
     return stripe.v2.core.accounts.update(
       accountId,
       {
         dashboard: "express",
+        defaults: {
+          responsibilities: {
+            fees_collector: "application",
+            losses_collector: "application",
+          },
+        },
         configuration: {
           recipient: {
             capabilities: {
@@ -48,7 +55,7 @@ async function ensureRecipientConfiguration(accountId: string, providerId: strin
           },
         },
         metadata: { quickola_provider_id: providerId },
-        include: ["configuration.recipient", "requirements"],
+        include: ["configuration.recipient", "requirements", "defaults"],
       },
       { idempotencyKey: `provider-recipient-config:${providerId}` },
     );
@@ -80,6 +87,12 @@ export async function createProviderPayoutLink(providerId: string) {
     const account = await stripe.v2.core.accounts.create(
       {
         dashboard: "express",
+        defaults: {
+          responsibilities: {
+            fees_collector: "application",
+            losses_collector: "application",
+          },
+        },
         configuration: {
           recipient: {
             capabilities: {
@@ -94,6 +107,7 @@ export async function createProviderPayoutLink(providerId: string) {
       },
       { idempotencyKey: `provider-account:${providerId}` },
     );
+    console.info("[provider-stripe] Accounts v2 responsibilities configured", { providerId, accountId: account.id, feesCollector: "application", lossesCollector: "application" });
     accountId = account.id;
     const update = await admin.from("cleaner_profiles").update({ stripe_account_id: accountId, stripe_status: "onboarding", updated_at: new Date().toISOString() }).eq("user_id", providerId);
     if (update.error) throw new Error("provider_stripe_account_save_failed");
