@@ -4,23 +4,57 @@ import { getAppOrigin } from "@/lib/app-url";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { describeStripeError, getStripe } from "@/lib/server/marketplace-payments";
 
-export type ProviderStripeState = "not_started" | "onboarding" | "restricted" | "ready";
+export type ProviderStripeState = "not_started" | "onboarding" | "restricted" | "verification_pending" | "ready";
 type ProviderAccount = Stripe.V2.Core.Account;
 const QUICKOLA_PROVIDER_COUNTRY = "GB";
 
-function recipientCapabilityStatus(account: ProviderAccount) {
-  return account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status;
+function recipientTransferCapability(account: ProviderAccount) {
+  return account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers;
+}
+
+export type ProviderStripeAssessment = {
+  status: ProviderStripeState;
+  payoutSetupCompleted: boolean;
+  payoutsEnabled: boolean;
+  onboardingStatus: string;
+  actionableRequirementsCount: number;
+  pendingVerificationCount: number;
+};
+
+export function assessProviderStripeAccount(account: ProviderAccount): ProviderStripeAssessment {
+  const requirements = account.requirements;
+  const transferCapability = recipientTransferCapability(account);
+  const entries = requirements?.entries || [];
+  const actionableRequirements = entries.filter((entry) =>
+    entry.awaiting_action_from === "user" &&
+    ["currently_due", "past_due"].includes(entry.minimum_deadline.status),
+  );
+  const capabilityPendingVerification = transferCapability?.status_details.filter((detail) => detail.code === "requirements_pending_verification") || [];
+  const pendingVerificationRequirements = entries.filter((entry) => entry.awaiting_action_from === "stripe");
+  const pendingVerificationCount = capabilityPendingVerification.length + pendingVerificationRequirements.length;
+  const payoutsEnabled = transferCapability?.status === "active";
+  const accountStarted = Boolean(account.configuration?.recipient || account.applied_configurations.includes("recipient"));
+  const payoutSetupCompleted = accountStarted && (payoutsEnabled || (actionableRequirements.length === 0 && (pendingVerificationCount > 0 || ["pending", "restricted"].includes(transferCapability?.status || ""))));
+  const status: ProviderStripeState = payoutsEnabled
+    ? "ready"
+    : actionableRequirements.length > 0
+      ? "restricted"
+      : payoutSetupCompleted
+        ? "verification_pending"
+        : "onboarding";
+
+  return {
+    status,
+    payoutSetupCompleted,
+    payoutsEnabled,
+    onboardingStatus: transferCapability?.status || (accountStarted ? "pending" : "not_started"),
+    actionableRequirementsCount: actionableRequirements.length,
+    pendingVerificationCount,
+  };
 }
 
 export function providerStripeState(account: ProviderAccount): ProviderStripeState {
-  const requirements = account.requirements;
-  const capabilityStatus = recipientCapabilityStatus(account);
-  const hasPastDue = Boolean(requirements?.entries?.some((entry) => entry.minimum_deadline.status === "past_due"));
-  const hasCurrentlyDue = Boolean(requirements?.entries?.some((entry) => entry.minimum_deadline.status === "currently_due"));
-
-  if (capabilityStatus === "active" && !hasPastDue && !hasCurrentlyDue) return "ready";
-  if (hasPastDue || capabilityStatus === "restricted" || capabilityStatus === "pending") return "restricted";
-  return "onboarding";
+  return assessProviderStripeAccount(account).status;
 }
 
 async function retrieveProviderAccount(accountId: string) {
@@ -89,15 +123,23 @@ async function ensureRecipientConfiguration(accountId: string, providerId: strin
 
 export async function syncProviderStripeStatus(accountId: string, account?: ProviderAccount) {
   const stripeAccount = account || await retrieveProviderAccount(accountId);
-  const status = providerStripeState(stripeAccount);
+  const assessment = assessProviderStripeAccount(stripeAccount);
   const admin = createSupabaseAdminClient();
-  const { data: current } = await admin.from("cleaner_profiles").select("provider_status").eq("stripe_account_id", stripeAccount.id).maybeSingle();
-  const result = await admin.from("cleaner_profiles").update({ stripe_account_id: stripeAccount.id, stripe_status: status, marketplace_active: current?.provider_status === "approved" && status === "ready", updated_at: new Date().toISOString() }).eq("stripe_account_id", stripeAccount.id);
+  const { data: current } = await admin.from("cleaner_profiles").select("user_id,provider_status").eq("stripe_account_id", stripeAccount.id).maybeSingle();
+  const result = await admin.from("cleaner_profiles").update({ stripe_account_id: stripeAccount.id, stripe_status: assessment.status, marketplace_active: current?.provider_status === "approved" && assessment.payoutsEnabled, updated_at: new Date().toISOString() }).eq("stripe_account_id", stripeAccount.id);
   if (result.error) {
     console.error("[provider-stripe] status sync failed", { accountId, code: result.error.code, message: result.error.message });
     throw new Error("provider_stripe_status_sync_failed");
   }
-  return status;
+  console.info("[provider-stripe] payout status refreshed", {
+    providerId: current?.user_id || "unmatched",
+    onboardingStatus: assessment.onboardingStatus,
+    payoutSetupCompleted: assessment.payoutSetupCompleted,
+    payoutsEnabled: assessment.payoutsEnabled,
+    actionableRequirementsCount: assessment.actionableRequirementsCount,
+    pendingVerificationCount: assessment.pendingVerificationCount,
+  });
+  return assessment;
 }
 
 export async function createProviderPayoutLink(providerId: string) {

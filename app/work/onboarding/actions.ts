@@ -4,9 +4,8 @@ import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getMarketplaceProvider, isProviderProfileComplete, normaliseProviderPostcode } from "@/lib/marketplace/provider-access";
+import { getMarketplaceProvider, isProviderProfileComplete } from "@/lib/marketplace/provider-access";
 import { marketplaceServices } from "@/app/data/marketplace";
-import { isValidUkPostcode } from "@/lib/uk-address";
 import { createProviderPayoutLink, refreshProviderPayoutStatus } from "@/lib/server/provider-stripe";
 import { describeStripeError } from "@/lib/server/marketplace-payments";
 
@@ -31,13 +30,14 @@ export async function saveProviderOnboarding(formData: FormData) {
   const bio = text(formData, "bio") || String(provider.profile.marketplace_bio || "");
   const providerType = text(formData, "providerType") || String(provider.profile.provider_type || "individual");
   const baseTown = text(formData, "baseTown") || String(provider.profile.base_town || "");
-  const rawPostcode = text(formData, "postcode") || String(provider.profile.postcode || "");
+  const currentStep = Math.min(5, Math.max(1, Number(text(formData, "currentStep")) || 1));
   const services = selectedServices(formData);
   const areas = safeAreas(formData);
   const termsAccepted = formData.get("termsAccepted") === "on";
-  if ((displayName && (displayName.length < 2 || displayName.length > 120)) || (phone && !/^\+?[0-9 ()-]{9,20}$/.test(phone)) || bio.length > 500 || (providerType && !["individual", "business"].includes(providerType)) || (baseTown && baseTown.length < 2) || (rawPostcode && !isValidUkPostcode(rawPostcode))) redirect("/work/onboarding?error=required");
-  const { postcode, district } = normaliseProviderPostcode(rawPostcode);
-  const area = district.match(/^[A-Z]+/)?.[0] || "";
+  if ((displayName && (displayName.length < 2 || displayName.length > 120)) || (phone && !/^\+?[0-9 ()-]{9,20}$/.test(phone)) || bio.length > 500 || (providerType && !["individual", "business"].includes(providerType)) || (baseTown && baseTown.length < 2)) redirect("/work/onboarding?error=required");
+  if (currentStep === 2 && services.length === 0) redirect("/work/onboarding?error=required&step=2");
+  if (currentStep === 3 && (!baseTown || areas.length === 0)) redirect("/work/onboarding?error=required&step=3");
+  if (currentStep === 4 && (!bio || bio.length < 20 || !termsAccepted)) redirect(`/work/onboarding?error=${termsAccepted ? "required" : "terms"}&step=4`);
   let photoPath = String(formData.get("existingPhotoPath") || "").trim() || String(provider.profile.profile_photo_url || "");
   const photo = formData.get("profilePhoto");
   if (photo instanceof File && photo.size > 0) {
@@ -46,8 +46,9 @@ export async function saveProviderOnboarding(formData: FormData) {
     const upload = await admin.storage.from("marketplace-provider-photos").upload(photoPath, await photo.arrayBuffer(), { contentType: photo.type, upsert: false });
     if (upload.error) redirect("/work/onboarding?error=photo");
   }
+  if (currentStep === 1 && !photoPath) redirect("/work/onboarding?error=required&step=1");
   const availabilityDays = formData.has("availabilityDayField") ? formData.getAll("availabilityDay").map(String) : provider.profile.availability_days || [];
-  const profileUpdate = await admin.from("cleaner_profiles").update({ display_name: displayName || "Provider", business_name: businessName || null, phone: phone || null, marketplace_bio: bio || null, provider_type: providerType || null, base_town: baseTown || null, postcode, postcode_area: area || null, postcode_district: district || null, years_experience: Number(text(formData, "yearsExperience")) || Number(provider.profile.years_experience) || null, profile_photo_url: photoPath || null, availability_days: availabilityDays, available_now: formData.has("availableNowField") ? formData.getAll("availableNow").map(String).includes("on") : provider.profile.available_now !== false, ...(termsAccepted ? { provider_terms_accepted_at: new Date().toISOString(), terms_version: "provider-2026-08" } : {}), updated_at: new Date().toISOString() }).eq("user_id", provider.providerId);
+  const profileUpdate = await admin.from("cleaner_profiles").update({ display_name: displayName || "Provider", business_name: businessName || null, phone: phone || null, marketplace_bio: bio || null, provider_type: providerType || null, base_town: baseTown || null, years_experience: Number(text(formData, "yearsExperience")) || Number(provider.profile.years_experience) || null, profile_photo_url: photoPath || null, availability_days: availabilityDays, available_now: formData.has("availableNowField") ? formData.getAll("availableNow").map(String).includes("on") : provider.profile.available_now !== false, ...(termsAccepted ? { provider_terms_accepted_at: new Date().toISOString(), terms_version: "provider-2026-08" } : {}), updated_at: new Date().toISOString() }).eq("user_id", provider.providerId);
   if (profileUpdate.error) redirect("/work/onboarding?error=save");
   const previousPhotoPath = String(provider.profile.profile_photo_url || "").trim();
   if (photoPath && previousPhotoPath && photoPath !== previousPhotoPath && !previousPhotoPath.startsWith("http")) {
@@ -60,7 +61,8 @@ export async function saveProviderOnboarding(formData: FormData) {
   const areasInsert = await admin.from("marketplace_provider_service_areas").insert(areas.map((postcode_district) => ({ provider_id: provider.providerId, postcode_district, active: true })));
   if (areasInsert.error) redirect("/work/onboarding?error=save");
   revalidatePath("/work"); revalidatePath("/work/profile"); revalidatePath("/work/onboarding");
-  redirect("/work/onboarding?saved=1");
+  if (currentStep === 5 && !["ready", "verification_pending"].includes(provider.stripeStatus)) redirect("/work/onboarding?error=payout_required&step=5");
+  redirect(`/work/onboarding?saved=1&step=${currentStep + 1}`);
 }
 
 export async function submitProviderApplication() {
@@ -79,7 +81,7 @@ export async function submitProviderApplication() {
   if (update.error) redirect("/work/onboarding?error=submit");
   await admin.from("marketplace_provider_status_history").insert({ provider_id: provider.providerId, from_status: provider.providerStatus, to_status: "pending_review", changed_by: provider.user.id });
   revalidatePath("/work"); revalidatePath("/work/onboarding"); revalidatePath("/admin/providers");
-  redirect("/work?submitted=1");
+  redirect("/work/onboarding?submitted=1");
 }
 
 export async function startProviderPayoutSetup() {
