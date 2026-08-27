@@ -100,7 +100,22 @@ const windowJobs = [
   job("other-window-treatments", "Other window treatments", "Another curtain, blind or window-covering job.", [choice("windowType", "What needs doing?", ["Blinds", "Curtains", "Fittings", "Repair", "Other"]), counter("quantity", "Quantity")], { photoRequirement: "recommended" }),
 ];
 
-const makeCategory = (slug: string, name: string, shortName: string, description: string, image: string, jobs: MarketplaceJob[], detail: string): MarketplaceService => ({ slug, name, shortName, description, image, detail, examples: jobs.filter((item) => item.popular).slice(0, 4).map((item) => item.name), pricingModel: jobs.some((item) => item.pricingModel === "cleaning_deterministic") ? "cleaning_deterministic" : "range_not_configured", pricingQuestions: jobs[0]?.pricingQuestions || [], popularJobExamples: jobs.filter((item) => item.popular).map((item) => item.name), photoUseful: jobs.some((item) => item.photoRequirement !== "none"), timingMatters: true, seoTitle: `${name} services | Quickola`, seoDescription: `Explore ${name.toLowerCase()} jobs and compare local offers.`, jobs });
+const serviceSeo: Record<string, { title: string; provider: string; locationTitle: string; description: string }> = {
+  cleaning: { title: "Need a Cleaner? Compare Local Prices | Quickola", provider: "cleaners", locationTitle: "Need a Cleaner", description: "Tell us what needs cleaning once. Compare prices from available local cleaners and choose who works for you without ringing around." },
+  gardening: { title: "Get Your Garden Sorted | Compare Local Prices", provider: "gardeners", locationTitle: "Need a Gardener", description: "Tell us what needs doing in your garden once. Compare prices from available local gardeners and choose who works for you." },
+  handyman: { title: "Need a Handyman? Compare Local Prices | Quickola", provider: "handymen", locationTitle: "Need a Handyman", description: "Tell us what needs fixing or fitting once. Compare prices from available local handymen and choose who works for you without ringing around." },
+  plumbing: { title: "Need a Plumber? Compare Local Prices | Quickola", provider: "plumbers", locationTitle: "Need a Plumber", description: "Tell us what plumbing job needs sorting once. Compare prices from available local plumbers and choose who works for you." },
+  electrical: { title: "Need an Electrician? Compare Local Prices | Quickola", provider: "electricians", locationTitle: "Need an Electrician", description: "Tell us what electrical job needs doing once. Compare prices from available local electricians and choose who works for you." },
+  "furniture-assembly": { title: "Need Furniture Assembled? Compare Local Prices | Quickola", provider: "furniture assemblers", locationTitle: "Need Furniture Assembled", description: "Tell us what needs assembling once. Compare prices from available local furniture assemblers and choose who works for you." },
+  removals: { title: "Need Help Moving? Compare Local Prices | Quickola", provider: "moving providers", locationTitle: "Need Help Moving", description: "Tell us what needs moving once. Compare prices from available local moving providers and choose who works for you without ringing around." },
+  "waste-removal": { title: "Need Rubbish Cleared? Compare Local Prices | Quickola", provider: "waste removal providers", locationTitle: "Need Rubbish Cleared", description: "Tell us what needs removing once. Compare prices from available local waste removal providers and choose who works for you without ringing around." },
+  painting: { title: "Need a Painter & Decorator? Compare Local Prices | Quickola", provider: "painters and decorators", locationTitle: "Need a Painter", description: "Tell us what needs painting or decorating once. Compare prices from available local painters and decorators and choose who works for you." },
+  "tv-mounting": { title: "Need a TV Mounted? Compare Local Prices | Quickola", provider: "mounting providers", locationTitle: "Need a TV Mounted", description: "Tell us what needs mounting once. Compare prices from available local mounting providers and choose who works for you." },
+  "smart-home": { title: "Need Smart Home Help? Compare Local Prices | Quickola", provider: "smart home providers", locationTitle: "Need Smart Home Help", description: "Tell us what needs setting up once. Compare prices from available local smart home providers and choose who works for you." },
+  "window-cleaning": { title: "Need Window, Curtain or Blind Help? Compare Local Prices | Quickola", provider: "window treatment providers", locationTitle: "Need Window, Curtain or Blind Help", description: "Tell us what needs cleaning, fitting or repairing once. Compare prices from available local providers and choose who works for you." },
+};
+
+const makeCategory = (slug: string, name: string, shortName: string, description: string, image: string, jobs: MarketplaceJob[], detail: string): MarketplaceService => ({ slug, name, shortName, description, image, detail, examples: jobs.filter((item) => item.popular).slice(0, 4).map((item) => item.name), pricingModel: jobs.some((item) => item.pricingModel === "cleaning_deterministic") ? "cleaning_deterministic" : "range_not_configured", pricingQuestions: jobs[0]?.pricingQuestions || [], popularJobExamples: jobs.filter((item) => item.popular).map((item) => item.name), photoUseful: jobs.some((item) => item.photoRequirement !== "none"), timingMatters: true, seoTitle: serviceSeo[slug]?.title || `${name} | Quickola`, seoDescription: serviceSeo[slug]?.description || `Tell us what needs doing once. Compare prices from available local providers and choose who works for you.`, jobs });
 
 export const marketplaceServices: MarketplaceService[] = [
   makeCategory("cleaning", "Cleaning", "Cleaning", "Home cleaning and specialist cleaning jobs", "/quickola-home-improvement-svgs/cleaner.svg", cleaningJobs, "Choose a specific cleaning job and share the details local people need to send an offer."),
@@ -117,7 +132,20 @@ export const marketplaceServices: MarketplaceService[] = [
   makeCategory("window-cleaning", "Windows, Curtains & Blinds", "Windows & Blinds", "Window, curtain and blind installation or repair", "/quickola-home-improvement-svgs/window-cleaning.svg", windowJobs, "Choose the window treatment job."),
 ];
 
-export const marketplaceLocations = [{ slug: "slough", name: "Slough", description: "Local services across Slough and nearby areas." }, { slug: "windsor", name: "Windsor", description: "Home services for Windsor and surrounding areas." }, { slug: "maidenhead", name: "Maidenhead", description: "Local professionals for homes and practical jobs in Maidenhead." }, { slug: "london", name: "London", description: "A future expansion area for Quickola services." }];
+export const marketplaceLocations = [{ slug: "slough", name: "Slough", description: "Local services across Slough and nearby areas." }, { slug: "windsor", name: "Windsor", description: "Home services for Windsor and surrounding areas." }, { slug: "maidenhead", name: "Maidenhead", description: "Local home services across Maidenhead and the SL6 area." }, { slug: "london", name: "London", description: "A future expansion area for Quickola services." }];
+export const ACTIVE_PUBLIC_SEO_LOCATIONS = ["maidenhead"] as const;
+export const ACTIVE_PUBLIC_SEO_POSTCODE_DISTRICTS = ["SL6"] as const;
+export function isActivePublicSeoLocation(slug: string) { return ACTIVE_PUBLIC_SEO_LOCATIONS.includes(slug as (typeof ACTIVE_PUBLIC_SEO_LOCATIONS)[number]); }
+
+export function getLocationServiceSeo(service: MarketplaceService, location: { name: string }) {
+  const seo = serviceSeo[service.slug];
+  const provider = seo?.provider || "local providers";
+  const need = (seo?.locationTitle || `Need ${service.name}`).replace(/^Need /, "").toLowerCase();
+  return {
+    title: `${seo?.locationTitle || `Need ${service.name}`} in ${location.name}? Compare Local Prices`,
+    description: `Need ${need} in ${location.name}? Tell us what needs doing once, compare prices from available local ${provider}, and choose without ringing around.`,
+  };
+}
 const legacyCategoryAliases: Record<string, string> = { "carpet-cleaning": "cleaning", "pressure-washing": "gardening", "furniture-assembly": "furniture-assembly" };
 const legacyJobAliases: Record<string, Record<string, string>> = {
   cleaning: { "move-in-cleaning": "move-in-move-out-cleaning", "move-out-cleaning": "move-in-move-out-cleaning", "airbnb-short-stay-cleaning": "short-stay-cleaning", "oven-cleaning": "specialist-cleaning", "carpet-cleaning": "specialist-cleaning", "window-cleaning": "specialist-cleaning" },

@@ -46,6 +46,7 @@ const pageData = {
 export const metadata: Metadata = {
   title: pageData.title,
   description: pageData.description,
+  robots: { index: false, follow: true },
   alternates: {
     canonical: pageData.canonical,
   },

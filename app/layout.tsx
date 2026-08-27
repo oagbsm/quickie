@@ -11,11 +11,11 @@ const nunito = Nunito_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.quickola.co.uk"),
   title: {
-    default: "Quickola | Fair prices. Local pros.",
+    default: "Quickola | Get Home Jobs Done at a Fair Price",
     template: "%s",
   },
   description:
-    "Find local professionals for practical jobs around your home with Quickola.",
+    "Need something done at home? Tell Quickola what you need once. Local providers send you their prices, so you can compare and choose without ringing around.",
   applicationName: "Quickola",
   authors: [{ name: "Quickola" }],
   creator: "Quickola",
@@ -36,9 +36,9 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://www.quickola.co.uk",
     siteName: "Quickola",
-    title: "Quickola | Fair prices. Local pros.",
+    title: "Quickola | Get Home Jobs Done at a Fair Price",
     description:
-      "Find local professionals for practical jobs around your home with Quickola.",
+      "Need something done at home? Tell Quickola what you need once. Local providers send you their prices, so you can compare and choose without ringing around.",
     images: [
       {
         url: "/quickola/logo-mark.png",
@@ -50,9 +50,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Quickola | Fair prices. Local pros.",
+    title: "Quickola | Get Home Jobs Done at a Fair Price",
     description:
-      "Find local professionals for practical jobs around your home with Quickola.",
+      "Need something done at home? Tell Quickola what you need once. Local providers send you their prices, so you can compare and choose without ringing around.",
     images: ["/quickola/logo-mark.png"],
   },
   robots: {

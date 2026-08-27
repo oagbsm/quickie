@@ -6,7 +6,7 @@ import HomepageHero from "@/app/components/marketplace/HomepageHero";
 import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-access";
 import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Quickola | Local help around the house", description: "Tell us what you need. Local people send you their prices, and you choose who you want." };
+export const metadata: Metadata = { title: "Quickola | Get Home Jobs Done at a Fair Price", description: "Need something done at home? Tell Quickola what you need once. Local providers send you their prices, so you can compare and choose without ringing around." };
 const ideas = [["Clean my 2-bed flat", "cleaning"], ["Cut my lawn", "gardening"], ["Trim my hedge", "gardening"], ["Put up shelves", "handyman"], ["Move a sofa", "removals"], ["Clear old furniture", "waste-removal"]];
 const steps = ["Tell us what you need", "Local people send offers", "Choose who you want"];
 

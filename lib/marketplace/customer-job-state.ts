@@ -78,3 +78,29 @@ export function formatMarketplaceAmount(amountPence: number | null | undefined) 
   if (!Number.isFinite(Number(amountPence))) return "£0";
   return `£${Math.round(Number(amountPence) / 100)}`;
 }
+
+export function formatMarketplaceSchedule(item: {
+  scheduled_date?: string | null;
+  arrival_window_start?: string | null;
+  arrival_window_end?: string | null;
+  availability_text?: string | null;
+} | null | undefined) {
+  if (!item?.scheduled_date) {
+    return {
+      dateLabel: null,
+      timeLabel: item?.availability_text || "Time awaiting confirmation",
+    };
+  }
+
+  const dateLabel = new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${item.scheduled_date}T12:00:00`));
+  const timeLabel = item.arrival_window_start
+    ? `${item.arrival_window_start}${item.arrival_window_end ? `–${item.arrival_window_end}` : ""}`
+    : "Time awaiting confirmation";
+
+  return { dateLabel, timeLabel };
+}
