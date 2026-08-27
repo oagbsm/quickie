@@ -21,11 +21,8 @@ export const metadata: Metadata = {
   creator: "Quickola",
   publisher: "Quickola",
   icons: {
-    icon: [
-      { url: "/quickola/logo-mark.png", type: "image/png", sizes: "32x32" },
-      { url: "/quickola/logo-mark.png", type: "image/png" },
-    ],
-    shortcut: "/quickola/logo-mark.png",
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
     apple: {
       url: "/quickola/logo-mark.png",
       sizes: "180x180",
@@ -73,20 +70,6 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       className={nunito.variable}
     >
-      <head>
-        <link
-          rel="icon"
-          href="/quickola/logo-mark.png"
-          type="image/png"
-          sizes="32x32"
-        />
-        <link rel="shortcut icon" href="/quickola/logo-mark.png" />
-        <link
-          rel="apple-touch-icon"
-          href="/quickola/apple-touch-icon.png"
-          sizes="180x180"
-        />
-      </head>
       <body suppressHydrationWarning className="min-h-full font-sans">
         {children}
       </body>
