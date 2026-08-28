@@ -82,7 +82,7 @@ test("submitted provider states do not reopen editable onboarding", () => {
   assert.match(page, /<PendingReview/);
   assert.match(status, /You’re all signed up!/);
   assert.match(status, /Awaiting Quickola approval/);
-  assert.match(status, /View available jobs/);
+  assert.doesNotMatch(status, /View available jobs/);
   assert.doesNotMatch(pendingScreen, /Submit for review|Change photo|Set up payouts|Refresh payouts|Save setup|form action/);
   assert.match(status, /You’re approved/);
   assert.match(status, /status === "suspended"/);

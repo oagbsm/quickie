@@ -8,8 +8,7 @@ import {
   isStaleSupabaseSessionError,
   supabaseAuthCookieNames,
 } from "@/lib/supabase/auth-recovery";
-import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-access";
-import { getCurrentAccountRole } from "@/lib/auth/account-role";
+import { destinationForAccount, getCurrentAccountContext } from "@/lib/auth/account-role";
 
 const SIGNUP_CONFIRMATION_PURPOSES = new Set([
   "signup-confirmation",
@@ -184,13 +183,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const accountRole = await getCurrentAccountRole();
-  if (accountRole === "admin") return NextResponse.redirect(new URL("/admin", appOrigin));
-  if (accountRole === "customer" && (next === "/work" || next.startsWith("/work/"))) return NextResponse.redirect(new URL("/my-jobs", appOrigin));
-  if (accountRole === "provider" && (next === "/my-jobs" || next === "/messages" || next.startsWith("/messages/"))) return NextResponse.redirect(new URL("/work", appOrigin));
-
-  if (!url.searchParams.has("next") && !draft && !purpose && await getApprovedMarketplaceProvider())
-    return NextResponse.redirect(new URL("/work", appOrigin));
+  const account = await getCurrentAccountContext();
+  if (account.role === "admin" || account.role === "provider")
+    return NextResponse.redirect(new URL(destinationForAccount(account) || "/", appOrigin));
+  if (account.role === "customer" && (next === "/work" || next.startsWith("/work/")))
+    return NextResponse.redirect(new URL("/my-jobs", appOrigin));
 
   if (SIGNUP_CONFIRMATION_PURPOSES.has(purpose || "") && !hadExistingAuthSession)
     await supabase.auth.signOut();

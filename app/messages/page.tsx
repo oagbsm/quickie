@@ -6,15 +6,15 @@ import ProviderHeader from "@/app/components/marketplace/ProviderHeader";
 import { canProviderOperate, requireProviderWorkspaceAccess } from "@/lib/marketplace/provider-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getCurrentAccountRole } from "@/lib/auth/account-role";
+import { destinationForAccount, getCurrentAccountContext } from "@/lib/auth/account-role";
 
 export default async function MessagesIndex({ providerOnly = false }: { providerOnly?: boolean }) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in?next=/messages");
-  const role = await getCurrentAccountRole();
-  if (role === "admin") redirect("/admin");
-  if (role === "provider") redirect("/work/messages");
+  const account = await getCurrentAccountContext();
+  if (account.role === "admin") redirect("/admin");
+  if (account.role === "provider") redirect(destinationForAccount(account) || "/work");
 
   const admin = createSupabaseAdminClient();
   const { data: customer } = await admin.from("marketplace_customers").select("id").eq("auth_user_id", user.id).maybeSingle();

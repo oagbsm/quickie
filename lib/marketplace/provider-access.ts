@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getPostcodeDistrict, normaliseUkPostcode } from "@/lib/uk-address";
-import { getCurrentAccountRole } from "@/lib/auth/account-role";
+import { destinationForAccount, getCurrentAccountContext, getCurrentAccountRole } from "@/lib/auth/account-role";
 
 export type ProviderStatus = "draft" | "pending_review" | "approved" | "action_required" | "suspended";
 export type ProviderStripeStatus = "not_started" | "onboarding" | "restricted" | "verification_pending" | "ready";
@@ -50,7 +50,8 @@ export async function getOperationalMarketplaceProvider() { const provider = awa
 export async function getSignedInUser() { const supabase = await createSupabaseServerClient(); return (await supabase.auth.getUser()).data.user; }
 
 export async function requireProviderWorkspaceAccess() {
-  if (await getCurrentAccountRole() !== "provider") redirect("/");
+  const account = await getCurrentAccountContext();
+  if (account.role !== "provider") redirect(destinationForAccount(account) || "/");
   const provider = await getMarketplaceProvider();
   if (!provider) {
     const user = await getSignedInUser();
@@ -62,7 +63,8 @@ export async function requireProviderWorkspaceAccess() {
 }
 
 export async function requireProviderBrowseAccess() {
-  if (await getCurrentAccountRole() !== "provider") redirect("/");
+  const account = await getCurrentAccountContext();
+  if (account.role !== "provider") redirect(destinationForAccount(account) || "/");
   const provider = await getMarketplaceProvider();
   if (!provider) {
     const user = await getSignedInUser();

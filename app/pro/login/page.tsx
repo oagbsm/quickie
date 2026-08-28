@@ -1,14 +1,12 @@
 import Link from "next/link";
 import ProviderGoogleButton from "./ProviderGoogleButton";
 import { redirect } from "next/navigation";
-import { getCurrentAccountRole } from "@/lib/auth/account-role";
+import { destinationForAccount, getCurrentAccountContext } from "@/lib/auth/account-role";
 
 export default async function ProviderLoginPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string }> }) {
   const { error, next } = await searchParams;
-  const role = await getCurrentAccountRole();
-  if (role === "admin") redirect("/admin");
-  if (role === "provider") redirect("/work");
-  if (role === "customer") redirect("/my-jobs");
+  const account = await getCurrentAccountContext();
+  if (account.role) redirect(destinationForAccount(account) || "/");
   const message = error === "not-approved"
     ? "This Google account is not approved for provider work yet."
     : error === "unverified"

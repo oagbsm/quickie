@@ -25,7 +25,7 @@ export async function proxy(request: NextRequest) {
 
   // Only refresh the session for pages that require it. Public pages and
   // OAuth/sign-in routes must not make an auth request just to render.
-  const requiresSession = pathname === "/portal" || pathname === "/jobs" || pathname === "/my-jobs" || pathname.startsWith("/messages/");
+  const requiresSession = isProtectedPortalPath(pathname);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   // Public auth pages must remain stable even when the browser still carries
@@ -59,6 +59,10 @@ export async function proxy(request: NextRequest) {
   }
 
   return response;
+}
+
+function isProtectedPortalPath(pathname: string) {
+  return pathname === "/portal" || pathname === "/jobs" || pathname === "/my-jobs" || pathname.startsWith("/messages/");
 }
 
 export const config = {

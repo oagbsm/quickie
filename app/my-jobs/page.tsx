@@ -6,7 +6,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-access";
 import { formatMarketplaceAmount, getCustomerJobLifecycleLabel, getCustomerJobLifecycleState, normalizeMarketplaceRelation } from "@/lib/marketplace/customer-job-state";
-import { getCurrentAccountRole } from "@/lib/auth/account-role";
+import { destinationForAccount, getCurrentAccountContext } from "@/lib/auth/account-role";
 
 const ACTIVE_OFFER_STATUSES = ["pending", "submitted", "selected", "accepted"];
 type Quote = { id: string; amount_pence: number; status: string };
@@ -18,7 +18,8 @@ export default async function MyJobsPage() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in?next=/my-jobs");
-  if ((await getCurrentAccountRole()) !== "customer") redirect("/admin");
+  const account = await getCurrentAccountContext();
+  if (account.role !== "customer") redirect(destinationForAccount(account) || "/");
   if (await getApprovedMarketplaceProvider()) redirect("/work");
   const admin = createSupabaseAdminClient();
   const { data: customer, error: customerError } = await admin.from("marketplace_customers").select("id").eq("auth_user_id", user.id).maybeSingle();

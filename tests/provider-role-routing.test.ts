@@ -9,18 +9,24 @@ const pending = read("app/work/onboarding/PendingReview.tsx");
 const roles = read("lib/auth/account-role.ts");
 
 test("provider root routing keeps pending providers out of customer home", () => {
-  assert.match(home, /provider\?\.providerStatus === "approved" \|\| provider\?\.providerStatus === "pending_review"/);
-  assert.match(home, /\/work\/onboarding/);
+  assert.match(home, /destinationForAccount/);
+  assert.match(roles, /providerStatus/);
 });
 
 test("pending provider work view does not browse or expose the old CTA", () => {
   assert.match(work, /\["pending_review", "suspended"\]/);
   assert.doesNotMatch(pending, /View available jobs/);
-  assert.match(pending, /Your application is being reviewed/);
+  assert.match(pending, /You’re all signed up!/);
 });
 
 test("marketplace role resolver has deterministic admin precedence", () => {
-  assert.match(roles, /if \(adminResult\.data\) return "admin"/);
-  assert.match(roles, /if \(providerResult\.data\) return "provider"/);
-  assert.match(roles, /if \(customerResult\.data\) return "customer"/);
+  assert.match(roles, /if \(adminResult\.data\) return \{ role: "admin"/);
+  assert.match(roles, /if \(providerResult\.data\) return \{ role: "provider"/);
+  assert.match(roles, /if \(customerResult\.data\) return \{ role: "customer"/);
+});
+
+test("direct role destinations do not route through the portal", () => {
+  assert.match(roles, /destinationForAccount/);
+  assert.doesNotMatch(home, /getMarketplaceProvider/);
+  assert.doesNotMatch(read("lib/admin/auth.ts"), /redirect\("\/portal"\)/);
 });
