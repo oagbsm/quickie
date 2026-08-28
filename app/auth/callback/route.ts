@@ -125,17 +125,22 @@ export async function GET(request: NextRequest) {
   try {
     if (code) {
       const result = await supabase.auth.exchangeCodeForSession(code);
+      staleSession = isStaleSupabaseSessionError(result.error);
+      if (result.error) console.warn("[auth/callback] code exchange failed", { name: result.error.name, code: result.error.code });
       verificationFailed = Boolean(result.error);
     } else if (tokenHash && type) {
       const result = await supabase.auth.verifyOtp({
         token_hash: tokenHash,
         type,
       });
+      staleSession = isStaleSupabaseSessionError(result.error);
+      if (result.error) console.warn("[auth/callback] OTP verification failed", { name: result.error.name, code: result.error.code });
       verificationFailed = Boolean(result.error);
     } else {
       verificationFailed = true;
     }
   } catch (error) {
+    console.warn("[auth/callback] auth exchange threw", { name: error instanceof Error ? error.name : typeof error });
     verificationFailed = true;
     staleSession = isStaleSupabaseSessionError(error);
   }
@@ -148,6 +153,7 @@ export async function GET(request: NextRequest) {
       staleSession = isStaleSupabaseSessionError(result.error);
       verificationFailed = Boolean(result.error || !user);
     } catch (error) {
+      console.warn("[auth/callback] user lookup threw", { name: error instanceof Error ? error.name : typeof error });
       staleSession = isStaleSupabaseSessionError(error);
       verificationFailed = true;
     }

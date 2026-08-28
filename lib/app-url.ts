@@ -40,9 +40,7 @@ function validOrigin(value: string | undefined, production: boolean) {
 
 export function resolveAppOrigin(environment: AppOriginEnvironment = {}) {
   const production = environment.nodeEnv === "production";
-  const browserOrigin = !production
-    ? validOrigin(environment.browserOrigin, false)
-    : null;
+  const browserOrigin = validOrigin(environment.browserOrigin, false);
   const configuredOrigins = [environment.appUrl, environment.siteUrl]
     .map((value) => validOrigin(value, false))
     .filter((value): value is string => Boolean(value));

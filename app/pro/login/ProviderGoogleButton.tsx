@@ -18,9 +18,12 @@ export default function ProviderGoogleButton({ next = "/work/onboarding", provid
       redirectTo.searchParams.set("next", next);
       if (providerInvite) redirectTo.searchParams.set("provider_invite", providerInvite);
       if (process.env.NODE_ENV === "development") console.info("[provider-oauth] start", { provider: "google", callbackOrigin: redirectTo.origin, callbackPath: redirectTo.pathname });
+      const configuredSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!configuredSupabaseUrl) throw new Error("Supabase is not configured.");
+      const expectedSupabaseHost = new URL(configuredSupabaseUrl).hostname;
       const oauthStart = createSupabaseBrowserClient().auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: redirectTo.toString() },
+        options: { redirectTo: redirectTo.toString(), skipBrowserRedirect: true },
       });
       const timedOut = new Promise<null>((resolve) => {
         timeoutId = setTimeout(() => {
@@ -36,7 +39,21 @@ export default function ProviderGoogleButton({ next = "/work/onboarding", provid
       if (result.error) {
         if (process.env.NODE_ENV === "development") console.warn("[provider-oauth] returned error", { provider: "google", name: result.error.name, code: result.error.code });
         setError("Google sign-in could not be opened. Please try again.");
+        return;
       }
+      if (!result.data?.url) {
+        if (process.env.NODE_ENV === "development") console.warn("[provider-oauth] missing URL", { provider: "google" });
+        setError("Google sign-in could not be opened. Please try again.");
+        return;
+      }
+      const oauthUrl = new URL(result.data.url);
+      if (oauthUrl.protocol !== "https:" || oauthUrl.hostname !== expectedSupabaseHost) {
+        if (process.env.NODE_ENV === "development") console.warn("[provider-oauth] invalid destination", { provider: "google", hostname: oauthUrl.hostname, expectedHost: expectedSupabaseHost });
+        setError("Google sign-in could not be opened. Please try again.");
+        return;
+      }
+      if (process.env.NODE_ENV === "development") console.info("[provider-oauth] navigation started", { provider: "google", hostname: oauthUrl.hostname });
+      window.location.assign(oauthUrl.toString());
     } catch (error) {
       if (process.env.NODE_ENV === "development") console.warn("[provider-oauth] startup failed", { provider: "google", name: error instanceof Error ? error.name : typeof error });
       setError("Google sign-in could not be opened. Please try again.");

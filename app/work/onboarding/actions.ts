@@ -81,7 +81,13 @@ export async function submitProviderApplication() {
 export async function startProviderPayoutSetup() {
   const provider = await getMarketplaceProvider();
   if (!provider) redirect("/pro/login?next=/work/onboarding");
-  try { redirect(await createProviderPayoutLink(provider.providerId)); } catch (error) { redirect(`/work/onboarding?error=${error instanceof Error && error.message === "provider_email_missing" ? "provider_email_missing" : "stripe"}`); }
+  let payoutUrl: string;
+  try {
+    payoutUrl = await createProviderPayoutLink(provider.providerId);
+  } catch (error) {
+    redirect(`/work/onboarding?error=${error instanceof Error && error.message === "provider_email_missing" ? "provider_email_missing" : "stripe"}`);
+  }
+  redirect(payoutUrl);
 }
 
 export async function refreshProviderPayoutSetup() {

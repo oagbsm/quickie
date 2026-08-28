@@ -92,6 +92,14 @@ test("application origins are canonical and never local in production", () => {
     }),
     "http://localhost:3000",
   );
+  assert.equal(
+    resolveAppOrigin({
+      siteUrl: "https://www.quickola.co.uk",
+      browserOrigin: "http://localhost:3000",
+      nodeEnv: "production",
+    }),
+    "http://localhost:3000",
+  );
 });
 test("authentication URLs use production origin and reject external next paths", () => {
   const environment = {
@@ -117,6 +125,12 @@ test("authentication URLs use production origin and reject external next paths",
     safeInternalNextPath("//evil.example/business/dashboard"),
     "/portal",
   );
+});
+
+test("OAuth callback exchanges the code before looking up the user", () => {
+  const callback = readFileSync(new URL("../app/auth/callback/route.ts", import.meta.url), "utf8");
+  assert.ok(callback.indexOf("exchangeCodeForSession(code)") < callback.indexOf("supabase.auth.getUser()"));
+  assert.match(callback, /staleSession = isStaleSupabaseSessionError\(result\.error\)/);
 });
 test("sign-up and password recovery use production callback URLs", () => {
   const environment = {
