@@ -105,6 +105,16 @@ async function ensureMarketplaceCustomer(user: User) {
   return null;
 }
 
+async function ensureProviderSignupProfile(user: User) {
+  const admin = createSupabaseAdminClient();
+  const displayName = String(user.user_metadata?.full_name || user.user_metadata?.name || "").trim();
+  const { error } = await admin.from("cleaner_profiles").upsert(
+    { user_id: user.id, display_name: displayName || "Provider", role: "cleaner", provider_status: "draft", stripe_status: "not_started", updated_at: new Date().toISOString() },
+    { onConflict: "user_id" },
+  );
+  return !error;
+}
+
 export async function GET(request: NextRequest) {
   const url = request.nextUrl;
   const code = url.searchParams.get("code");
@@ -184,8 +194,13 @@ export async function GET(request: NextRequest) {
   }
 
   const account = await getCurrentAccountContext();
+  const providerSignupIntent = next === "/pro/register";
+  if (providerSignupIntent && !account.role) {
+    if (!(await ensureProviderSignupProfile(user)))
+      return NextResponse.redirect(new URL("/pro/register?error=profile", appOrigin));
+  }
   if (account.role === "admin" || account.role === "provider")
-    return NextResponse.redirect(new URL(destinationForAccount(account) || "/", appOrigin));
+    return NextResponse.redirect(new URL(providerSignupIntent && account.role === "provider" && account.providerStatus === "draft" ? "/pro/register" : destinationForAccount(account) || "/", appOrigin));
   if (account.role === "customer" && (next === "/work" || next.startsWith("/work/")))
     return NextResponse.redirect(new URL("/my-jobs", appOrigin));
 

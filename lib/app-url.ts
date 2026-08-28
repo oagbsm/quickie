@@ -95,6 +95,7 @@ export function safeInternalNextPath(
     if (parsed.origin !== "https://internal.quickola") return fallback;
     if (
       !parsed.pathname.startsWith("/auth/customer") &&
+      parsed.pathname !== "/pro/register" &&
       !parsed.pathname.startsWith("/jobs/") &&
       !parsed.pathname.startsWith("/messages/") &&
       parsed.pathname !== "/my-jobs" &&
