@@ -30,7 +30,7 @@ async function saveServicesAndCoverage(providerId: string, services: string[]) {
 export async function saveProviderOnboarding(form: FormData) {
   const provider = await getMarketplaceProvider();
   if (!provider) redirect("/pro/login?next=/work/onboarding");
-  if (provider.providerStatus === "pending_review") redirect("/work");
+  if (provider.providerStatus === "pending_review") redirect("/work/onboarding");
   if (!provider.emailConfirmedAt) redirect("/work/onboarding?error=email_unverified");
   const providerType = value(form, "providerType") || String(provider.profile.provider_type || "");
   const displayName = value(form, "displayName") || String(provider.profile.display_name || "");
@@ -91,7 +91,7 @@ export async function uploadProviderProfilePhoto(form: FormData) {
 export async function submitProviderApplication() {
   const provider = await getMarketplaceProvider();
   if (!provider) redirect("/pro/login?next=/work/onboarding");
-  if (provider.providerStatus === "pending_review") redirect("/work");
+  if (provider.providerStatus === "pending_review") redirect("/work/onboarding");
   if (!provider.emailConfirmedAt) redirect("/work/onboarding?error=email_unverified");
   const admin = createSupabaseAdminClient();
   const [{ data: profile }, { count: servicesCount }, { count: areasCount }] = await Promise.all([
@@ -99,14 +99,14 @@ export async function submitProviderApplication() {
     admin.from("marketplace_provider_services").select("id", { count: "exact", head: true }).eq("provider_id", provider.providerId).eq("active", true),
     admin.from("marketplace_provider_service_areas").select("id", { count: "exact", head: true }).eq("provider_id", provider.providerId).eq("active", true),
   ]);
+  if (profile?.provider_status === "suspended") redirect("/work/onboarding?error=suspended");
   if (!profile || !isProviderProfileComplete(profile, servicesCount || 0, areasCount || 0)) redirect("/work/onboarding?error=incomplete");
   if (!profile.provider_terms_accepted_at) redirect("/work/onboarding?error=terms");
-  if (profile.provider_status === "suspended") redirect("/work/onboarding?error=suspended");
   if (profile.provider_status === "approved") redirect("/work");
   await admin.from("cleaner_profiles").update({ provider_status: "pending_review", submitted_at: new Date().toISOString(), action_required_reason: null, updated_at: new Date().toISOString() }).eq("user_id", provider.providerId).in("provider_status", ["draft", "action_required"]);
   await admin.from("marketplace_provider_status_history").insert({ provider_id: provider.providerId, from_status: provider.providerStatus, to_status: "pending_review", changed_by: provider.user.id });
   revalidatePath("/work");
-  redirect("/work");
+  redirect("/work/onboarding");
 }
 
 export async function startProviderPayoutSetup() {

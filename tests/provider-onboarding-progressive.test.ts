@@ -72,3 +72,19 @@ test("profile photo picker is only visible when needed or explicitly changed", (
   assert.match(onboarding, /if \(photoSaving\) return/);
   assert.match(onboarding, /disabled=\{photoSaving\}/);
 });
+
+test("submitted provider states do not reopen editable onboarding", () => {
+  const page = readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8");
+  const status = readFileSync(new URL("../app/work/onboarding/PendingReview.tsx", import.meta.url), "utf8");
+  const pendingScreen = status.slice(status.indexOf("PROVIDER APPLICATION"));
+  assert.match(actions, /redirect\("\/work\/onboarding"\);/);
+  assert.match(page, /provider\.providerStatus === "pending_review"/);
+  assert.match(page, /<PendingReview/);
+  assert.match(status, /You’re all signed up!/);
+  assert.match(status, /Awaiting Quickola approval/);
+  assert.match(status, /View available jobs/);
+  assert.doesNotMatch(pendingScreen, /Submit for review|Change photo|Set up payouts|Refresh payouts|Save setup|form action/);
+  assert.match(status, /You’re approved/);
+  assert.match(status, /status === "suspended"/);
+  assert.match(onboarding, /\["draft", "action_required"\]\.includes\(status\)/);
+});
