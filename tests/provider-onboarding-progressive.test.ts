@@ -36,3 +36,29 @@ test("strict quote and regulated qualification gates remain present", () => {
   assert.match(operationalMigration, /marketplace_active = true/);
   assert.match(operationalMigration, /qualification_verified/);
 });
+
+test("quote readiness autosaves mutable items and removes the generic save action", () => {
+  assert.match(actions, /export async function updateProviderTerms/);
+  assert.match(actions, /export async function uploadProviderProfilePhoto/);
+  assert.match(onboarding, /updateProviderTerms/);
+  assert.match(onboarding, /uploadProviderProfilePhoto/);
+  assert.match(onboarding, /handleTermsChange/);
+  assert.match(onboarding, /handlePhotoChange/);
+  assert.doesNotMatch(onboarding, /Save setup/);
+});
+
+test("quote readiness uses one status-driven payout action and hides submission when unavailable", () => {
+  assert.match(onboarding, /stripeStatus === "not_started"/);
+  assert.match(onboarding, /Continue payout setup/);
+  assert.match(onboarding, /Check payout status/);
+  assert.match(onboarding, /const canSubmit = \["draft", "action_required"\]/);
+  assert.match(onboarding, /Ready to send quotes/);
+  assert.match(onboarding, /View jobs/);
+  assert.doesNotMatch(onboarding, /formAction=\{refreshProviderPayoutSetup\}[^}]*Refresh payouts/);
+});
+
+test("Stripe return refreshes status before rendering onboarding", () => {
+  assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /\["return", "refresh"\]\.includes\(query\.payouts/);
+  assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /refreshProviderPayoutStatus\(providerId\)/);
+  assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /profileComplete/);
+});

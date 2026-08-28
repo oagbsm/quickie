@@ -57,6 +57,37 @@ export async function saveProviderOnboarding(form: FormData) {
   redirect(currentStep === 2 && services.length ? "/work" : `/work/onboarding?saved=1&step=${Math.min(3, currentStep + 1)}`);
 }
 
+export async function updateProviderTerms(accepted: boolean) {
+  const provider = await getMarketplaceProvider();
+  if (!provider) return { ok: false as const, error: "auth" };
+  if (!provider.emailConfirmedAt) return { ok: false as const, error: "email_unverified" };
+  const admin = createSupabaseAdminClient();
+  const update = await admin.from("cleaner_profiles").update({
+    provider_terms_accepted_at: accepted ? new Date().toISOString() : null,
+    terms_version: accepted ? "provider-2026-08" : null,
+    updated_at: new Date().toISOString(),
+  }).eq("user_id", provider.providerId);
+  if (update.error) return { ok: false as const, error: "save" };
+  revalidatePath("/work/onboarding");
+  return { ok: true as const, accepted };
+}
+
+export async function uploadProviderProfilePhoto(form: FormData) {
+  const provider = await getMarketplaceProvider();
+  if (!provider) return { ok: false as const, error: "auth" };
+  const admin = createSupabaseAdminClient();
+  const photo = form.get("profilePhoto");
+  if (!(photo instanceof File) || photo.size === 0) return { ok: false as const, error: "photo" };
+  if (!allowedPhotoTypes.has(photo.type) || photo.size > MAX_PHOTO_BYTES) return { ok: false as const, error: "photo" };
+  const photoPath = `${provider.providerId}/${Date.now()}-${photo.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+  const upload = await admin.storage.from("marketplace-provider-photos").upload(photoPath, Buffer.from(await photo.arrayBuffer()), { contentType: photo.type, upsert: true });
+  if (upload.error) return { ok: false as const, error: "photo" };
+  const update = await admin.from("cleaner_profiles").update({ profile_photo_url: photoPath, updated_at: new Date().toISOString() }).eq("user_id", provider.providerId);
+  if (update.error) return { ok: false as const, error: "save" };
+  revalidatePath("/work/onboarding");
+  return { ok: true as const, photoPath };
+}
+
 export async function submitProviderApplication() {
   const provider = await getMarketplaceProvider();
   if (!provider) redirect("/pro/login?next=/work/onboarding");
