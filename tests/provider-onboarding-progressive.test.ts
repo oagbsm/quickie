@@ -62,3 +62,13 @@ test("Stripe return refreshes status before rendering onboarding", () => {
   assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /refreshProviderPayoutStatus\(providerId\)/);
   assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /profileComplete/);
 });
+
+test("profile photo picker is only visible when needed or explicitly changed", () => {
+  assert.match(onboarding, /const \[photoPickerOpen, setPhotoPickerOpen\] = useState\(!photoUrl\)/);
+  assert.match(onboarding, /\{\(!hasPhoto \|\| photoPickerOpen\) &&/);
+  assert.match(onboarding, /hasPhoto && !photoPickerOpen/);
+  assert.match(onboarding, /Change photo/);
+  assert.match(onboarding, /setPhotoPickerOpen\(false\)/);
+  assert.match(onboarding, /if \(photoSaving\) return/);
+  assert.match(onboarding, /disabled=\{photoSaving\}/);
+});
