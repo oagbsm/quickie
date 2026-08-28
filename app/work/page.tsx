@@ -20,6 +20,7 @@ export default async function WorkPage({ searchParams }: { searchParams: Promise
     const user = await getSignedInUser();
     redirect(user ? "/pro/login?error=not-approved" : "/pro/login");
   }
+  if (["pending_review", "suspended"].includes(provider.providerStatus)) return <WorkspaceShell><ProviderStatusCard provider={provider} /></WorkspaceShell>;
   const admin = createSupabaseAdminClient();
   const { data: profile } = await admin.from("cleaner_profiles").select("service_area,marketplace_provider_services(category_slug,active),marketplace_provider_service_areas(postcode_district,active)").eq("user_id", provider.user.id).maybeSingle();
   const activeServices = new Set((profile?.marketplace_provider_services || []).filter((item) => item.active).map((item) => item.category_slug));

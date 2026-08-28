@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { describeStripeError, getStripe, getSiteUrl, MARKETPLACE_PLATFORM_FEE_PERCENT } from "@/lib/server/marketplace-payments";
+import { getCurrentAccountRole } from "@/lib/auth/account-role";
 
 export async function createMarketplaceCheckout(formData: FormData) {
   const token = String(formData.get("token") || "");
@@ -11,6 +12,7 @@ export async function createMarketplaceCheckout(formData: FormData) {
   const requestedReturnTo = String(formData.get("returnTo") || `/jobs/${token}`);
   const returnTo = requestedReturnTo.startsWith("/") && !requestedReturnTo.startsWith("//") ? requestedReturnTo : `/jobs/${token}`;
   if (!token || !quoteId) redirect("/");
+  if (await getCurrentAccountRole() !== "customer") redirect("/");
 
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
