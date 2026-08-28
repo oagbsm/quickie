@@ -5,6 +5,7 @@ import { marketplaceServices } from "@/app/data/marketplace";
 import { canProviderBrowseJobs, getMarketplaceProvider, getSignedInUser } from "@/lib/marketplace/provider-access";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getCurrentAccountRole } from "@/lib/auth/account-role";
 
 function shortJobDetail(answers: unknown) {
   if (!answers || typeof answers !== "object" || Array.isArray(answers)) return "";
@@ -13,6 +14,7 @@ function shortJobDetail(answers: unknown) {
 
 export default async function WorkPage({ searchParams }: { searchParams: Promise<{ category?: string; sort?: string }> }) {
   const query = await searchParams;
+  if ((await getCurrentAccountRole()) !== "provider") redirect("/");
   const provider = await getMarketplaceProvider();
   if (!provider) {
     const user = await getSignedInUser();

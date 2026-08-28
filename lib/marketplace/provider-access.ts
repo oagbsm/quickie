@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getPostcodeDistrict, normaliseUkPostcode } from "@/lib/uk-address";
+import { getCurrentAccountRole } from "@/lib/auth/account-role";
 
 export type ProviderStatus = "draft" | "pending_review" | "approved" | "action_required" | "suspended";
 export type ProviderStripeStatus = "not_started" | "onboarding" | "restricted" | "verification_pending" | "ready";
@@ -14,6 +15,7 @@ export async function getMarketplaceProvider(): Promise<MarketplaceProvider | nu
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
+  if (await getCurrentAccountRole() !== "provider") return null;
   const admin = createSupabaseAdminClient();
   const { data: profile, error } = await admin.from("cleaner_profiles").select(providerColumns).eq("user_id", user.id).maybeSingle();
   if (error || !profile) return null;
@@ -21,6 +23,8 @@ export async function getMarketplaceProvider(): Promise<MarketplaceProvider | nu
 }
 
 export async function getOrCreateMarketplaceProvider() {
+  const role = await getCurrentAccountRole();
+  if (role === "admin" || role === "customer") return null;
   const existing = await getMarketplaceProvider();
   if (existing) return existing;
   const supabase = await createSupabaseServerClient();
@@ -46,6 +50,7 @@ export async function getOperationalMarketplaceProvider() { const provider = awa
 export async function getSignedInUser() { const supabase = await createSupabaseServerClient(); return (await supabase.auth.getUser()).data.user; }
 
 export async function requireProviderWorkspaceAccess() {
+  if (await getCurrentAccountRole() !== "provider") redirect("/");
   const provider = await getMarketplaceProvider();
   if (!provider) {
     const user = await getSignedInUser();
@@ -57,6 +62,7 @@ export async function requireProviderWorkspaceAccess() {
 }
 
 export async function requireProviderBrowseAccess() {
+  if (await getCurrentAccountRole() !== "provider") redirect("/");
   const provider = await getMarketplaceProvider();
   if (!provider) {
     const user = await getSignedInUser();

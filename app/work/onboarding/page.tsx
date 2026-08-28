@@ -5,9 +5,11 @@ import { getOrCreateMarketplaceProvider, isProviderProfileComplete } from "@/lib
 import { refreshProviderPayoutStatus } from "@/lib/server/provider-stripe";
 import OnboardingForm from "./OnboardingForm";
 import PendingReview from "./PendingReview";
+import { getCurrentAccountRole } from "@/lib/auth/account-role";
 
 export default async function ProviderOnboardingPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string; payouts?: string; step?: string; submitted?: string; edit?: string; setup?: string }> }) {
   const query = await searchParams;
+  if ((await getCurrentAccountRole()) !== "provider") redirect("/");
   let provider = await getOrCreateMarketplaceProvider();
   if (!provider) redirect("/pro/login?next=/work/onboarding");
   const providerId = provider.providerId;

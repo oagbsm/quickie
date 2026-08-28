@@ -6,6 +6,7 @@ import { marketplaceJobUrl, sendMarketplaceCustomerEmail } from "@/lib/server/ma
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getJob } from "@/app/data/marketplace";
+import { getCurrentAccountRole } from "@/lib/auth/account-role";
 
 const text = (form: FormData, key: string) => String(form.get(key) || "").trim();
 const normaliseMobile = (value: string) => { const compact = value.replace(/[^\d+]/g, ""); return compact.startsWith("07") ? `+44${compact.slice(1)}` : compact; };
@@ -97,6 +98,8 @@ export async function publishPendingMarketplaceJob(draftToken: string) {
 }
 
 export async function submitConsumerJob(_state: { message: string }, form: FormData) {
+  const accountRole = await getCurrentAccountRole();
+  if (accountRole === "admin" || accountRole === "provider") return { message: "Please use your account workspace for this action." };
   if (text(form, "website")) redirect("/post-job/thank-you");
   const category = text(form, "category"); const service = text(form, "service"); const description = text(form, "description"); const when = text(form, "when"); const postcode = text(form, "postcode"); const mobile = text(form, "contact"); const name = text(form, "name"); const budget = text(form, "budget");
   const selectedJob = getJob(category, service);

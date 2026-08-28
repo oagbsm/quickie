@@ -10,6 +10,7 @@ import { canProviderOperate, getMarketplaceProvider, requireProviderWorkspaceAcc
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatMarketplaceAmount, formatMarketplaceSchedule, getMarketplacePaymentState } from "@/lib/marketplace/customer-job-state";
+import { getCurrentAccountRole } from "@/lib/auth/account-role";
 
 export default async function MessagesPage({ params, searchParams, providerOnly = false }: { params: Promise<{ conversationId: string }>; searchParams: Promise<{ error?: string }>; providerOnly?: boolean }) {
   const { conversationId } = await params;
@@ -17,6 +18,9 @@ export default async function MessagesPage({ params, searchParams, providerOnly 
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/sign-in?next=${encodeURIComponent(providerOnly ? `/work/messages/${conversationId}` : `/messages/${conversationId}`)}`);
+  const role = await getCurrentAccountRole();
+  if (providerOnly && role !== "provider") redirect("/");
+  if (!providerOnly && role !== "customer") redirect(role === "admin" ? "/admin" : "/work");
   const admin = createSupabaseAdminClient();
   const [{ data: conversation }, { data: customer }, provider] = await Promise.all([
     admin.from("marketplace_conversations").select("id,job_id,provider_id,bidder_user_id,customer_id").eq("id", conversationId).maybeSingle(),

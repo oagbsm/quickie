@@ -9,6 +9,7 @@ import { getOperationalMarketplaceProvider } from "@/lib/marketplace/provider-ac
 import { getOrCreateMarketplaceConversation } from "@/lib/marketplace/conversations";
 import { getStripe } from "@/lib/server/marketplace-payments";
 import { createMarketplaceCheckout } from "@/app/jobs/payment-actions";
+import { getCurrentAccountRole } from "@/lib/auth/account-role";
 
 export async function submitMarketplaceOffer(formData: FormData) {
   const token = String(formData.get("token") || "");
@@ -32,6 +33,7 @@ export async function submitMarketplaceOffer(formData: FormData) {
 }
 
 export async function chooseMarketplaceQuote(formData: FormData) {
+  if (await getCurrentAccountRole() !== "customer") redirect("/");
   const token = String(formData.get("token") || "");
   const quoteId = String(formData.get("quoteId") || "");
   const returnTo = String(formData.get("returnTo") || "");
@@ -72,6 +74,7 @@ export async function chooseMarketplaceQuote(formData: FormData) {
 }
 
 export async function startCustomerConversation(formData: FormData) {
+  if (await getCurrentAccountRole() !== "customer") redirect("/");
   const token = String(formData.get("token") || "");
   const providerId = String(formData.get("providerId") || "");
   if (!token || !providerId) redirect(`/jobs/${token}`);
@@ -93,6 +96,7 @@ export async function startCustomerConversation(formData: FormData) {
 }
 
 export async function confirmMarketplaceCompletion(formData: FormData) {
+  if (await getCurrentAccountRole() !== "customer") redirect("/");
   const token = String(formData.get("token") || "");
   const bookingId = String(formData.get("bookingId") || "");
   const supabase = await createSupabaseServerClient();
@@ -106,6 +110,7 @@ export async function confirmMarketplaceCompletion(formData: FormData) {
 }
 
 export async function reportMarketplaceCompletionIssue(formData: FormData) {
+  if (await getCurrentAccountRole() !== "customer") redirect("/");
   const token = String(formData.get("token") || "");
   const bookingId = String(formData.get("bookingId") || "");
   const supabase = await createSupabaseServerClient();
@@ -116,6 +121,7 @@ export async function reportMarketplaceCompletionIssue(formData: FormData) {
 }
 
 export async function submitMarketplaceReview(formData: FormData) {
+  if (await getCurrentAccountRole() !== "customer") redirect("/");
   const token = String(formData.get("token") || "");
   const bookingId = String(formData.get("bookingId") || "");
   const rating = Number(formData.get("rating") || 0);

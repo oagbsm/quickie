@@ -9,6 +9,7 @@ import {
   supabaseAuthCookieNames,
 } from "@/lib/supabase/auth-recovery";
 import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-access";
+import { getCurrentAccountRole } from "@/lib/auth/account-role";
 
 const SIGNUP_CONFIRMATION_PURPOSES = new Set([
   "signup-confirmation",
@@ -182,6 +183,11 @@ export async function GET(request: NextRequest) {
       ),
     );
   }
+
+  const accountRole = await getCurrentAccountRole();
+  if (accountRole === "admin") return NextResponse.redirect(new URL("/admin", appOrigin));
+  if (accountRole === "customer" && (next === "/work" || next.startsWith("/work/"))) return NextResponse.redirect(new URL("/my-jobs", appOrigin));
+  if (accountRole === "provider" && (next === "/my-jobs" || next === "/messages" || next.startsWith("/messages/"))) return NextResponse.redirect(new URL("/work", appOrigin));
 
   if (!url.searchParams.has("next") && !draft && !purpose && await getApprovedMarketplaceProvider())
     return NextResponse.redirect(new URL("/work", appOrigin));

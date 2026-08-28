@@ -3,18 +3,22 @@ import { redirect } from "next/navigation";
 import MarketplaceHeader from "@/app/components/marketplace/MarketplaceHeader";
 import MobileBottomNav from "@/app/components/marketplace/MobileBottomNav";
 import ProviderHeader from "@/app/components/marketplace/ProviderHeader";
-import { canProviderOperate, getMarketplaceProvider, requireProviderWorkspaceAccess } from "@/lib/marketplace/provider-access";
+import { canProviderOperate, requireProviderWorkspaceAccess } from "@/lib/marketplace/provider-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentAccountRole } from "@/lib/auth/account-role";
 
 export default async function MessagesIndex({ providerOnly = false }: { providerOnly?: boolean }) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in?next=/messages");
+  const role = await getCurrentAccountRole();
+  if (role === "admin") redirect("/admin");
+  if (role === "provider") redirect("/work/messages");
 
   const admin = createSupabaseAdminClient();
   const { data: customer } = await admin.from("marketplace_customers").select("id").eq("auth_user_id", user.id).maybeSingle();
-  const provider = providerOnly ? await requireProviderWorkspaceAccess() : await getMarketplaceProvider();
+  const provider = providerOnly ? await requireProviderWorkspaceAccess() : null;
   if (!providerOnly && provider?.providerStatus === "pending_review") redirect("/work");
   const isCustomer = !providerOnly && Boolean(customer);
   const isProvider = Boolean(provider && (providerOnly || canProviderOperate(provider)));
