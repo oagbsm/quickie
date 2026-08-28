@@ -150,6 +150,7 @@ export const marketplaceServices: MarketplaceService[] = [
 export const marketplaceLocations = [{ slug: "slough", name: "Slough", description: "Local services across Slough and nearby areas." }, { slug: "windsor", name: "Windsor", description: "Home services for Windsor and surrounding areas." }, { slug: "maidenhead", name: "Maidenhead", description: "Local home services across Maidenhead and the SL6 area." }, { slug: "london", name: "London", description: "A future expansion area for Quickola services." }];
 export const ACTIVE_PUBLIC_SEO_LOCATIONS = ["maidenhead"] as const;
 export const ACTIVE_PUBLIC_SEO_POSTCODE_DISTRICTS = ["SL6"] as const;
+export const MAIDENHEAD_MARKET_POSTCODE_DISTRICTS = ACTIVE_PUBLIC_SEO_POSTCODE_DISTRICTS;
 export function isActivePublicSeoLocation(slug: string) { return ACTIVE_PUBLIC_SEO_LOCATIONS.includes(slug as (typeof ACTIVE_PUBLIC_SEO_LOCATIONS)[number]); }
 
 export function getLocationServiceSeo(service: MarketplaceService, location: { name: string }) {

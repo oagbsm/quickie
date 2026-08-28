@@ -4,7 +4,7 @@ import ProviderHeader from "@/app/components/marketplace/ProviderHeader";
 import ProviderJobActions from "@/app/work/jobs/ProviderJobActions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { requireProviderWorkspaceAccess } from "@/lib/marketplace/provider-access";
+import { requireProviderBrowseAccess } from "@/lib/marketplace/provider-access";
 import { advanceMarketplaceBooking, withdrawWorkOffer } from "@/app/work/actions";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -32,14 +32,14 @@ function formatMoney(amount: number | null) {
 export default async function WorkJobPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; sent?: string }> }) {
   const { id } = await params;
   const query = await searchParams;
-  const provider = await requireProviderWorkspaceAccess();
+  const provider = await requireProviderBrowseAccess();
   const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
   const { data: job } = await admin.from("marketplace_jobs").select("id,service,service_subtype,postcode,approximate_area,pricing_answers,requested_timing,optional_note,budget_amount,status,created_at").eq("id", id).maybeSingle();
   if (!job) notFound();
   const { data: ownOffer } = await admin.from("marketplace_quotes").select("id,status,amount_pence").eq("job_id", id).or(`provider_id.eq.${provider.providerId},bidder_user_id.eq.${provider.providerId}`).maybeSingle();
   const { data: booking } = await admin.from("marketplace_bookings").select("id,status,payment_status,amount_pence,scheduled_date,arrival_window_start,arrival_window_end,provider_id").eq("job_id", id).eq("provider_id", provider.providerId).maybeSingle();
-  if (!ownOffer && ["posted", "finding_provider"].includes(job.status)) { const { data: matches } = await supabase.rpc("get_marketplace_opportunities"); if (!(matches || []).some((match: { id: string }) => match.id === id)) notFound(); } else if (!ownOffer) notFound();
+  if (!ownOffer && ["posted", "finding_provider"].includes(job.status)) { const { data: matches } = await supabase.rpc("get_marketplace_browse_opportunities"); if (!(matches || []).some((match: { id: string }) => match.id === id)) notFound(); } else if (!ownOffer) notFound();
   const { data: conversation } = await admin.from("marketplace_conversations").select("id").eq("job_id", id).or(`provider_id.eq.${provider.providerId},bidder_user_id.eq.${provider.providerId}`).maybeSingle();
   const { data: messages } = conversation?.id ? await admin.from("marketplace_messages").select("id,sender_id,body,created_at").eq("conversation_id", conversation.id).order("created_at", { ascending: true }) : { data: [] };
   const { data: photoRows } = await admin.from("marketplace_job_photos").select("id,storage_path,created_at").eq("job_id", id).order("created_at", { ascending: true });

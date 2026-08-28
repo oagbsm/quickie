@@ -1,6 +1,6 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/admin/auth";
-import { createMarketplaceProviderInvitation, resendMarketplaceProviderInvitation, revokeMarketplaceProviderInvitation, updateMarketplaceProviderStatus } from "@/app/admin/actions";
+import { createMarketplaceProviderInvitation, resendMarketplaceProviderInvitation, revokeMarketplaceProviderInvitation, setMarketplaceProviderQualification, updateMarketplaceProviderStatus } from "@/app/admin/actions";
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ q?: string; success?: string; error?: string }> }) {
   await requireAdmin();

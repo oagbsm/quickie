@@ -5,7 +5,7 @@ import { sendProviderJobMessage, submitWorkOffer } from "@/app/work/actions";
 
 type Offer = { id: string; status: string; amount_pence: number | null } | null;
 
-export default function ProviderJobActions({ jobId, offer, error }: { jobId: string; offer: Offer; error?: string }) {
+export default function ProviderJobActions({ jobId, offer, error, canOperate = true }: { jobId: string; offer: Offer; error?: string; canOperate?: boolean }) {
   const [panel, setPanel] = useState<"question" | "quote" | null>(null);
   const [amount, setAmount] = useState("");
   const [availability, setAvailability] = useState("flexible");
@@ -24,10 +24,11 @@ export default function ProviderJobActions({ jobId, offer, error }: { jobId: str
       <p className="mt-2 text-sm leading-6 text-[#657089]">Ask a question first, or send a clear price and availability.</p>
     </div>}
 
-    <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+    {!canOperate && <div className="mt-5 rounded-2xl bg-[#fff8e8] p-5 text-sm leading-6 text-[#6c5530]"><p className="font-black text-[#8a5a00]">Finish your provider setup to send quotes.</p><p className="mt-1">Complete your profile photo, provider terms, Quickola review and payout setup.</p></div>}
+    {canOperate && <div className="mt-5 flex flex-col gap-3 sm:flex-row">
       <button type="button" onClick={() => setPanel(panel === "question" ? null : "question")} aria-expanded={panel === "question"} className="min-h-12 rounded-xl border-2 border-[#167d3c] px-5 font-black text-[#167d3c]">{offer ? "Message customer" : "Ask a question"}</button>
       {canQuote && <button type="button" onClick={() => setPanel(panel === "quote" ? null : "quote")} aria-expanded={panel === "quote"} className="min-h-12 rounded-xl bg-[#23a955] px-5 font-black text-[#061b3f]">Send a quote</button>}
-    </div>
+    </div>}
 
     {panel === "question" && <form action={sendProviderJobMessage} className="mt-5 grid gap-3 rounded-2xl border border-[#dbe1ea] bg-[#fbfcfd] p-4 sm:p-5">
       <input type="hidden" name="jobId" value={jobId} />

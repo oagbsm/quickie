@@ -34,7 +34,9 @@ export async function getOrCreateMarketplaceProvider() {
 }
 
 export function isStripeReady(provider: Pick<MarketplaceProvider, "stripeStatus"> | { stripe_status?: string | null }) { return ("stripeStatus" in provider ? provider.stripeStatus : provider.stripe_status) === "ready"; }
-export function canProviderOperate(provider: Pick<MarketplaceProvider, "providerStatus" | "stripeStatus"> | { provider_status?: string | null; stripe_status?: string | null; emailConfirmedAt?: string | null }) { const providerStatus = "providerStatus" in provider ? provider.providerStatus : provider.provider_status; const stripeStatus = "stripeStatus" in provider ? provider.stripeStatus : provider.stripe_status; return providerStatus === "approved" && stripeStatus === "ready" && (!("emailConfirmedAt" in provider) || Boolean(provider.emailConfirmedAt)); }
+export function canProviderOperate(provider: Pick<MarketplaceProvider, "providerStatus" | "stripeStatus"> | { provider_status?: string | null; stripe_status?: string | null; marketplace_active?: boolean | null; emailConfirmedAt?: string | null; profile?: Record<string, unknown> }) { const providerStatus = "providerStatus" in provider ? provider.providerStatus : provider.provider_status; const stripeStatus = "stripeStatus" in provider ? provider.stripeStatus : provider.stripe_status; const marketplaceActive = "profile" in provider ? provider.profile?.marketplace_active : "marketplace_active" in provider ? provider.marketplace_active : undefined; return providerStatus === "approved" && stripeStatus === "ready" && marketplaceActive !== false && (!("emailConfirmedAt" in provider) || Boolean(provider.emailConfirmedAt)); }
+export function isProviderBasicProfileComplete(provider: MarketplaceProvider) { const profile = provider.profile; return Boolean((profile.display_name || profile.business_name) && profile.phone && profile.provider_type); }
+export function canProviderBrowseJobs(provider: MarketplaceProvider, servicesCount: number) { return provider.providerStatus !== "suspended" && Boolean(provider.emailConfirmedAt) && isProviderBasicProfileComplete(provider) && servicesCount > 0; }
 export function isProviderProfileComplete(profile: Record<string, unknown>, servicesCount: number, areasCount: number) { const name = String(profile.display_name || profile.business_name || "").trim(); const phone = String(profile.phone || "").trim(); return Boolean(name && profile.profile_photo_url && phone && profile.marketplace_bio && profile.provider_type && profile.base_town && servicesCount > 0 && areasCount > 0 && profile.provider_terms_accepted_at); }
 export function providerCoversJob(serviceAreas: Array<{ postcode_district?: string | null }> | string[], jobPostcodeOrDistrict: string) { const district = getPostcodeDistrict(jobPostcodeOrDistrict) || jobPostcodeOrDistrict.trim().toUpperCase(); return serviceAreas.some((area) => { const value = typeof area === "string" ? area : area.postcode_district || ""; return value.trim().toUpperCase() === district; }); }
 export function providerOffersService(services: Array<{ category_slug?: string | null; job_type_slug?: string | null }>, category: string, jobType: string) { return services.some((service) => service.category_slug === category && service.job_type_slug === jobType); }
@@ -50,6 +52,30 @@ export async function requireProviderWorkspaceAccess() {
     redirect(user ? "/pro/login?error=not-approved" : "/pro/login");
   }
   if (provider.providerStatus === "pending_review") redirect("/work");
-  if (!canProviderOperate(provider)) redirect("/work/onboarding");
+  if (!canProviderOperate(provider)) redirect("/work/onboarding?error=quote_setup");
   return provider;
+}
+
+export async function requireProviderBrowseAccess() {
+  const provider = await getMarketplaceProvider();
+  if (!provider) {
+    const user = await getSignedInUser();
+    redirect(user ? "/pro/login?error=not-approved" : "/pro/login");
+  }
+  const admin = createSupabaseAdminClient();
+  const { count } = await admin.from("marketplace_provider_services").select("id", { count: "exact", head: true }).eq("provider_id", provider.providerId).eq("active", true);
+  if (!canProviderBrowseJobs(provider, count || 0)) redirect("/work/onboarding");
+  return provider;
+}
+
+export function missingProviderQuoteRequirements(provider: MarketplaceProvider, servicesCount: number) {
+  const missing: string[] = [];
+  if (!isProviderBasicProfileComplete(provider)) missing.push("basic profile");
+  if (!provider.profile.profile_photo_url) missing.push("profile photo");
+  if (!provider.profile.provider_terms_accepted_at) missing.push("provider terms");
+  if (!provider.emailConfirmedAt) missing.push("confirmed email");
+  if (!servicesCount) missing.push("service selection");
+  if (provider.providerStatus !== "approved") missing.push(provider.providerStatus === "pending_review" ? "Quickola approval" : "Quickola review");
+  if (provider.stripeStatus !== "ready") missing.push("payout setup");
+  return missing;
 }
