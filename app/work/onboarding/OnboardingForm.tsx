@@ -6,9 +6,9 @@ import { ChangeEvent, useState } from "react";
 import { saveProviderOnboarding, startProviderPayoutSetup, refreshProviderPayoutSetup, submitProviderApplication, updateProviderTerms, uploadProviderProfilePhoto } from "./actions";
 
 type ServiceOption = { slug: string; name: string; jobs: { slug: string; name: string }[] };
-type Props = { services: ServiceOption[]; initial: Record<string, unknown>; initialServices: string[]; qualificationMissing: boolean; profileComplete: boolean; photoUrl: string | null; status: string; stripeStatus: string; emailVerified: boolean; actionReason?: string | null; error?: string; saved?: string; payouts?: string; initialStep?: number };
+type Props = { services: ServiceOption[]; initial: Record<string, unknown>; initialServices: string[]; profileComplete: boolean; photoUrl: string | null; status: string; stripeStatus: string; emailVerified: boolean; actionReason?: string | null; error?: string; saved?: string; payouts?: string; initialStep?: number };
 
-export default function OnboardingForm({ services, initial, initialServices, qualificationMissing, profileComplete, photoUrl, status, stripeStatus, emailVerified, actionReason, error, saved, payouts, initialStep = 1 }: Props) {
+export default function OnboardingForm({ services, initial, initialServices, profileComplete, photoUrl, status, stripeStatus, emailVerified, actionReason, error, saved, payouts, initialStep = 1 }: Props) {
   const router = useRouter();
   const [step, setStep] = useState(initialStep);
   const [selectedServices, setSelectedServices] = useState(initialServices);
@@ -25,11 +25,11 @@ export default function OnboardingForm({ services, initial, initialServices, qua
   const payoutReady = stripeStatus === "ready";
   const hasBasicProfile = Boolean((initial.display_name || initial.business_name) && initial.phone && initial.provider_type);
   const hasServices = selectedServices.length > 0;
-  const quoteReadinessComplete = profileComplete && hasPhoto && termsAccepted && emailVerified && !qualificationMissing;
+  const quoteReadinessComplete = profileComplete && hasPhoto && termsAccepted && emailVerified;
   const fullyReady = quoteReadinessComplete && status === "approved" && payoutReady;
   const canSubmit = ["draft", "action_required"].includes(status) && quoteReadinessComplete;
   const errorMessage = error === "email_unverified" ? "Verify your email before continuing." : error === "provider_email_missing" ? "Verify your provider email before setting up payouts." : error === "terms" ? "Accept the Quickola provider terms before continuing." : error === "photo" ? "Add a JPG, PNG or WebP image up to 5MB." : error === "quote_setup" ? "Finish your provider setup to send quotes." : error === "incomplete" ? "Complete the remaining provider setup before submitting." : error === "suspended" ? "This provider profile is suspended." : error ? "We couldn’t save that update. Please try again." : "";
-  const missing = [!hasPhoto && "Profile photo", !termsAccepted && "Provider terms", status !== "approved" && "Quickola review", !payoutReady && "Payout setup", qualificationMissing && "qualification verification for selected regulated work"].filter(Boolean).join(" · ");
+  const missing = [!hasPhoto && "Profile photo", !termsAccepted && "Provider terms", status !== "approved" && "Quickola review", !payoutReady && "Payout setup"].filter(Boolean).join(" · ");
 
   async function handleTermsChange(event: ChangeEvent<HTMLInputElement>) {
     const previous = termsAccepted;

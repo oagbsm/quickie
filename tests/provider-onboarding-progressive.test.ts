@@ -8,6 +8,8 @@ const actions = readFileSync(new URL("../app/work/onboarding/actions.ts", import
 const access = readFileSync(new URL("../lib/marketplace/provider-access.ts", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/202608280001_provider_browse_eligibility.sql", import.meta.url), "utf8");
 const operationalMigration = readFileSync(new URL("../supabase/migrations/202608220003_provider_operational_eligibility.sql", import.meta.url), "utf8");
+const qualificationCompatibility = readFileSync(new URL("../supabase/migrations/202608290001_remove_unimplemented_provider_qualification_gate.sql", import.meta.url), "utf8");
+const profile = readFileSync(new URL("../app/work/profile/page.tsx", import.meta.url), "utf8");
 
 test("provider onboarding separates Maidenhead browsing from quote readiness", () => {
   assert.match(onboarding, /Basic profile/);
@@ -35,6 +37,16 @@ test("strict quote and regulated qualification gates remain present", () => {
   assert.match(operationalMigration, /stripe_status = 'ready'/);
   assert.match(operationalMigration, /marketplace_active = true/);
   assert.match(operationalMigration, /qualification_verified/);
+});
+
+test("unimplemented qualification checks do not block provider quoting or profile UX", () => {
+  assert.match(qualificationCompatibility, /qualification_verified/);
+  assert.doesNotMatch(qualificationCompatibility, /or ps\.qualification_verified/);
+  assert.doesNotMatch(profile, /Service requirements|Checks needed for|Contact Quickola/);
+  assert.match(profile, /Getting paid/);
+  assert.match(profile, /Your services/);
+  assert.match(onboarding, /quoteReadinessComplete = profileComplete && hasPhoto && termsAccepted && emailVerified/);
+  assert.doesNotMatch(onboarding, /qualification verification for selected regulated work/);
 });
 
 test("quote readiness autosaves mutable items and removes the generic save action", () => {
@@ -82,7 +94,7 @@ test("submitted provider states do not reopen editable onboarding", () => {
   assert.match(page, /<PendingReview/);
   assert.match(status, /You’re all signed up!/);
   assert.match(status, /Awaiting Quickola approval/);
-  assert.doesNotMatch(status, /View available jobs/);
+  assert.match(pendingScreen, /View available jobs/);
   assert.doesNotMatch(pendingScreen, /Submit for review|Change photo|Set up payouts|Refresh payouts|Save setup|form action/);
   assert.match(status, /You’re approved/);
   assert.match(status, /status === "suspended"/);
@@ -95,8 +107,8 @@ test("approved providers can repair readiness from profile without workspace loc
   const actions = readFileSync(new URL("../app/work/actions.ts", import.meta.url), "utf8");
   assert.match(access, /requireProviderOperationalAccess/);
   assert.match(access, /provider\.providerStatus !== "approved"/);
-  assert.match(profile, /account-readiness/);
-  assert.match(profile, /Continue payout setup/);
+  assert.match(profile, /Your profile/);
+  assert.match(profile, /Set up payouts/);
   assert.match(profile, /returnPath.*\/work\/profile/);
   assert.match(actions, /requireProviderOperationalAccess/);
 });
