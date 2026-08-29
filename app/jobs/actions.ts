@@ -95,6 +95,50 @@ export async function startCustomerConversation(formData: FormData) {
   redirect(`/messages/${conversation.id}`);
 }
 
+const CUSTOMER_EDITABLE_JOB_STATUSES = ["posted", "finding_provider", "provider_available"];
+
+async function getOwnedEditableJob(token: string) {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const admin = createSupabaseAdminClient();
+  const { data: customer } = user ? await admin.from("marketplace_customers").select("id").eq("auth_user_id", user.id).maybeSingle() : { data: null };
+  const { data: job } = token && customer ? await admin.from("marketplace_jobs").select("id,customer_id,status").eq("public_token", token).maybeSingle() : { data: null };
+  if (!user) redirect(`/sign-in?next=${encodeURIComponent(`/jobs/${token}`)}`);
+  if (!customer || !job || job.customer_id !== customer.id) redirect(`/jobs/${token}?error=ownership`);
+  if (!CUSTOMER_EDITABLE_JOB_STATUSES.includes(job.status)) redirect(`/jobs/${token}?error=job_locked`);
+  const [{ data: acceptedQuote }, { data: booking }] = await Promise.all([
+    admin.from("marketplace_quotes").select("id").eq("job_id", job.id).in("status", ["accepted", "selected"]).maybeSingle(),
+    admin.from("marketplace_bookings").select("id,payment_status").eq("job_id", job.id).maybeSingle(),
+  ]);
+  if (acceptedQuote || booking) redirect(`/jobs/${token}?error=job_locked`);
+  return { admin, job };
+}
+
+export async function cancelCustomerMarketplaceJob(formData: FormData) {
+  const token = String(formData.get("token") || "");
+  const { admin, job } = await getOwnedEditableJob(token);
+  const { error } = await admin.from("marketplace_jobs").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", job.id).in("status", CUSTOMER_EDITABLE_JOB_STATUSES);
+  if (error) redirect(`/jobs/${token}?error=cancel`);
+  revalidatePath(`/jobs/${token}`);
+  revalidatePath("/my-jobs");
+  redirect(`/jobs/${token}`);
+}
+
+export async function updateCustomerMarketplaceJob(formData: FormData) {
+  const token = String(formData.get("token") || "");
+  const optionalNote = String(formData.get("optionalNote") || "").trim().slice(0, 4000);
+  const requestedTiming = String(formData.get("requestedTiming") || "").trim().slice(0, 160);
+  const budgetRaw = String(formData.get("budgetAmount") || "").trim();
+  const budgetAmount = budgetRaw ? Number(budgetRaw) : null;
+  if (budgetAmount !== null && (!Number.isFinite(budgetAmount) || budgetAmount < 0 || budgetAmount > 1000000)) redirect(`/jobs/${token}?error=edit`);
+  const { admin, job } = await getOwnedEditableJob(token);
+  const { error } = await admin.from("marketplace_jobs").update({ optional_note: optionalNote || null, requested_timing: requestedTiming || null, budget_amount: budgetAmount }).eq("id", job.id).in("status", CUSTOMER_EDITABLE_JOB_STATUSES);
+  if (error) redirect(`/jobs/${token}?error=edit`);
+  revalidatePath(`/jobs/${token}`);
+  revalidatePath("/my-jobs");
+  redirect(`/jobs/${token}`);
+}
+
 export async function confirmMarketplaceCompletion(formData: FormData) {
   if (await getCurrentAccountRole() !== "customer") redirect("/");
   const token = String(formData.get("token") || "");
