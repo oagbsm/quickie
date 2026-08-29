@@ -8,7 +8,7 @@ export default function MobileBottomNav({ active }: MobileBottomNavProps) {
 }
 
 function MobileNavItem({ href, label, active, primary, children }: { href: string; label: string; active?: boolean; primary?: boolean; children: ReactNode }) {
-  return <Link href={href} className={`flex min-h-16 flex-col items-center justify-end gap-1 text-[11px] font-black ${active ? "text-[#159548]" : "text-[#526078]"}`}><span className={`${primary ? "grid h-10 w-10 place-items-center rounded-full bg-[#23a955] text-white" : "h-7 w-7"}`}>{children}</span><span>{label}</span></Link>;
+  return <Link href={href} className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-black ${active || primary ? "text-[#159548]" : "text-[#526078]"}`}><span className={`${primary ? "grid h-9 w-9 place-items-center rounded-full bg-[#23a955] text-white" : "h-7 w-7"}`}>{children}</span><span>{label}</span></Link>;
 }
 
 function HomeIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10Z" /></svg>; }
