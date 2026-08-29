@@ -8,6 +8,7 @@ const conversation = read("app/messages/[conversationId]/page.tsx");
 const upload = read("app/api/marketplace/messages/route.ts");
 const composer = read("app/messages/MessageComposer.tsx");
 const migration = read("supabase/migrations/202608290002_marketplace_message_attachments.sql");
+const jobPage = read("app/work/jobs/[id]/page.tsx");
 
 test("provider messaging stays on provider routes while customer routes remain separate", () => {
   assert.ok(index.includes('providerOnly ? "/work/messages"'));
@@ -29,6 +30,9 @@ test("message attachments are private, validated, and participant-authorized", (
   assert.match(composer, /new FormData\(\)/);
   assert.match(composer, /formData\.append\("attachments", file, file\.name\)/);
   assert.match(conversation, /createSignedUrl\(attachment\.storage_path/);
+  assert.match(conversation, /MarketplaceMessageBubble/);
+  assert.match(jobPage, /marketplace_message_attachments/);
+  assert.match(jobPage, /MarketplaceMessageBubble/);
   assert.match(migration, /public\.marketplace_message_attachments/);
   assert.ok(migration.includes("false, 5242880"));
   assert.match(migration, /conversation participants view message attachments/);
