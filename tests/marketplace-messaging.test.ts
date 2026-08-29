@@ -20,11 +20,14 @@ test("provider messaging stays on provider routes while customer routes remain s
 test("message attachments are private, validated, and participant-authorized", () => {
   assert.match(upload, /marketplace-message-attachments/);
   assert.match(upload, /ALLOWED_TYPES/);
+  assert.match(upload, /attachmentMeta/);
   assert.match(upload, /file\.size > MAX_FILE_SIZE/);
   assert.match(upload, /!isProvider && !isCustomer/);
   assert.ok(upload.includes("${conversationId}/${user.id}"));
   assert.match(composer, /multiple/);
   assert.match(composer, /image\/jpeg,image\/png,image\/webp/);
+  assert.match(composer, /new FormData\(\)/);
+  assert.match(composer, /formData\.append\("attachments", file, file\.name\)/);
   assert.match(conversation, /createSignedUrl\(attachment\.storage_path/);
   assert.match(migration, /public\.marketplace_message_attachments/);
   assert.ok(migration.includes("false, 5242880"));

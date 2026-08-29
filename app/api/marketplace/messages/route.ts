@@ -9,7 +9,7 @@ const MAX_FILES = 5;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const EXTENSIONS: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
-type FailureCode = "send" | "unauthorized" | "attachment_empty" | "attachment_invalid_type" | "attachment_too_large" | "attachment_upload_failed" | "attachment_db_failed";
+type FailureCode = "send" | "unauthorized" | "attachment_empty" | "attachment_invalid_type" | "attachment_too_large" | "attachment_upload_failed" | "message_db_failed" | "attachment_db_failed";
 
 function go(request: Request, path: string) {
   return NextResponse.redirect(new URL(path, request.url), 303);
@@ -31,7 +31,8 @@ function logFailure(stage: string, details: Record<string, unknown>) {
   console.error("[chat-attachment]", stage, details);
 }
 
-function failure(request: Request, returnTo: string, code: FailureCode) {
+function failure(request: Request, returnTo: string, code: FailureCode, details: Record<string, unknown> = {}) {
+  console.error("[marketplace-message] rejected", { reason: code, returnTo, ...details });
   return go(request, `${returnTo}?error=${code}`);
 }
 
@@ -40,19 +41,27 @@ export async function POST(request: Request) {
   try {
     form = await request.formData();
   } catch (error) {
-    logFailure("formdata_failed", { error: safeError(error) });
+    console.error("[marketplace-message] rejected", { reason: "formdata_failed", error: safeError(error) });
     return go(request, "/messages?error=send");
   }
 
   const conversationId = String(form.get("conversationId") || "");
   const body = String(form.get("body") || "").trim();
   const requestedReturnTo = String(form.get("returnTo") || "");
+  const rawFiles = form.getAll("attachments");
+  console.info("[marketplace-message] incoming form", { conversationId, bodyLength: body.length, attachmentValues: rawFiles.length, attachmentMeta: rawFiles.map((item) => item instanceof File ? { kind: "file", name: item.name, type: item.type, size: item.size } : { kind: typeof item }) });
   const fallback = conversationId ? `/messages/${conversationId}` : "/messages";
-  if (!conversationId) return go(request, "/messages?error=send");
+  if (!conversationId) {
+    console.error("[marketplace-message] rejected", { reason: "missing_conversation", attachmentCount: rawFiles.length });
+    return go(request, "/messages?error=send");
+  }
 
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return go(request, `/sign-in?next=${encodeURIComponent(fallback)}`);
+  if (!user) {
+    console.error("[marketplace-message] rejected", { reason: "unauthenticated", conversationId, attachmentCount: rawFiles.length });
+    return go(request, `/sign-in?next=${encodeURIComponent(fallback)}`);
+  }
 
   const provider = await getMarketplaceProvider();
   const admin = createSupabaseAdminClient();
@@ -63,32 +72,32 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (conversationError) {
     logFailure("conversation_lookup_failed", { conversationId, userId: user.id, error: safeError(conversationError) });
-    return failure(request, fallback, "send");
+    return failure(request, fallback, "send", { conversationId, userId: user.id, attachmentCount: rawFiles.length, error: safeError(conversationError) });
   }
 
-  const { data: customer } = conversation
+  const { data: customer, error: customerError } = conversation
     ? await admin.from("marketplace_customers").select("auth_user_id").eq("id", conversation.customer_id).maybeSingle()
     : { data: null };
+  if (customerError) logFailure("customer_lookup_failed", { conversationId, userId: user.id, error: safeError(customerError) });
   const providerIds = [user.id, provider?.providerId].filter(Boolean);
   const isProvider = Boolean(conversation && providerIds.some((id) => conversation.provider_id === id || conversation.bidder_user_id === id));
   const isCustomer = Boolean(conversation && customer?.auth_user_id === user.id);
   if (!conversation || (!isProvider && !isCustomer)) {
     logFailure("unauthorized", { conversationId, userId: user.id });
-    return failure(request, fallback, "unauthorized");
+    return failure(request, fallback, "unauthorized", { conversationId, userId: user.id, attachmentCount: rawFiles.length });
   }
 
   const defaultReturnTo = `${isProvider ? "/work/messages" : "/messages"}/${conversationId}`;
   const prefix = isProvider ? "/work/messages/" : "/messages/";
   const returnTo = requestedReturnTo.startsWith(prefix) && !requestedReturnTo.startsWith("//") ? requestedReturnTo : defaultReturnTo;
-  const rawFiles = form.getAll("attachments");
   const files = rawFiles.filter((value): value is File => value instanceof File);
 
-  if (rawFiles.some((value) => !(value instanceof File))) return failure(request, returnTo, "attachment_invalid_type");
-  if (!body && files.length === 0) return failure(request, returnTo, "attachment_empty");
-  if (body.length > 4000) return failure(request, returnTo, "send");
-  if (files.length > MAX_FILES) return failure(request, returnTo, "attachment_too_large");
-  if (files.some((file) => !ALLOWED_TYPES.has(file.type))) return failure(request, returnTo, "attachment_invalid_type");
-  if (files.some((file) => file.size > MAX_FILE_SIZE)) return failure(request, returnTo, "attachment_too_large");
+  if (rawFiles.some((value) => !(value instanceof File))) return failure(request, returnTo, "attachment_invalid_type", { conversationId, userId: user.id, attachmentCount: rawFiles.length });
+  if (!body && files.length === 0) return failure(request, returnTo, "attachment_empty", { conversationId, userId: user.id, attachmentCount: rawFiles.length });
+  if (body.length > 4000) return failure(request, returnTo, "send", { conversationId, userId: user.id, attachmentCount: rawFiles.length });
+  if (files.length > MAX_FILES) return failure(request, returnTo, "attachment_too_large", { conversationId, userId: user.id, attachmentCount: rawFiles.length });
+  if (files.some((file) => !ALLOWED_TYPES.has(file.type))) return failure(request, returnTo, "attachment_invalid_type", { conversationId, userId: user.id, attachmentCount: rawFiles.length });
+  if (files.some((file) => file.size > MAX_FILE_SIZE)) return failure(request, returnTo, "attachment_too_large", { conversationId, userId: user.id, attachmentCount: rawFiles.length });
 
   const uploaded: Array<{ path: string; file: File }> = [];
   for (const file of files) {
@@ -112,7 +121,7 @@ export async function POST(request: Request) {
   if (messageError || !message) {
     logFailure("message_insert_failed", { conversationId, userId: user.id, error: safeError(messageError || new Error("Message insert returned no row")) });
     if (uploaded.length) await admin.storage.from(BUCKET).remove(uploaded.map((item) => item.path));
-    return failure(request, returnTo, "attachment_db_failed");
+    return failure(request, returnTo, "message_db_failed", { conversationId, userId: user.id, attachmentCount: rawFiles.length, error: safeError(messageError || new Error("Message insert returned no row")) });
   }
 
   if (uploaded.length) {

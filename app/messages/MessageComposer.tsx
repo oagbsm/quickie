@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 function Preview({ file, onRemove }: { file: File; onRemove: () => void }) {
   const url = useMemo(() => URL.createObjectURL(file), [file]);
@@ -9,7 +9,31 @@ function Preview({ file, onRemove }: { file: File; onRemove: () => void }) {
 }
 
 export default function MessageComposer({ conversationId, returnTo }: { conversationId: string; returnTo: string }) {
-  const [files, setFiles] = useState<File[]>([]);
+  const [body, setBody] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
-  return <form action="/api/marketplace/messages" method="post" encType="multipart/form-data" onSubmit={() => setBusy(true)} className="mt-4 grid gap-2"><input type="hidden" name="conversationId" value={conversationId} /><input type="hidden" name="returnTo" value={returnTo} /><div className="flex gap-2"><label className="cursor-pointer rounded-xl border border-[#dbe1ea] px-3 py-3 text-sm font-black">+ Photo<input name="attachments" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => setFiles((current) => [...current, ...Array.from(event.target.files || [])].slice(0, 5))} className="sr-only" disabled={busy} /></label><input name="body" maxLength={4000} placeholder="Write a message…" className="min-h-12 flex-1 rounded-xl border border-[#dbe1ea] px-4" disabled={busy} /><button disabled={busy} className="min-h-12 rounded-xl bg-[#23a955] px-5 font-black text-[#061b3f]">{busy ? "Sending…" : "Send"}</button></div>{files.length > 0 && <div className="flex flex-wrap gap-3">{files.map((file, index) => <Preview key={`${file.name}-${file.size}-${index}`} file={file} onRemove={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} />)}</div>}</form>;
+  const [error, setError] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError(false);
+    const formData = new FormData();
+    formData.append("conversationId", conversationId);
+    formData.append("returnTo", returnTo);
+    formData.append("body", body);
+    for (const file of selectedFiles) formData.append("attachments", file, file.name);
+    try {
+      const response = await fetch("/api/marketplace/messages", { method: "POST", body: formData, redirect: "follow" });
+      if (!response.redirected) throw new Error("Message request did not redirect");
+      window.location.assign(response.url);
+    } catch (requestError) {
+      console.error("[marketplace-message] client submit failed", { name: requestError instanceof Error ? requestError.name : "UnknownError" });
+      setBusy(false);
+      setError(true);
+    }
+  }
+
+  return <form action="/api/marketplace/messages" method="post" encType="multipart/form-data" onSubmit={submit} className="mt-4 grid gap-2"><div className="flex gap-2"><label className="cursor-pointer rounded-xl border border-[#dbe1ea] px-3 py-3 text-sm font-black">+ Photo<input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => { const files = Array.from(event.currentTarget.files || []); setSelectedFiles((current) => [...current, ...files].slice(0, 5)); event.currentTarget.value = ""; }} className="sr-only" disabled={busy} /></label><input name="body" value={body} onChange={(event) => setBody(event.target.value)} maxLength={4000} placeholder="Write a message…" className="min-h-12 flex-1 rounded-xl border border-[#dbe1ea] px-4" disabled={busy} /><button type="submit" disabled={busy} className="min-h-12 rounded-xl bg-[#23a955] px-5 font-black text-[#061b3f]">{busy ? "Sending…" : "Send"}</button></div>{selectedFiles.length > 0 && <div className="flex flex-wrap gap-3">{selectedFiles.map((file, index) => <Preview key={`${file.name}-${file.size}-${index}`} file={file} onRemove={() => setSelectedFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} />)}</div>}{error && <p className="text-sm font-bold text-red-700">Message could not be sent. Please try again.</p>}</form>;
 }
