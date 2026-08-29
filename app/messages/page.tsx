@@ -11,10 +11,10 @@ import { destinationForAccount, getCurrentAccountContext } from "@/lib/auth/acco
 export default async function MessagesIndex({ providerOnly = false }: { providerOnly?: boolean }) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in?next=/messages");
+  if (!user) redirect(`/sign-in?next=${encodeURIComponent(providerOnly ? "/work/messages" : "/messages")}`);
   const account = await getCurrentAccountContext();
   if (account.role === "admin") redirect("/admin");
-  if (account.role === "provider") redirect(destinationForAccount(account) || "/work");
+  if (!providerOnly && account.role === "provider") redirect(destinationForAccount(account) || "/work");
 
   const admin = createSupabaseAdminClient();
   const { data: customer } = await admin.from("marketplace_customers").select("id").eq("auth_user_id", user.id).maybeSingle();

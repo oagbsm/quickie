@@ -64,8 +64,8 @@ test("quote readiness uses one status-driven payout action and hides submission 
   assert.match(onboarding, /Continue payout setup/);
   assert.match(onboarding, /Check payout status/);
   assert.match(onboarding, /const canSubmit = \["draft", "action_required"\]/);
-  assert.match(onboarding, /Ready to send quotes/);
-  assert.match(onboarding, /View jobs/);
+  assert.match(onboarding, /You’re ready to go/);
+  assert.match(onboarding, /View available jobs/);
   assert.doesNotMatch(onboarding, /formAction=\{refreshProviderPayoutSetup\}[^}]*Refresh payouts/);
 });
 
