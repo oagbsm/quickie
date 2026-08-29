@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { buildAbsoluteAppUrl } from "@/lib/app-url";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import GoogleLogo from "@/app/components/auth/GoogleLogo";
 
 const OAUTH_START_TIMEOUT_MS = 12_000;
 
@@ -70,6 +71,7 @@ export default function ProviderGoogleButton({ next = "/work/onboarding", provid
         disabled={pending}
         className="min-h-12 w-full rounded-xl border border-[#dbe1ea] font-black disabled:opacity-60"
       >
+        <span className="mr-2 inline-flex align-middle"><GoogleLogo /></span>
         {pending ? "Opening Google…" : "Continue with Google"}
       </button>
       {error && <p className="mt-2 text-sm font-bold text-red-700">{error}</p>}

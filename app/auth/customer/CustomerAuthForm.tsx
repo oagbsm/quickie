@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { buildAbsoluteAppUrl, safeInternalNextPath } from "@/lib/app-url";
+import GoogleLogo from "@/app/components/auth/GoogleLogo";
 
 export default function CustomerAuthForm() {
   const params = useSearchParams();
@@ -28,5 +29,5 @@ export default function CustomerAuthForm() {
     }
   }
 
-  return <section className="grid gap-5 rounded-3xl bg-white p-6 shadow-lg sm:p-7"><div><p className="text-xs font-black uppercase tracking-[.14em] text-[#159548]">QUICKOLA ACCOUNT</p><h1 className="mt-2 text-3xl font-black text-[#061b3f]">Sign in to Quickola</h1><p className="mt-2 text-sm leading-6 text-[#657089]">{draft ? "Your job details are saved. Sign in with Google to publish your job." : "Post jobs, receive quotes and manage your bookings."}</p></div>{message && <p role="alert" className="rounded-xl bg-[#fff3e7] p-3 text-sm font-bold text-[#974c00]">{message}</p>}<button type="button" onClick={continueWithGoogle} disabled={pending} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[#23a955] px-4 font-black text-[#061b3f] disabled:opacity-60"><span aria-hidden="true" className="grid h-6 w-6 place-items-center rounded-full bg-white text-sm font-black text-[#4285f4]">G</span>{pending ? "Opening Google…" : "Continue with Google"}</button><p className="text-center text-xs font-bold text-[#8a95a5]">Quick, secure and no password needed.</p></section>;
+  return <section className="grid gap-5 rounded-3xl bg-white p-6 shadow-lg sm:p-7"><div><p className="text-xs font-black uppercase tracking-[.14em] text-[#159548]">QUICKOLA ACCOUNT</p><h1 className="mt-2 text-3xl font-black text-[#061b3f]">Sign in to Quickola</h1><p className="mt-2 text-sm leading-6 text-[#657089]">{draft ? "Your job details are saved. Sign in with Google to publish your job." : "Post jobs, receive quotes and manage your bookings."}</p></div>{message && <p role="alert" className="rounded-xl bg-[#fff3e7] p-3 text-sm font-bold text-[#974c00]">{message}</p>}<button type="button" onClick={continueWithGoogle} disabled={pending} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[#23a955] px-4 font-black text-[#061b3f] disabled:opacity-60"><GoogleLogo />{pending ? "Opening Google…" : "Continue with Google"}</button><p className="text-center text-xs font-bold text-[#8a95a5]">Quick, secure and no password needed.</p></section>;
 }
