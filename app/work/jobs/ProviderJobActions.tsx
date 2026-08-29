@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { sendProviderJobMessage, submitWorkOffer } from "@/app/work/actions";
 
 type Offer = { id: string; status: string; amount_pence: number | null } | null;
@@ -24,7 +25,7 @@ export default function ProviderJobActions({ jobId, offer, error, canOperate = t
       <p className="mt-2 text-sm leading-6 text-[#657089]">Ask a question first, or send a clear price and availability.</p>
     </div>}
 
-    {!canOperate && <div className="mt-5 rounded-2xl bg-[#fff8e8] p-5 text-sm leading-6 text-[#6c5530]"><p className="font-black text-[#8a5a00]">Finish your provider setup to send quotes.</p><p className="mt-1">Complete your profile photo, provider terms, Quickola review and payout setup.</p></div>}
+    {!canOperate && <div className="mt-5 rounded-2xl bg-[#fff8e8] p-5 text-sm leading-6 text-[#6c5530]"><p className="font-black text-[#8a5a00]">You’re approved. Complete payout setup before sending your first quote.</p><p className="mt-1">Your account readiness details are available in your profile.</p><Link href="/work/profile#account-readiness" className="mt-3 inline-flex font-black text-[#167d3c]">Open account readiness →</Link></div>}
     {canOperate && <div className="mt-5 flex flex-col gap-3 sm:flex-row">
       <button type="button" onClick={() => setPanel(panel === "question" ? null : "question")} aria-expanded={panel === "question"} className="min-h-12 rounded-xl border-2 border-[#167d3c] px-5 font-black text-[#167d3c]">{offer ? "Message customer" : "Ask a question"}</button>
       {canQuote && <button type="button" onClick={() => setPanel(panel === "quote" ? null : "quote")} aria-expanded={panel === "quote"} className="min-h-12 rounded-xl bg-[#23a955] px-5 font-black text-[#061b3f]">Send a quote</button>}
@@ -42,7 +43,7 @@ export default function ProviderJobActions({ jobId, offer, error, canOperate = t
       <fieldset><legend className="text-sm font-black">When are you available?</legend><div className="mt-2 grid grid-cols-2 gap-2"><label className="rounded-xl border border-[#dbe1ea] bg-white p-3 text-sm font-bold"><input className="mr-2" type="radio" name="availabilityMode" value="today" checked={availability === "today"} onChange={() => setAvailability("today")} />Today</label><label className="rounded-xl border border-[#dbe1ea] bg-white p-3 text-sm font-bold"><input className="mr-2" type="radio" name="availabilityMode" value="tomorrow" checked={availability === "tomorrow"} onChange={() => setAvailability("tomorrow")} />Tomorrow</label><label className="rounded-xl border border-[#dbe1ea] bg-white p-3 text-sm font-bold"><input className="mr-2" type="radio" name="availabilityMode" value="choose_date" checked={availability === "choose_date"} onChange={() => setAvailability("choose_date")} />Choose date</label><label className="rounded-xl border border-[#dbe1ea] bg-white p-3 text-sm font-bold"><input className="mr-2" type="radio" name="availabilityMode" value="flexible" checked={availability === "flexible"} onChange={() => setAvailability("flexible")} />Flexible</label></div></fieldset>
       {availability === "choose_date" && <label className="text-sm font-black">Preferred date<input name="scheduledDate" type="date" required className="mt-2 min-h-12 w-full rounded-xl border border-[#dbe1ea] bg-white px-4" /></label>}
       <label className="text-sm font-black">Note for the customer <span className="font-normal text-[#657089]">(optional)</span><textarea name="message" maxLength={4000} placeholder="Add anything they should know about your quote…" className="mt-2 min-h-24 w-full rounded-xl border border-[#dbe1ea] bg-white p-3 font-normal" /></label>
-      {error && <p className="rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800">{error === "locked" ? "This job is no longer accepting quotes." : "We couldn’t send your quote. Please try again."}</p>}
+      {error && <p className="rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800">{error === "locked" ? "This job is no longer accepting quotes." : error === "quote_setup" ? "You’re approved. Complete payout setup before sending your first quote." : "We couldn’t send your quote. Please try again."}</p>}
       <button className="min-h-12 rounded-xl bg-[#23a955] font-black text-[#061b3f]">{formattedAmount ? `Send ${formattedAmount} quote` : "Send quote"}</button>
     </form>}
   </div>;

@@ -36,7 +36,6 @@ export async function updateProviderProfile(form: FormData) {
     .from("cleaner_profiles")
     .select("display_name,business_name")
     .eq("user_id", provider.providerId)
-    .eq("marketplace_active", true)
     .maybeSingle();
   if (existingProfileError || !existingProfile) redirect("/work/profile?error=save");
   const nameLocked = Boolean(existingProfile.display_name?.trim() || existingProfile.business_name?.trim());
@@ -78,7 +77,7 @@ export async function updateProviderProfile(form: FormData) {
     update.display_name = displayName;
   }
   update.business_name = businessName || null;
-  const profile = await admin.from("cleaner_profiles").update(update).eq("user_id", provider.providerId).eq("marketplace_active", true);
+  const profile = await admin.from("cleaner_profiles").update(update).eq("user_id", provider.providerId);
   if (profile.error) { logSupabaseFailure("update cleaner_profiles", profile.error); redirect("/work/profile?error=save"); }
 
   const currentAreas = await admin.from("marketplace_provider_service_areas").select("id,postcode_district").eq("provider_id", provider.providerId);

@@ -34,7 +34,8 @@ export default async function ProviderOnboardingPage({ searchParams }: { searchP
   const initialServices = (services || []).filter((service) => service.active).map((service) => `${service.category_slug}|${service.job_type_slug}`);
   const qualificationMissing = (services || []).some((service) => service.active && ["plumbing", "electrical", "smart-home"].includes(service.category_slug) && !service.qualification_verified);
   const profileComplete = isProviderProfileComplete(provider.profile, (services || []).filter((service) => service.active).length, areasCount || 0);
-  if (provider.providerStatus === "pending_review" || provider.providerStatus === "approved" || provider.providerStatus === "suspended") {
+  if (provider.providerStatus === "pending_review" || provider.providerStatus === "suspended" || (provider.providerStatus === "approved" && !query.edit && !query.setup && !query.payouts)) {
+    if (provider.providerStatus === "approved") redirect("/work/profile#account-readiness");
     return <PendingReview status={provider.providerStatus} stripeStatus={provider.stripeStatus} profileComplete={profileComplete} servicesSelected={initialServices.length > 0} qualificationMissing={qualificationMissing} emailVerified={Boolean(provider.emailConfirmedAt)} />;
   }
   const aboutComplete = Boolean((provider.profile.display_name || provider.profile.business_name) && provider.profile.phone && provider.profile.provider_type);

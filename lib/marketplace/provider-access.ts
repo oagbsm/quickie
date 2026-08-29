@@ -58,7 +58,15 @@ export async function requireProviderWorkspaceAccess() {
     redirect(user ? "/pro/login?error=not-approved" : "/pro/login");
   }
   if (provider.providerStatus === "pending_review") redirect("/work");
-  if (!canProviderOperate(provider)) redirect("/work/onboarding?error=quote_setup");
+  if (provider.providerStatus === "suspended") redirect("/work");
+  if (provider.providerStatus !== "approved") redirect("/work/onboarding");
+  return provider;
+}
+
+/** Server-side gate for actions that can create quotes or marketplace work. */
+export async function requireProviderOperationalAccess() {
+  const provider = await requireProviderWorkspaceAccess();
+  if (!canProviderOperate(provider)) return null;
   return provider;
 }
 

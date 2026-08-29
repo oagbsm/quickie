@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { requireProviderWorkspaceAccess } from "@/lib/marketplace/provider-access";
+import { requireProviderOperationalAccess } from "@/lib/marketplace/provider-access";
 import { getOrCreateMarketplaceConversation } from "@/lib/marketplace/conversations";
 
 export async function submitWorkOffer(formData: FormData) {
@@ -22,7 +22,8 @@ export async function submitWorkOffer(formData: FormData) {
   };
   const resolvedDate = availabilityMode === "today" ? dateForOffset(0) : availabilityMode === "tomorrow" ? dateForOffset(1) : availabilityMode === "choose_date" ? scheduledDate : "";
   if (availabilityMode === "choose_date" && (!/^\d{4}-\d{2}-\d{2}$/.test(resolvedDate) || new Date(`${resolvedDate}T23:59:59`).getTime() < Date.now())) redirect(`/work/jobs/${jobId}?error=validation`);
-  const provider = await requireProviderWorkspaceAccess();
+  const provider = await requireProviderOperationalAccess();
+  if (!provider) redirect(`/work/jobs/${jobId}?error=quote_setup`);
   const supabase = await createSupabaseServerClient();
   const availabilityText = availabilityMode === "today" ? "Today" : availabilityMode === "tomorrow" ? "Tomorrow" : availabilityMode === "flexible" ? "Flexible" : new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(`${resolvedDate}T12:00:00`));
   const { error } = await supabase.rpc("submit_marketplace_quote", { target_job: jobId, quote_amount: Math.round(amount * 100), quote_availability: resolvedDate ? "date" : "flexible", quote_available_at: resolvedDate ? `${resolvedDate}T09:00:00Z` : null, quote_availability_text: availabilityText, quote_message: message || null });
@@ -38,7 +39,8 @@ export async function sendProviderJobMessage(formData: FormData) {
   const jobId = String(formData.get("jobId") || "");
   const body = String(formData.get("body") || "").trim();
   if (!jobId || !body || body.length > 4000) redirect(`/work/jobs/${jobId}?error=message`);
-  const provider = await requireProviderWorkspaceAccess();
+  const provider = await requireProviderOperationalAccess();
+  if (!provider) redirect(`/work/jobs/${jobId}?error=quote_setup`);
   const supabase = await createSupabaseServerClient();
 
   let conversation;
@@ -69,7 +71,8 @@ export async function sendProviderJobMessage(formData: FormData) {
 
 export async function withdrawWorkOffer(formData: FormData) {
   const jobId = String(formData.get("jobId") || "");
-  await requireProviderWorkspaceAccess();
+  const provider = await requireProviderOperationalAccess();
+  if (!provider) redirect(`/work/jobs/${jobId}?error=quote_setup`);
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("withdraw_marketplace_quote", { target_job: jobId });
   if (error) redirect(`/work/jobs/${jobId}?error=${/booked|locked/i.test(error.message) ? "locked" : "offer"}`);
@@ -80,7 +83,8 @@ export async function advanceMarketplaceBooking(formData: FormData) {
   const bookingId = String(formData.get("bookingId") || "");
   const nextStatus = String(formData.get("nextStatus") || "");
   const jobId = String(formData.get("jobId") || "");
-  await requireProviderWorkspaceAccess();
+  const provider = await requireProviderOperationalAccess();
+  if (!provider) redirect(`/work/jobs/${jobId}?error=quote_setup`);
   if (!bookingId || !jobId || !["en_route", "arrived", "in_progress", "awaiting_customer_completion"].includes(nextStatus)) redirect(`/work/jobs/${jobId}?error=booking_transition`);
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("update_marketplace_booking_status", { target_booking: bookingId, next_status: nextStatus });

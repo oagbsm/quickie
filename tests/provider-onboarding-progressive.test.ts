@@ -88,3 +88,15 @@ test("submitted provider states do not reopen editable onboarding", () => {
   assert.match(status, /status === "suspended"/);
   assert.match(onboarding, /\["draft", "action_required"\]\.includes\(status\)/);
 });
+
+test("approved providers can repair readiness from profile without workspace lockout", () => {
+  const access = readFileSync(new URL("../lib/marketplace/provider-access.ts", import.meta.url), "utf8");
+  const profile = readFileSync(new URL("../app/work/profile/page.tsx", import.meta.url), "utf8");
+  const actions = readFileSync(new URL("../app/work/actions.ts", import.meta.url), "utf8");
+  assert.match(access, /requireProviderOperationalAccess/);
+  assert.match(access, /provider\.providerStatus !== "approved"/);
+  assert.match(profile, /account-readiness/);
+  assert.match(profile, /Continue payout setup/);
+  assert.match(profile, /returnPath.*\/work\/profile/);
+  assert.match(actions, /requireProviderOperationalAccess/);
+});

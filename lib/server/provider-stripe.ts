@@ -142,7 +142,7 @@ export async function syncProviderStripeStatus(accountId: string, account?: Prov
   return assessment;
 }
 
-export async function createProviderPayoutLink(providerId: string) {
+export async function createProviderPayoutLink(providerId: string, returnPath = "/work/onboarding") {
   const admin = createSupabaseAdminClient();
   const { data: profile, error } = await admin.from("cleaner_profiles").select("user_id,stripe_account_id").eq("user_id", providerId).maybeSingle();
   if (error || !profile) throw new Error("provider_not_found");
@@ -196,8 +196,8 @@ export async function createProviderPayoutLink(providerId: string) {
         type: "account_onboarding",
         account_onboarding: {
           configurations: ["recipient"],
-          refresh_url: `${origin}/work/onboarding?payouts=refresh`,
-          return_url: `${origin}/work/onboarding?payouts=return`,
+          refresh_url: `${origin}${returnPath}?payouts=refresh`,
+          return_url: `${origin}${returnPath}?payouts=return`,
           collection_options: { fields: "eventually_due", future_requirements: "include" },
         },
       },
