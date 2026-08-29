@@ -83,7 +83,6 @@ export async function POST(request: Request) {
   const rawFiles = form.getAll("attachments");
   const files = rawFiles.filter((value): value is File => value instanceof File);
 
-  if (files.some((file) => file.size === 0)) return failure(request, returnTo, "attachment_empty");
   if (rawFiles.some((value) => !(value instanceof File))) return failure(request, returnTo, "attachment_invalid_type");
   if (!body && files.length === 0) return failure(request, returnTo, "attachment_empty");
   if (body.length > 4000) return failure(request, returnTo, "send");

@@ -32,6 +32,7 @@ test("message attachments are private, validated, and participant-authorized", (
 });
 
 test("messages may contain text, images, or both but not neither", () => {
+  assert.match(upload, /rawFiles\.filter\(\(value\): value is File => value instanceof File\)/);
   assert.match(upload, /!body && files\.length === 0/);
   assert.match(upload, /body: body \|\| null/);
   assert.match(migration, /body is null or length\(trim\(body\)\) between 1 and 4000/);
