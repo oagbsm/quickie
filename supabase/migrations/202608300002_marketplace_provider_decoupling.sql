@@ -43,18 +43,18 @@ insert into public.marketplace_providers (
 -- Exclude self-serve cleaner identities. Existing provider identities have no
 -- separate legacy table, so their auth-linked profile is copied by default.
 select
-  user_id, coalesce(nullif(trim(display_name), ''), 'Provider'), business_name,
-  phone, service_area, marketplace_bio, profile_photo_url, provider_type,
-  base_town, postcode, postcode_area, postcode_district, years_experience,
-  coalesce(nullif(provider_status, ''), 'draft'),
-  coalesce(nullif(stripe_status, ''), 'not_started'), stripe_account_id,
-  submitted_at, approved_at, action_required_reason, suspended_at,
-  coalesce(availability_days, '{}'), coalesce(available_now, true),
-  coalesce(marketplace_active, false), provider_terms_accepted_at, terms_version,
-  created_at, updated_at
-from public.cleaner_profiles profile
-join auth.users auth_user on auth_user.id = profile.user_id
-where coalesce(auth_user.raw_user_meta_data->>'account_kind', '') <> 'quickola_cleaner'
+  cp.user_id, coalesce(nullif(trim(cp.display_name), ''), 'Provider'), cp.business_name,
+  cp.phone, cp.service_area, cp.marketplace_bio, cp.profile_photo_url, cp.provider_type,
+  cp.base_town, cp.postcode, cp.postcode_area, cp.postcode_district, cp.years_experience,
+  coalesce(nullif(cp.provider_status, ''), 'draft'),
+  coalesce(nullif(cp.stripe_status, ''), 'not_started'), cp.stripe_account_id,
+  cp.submitted_at, cp.approved_at, cp.action_required_reason, cp.suspended_at,
+  coalesce(cp.availability_days, '{}'), coalesce(cp.available_now, true),
+  coalesce(cp.marketplace_active, false), cp.provider_terms_accepted_at, cp.terms_version,
+  cp.created_at, cp.updated_at
+from public.cleaner_profiles as cp
+join auth.users as au on au.id = cp.user_id
+where coalesce(au.raw_user_meta_data->>'account_kind', '') <> 'quickola_cleaner'
 on conflict (user_id) do update set
   display_name = excluded.display_name,
   business_name = excluded.business_name,
