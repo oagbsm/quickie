@@ -6,16 +6,16 @@ import ProfilePhotoField from "./ProfilePhotoField";
 import ServiceAreasField from "./ServiceAreasField";
 import { updateProviderProfile } from "./actions";
 
-type Props = { profile: Record<string, unknown>; photoUrl: string | null; photoPath: string | null; selectedServices: string[]; areas: string[] };
+type Props = { profile: Record<string, unknown>; photoUrl: string | null; photoPath: string | null; selectedServices: string[]; areas: string[]; returnTo?: "onboarding" };
 
-export default function ProfileEditForm({ profile, photoUrl, photoPath, selectedServices: initialServices, areas }: Props) {
+export default function ProfileEditForm({ profile, photoUrl, photoPath, selectedServices: initialServices, areas, returnTo }: Props) {
   const [selectedServices, setSelectedServices] = useState(initialServices);
   const toggleCategory = (slug: string) => {
     const values = marketplaceServices.find((service) => service.slug === slug)?.jobs.filter((job) => job.active).map((job) => `${slug}|${job.slug}`) || [];
     const allSelected = values.every((value) => selectedServices.includes(value));
     setSelectedServices((current) => allSelected ? current.filter((value) => !values.includes(value)) : [...new Set([...current, ...values])]);
   };
-  return <form action={updateProviderProfile} className="mt-7 grid gap-7 rounded-3xl border border-[#e7ebef] bg-white p-6 sm:p-8">
+  return <form action={updateProviderProfile} className="mt-7 grid gap-7 rounded-3xl border border-[#e7ebef] bg-white p-6 sm:p-8"><input type="hidden" name="returnTo" value={returnTo || ""} />
     <div><h2 className="text-2xl font-black">Edit profile</h2><p className="mt-2 text-sm text-[#657089]">Keep the information customers see when you send an offer up to date.</p></div>
     <div className="grid gap-4 sm:grid-cols-2"><label className="font-bold">Name<input name="displayName" defaultValue={String(profile.display_name || "")} className="mt-2 min-h-11 w-full rounded-xl border border-[#dbe1ea] px-4" /></label><label className="font-bold">Business name<input name="businessName" defaultValue={String(profile.business_name || "")} className="mt-2 min-h-11 w-full rounded-xl border border-[#dbe1ea] px-4" /></label><label className="font-bold sm:col-span-2">Mobile number<input name="phone" type="tel" defaultValue={String(profile.phone || "")} className="mt-2 min-h-11 w-full rounded-xl border border-[#dbe1ea] px-4" /></label><label className="font-bold sm:col-span-2">About<textarea name="bio" defaultValue={String(profile.marketplace_bio || "")} maxLength={500} className="mt-2 min-h-28 w-full rounded-xl border border-[#dbe1ea] p-4" /></label></div>
     <ProfilePhotoField currentUrl={photoUrl} currentPath={photoPath} />

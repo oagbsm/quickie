@@ -64,6 +64,18 @@ export async function requireProviderWorkspaceAccess() {
   return provider;
 }
 
+export async function requireProviderProfileEditAccess() {
+  const account = await getCurrentAccountContext();
+  if (account.role !== "provider") redirect(destinationForAccount(account) || "/");
+  const provider = await getMarketplaceProvider();
+  if (!provider) {
+    const user = await getSignedInUser();
+    redirect(user ? "/pro/login?error=not-approved" : "/pro/login");
+  }
+  if (provider.providerStatus === "pending_review" || provider.providerStatus === "suspended") redirect("/work");
+  return provider;
+}
+
 /** Server-side gate for actions that can create quotes or marketplace work. */
 export async function requireProviderOperationalAccess() {
   const provider = await requireProviderWorkspaceAccess();

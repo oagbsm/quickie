@@ -1,9 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { marketplaceServices } from "@/app/data/marketplace";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { requireProviderWorkspaceAccess } from "@/lib/marketplace/provider-access";
+import { requireProviderProfileEditAccess } from "@/lib/marketplace/provider-access";
+import { extractMarketplaceServiceAreas, normaliseMarketplaceServiceAreas } from "@/lib/marketplace/service-areas";
 
 const text = (form: FormData, name: string) => String(form.get(name) || "").trim();
 
@@ -26,12 +28,8 @@ function logSupabaseFailure(operation: string, error: { code?: string; message?:
   });
 }
 
-function postcodeDistricts(value: string) {
-  return [...new Set((value.toUpperCase().match(/\b[A-Z]{1,2}\d{1,2}[A-Z]?\b/g) || []).filter((area) => /^SL[1-9]$/.test(area)))];
-}
-
 export async function updateProviderProfile(form: FormData) {
-  const provider = await requireProviderWorkspaceAccess();
+  const provider = await requireProviderProfileEditAccess();
   const admin = createSupabaseAdminClient();
   const { data: existingProfile, error: existingProfileError } = await admin
     .from("marketplace_providers")
@@ -42,7 +40,8 @@ export async function updateProviderProfile(form: FormData) {
   const nameLocked = Boolean(existingProfile.display_name?.trim() || existingProfile.business_name?.trim());
   const displayName = text(form, "displayName");
   const businessName = text(form, "businessName");
-  const areas = postcodeDistricts(form.getAll("serviceArea").map(String).join(" ") || text(form, "serviceAreas"));
+  const submittedAreas = form.getAll("serviceArea").map(String);
+  const areas = normaliseMarketplaceServiceAreas(submittedAreas.length ? submittedAreas : extractMarketplaceServiceAreas(text(form, "serviceAreas")));
   const selectedCategories = new Set(form.getAll("category").map(String));
   const selectedJobValues = new Set(form.getAll("service").map(String));
   const services = marketplaceServices
@@ -82,15 +81,25 @@ export async function updateProviderProfile(form: FormData) {
   const profile = await admin.from("marketplace_providers").update(update).eq("user_id", provider.providerId);
   if (profile.error) { logSupabaseFailure("update marketplace_providers", profile.error); redirect("/work/profile?error=save"); }
 
-  const currentAreas = await admin.from("marketplace_provider_service_areas").select("id,postcode_district").eq("provider_id", provider.providerId);
-  if (currentAreas.error) { logSupabaseFailure("read provider service areas", currentAreas.error); redirect("/work/profile?error=save"); }
+  const currentAreas = await admin.from("marketplace_provider_service_areas").select("id,postcode_district").eq("provider_id", provider.providerId).eq("active", true);
+  if (currentAreas.error) { logSupabaseFailure("read provider service areas", currentAreas.error, { userId: provider.user.id, providerId: provider.providerId, serviceCount: services.length }); redirect("/work/profile?error=save"); }
   const areaUpsert = areas.length ? await admin.from("marketplace_provider_service_areas").upsert(areas.map((postcode_district) => ({ provider_id: provider.providerId, postcode_district, active: true })), { onConflict: "provider_id,postcode_district" }) : { error: null };
-  if (areaUpsert.error) { logSupabaseFailure("save provider service areas", areaUpsert.error); redirect("/work/profile?error=save"); }
+  if (areaUpsert.error) { logSupabaseFailure("save provider service areas", areaUpsert.error, { userId: provider.user.id, providerId: provider.providerId, serviceCount: services.length }); redirect("/work/profile?error=save"); }
   const areaIdsToRemove = (currentAreas.data || []).filter((area) => !areas.includes(area.postcode_district)).map((area) => area.id);
-  if (areaIdsToRemove.length) { const removedAreas = await admin.from("marketplace_provider_service_areas").delete().in("id", areaIdsToRemove); if (removedAreas.error) { logSupabaseFailure("remove provider service areas", removedAreas.error); redirect("/work/profile?error=save"); } }
+  if (areaIdsToRemove.length) { const removedAreas = await admin.from("marketplace_provider_service_areas").delete().in("id", areaIdsToRemove); if (removedAreas.error) { logSupabaseFailure("remove provider service areas", removedAreas.error, { userId: provider.user.id, providerId: provider.providerId, serviceCount: services.length }); redirect("/work/profile?error=save"); } }
+  const persistedAreas = await admin.from("marketplace_provider_service_areas").select("postcode_district").eq("provider_id", provider.providerId).eq("active", true);
+  const finalAreas = normaliseMarketplaceServiceAreas((persistedAreas.data || []).map((area) => String(area.postcode_district)));
+  const areasMatch = !persistedAreas.error && finalAreas.length === areas.length && areas.every((area) => finalAreas.includes(area));
+  if (!areasMatch) {
+    logSupabaseFailure("verify provider service areas", persistedAreas.error, { userId: provider.user.id, providerId: provider.providerId, serviceCount: services.length });
+    console.error("Provider service-area persistence mismatch", { userId: provider.user.id, providerId: provider.providerId, submittedAreas: areas, finalPersistedActiveAreaCount: finalAreas.length });
+    redirect("/work/profile?error=save");
+  }
   const selectedServiceKeys = new Set(services.map((service) => `${service.category_slug}|${service.job_type_slug}`));
   if (services.length) { const serviceUpsert = await admin.from("marketplace_provider_services").upsert(services.map((service) => ({ ...service, provider_id: provider.providerId, active: true, qualification_verified: verified.get(`${service.category_slug}|${service.job_type_slug}`) || false })), { onConflict: "provider_id,job_type_slug" }); if (serviceUpsert.error) { logSupabaseFailure("save provider services", serviceUpsert.error, { userId: provider.user.id, providerId: provider.providerId, serviceCount: services.length }); redirect("/work/profile?error=save"); } }
   const removable = (existing || []).filter((item) => !selectedServiceKeys.has(`${item.category_slug}|${item.job_type_slug}`) && !item.qualification_verified).map((item) => item.id);
   if (removable.length) { const removedServices = await admin.from("marketplace_provider_services").delete().eq("provider_id", provider.providerId).in("id", removable); if (removedServices.error) { logSupabaseFailure("remove provider services", removedServices.error, { userId: provider.user.id, providerId: provider.providerId, serviceCount: services.length }); redirect("/work/profile?error=save"); } }
-  redirect("/work/profile?saved=1");
+  revalidatePath("/work/profile");
+  revalidatePath("/work/onboarding");
+  redirect(text(form, "returnTo") === "onboarding" ? "/work/onboarding?step=3&saved=1" : "/work/profile?saved=1");
 }
