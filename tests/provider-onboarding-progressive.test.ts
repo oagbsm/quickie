@@ -12,6 +12,7 @@ const qualificationCompatibility = readFileSync(new URL("../supabase/migrations/
 const profile = readFileSync(new URL("../app/work/profile/page.tsx", import.meta.url), "utf8");
 const workFeed = readFileSync(new URL("../app/work/page.tsx", import.meta.url), "utf8");
 const matching = readFileSync(new URL("../lib/marketplace/provider-job-matching.ts", import.meta.url), "utf8");
+const jobDetail = readFileSync(new URL("../app/work/jobs/[id]/page.tsx", import.meta.url), "utf8");
 
 test("provider onboarding separates Maidenhead browsing from quote readiness", () => {
   assert.match(onboarding, /Basic profile/);
@@ -164,4 +165,14 @@ test("provider job feed matches current provider services and active districts",
   assert.match(matching, /job\.service_subtype/);
   assert.match(matching, /service\.active !== false/);
   assert.match(matching, /area\.active !== false/);
+});
+
+test("provider job detail uses the same current matcher as the feed", () => {
+  assert.match(jobDetail, /isMarketplaceJobMatch/);
+  assert.match(jobDetail, /marketplace_provider_services/);
+  assert.match(jobDetail, /marketplace_provider_service_areas/);
+  assert.doesNotMatch(jobDetail, /get_marketplace_browse_opportunities/);
+  assert.doesNotMatch(jobDetail, /createSupabaseServerClient/);
+  assert.match(jobDetail, /if \(!ownOffer\)/);
+  assert.match(jobDetail, /if \(!isMarketplaceJobMatch\(job, providerServices \|\| \[\], providerAreas \|\| \[\]\)\) notFound\(\)/);
 });
