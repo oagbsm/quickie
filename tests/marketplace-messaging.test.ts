@@ -13,6 +13,9 @@ const conversationBubble = read("app/components/marketplace/MarketplaceMessageBu
 const customerJobPage = read("app/jobs/[token]/page.tsx");
 const customerJobActions = read("app/jobs/actions.ts");
 const quoteState = read("lib/marketplace/customer-job-state.ts");
+const workOffers = read("app/work/offers/page.tsx");
+const workActions = read("app/work/actions.ts");
+const quoteSubmissionMigration = read("supabase/migrations/202608290001_remove_unimplemented_provider_qualification_gate.sql");
 
 test("provider messaging stays on provider routes while customer routes remain separate", () => {
   assert.ok(index.includes('providerOnly ? "/work/messages"'));
@@ -68,4 +71,17 @@ test("customer offers and conversations use the same active statuses and interna
   assert.match(customerJobActions, /\.eq\("public_token", token\)/);
   assert.match(customerJobActions, /jobId: job\.id, providerId, actorUserId: user\.id, customerId: customer\.id/);
   assert.match(customerJobActions, /redirect\(`\/messages\/\$\{conversation\.id\}`\)/);
+});
+
+test("provider My Work includes bidder-backed quotes and preserves offer lifecycle states", () => {
+  assert.match(workOffers, /\.or\(`provider_id\.eq\.\$\{provider\.providerId\},bidder_user_id\.eq\.\$\{provider\.providerId\}`\)/);
+  assert.match(workOffers, /marketplace_jobs\(service,service_subtype,postcode,requested_timing\)/);
+  assert.match(workOffers, /marketplace_bookings/);
+  for (const status of ["pending", "submitted", "accepted", "selected", "declined", "withdrawn", "expired"]) assert.match(workOffers, new RegExp(status));
+  assert.match(workOffers, /href=\{`\/work\/jobs\/\$\{offer\.job_id\}`\}/);
+  assert.match(workOffers, /href=\{`\/work\/messages\/\$\{conversation\}`\}/);
+  assert.match(workActions, /submit_marketplace_quote/);
+  assert.match(quoteSubmissionMigration, /insert into public\.marketplace_quotes\(job_id, provider_id, bidder_user_id/);
+  assert.match(quoteSubmissionMigration, /auth\.uid\(\), quote_amount/);
+  assert.doesNotMatch(workOffers, /cleaner_profiles/);
 });
