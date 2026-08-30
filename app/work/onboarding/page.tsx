@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { marketplaceServices } from "@/app/data/marketplace";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getOrCreateMarketplaceProvider, isProviderProfileComplete } from "@/lib/marketplace/provider-access";
+import { getOrCreateMarketplaceProvider, isProviderBasicProfileComplete, isProviderProfileComplete } from "@/lib/marketplace/provider-access";
 import { refreshProviderPayoutStatus } from "@/lib/server/provider-stripe";
 import OnboardingForm from "./OnboardingForm";
 import PendingReview from "./PendingReview";
@@ -15,7 +15,7 @@ export default async function ProviderOnboardingPage({ searchParams }: { searchP
   if (!provider) redirect("/pro/login?next=/work/onboarding");
   if (provider.providerStatus === "approved" && query.edit === "1") redirect("/work/profile?edit=1");
   const providerId = provider.providerId;
-  if (["return", "refresh"].includes(query.payouts || "")) {
+  if (["return", "refresh", "checked"].includes(query.payouts || "")) {
     try {
       await refreshProviderPayoutStatus(providerId);
       provider = await getOrCreateMarketplaceProvider();
@@ -34,6 +34,7 @@ export default async function ProviderOnboardingPage({ searchParams }: { searchP
   const initial = { ...provider.profile, email: provider.user.email || "" };
   const initialServices = (services || []).filter((service) => service.active).map((service) => `${service.category_slug}|${service.job_type_slug}`);
   const profileComplete = isProviderProfileComplete(provider.profile, (services || []).filter((service) => service.active).length, areasCount || 0);
+  const basicProfileComplete = isProviderBasicProfileComplete(provider);
   if (provider.providerStatus === "pending_review" || provider.providerStatus === "suspended" || (provider.providerStatus === "approved" && !query.edit && !query.setup && !query.payouts)) {
     if (provider.providerStatus === "approved") redirect("/work/profile#account-readiness");
     return <PendingReview status={provider.providerStatus} stripeStatus={provider.stripeStatus} profileComplete={profileComplete} servicesSelected={initialServices.length > 0} emailVerified={Boolean(provider.emailConfirmedAt)} />;
@@ -44,5 +45,6 @@ export default async function ProviderOnboardingPage({ searchParams }: { searchP
   const requestedStep = Math.min(3, Math.max(1, Number(query.step) || 1));
   const returningFromPayout = ["return", "refresh", "checked"].includes(query.payouts || "");
   const initialStep = returningFromPayout ? 3 : query.step ? requestedStep : persistedStep;
-  return <OnboardingForm services={marketplaceServices.map((service) => ({ slug: service.slug, name: service.name, jobs: service.jobs.filter((job) => job.active).map((job) => ({ slug: job.slug, name: job.name })) }))} initial={initial} initialServices={initialServices} profileComplete={profileComplete} photoUrl={photoUrl} status={provider.providerStatus} stripeStatus={provider.stripeStatus} emailVerified={Boolean(provider.emailConfirmedAt)} actionReason={String(provider.profile.action_required_reason || "") || null} error={query.error} saved={query.saved} payouts={query.payouts} initialStep={initialStep} />;
+  const displayError = query.error === "save" && (servicesComplete || returningFromPayout) ? undefined : query.error;
+  return <OnboardingForm services={marketplaceServices.map((service) => ({ slug: service.slug, name: service.name, jobs: service.jobs.filter((job) => job.active).map((job) => ({ slug: job.slug, name: job.name })) }))} initial={initial} initialServices={initialServices} profileComplete={profileComplete} basicProfileComplete={basicProfileComplete} photoUrl={photoUrl} status={provider.providerStatus} stripeStatus={provider.stripeStatus} emailVerified={Boolean(provider.emailConfirmedAt)} actionReason={String(provider.profile.action_required_reason || "") || null} error={displayError} saved={query.saved} initialStep={initialStep} />;
 }

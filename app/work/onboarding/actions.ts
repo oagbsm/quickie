@@ -70,7 +70,7 @@ export async function saveProviderOnboarding(form: FormData) {
   if (services.length || currentStep >= 2) await saveServicesAndCoverage(provider.user.id, provider.providerId, services);
   revalidatePath("/work");
   revalidatePath("/work/onboarding");
-  redirect(`/work/onboarding?saved=1&step=${Math.min(3, currentStep + 1)}`);
+  redirect(currentStep >= 2 ? "/work/onboarding?step=3" : "/work/onboarding?step=2");
 }
 
 export async function updateProviderTerms(accepted: boolean) {

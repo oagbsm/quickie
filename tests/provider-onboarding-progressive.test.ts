@@ -45,7 +45,7 @@ test("unimplemented qualification checks do not block provider quoting or profil
   assert.doesNotMatch(profile, /Service requirements|Checks needed for|Contact Quickola/);
   assert.match(profile, /Payouts/);
   assert.match(profile, /Services/);
-  assert.match(onboarding, /quoteReadinessComplete = profileComplete && hasPhoto && termsAccepted && emailVerified/);
+  assert.match(onboarding, /quoteReadinessComplete = profileComplete && emailVerified && hasServices && hasPhoto && termsAccepted && payoutReady/);
   assert.doesNotMatch(onboarding, /qualification verification for selected regulated work/);
 });
 
@@ -60,19 +60,22 @@ test("quote readiness autosaves mutable items and removes the generic save actio
 });
 
 test("quote readiness uses one status-driven payout action and hides submission when unavailable", () => {
-  assert.match(onboarding, /stripeStatus === "not_started"/);
+  assert.match(onboarding, /!payoutReady && !payoutVerifying/);
   assert.match(onboarding, /Continue payout setup/);
-  assert.match(onboarding, /Check payout status/);
   assert.match(onboarding, /const canSubmit = \["draft", "action_required"\]/);
-  assert.match(onboarding, /You’re ready to go/);
-  assert.match(onboarding, /View available jobs/);
-  assert.doesNotMatch(onboarding, /formAction=\{refreshProviderPayoutSetup\}[^}]*Refresh payouts/);
+  assert.match(onboarding, /Almost done/);
+  assert.match(onboarding, /Submit for review/);
+  assert.match(onboarding, /Payout details received — verification in progress/);
+  assert.match(onboarding, /Payout setup needs more information/);
+  assert.doesNotMatch(onboarding, /Payout status refreshed/);
+  assert.doesNotMatch(onboarding, /Approval —/);
 });
 
 test("Stripe return refreshes status before rendering onboarding", () => {
-  assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /\["return", "refresh"\]\.includes\(query\.payouts/);
+  assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /\["return", "refresh", "checked"\]\.includes\(query\.payouts/);
   assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /refreshProviderPayoutStatus\(providerId\)/);
   assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /profileComplete/);
+  assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /displayError/);
 });
 
 test("profile photo picker is only visible when needed or explicitly changed", () => {

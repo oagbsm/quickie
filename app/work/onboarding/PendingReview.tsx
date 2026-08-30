@@ -1,5 +1,5 @@
 import Link from "next/link";
-import ProviderHeader from "@/app/components/marketplace/ProviderHeader";
+import ProviderHeaderNavigation from "@/app/components/marketplace/ProviderHeaderNavigation";
 import { refreshProviderPayoutSetup, startProviderPayoutSetup } from "./actions";
 
 type Props = { status: "pending_review" | "approved" | "suspended"; stripeStatus: string; profileComplete: boolean; servicesSelected: boolean; emailVerified: boolean };
@@ -23,5 +23,5 @@ export default function PendingReview({ status, stripeStatus, profileComplete, s
 }
 
 function StatusLayout({ children }: { children: React.ReactNode }) {
-  return <main className="min-h-screen bg-[#f7f8fa] text-[#061b3f]"><ProviderHeader /><section className="mx-auto max-w-3xl px-5 py-10 sm:px-8"><div className="rounded-3xl border border-[#e7ebef] bg-white p-7 sm:p-10">{children}</div></section></main>;
+  return <main className="min-h-screen bg-[#f7f8fa] text-[#061b3f]"><header className="border-b border-[#e7ebef] bg-white"><div className="mx-auto flex min-h-16 max-w-5xl items-center justify-between gap-4 px-5 sm:px-8"><span className="text-xl font-black tracking-[-.03em]">Quickola</span><ProviderHeaderNavigation pending /></div></header><section className="mx-auto max-w-3xl px-5 py-10 sm:px-8"><div className="rounded-3xl border border-[#e7ebef] bg-white p-7 sm:p-10">{children}</div></section></main>;
 }
