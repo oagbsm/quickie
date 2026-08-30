@@ -122,3 +122,17 @@ test("approved providers can repair readiness from profile without workspace loc
   assert.match(profile, /returnPath.*\/work\/profile/);
   assert.match(actions, /requireProviderOperationalAccess/);
 });
+
+test("profile submission CTA follows the same readiness and lifecycle rules as onboarding", () => {
+  assert.match(profile, /isProviderReadyToSubmit\(provider\.profile/);
+  assert.match(profile, /\["draft", "action_required"\]\.includes\(provider\.providerStatus\) && profileReadyToSubmit/);
+  assert.match(profile, /form action=\{submitProviderApplication\}/);
+  assert.match(profile, /Everything is ready/);
+  assert.match(profile, /Finish your setup before submitting for review/);
+  assert.match(profile, /provider\.providerStatus === "approved"/);
+  assert.match(onboarding, /\["draft", "action_required"\]\.includes\(status\)/);
+  assert.match(onboarding, /formAction=\{submitProviderApplication\}/);
+  assert.match(actions, /isProviderReadyToSubmit\(profile, servicesCount \|\| 0, areasCount \|\| 0/);
+  assert.match(actions, /to_status: "pending_review"/);
+  assert.match(actions, /redirect\("\/work\/onboarding"\)/);
+});
