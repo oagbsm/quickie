@@ -67,7 +67,6 @@ begin
   exception when dependent_objects_still_exist then
     raise notice 'Retaining legacy view public.property_calendar_connections_safe because another database object depends on it';
   end;
-  end;
 end
 $$;
 
