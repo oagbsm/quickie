@@ -107,8 +107,8 @@ function Offers({ quotes, token, jobId, conversationByProvider }: { quotes: Arra
 }
 
 function formatJobLabel(key: string) {
-  const labels: Record<string, string> = { cleanType: "Cleaning type", propertyType: "Property type", bedrooms: "Bedrooms", bathrooms: "Bathrooms", extras: "Extras", access: "Access details", urgency: "Timing" };
-  return labels[key] || key.replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const labels: Record<string, string> = { cleanType: "Cleaning type", propertyType: "Property type", wasteRemoval: "Waste removal", bedrooms: "Bedrooms", bathrooms: "Bathrooms", extras: "Extras", access: "Access details", urgency: "Timing" };
+  return labels[key] || key.replace(/([a-z])([A-Z])/g, "$1 $2").replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function formatJobValue(value: unknown) {
@@ -129,7 +129,7 @@ function JobDetails({ data, photos }: { data: { service: string; service_subtype
     {answers.length > 0 && <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm"><span className="text-[#526078]">{formatJobLabel(answers[0][0])} {formatJobValue(answers[0][1])}</span></div>}
     <p className="mt-2 text-sm font-bold text-[#526078]">{data.budget_amount == null ? "Open to offers" : `Budget · £${Number(data.budget_amount).toFixed(2).replace(/\\.00$/, "")}`}</p>
     {answers.length > 1 && <dl className="mt-4 grid gap-2 sm:grid-cols-2">{answers.slice(1).map(([key, value]) => <div key={key} className="flex justify-between gap-4 border-b border-[#f0f2f5] py-2 text-sm"><dt className="text-[#657089]">{formatJobLabel(key)}</dt><dd className="text-right font-bold">{formatJobValue(value)}</dd></div>)}</dl>}
-    {data.optional_note && <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-[#39465b]">{data.optional_note}</p>}
+    {data.optional_note && <div className="mt-4"><p className="text-sm font-black">Additional details</p><p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[#39465b]">{data.optional_note}</p></div>}
     {photos.some((photo) => photo.url) && <div className="mt-5"><p className="text-sm font-black">Photos</p><div className="mt-2 grid grid-cols-3 gap-2">{photos.filter((photo): photo is { id: string; url: string } => !!photo.url).map((photo) => <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"><img src={photo.url} alt="Job attachment" className="aspect-square w-full rounded-xl object-cover" /></a>)}</div></div>}
   </section>;
 }

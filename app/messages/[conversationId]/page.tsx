@@ -11,6 +11,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { destinationForAccount, getCurrentAccountContext } from "@/lib/auth/account-role";
 import { formatMarketplaceAmount } from "@/lib/marketplace/customer-job-state";
+import { formatMarketplaceProviderName } from "@/lib/marketplace/presentation";
 
 type Attachment = { id: string; message_id: string; storage_path: string; url: string | null };
 
@@ -57,7 +58,7 @@ export default async function MessagesPage({ params, searchParams, providerOnly 
   for (const attachment of signed) byMessage.set(attachment.message_id, [...(byMessage.get(attachment.message_id) || []), attachment]);
   const title = (job.service_subtype || job.service || "Quickola job").replaceAll("-", " ");
   const isAccepted = quote?.status === "accepted" || quote?.status === "selected";
-  const providerName = providerProfile?.business_name || providerProfile?.display_name || "Your provider";
+  const providerName = formatMarketplaceProviderName(providerProfile?.business_name || providerProfile?.display_name);
   const providerProfileHref = conversationProviderId ? `/providers/${conversationProviderId}?job=${conversation.job_id}&offer=${quote?.id || ""}&returnTo=/messages/${conversationId}` : null;
   const header = isProvider ? <ProviderHeader /> : <MarketplaceHeader />;
   const errorMessage = query.error === "attachment_invalid_type" ? "Choose a JPG, PNG or WebP image." : query.error === "attachment_too_large" ? "Choose an image smaller than 5 MB." : query.error === "attachment_upload_failed" ? "We couldn't upload that photo. Please try again." : query.error === "attachment_db_failed" ? "We couldn't save that photo. Please try again." : query.error === "message_db_failed" ? "We couldn't send that message. Please try again." : query.error === "attachment_empty" ? "Add a message or choose a photo." : query.error === "unauthorized" ? "You cannot access this conversation." : query.error === "send" || query.error === "attachment" ? "Message could not be sent." : null;
