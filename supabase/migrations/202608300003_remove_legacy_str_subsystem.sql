@@ -4,7 +4,7 @@
 
 do $$
 declare
-  table_name text;
+  legacy_table_name text;
   has_rows boolean;
   legacy_tables text[] := array[
     'booking_photos', 'business_issues', 'invoices', 'recurring_schedules',
@@ -25,19 +25,19 @@ begin
     table_name text primary key
   ) on commit drop;
 
-  foreach table_name in array legacy_tables loop
-    if to_regclass('public.' || table_name) is not null then
-      if table_name = 'cleaner_profiles' then
+  foreach legacy_table_name in array legacy_tables loop
+    if to_regclass('public.' || legacy_table_name) is not null then
+      if legacy_table_name = 'cleaner_profiles' then
         raise notice 'Retaining legacy table public.cleaner_profiles by explicit safety rule';
       else
-        execute format('select exists (select 1 from public.%I limit 1)', table_name)
+        execute format('select exists (select 1 from public.%I limit 1)', legacy_table_name)
           into has_rows;
         if has_rows then
-          raise notice 'Retaining populated legacy table public.% because it contains data', table_name;
+          raise notice 'Retaining populated legacy table public.% because it contains data', legacy_table_name;
         else
-          insert into legacy_empty_tables(table_name) values (table_name)
+          insert into legacy_empty_tables(table_name) values (legacy_table_name)
           on conflict (table_name) do nothing;
-          raise notice 'Legacy table public.% is empty and eligible for cleanup', table_name;
+          raise notice 'Legacy table public.% is empty and eligible for cleanup', legacy_table_name;
         end if;
       end if;
     end if;
@@ -75,16 +75,16 @@ $$;
 -- trigger functions remain below if they could still be needed by retained data.
 do $$
 begin
-  if exists (select 1 from legacy_empty_tables where table_name = 'properties') then
+  if exists (select 1 from legacy_empty_tables AS let where let.table_name = 'properties') then
     execute 'drop trigger if exists properties_default_str_checklist on public.properties';
   end if;
-  if exists (select 1 from legacy_empty_tables where table_name = 'reservations') then
+  if exists (select 1 from legacy_empty_tables AS let where let.table_name = 'reservations') then
     execute 'drop trigger if exists guard_reservation_overlap on public.reservations';
   end if;
-  if exists (select 1 from legacy_empty_tables where table_name = 'business_members') then
+  if exists (select 1 from legacy_empty_tables AS let where let.table_name = 'business_members') then
     execute 'drop trigger if exists enforce_business_member_portal_role on public.business_members';
   end if;
-  if exists (select 1 from legacy_empty_tables where table_name = 'workers') then
+  if exists (select 1 from legacy_empty_tables AS let where let.table_name = 'workers') then
     execute 'drop trigger if exists enforce_worker_portal_role on public.workers';
   end if;
 end
