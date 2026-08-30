@@ -10,6 +10,9 @@ const composer = read("app/messages/MessageComposer.tsx");
 const migration = read("supabase/migrations/202608290002_marketplace_message_attachments.sql");
 const jobPage = read("app/work/jobs/[id]/page.tsx");
 const conversationBubble = read("app/components/marketplace/MarketplaceMessageBubble.tsx");
+const customerJobPage = read("app/jobs/[token]/page.tsx");
+const customerJobActions = read("app/jobs/actions.ts");
+const quoteState = read("lib/marketplace/customer-job-state.ts");
 
 test("provider messaging stays on provider routes while customer routes remain separate", () => {
   assert.ok(index.includes('providerOnly ? "/work/messages"'));
@@ -48,4 +51,21 @@ test("messages may contain text, images, or both but not neither", () => {
   assert.match(upload, /!body && files\.length === 0/);
   assert.match(upload, /body: body \|\| null/);
   assert.match(migration, /body is null or length\(trim\(body\)\) between 1 and 4000/);
+});
+
+test("customer job details resolve the public token to the internal job id and show bidder-backed offers", () => {
+  assert.match(customerJobPage, /\.eq\("public_token", token\)/);
+  assert.match(customerJobPage, /\.eq\("job_id", data\.id\)/);
+  assert.match(customerJobPage, /getMarketplaceQuoteProviderId/);
+  assert.match(customerJobPage, /\.in\("user_id", quoteProviderIds\)/);
+  assert.match(customerJobPage, /Offers \<span className=\"text-\[#657089\]\"\>\(\{quotes\.length\}\)\<\/span\>/);
+  assert.doesNotMatch(customerJobPage, /Availability to confirm/);
+});
+
+test("customer offers and conversations use the same active statuses and internal job identity", () => {
+  assert.match(quoteState, /ACTIVE_MARKETPLACE_OFFER_STATUSES = \["pending", "submitted", "selected", "accepted"\]/);
+  assert.match(customerJobPage, /\.in\("status", \[\.\.\.ACTIVE_MARKETPLACE_OFFER_STATUSES\]\)/);
+  assert.match(customerJobActions, /\.eq\("public_token", token\)/);
+  assert.match(customerJobActions, /jobId: job\.id, providerId, actorUserId: user\.id, customerId: customer\.id/);
+  assert.match(customerJobActions, /redirect\(`\/messages\/\$\{conversation\.id\}`\)/);
 });

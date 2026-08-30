@@ -5,6 +5,12 @@ export type CustomerJobState =
   | "payment_processing"
   | "booked";
 
+export const ACTIVE_MARKETPLACE_OFFER_STATUSES = ["pending", "submitted", "selected", "accepted"] as const;
+
+export function getMarketplaceQuoteProviderId(quote: { provider_id?: string | null; bidder_user_id?: string | null } | null | undefined) {
+  return quote?.provider_id || quote?.bidder_user_id || null;
+}
+
 type QuoteSnapshot = {
   status?: string | null;
 };

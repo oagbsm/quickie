@@ -5,10 +5,9 @@ import MobileBottomNav from "@/app/components/marketplace/MobileBottomNav";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-access";
-import { formatMarketplaceAmount, getCustomerJobLifecycleLabel, getCustomerJobLifecycleState, normalizeMarketplaceRelation } from "@/lib/marketplace/customer-job-state";
+import { ACTIVE_MARKETPLACE_OFFER_STATUSES, formatMarketplaceAmount, getCustomerJobLifecycleLabel, getCustomerJobLifecycleState, getMarketplaceQuoteProviderId, normalizeMarketplaceRelation } from "@/lib/marketplace/customer-job-state";
 import { destinationForAccount, getCurrentAccountContext } from "@/lib/auth/account-role";
 
-const ACTIVE_OFFER_STATUSES = ["pending", "submitted", "selected", "accepted"];
 type Quote = { id: string; amount_pence: number; status: string; provider_id?: string | null; bidder_user_id?: string | null };
 type Booking = { quote_id: string; amount_pence: number; payment_status?: string | null; stripe_checkout_session_id?: string | null; status?: string | null; completion_status?: string | null };
 type PostedRow = { id: string; public_token: string | null; service: string; service_subtype: string | null; postcode: string; requested_timing?: string | null; budget_amount: number | null; marketplace_quotes?: Quote[] | Quote; marketplace_bookings?: Booking[] | Booking };
@@ -49,14 +48,14 @@ export default async function MyJobsPage() {
   }
   const jobIds = (posted || []).map((job) => job.id);
   const { data: conversations } = jobIds.length ? await admin.from("marketplace_conversations").select("id,job_id").in("job_id", jobIds) : { data: [] };
-  const providerIds = (posted || []).flatMap((job) => normalizeMarketplaceRelation(job.marketplace_quotes).map((quote) => (quote as Quote).provider_id || (quote as Quote).bidder_user_id).filter(Boolean) as string[]);
+  const providerIds = (posted || []).flatMap((job) => normalizeMarketplaceRelation(job.marketplace_quotes).map((quote) => getMarketplaceQuoteProviderId(quote as Quote)).filter(Boolean) as string[]);
   const { data: providerProfiles } = providerIds.length ? await admin.from("marketplace_providers").select("user_id,display_name,business_name").in("user_id", [...new Set(providerIds)]) : { data: [] };
   const providerNames = new Map((providerProfiles || []).map((profile) => [profile.user_id, profile.business_name || profile.display_name || "Your provider"]));
   const conversationIdsByJob = new Map<string, string[]>();
   for (const conversation of conversations || []) conversationIdsByJob.set(conversation.job_id, [...(conversationIdsByJob.get(conversation.job_id) || []), conversation.id]);
   const jobs = (posted || []).map((job) => {
     const quotes = normalizeMarketplaceRelation(job.marketplace_quotes) as Quote[];
-    const activeQuotes = quotes.filter((quote) => ACTIVE_OFFER_STATUSES.includes(quote.status));
+    const activeQuotes = quotes.filter((quote) => ACTIVE_MARKETPLACE_OFFER_STATUSES.includes(quote.status as (typeof ACTIVE_MARKETPLACE_OFFER_STATUSES)[number]));
     const acceptedQuote = activeQuotes.find((quote) => ["accepted", "selected"].includes(quote.status));
     const bookings = normalizeMarketplaceRelation(job.marketplace_bookings) as Booking[];
     const booking = acceptedQuote ? bookings.find((item) => item.quote_id === acceptedQuote.id) : undefined;
