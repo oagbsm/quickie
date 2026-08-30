@@ -13,23 +13,33 @@ const value = (form: FormData, name: string) => String(form.get(name) || "").tri
 
 function selectedServices(form: FormData) {
   const allowed = new Set(marketplaceServices.flatMap((service) => service.jobs.filter((job) => job.active).map((job) => `${service.slug}|${job.slug}`)));
-  return [...new Set(form.getAll("service").map(String).filter((item) => allowed.has(item)))];
+  return [...new Set(form.getAll("service").map(String).map((item) => item.trim()).filter((item) => item && allowed.has(item)))];
 }
 
-async function saveServicesAndCoverage(providerId: string, services: string[]) {
+function logServicePersistenceFailure(operation: string, context: { userId: string; providerId: string; serviceCount: number }, error: { code?: string; message?: string; details?: string; hint?: string } | null | undefined) {
+  if (!error) return;
+  console.error("[provider-services] operation failed", { operation, ...context, code: error.code || null, message: error.message || null, details: error.details || null, hint: error.hint || null });
+}
+
+async function saveServicesAndCoverage(userId: string, providerId: string, services: string[]) {
   const admin = createSupabaseAdminClient();
-  const { data: existing, error: existingError } = await admin.from("marketplace_provider_services").select("category_slug,job_type_slug,qualification_verified").eq("provider_id", providerId);
-  if (existingError) redirect("/work/onboarding?error=save");
+  const { data: existing, error: existingError } = await admin.from("marketplace_provider_services").select("id,category_slug,job_type_slug,qualification_verified").eq("provider_id", providerId);
+  const context = { userId, providerId, serviceCount: services.length };
+  if (existingError) { logServicePersistenceFailure("select existing services", context, existingError); redirect("/work/onboarding?error=save"); }
   const verified = new Set((existing || []).filter((item) => item.qualification_verified).map((item) => `${item.category_slug}|${item.job_type_slug}`));
-  const removed = await admin.from("marketplace_provider_services").delete().eq("provider_id", providerId);
-  if (removed.error) redirect("/work/onboarding?error=save");
   if (services.length) {
-    const inserted = await admin.from("marketplace_provider_services").insert(services.map((item) => { const [category_slug, job_type_slug] = item.split("|"); return { provider_id: providerId, category_slug, job_type_slug, active: true, qualification_verified: verified.has(item) }; }));
-    if (inserted.error) redirect("/work/onboarding?error=save");
+    const upserted = await admin.from("marketplace_provider_services").upsert(services.map((item) => { const [category_slug, job_type_slug] = item.split("|"); return { provider_id: providerId, category_slug, job_type_slug, active: true, qualification_verified: verified.has(item) }; }), { onConflict: "provider_id,job_type_slug" });
+    if (upserted.error) { logServicePersistenceFailure("upsert selected services", context, upserted.error); redirect("/work/onboarding?error=save"); }
+  }
+  const selectedSet = new Set(services);
+  const removable = (existing || []).filter((item) => !item.qualification_verified && !selectedSet.has(`${item.category_slug}|${item.job_type_slug}`)).map((item) => item.id);
+  if (removable.length) {
+    const removed = await admin.from("marketplace_provider_services").delete().eq("provider_id", providerId).in("id", removable);
+    if (removed.error) { logServicePersistenceFailure("remove deselected services", context, removed.error); redirect("/work/onboarding?error=save"); }
   }
   if (services.length) {
     const areas = await admin.from("marketplace_provider_service_areas").upsert(MAIDENHEAD_MARKET_POSTCODE_DISTRICTS.map((postcode_district) => ({ provider_id: providerId, postcode_district, active: true })), { onConflict: "provider_id,postcode_district" });
-    if (areas.error) redirect("/work/onboarding?error=save");
+    if (areas.error) { logServicePersistenceFailure("upsert service areas", context, areas.error); redirect("/work/onboarding?error=save"); }
   }
 }
 
@@ -57,7 +67,7 @@ export async function saveProviderOnboarding(form: FormData) {
   }
   const update = await admin.from("marketplace_providers").update({ display_name: displayName || businessName, business_name: businessName || null, phone, provider_type: providerType, profile_photo_url: photoPath, base_town: "Maidenhead", ...(termsAccepted ? { provider_terms_accepted_at: new Date().toISOString(), terms_version: "provider-2026-08" } : {}), updated_at: new Date().toISOString() }).eq("user_id", provider.providerId);
   if (update.error) redirect("/work/onboarding?error=save");
-  if (services.length || currentStep >= 2) await saveServicesAndCoverage(provider.providerId, services);
+  if (services.length || currentStep >= 2) await saveServicesAndCoverage(provider.user.id, provider.providerId, services);
   revalidatePath("/work");
   revalidatePath("/work/onboarding");
   redirect(`/work/onboarding?saved=1&step=${Math.min(3, currentStep + 1)}`);

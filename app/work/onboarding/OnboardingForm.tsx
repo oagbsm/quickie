@@ -57,7 +57,7 @@ export default function OnboardingForm({ services, initial, initialServices, pro
     finally { setPhotoSaving(false); }
   }
 
-  const errorMessage = error ? "We couldn’t save that update. Please try again." : "";
+  const errorMessage = error ? "We couldn’t save your services. Please try again." : "";
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-[#061b3f]">
       <header className="border-b border-[#e7ebef] bg-white"><div className="mx-auto flex min-h-16 max-w-5xl items-center justify-between gap-4 px-5 sm:px-8"><Link href="/work" className="text-xl font-black">Quickola</Link><ProviderHeaderNavigation pending /></div></header>
