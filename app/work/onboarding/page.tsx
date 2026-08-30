@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { marketplaceServices } from "@/app/data/marketplace";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getOrCreateMarketplaceProvider, isProviderBasicProfileComplete, isProviderProfileComplete } from "@/lib/marketplace/provider-access";
+import { getOrCreateMarketplaceProvider, isProviderBasicProfileComplete, isProviderReadyToSubmit } from "@/lib/marketplace/provider-access";
 import { refreshProviderPayoutStatus } from "@/lib/server/provider-stripe";
 import OnboardingForm from "./OnboardingForm";
 import PendingReview from "./PendingReview";
@@ -33,7 +33,7 @@ export default async function ProviderOnboardingPage({ searchParams }: { searchP
   const photoUrl = photoPath.startsWith("http") ? photoPath : photoPath ? (await admin.storage.from("marketplace-provider-photos").createSignedUrl(photoPath, 600)).data?.signedUrl || null : null;
   const initial = { ...provider.profile, email: provider.user.email || "" };
   const initialServices = (services || []).filter((service) => service.active).map((service) => `${service.category_slug}|${service.job_type_slug}`);
-  const profileComplete = isProviderProfileComplete(provider.profile, (services || []).filter((service) => service.active).length, areasCount || 0);
+  const profileComplete = isProviderReadyToSubmit(provider.profile, (services || []).filter((service) => service.active).length, areasCount || 0, provider.emailConfirmedAt, provider.stripeStatus);
   const basicProfileComplete = isProviderBasicProfileComplete(provider);
   if (provider.providerStatus === "pending_review" || provider.providerStatus === "suspended" || (provider.providerStatus === "approved" && !query.edit && !query.setup && !query.payouts)) {
     if (provider.providerStatus === "approved") redirect("/work/profile#account-readiness");

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { MAIDENHEAD_MARKET_POSTCODE_DISTRICTS, marketplaceServices } from "@/app/data/marketplace";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getMarketplaceProvider, isProviderProfileComplete } from "@/lib/marketplace/provider-access";
+import { getMarketplaceProvider, isProviderReadyToSubmit } from "@/lib/marketplace/provider-access";
 import { createProviderPayoutLink, refreshProviderPayoutStatus } from "@/lib/server/provider-stripe";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
@@ -116,8 +116,7 @@ export async function submitProviderApplication() {
     admin.from("marketplace_provider_service_areas").select("id", { count: "exact", head: true }).eq("provider_id", provider.providerId).eq("active", true),
   ]);
   if (profile?.provider_status === "suspended") redirect("/work/onboarding?error=suspended");
-  if (!profile || !isProviderProfileComplete(profile, servicesCount || 0, areasCount || 0)) redirect("/work/onboarding?error=incomplete");
-  if (!profile.provider_terms_accepted_at) redirect("/work/onboarding?error=terms");
+  if (!profile || !isProviderReadyToSubmit(profile, servicesCount || 0, areasCount || 0, provider.emailConfirmedAt, profile.stripe_status)) redirect("/work/onboarding?error=incomplete");
   if (profile.provider_status === "approved") redirect("/work");
   await admin.from("marketplace_providers").update({ provider_status: "pending_review", submitted_at: new Date().toISOString(), action_required_reason: null, updated_at: new Date().toISOString() }).eq("user_id", provider.providerId).in("provider_status", ["draft", "action_required"]);
   await admin.from("marketplace_provider_status_history").insert({ provider_id: provider.providerId, from_status: provider.providerStatus, to_status: "pending_review", changed_by: provider.user.id });

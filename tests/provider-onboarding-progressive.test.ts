@@ -45,7 +45,8 @@ test("unimplemented qualification checks do not block provider quoting or profil
   assert.doesNotMatch(profile, /Service requirements|Checks needed for|Contact Quickola/);
   assert.match(profile, /Payouts/);
   assert.match(profile, /Services/);
-  assert.match(onboarding, /quoteReadinessComplete = profileComplete && emailVerified && hasServices && hasPhoto && termsAccepted && payoutReady/);
+  assert.match(onboarding, /quoteReadinessComplete = profileComplete/);
+  assert.match(access, /isProviderReadyToSubmit/);
   assert.doesNotMatch(onboarding, /qualification verification for selected regulated work/);
 });
 
@@ -64,7 +65,10 @@ test("quote readiness uses one status-driven payout action and hides submission 
   assert.match(onboarding, /Continue payout setup/);
   assert.match(onboarding, /const canSubmit = \["draft", "action_required"\]/);
   assert.match(onboarding, /Almost done/);
+  assert.match(onboarding, /Everything is ready/);
   assert.match(onboarding, /Submit for review/);
+  assert.match(onboarding, /!canSubmit &&/);
+  assert.doesNotMatch(onboarding, /start sending quotes/);
   assert.match(onboarding, /Payout details received — verification in progress/);
   assert.match(onboarding, /Payout setup needs more information/);
   assert.doesNotMatch(onboarding, /Payout status refreshed/);
