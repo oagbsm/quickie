@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import Stripe from "stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { describeStripeError, getStripe, getStripeWebhookSecret } from "@/lib/server/marketplace-payments";
+import { notifyBookingPaid } from "@/lib/marketplace/email/transactional";
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "job_update_failed" }, { status: 500 });
   }
   console.info("[marketplace-payment] booking marked paid", { eventId: event.id, bookingId, quoteId: booking.quote_id, jobId: booking.job_id, amountPence: booking.amount_pence, currency: booking.currency });
+  try { await notifyBookingPaid(booking.id); } catch (notificationError) { console.error("marketplace_booking_email_failed", { bookingId: booking.id, reason: notificationError instanceof Error ? notificationError.message.slice(0, 120) : "unknown" }); }
   const jobRelation = Array.isArray(booking.marketplace_jobs) ? booking.marketplace_jobs[0] : booking.marketplace_jobs;
   revalidatePath("/my-jobs");
   if (jobRelation?.public_token) revalidatePath(`/jobs/${jobRelation.public_token}`);

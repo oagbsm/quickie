@@ -4,12 +4,13 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { sendMarketplaceCustomerEmail } from "@/lib/server/marketplace-notifications";
+import { notifyCompletionOutcome, notifyFirstMarketplaceOffer } from "@/lib/marketplace/email/transactional";
 import { getOperationalMarketplaceProvider } from "@/lib/marketplace/provider-access";
 import { getOrCreateMarketplaceConversation } from "@/lib/marketplace/conversations";
 import { getStripe } from "@/lib/server/marketplace-payments";
 import { createMarketplaceCheckout } from "@/app/jobs/payment-actions";
 import { getCurrentAccountRole } from "@/lib/auth/account-role";
+import { transferMarketplaceProviderFunds } from "@/lib/server/marketplace-transfers";
 
 export async function submitMarketplaceOffer(formData: FormData) {
   const token = String(formData.get("token") || "");
@@ -29,6 +30,7 @@ export async function submitMarketplaceOffer(formData: FormData) {
   const { error } = await supabase.rpc("submit_marketplace_quote", { target_job: job.id, quote_amount: amount, quote_availability: scheduledDate ? "date" : "flexible", quote_available_at: scheduledDate && arrivalWindowStart ? `${scheduledDate}T${arrivalWindowStart}:00Z` : null, quote_availability_text: availability, quote_message: message || null });
   if (error) redirect(`/jobs/${token}?error=${/booked|locked|not_open/i.test(error.message) ? "locked" : "offer"}`);
   if (scheduledDate && arrivalWindowStart && arrivalWindowEnd) await admin.from("marketplace_quotes").update({ scheduled_date: scheduledDate, arrival_window_start: arrivalWindowStart, arrival_window_end: arrivalWindowEnd }).eq("job_id", job.id).eq("provider_id", provider.providerId);
+  try { await notifyFirstMarketplaceOffer(job.id); } catch (notificationError) { console.error("marketplace_offer_email_failed", { jobId: job.id, reason: notificationError instanceof Error ? notificationError.message.slice(0, 120) : "unknown" }); }
   redirect(`/jobs/${token}?offered=1`);
 }
 
@@ -64,7 +66,6 @@ export async function chooseMarketplaceQuote(formData: FormData) {
     console.error("[marketplace-payment] Offer acceptance failed", { stage: "accept-offer", token, quoteId, userId: user.id, code: error.code, reason: error.message });
     redirect(returnTo.startsWith("/") ? `${returnTo}?error=selection` : `/jobs/${token}?error=selection`);
   }
-  if (customer.email) await sendMarketplaceCustomerEmail({ customerId: customer.id, jobId: job.id, eventType: "quote_selected", recipient: customer.email, idempotencyKey: `quote_selected:${quoteId}`, subject: "Your Quickola professional has been selected", html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>Professional selected</h1><p>Review the service price and booking details for your Quickola job.</p><p><a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://quickola.co.uk"}/jobs/${encodeURIComponent(token)}">Review your job</a></p></div>` });
   revalidatePath(returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : `/jobs/${token}`);
   const checkoutData = new FormData();
   checkoutData.set("token", token);
@@ -148,6 +149,13 @@ export async function confirmMarketplaceCompletion(formData: FormData) {
   if (!user || !token || !bookingId) redirect(`/jobs/${token}`);
   const { error } = await supabase.rpc("confirm_marketplace_completion", { target_booking: bookingId });
   if (error) redirect(`/jobs/${token}?error=completion`);
+  let transferStatus: "paid" | "blocked" | "failed" | "already_processing" = "failed";
+  try {
+    transferStatus = (await transferMarketplaceProviderFunds(bookingId)).status;
+  } catch (transferError) {
+    console.error("[marketplace-transfer] completion settlement failed", { bookingId, reason: transferError instanceof Error ? transferError.message : "unknown" });
+  }
+  try { await notifyCompletionOutcome(bookingId, "confirmed", transferStatus); } catch (notificationError) { console.error("marketplace_completion_email_failed", { bookingId, reason: notificationError instanceof Error ? notificationError.message.slice(0, 120) : "unknown" }); }
   revalidatePath(`/jobs/${token}`);
   revalidatePath("/my-jobs");
   redirect(`/jobs/${token}`);
@@ -160,6 +168,7 @@ export async function reportMarketplaceCompletionIssue(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("report_marketplace_completion_issue", { target_booking: bookingId });
   if (error) redirect(`/jobs/${token}?error=completion`);
+  try { await notifyCompletionOutcome(bookingId, "issue_reported"); } catch (notificationError) { console.error("marketplace_completion_email_failed", { bookingId, reason: notificationError instanceof Error ? notificationError.message.slice(0, 120) : "unknown" }); }
   revalidatePath(`/jobs/${token}`);
   redirect(`/jobs/${token}`);
 }

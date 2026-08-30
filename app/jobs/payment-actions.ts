@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { describeStripeError, getStripe, getSiteUrl, MARKETPLACE_PLATFORM_FEE_PERCENT } from "@/lib/server/marketplace-payments";
+import { calculateMarketplacePlatformFeePence, describeStripeError, getStripe, getSiteUrl } from "@/lib/server/marketplace-payments";
 import { getCurrentAccountRole } from "@/lib/auth/account-role";
 
 export async function createMarketplaceCheckout(formData: FormData) {
@@ -39,7 +39,7 @@ export async function createMarketplaceCheckout(formData: FormData) {
   const { data: conversation } = providerId
     ? await admin.from("marketplace_conversations").select("id").eq("job_id", job.id).or(`provider_id.eq.${providerId},bidder_user_id.eq.${providerId}`).maybeSingle()
     : { data: null };
-  const platformFeePence = Math.round(amountPence * MARKETPLACE_PLATFORM_FEE_PERCENT / 100);
+  const platformFeePence = calculateMarketplacePlatformFeePence(amountPence);
   let booking = existingBooking;
   if (!booking) {
     const inserted = await admin.from("marketplace_bookings").insert({ job_id: job.id, quote_id: quote.id, customer_id: customer.id, provider_id: providerId, conversation_id: conversation?.id || null, amount_pence: amountPence, currency: "gbp", platform_fee_pence: platformFeePence, payment_status: "pending_payment", status: "awaiting_booking_fee" }).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id").single();
@@ -83,6 +83,7 @@ export async function createMarketplaceCheckout(formData: FormData) {
         line_items: [{ price_data: { currency: "gbp", product_data: { name: "Quickola marketplace booking" }, unit_amount: amountPence }, quantity: 1 }],
         customer_email: customer.email || undefined,
         metadata: { booking_id: booking.id, job_id: job.id, quote_id: quote.id, conversation_id: conversation?.id || booking.conversation_id || "" },
+        payment_intent_data: { transfer_group: `marketplace_booking:${booking.id}` },
         success_url: successUrl.toString(),
         cancel_url: cancelUrl.toString(),
       }, { idempotencyKey: `marketplace-booking:${booking.id}` });

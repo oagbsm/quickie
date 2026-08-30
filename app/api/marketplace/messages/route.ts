@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getMarketplaceProvider } from "@/lib/marketplace/provider-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { notifyFirstMarketplaceMessage } from "@/lib/marketplace/email/transactional";
 
 const BUCKET = "marketplace-message-attachments";
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -140,6 +141,8 @@ export async function POST(request: Request) {
       return failure(request, returnTo, "attachment_db_failed");
     }
   }
+
+  try { await notifyFirstMarketplaceMessage(conversationId, user.id); } catch (notificationError) { console.error("marketplace_message_email_failed", { conversationId, reason: notificationError instanceof Error ? notificationError.message.slice(0, 120) : "unknown" }); }
 
   return go(request, returnTo);
 }

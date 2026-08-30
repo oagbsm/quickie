@@ -6,7 +6,7 @@ export function resolveResendFromEmail(
 
 export function getResendFromEmail() {
   return resolveResendFromEmail({
-    RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+    RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL || process.env.TRANSACTIONAL_EMAIL_FROM,
   });
 }
 

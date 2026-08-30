@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireProviderOperationalAccess } from "@/lib/marketplace/provider-access";
 import { getOrCreateMarketplaceConversation } from "@/lib/marketplace/conversations";
+import { notifyCustomerCompletionRequest, notifyFirstMarketplaceMessage, notifyFirstMarketplaceOffer } from "@/lib/marketplace/email/transactional";
 
 export async function submitWorkOffer(formData: FormData) {
   const jobId = String(formData.get("jobId") || "");
@@ -32,6 +33,7 @@ export async function submitWorkOffer(formData: FormData) {
     const admin = createSupabaseAdminClient();
     await admin.from("marketplace_quotes").update({ scheduled_date: resolvedDate, arrival_window_start: null, arrival_window_end: null }).eq("job_id", jobId).eq("provider_id", provider.providerId);
   }
+  try { await notifyFirstMarketplaceOffer(jobId); } catch (notificationError) { console.error("marketplace_offer_email_failed", { jobId, reason: notificationError instanceof Error ? notificationError.message.slice(0, 120) : "unknown" }); }
   redirect(`/work/jobs/${jobId}?sent=1`);
 }
 
@@ -65,6 +67,8 @@ export async function sendProviderJobMessage(formData: FormData) {
     redirect(`/work/jobs/${jobId}?error=message`);
   }
 
+  try { await notifyFirstMarketplaceMessage(conversation.id, provider.user.id); } catch (notificationError) { console.error("marketplace_message_email_failed", { conversationId: conversation.id, reason: notificationError instanceof Error ? notificationError.message.slice(0, 120) : "unknown" }); }
+
   revalidatePath(`/work/jobs/${jobId}`);
   redirect(`/work/jobs/${jobId}`);
 }
@@ -89,6 +93,9 @@ export async function advanceMarketplaceBooking(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("update_marketplace_booking_status", { target_booking: bookingId, next_status: nextStatus });
   if (error) redirect(`/work/jobs/${jobId}?error=booking_transition`);
+  if (nextStatus === "awaiting_customer_completion") {
+    try { await notifyCustomerCompletionRequest(bookingId); } catch (notificationError) { console.error("marketplace_completion_email_failed", { bookingId, reason: notificationError instanceof Error ? notificationError.message.slice(0, 120) : "unknown" }); }
+  }
   revalidatePath(`/work/jobs/${jobId}`);
   redirect(`/work/jobs/${jobId}`);
 }

@@ -2,9 +2,22 @@ import "server-only";
 import Stripe from "stripe";
 import { getAppOrigin } from "@/lib/app-url";
 
-// Connect is not configured yet, so test payments are collected by Quickola
-// without pretending that a provider payout has taken place.
-export const MARKETPLACE_PLATFORM_FEE_PERCENT = 0;
+// Sandbox marketplace payments are collected by Quickola first. Provider funds
+// are transferred only after customer completion confirmation.
+export const MARKETPLACE_PLATFORM_FEE_PERCENT = 10;
+
+/** Calculate the commission once, in integer pence, using deterministic rounding. */
+export function calculateMarketplacePlatformFeePence(amountPence: number) {
+  if (!Number.isSafeInteger(amountPence) || amountPence < 0) throw new Error("invalid_amount_pence");
+  return Math.floor(amountPence * MARKETPLACE_PLATFORM_FEE_PERCENT / 100);
+}
+
+export function calculateMarketplaceProviderAmountPence(amountPence: number, platformFeePence: number) {
+  if (!Number.isSafeInteger(amountPence) || !Number.isSafeInteger(platformFeePence) || amountPence < 0 || platformFeePence < 0 || platformFeePence > amountPence) {
+    throw new Error("invalid_marketplace_amounts");
+  }
+  return amountPence - platformFeePence;
+}
 
 export function getStripe() {
   const secret = process.env.STRIPE_SECRET_KEY;

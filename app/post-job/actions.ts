@@ -2,11 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { escapeHtml, sendAdminNotifications } from "@/lib/server/notifications";
-import { marketplaceJobUrl, sendMarketplaceCustomerEmail } from "@/lib/server/marketplace-notifications";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getJob } from "@/app/data/marketplace";
 import { getCurrentAccountRole } from "@/lib/auth/account-role";
+import { notifyMatchingProvidersForJob } from "@/lib/marketplace/email/transactional";
 
 const text = (form: FormData, key: string) => String(form.get(key) || "").trim();
 const normaliseMobile = (value: string) => { const compact = value.replace(/[^\d+]/g, ""); return compact.startsWith("07") ? `+44${compact.slice(1)}` : compact; };
@@ -93,7 +93,7 @@ export async function publishPendingMarketplaceJob(draftToken: string) {
   }
   const result = await sendAdminNotifications({ telegramHtml: ["🧰 <b>New Quickola consumer job request</b>", `Category: <b>${escapeHtml(payload.category.replaceAll("-", " "))}</b>`, `Job: <b>${escapeHtml(payload.service.replaceAll("-", " "))}</b>`, `When: ${escapeHtml(payload.when || "Not specified")}`, `Postcode: ${escapeHtml(payload.postcode)}`, `Email: ${escapeHtml(user.email || "Not provided")}`, payload.mobile ? `Mobile: ${escapeHtml(payload.mobile)}` : "", payload.description ? `<b>Job details</b>\n${escapeHtml(payload.description)}` : "No extra job note provided"].join("\n") });
   if (!result.telegramSent) console.warn("marketplace_job_notification_failed");
-  if (user.email) await sendMarketplaceCustomerEmail({ customerId: customer.id, jobId: job.id, eventType: "job_posted", recipient: user.email, idempotencyKey: `job_posted:${job.id}`, subject: "Your Quickola job is live", html: `<div style="font-family:Arial,sans-serif;color:#071638"><h1>Your job is live</h1><p>We’ll let you know when local professionals send quotes.</p><p><a href="${marketplaceJobUrl(job.public_token)}">View your job</a></p></div>` });
+  try { await notifyMatchingProvidersForJob(job.id); } catch (error) { console.error("marketplace_matching_email_failed", { jobId: job.id, reason: error instanceof Error ? error.message.slice(0, 120) : "unknown" }); }
   return { token: job.public_token };
 }
 
