@@ -10,6 +10,8 @@ const migration = readFileSync(new URL("../supabase/migrations/202608280001_prov
 const operationalMigration = readFileSync(new URL("../supabase/migrations/202608220003_provider_operational_eligibility.sql", import.meta.url), "utf8");
 const qualificationCompatibility = readFileSync(new URL("../supabase/migrations/202608290001_remove_unimplemented_provider_qualification_gate.sql", import.meta.url), "utf8");
 const profile = readFileSync(new URL("../app/work/profile/page.tsx", import.meta.url), "utf8");
+const workFeed = readFileSync(new URL("../app/work/page.tsx", import.meta.url), "utf8");
+const matching = readFileSync(new URL("../lib/marketplace/provider-job-matching.ts", import.meta.url), "utf8");
 
 test("provider onboarding separates Maidenhead browsing from quote readiness", () => {
   assert.match(onboarding, /Basic profile/);
@@ -20,9 +22,9 @@ test("provider onboarding separates Maidenhead browsing from quote readiness", (
   assert.match(actions, /MAIDENHEAD_MARKET_POSTCODE_DISTRICTS/);
 });
 
-test("browsing uses a separate server-side gate and RPC", () => {
+test("browsing uses a separate server-side gate and current marketplace matching", () => {
   assert.match(access, /canProviderBrowseJobs/);
-  assert.match(page, /get_marketplace_browse_opportunities/);
+  assert.match(page, /isMarketplaceJobMatch/);
   assert.match(migration, /marketplace_provider_can_browse/);
   assert.match(migration, /get_marketplace_browse_opportunities/);
   assert.match(migration, /SL6/);
@@ -148,4 +150,18 @@ test("provider profile presents real marketplace information without fake metric
   assert.match(profile, /Tell customers about your experience/);
   assert.match(profile, /New to Quickola/);
   assert.doesNotMatch(profile, /response rate|acceptance rate|repeat customer|earnings/);
+});
+
+test("provider job feed matches current provider services and active districts", () => {
+  assert.match(workFeed, /isMarketplaceJobMatch/);
+  assert.match(workFeed, /marketplace_provider_services/);
+  assert.match(workFeed, /marketplace_provider_service_areas/);
+  assert.match(workFeed, /in\("status", \["posted", "finding_provider"\]\)/);
+  assert.doesNotMatch(workFeed, /get_marketplace_browse_opportunities/);
+  assert.match(matching, /getPostcodeDistrict/);
+  assert.match(matching, /ACTIVE_PUBLIC_SEO_POSTCODE_DISTRICTS/);
+  assert.match(matching, /job\.service/);
+  assert.match(matching, /job\.service_subtype/);
+  assert.match(matching, /service\.active !== false/);
+  assert.match(matching, /area\.active !== false/);
 });

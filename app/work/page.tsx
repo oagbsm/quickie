@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import ProviderHeader from "@/app/components/marketplace/ProviderHeader";
 import { marketplaceServices } from "@/app/data/marketplace";
 import { canProviderBrowseJobs, getMarketplaceProvider, getSignedInUser } from "@/lib/marketplace/provider-access";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { destinationForAccount, getCurrentAccountContext } from "@/lib/auth/account-role";
+import { isMarketplaceJobMatch } from "@/lib/marketplace/provider-job-matching";
 
 function shortJobDetail(answers: unknown) {
   if (!answers || typeof answers !== "object" || Array.isArray(answers)) return "";
@@ -30,11 +30,13 @@ export default async function WorkPage({ searchParams }: { searchParams: Promise
   const activeServices = new Set((profile?.marketplace_provider_services || []).filter((item) => item.active).map((item) => item.category_slug));
   const activeAreas = (profile?.marketplace_provider_service_areas || []).filter((item) => item.active).map((item) => item.postcode_district);
   if (!canProviderBrowseJobs(provider, activeServices.size)) return <WorkspaceShell><ProviderStatusCard provider={provider} /></WorkspaceShell>;
-  const supabase = await createSupabaseServerClient();
-  const { data: matches } = await supabase.rpc("get_marketplace_browse_opportunities");
-  const ids = (matches || []).map((job: { id: string }) => job.id);
-  const { data: jobs } = ids.length ? await admin.from("marketplace_jobs").select("id,public_token,service,service_subtype,postcode,budget_amount,requested_timing,optional_note,pricing_answers,created_at,status").in("id", ids).order("created_at", { ascending: false }) : { data: [] };
-  const filtered = (jobs || []).filter((job) => !query.category || job.service === query.category).sort((a, b) => query.sort === "oldest" ? String(a.created_at).localeCompare(String(b.created_at)) : String(b.created_at).localeCompare(String(a.created_at)));
+  const [{ data: jobs }, { data: providerServices }, { data: providerAreas }] = await Promise.all([
+    admin.from("marketplace_jobs").select("id,public_token,service,service_subtype,postcode,budget_amount,requested_timing,optional_note,pricing_answers,created_at,status").in("status", ["posted", "finding_provider"]).order("created_at", { ascending: false }),
+    admin.from("marketplace_provider_services").select("category_slug,job_type_slug,active").eq("provider_id", provider.providerId),
+    admin.from("marketplace_provider_service_areas").select("postcode_district,active").eq("provider_id", provider.providerId),
+  ]);
+  const matchedJobs = (jobs || []).filter((job) => isMarketplaceJobMatch(job, providerServices || [], providerAreas || []));
+  const filtered = matchedJobs.filter((job) => !query.category || job.service === query.category).sort((a, b) => query.sort === "oldest" ? String(a.created_at).localeCompare(String(b.created_at)) : String(b.created_at).localeCompare(String(a.created_at)));
   const availableCategories = marketplaceServices.filter((service) => activeServices.has(service.slug));
   return <WorkspaceShell><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-black text-[#159548]">PRIVATE PROVIDER WORK</p><h1 className="mt-2 text-4xl font-black">Jobs near you</h1><p className="mt-2 text-[#657089]">Matching {activeAreas.join(", ") || profile?.service_area || "your service area"} · {filtered.length} available</p></div><Link href="/work/profile" className="min-h-11 rounded-xl border border-[#dbe1ea] px-4 py-3 text-sm font-black">Edit profile</Link></div><form className="mt-6 flex flex-wrap gap-2"><select name="category" defaultValue={query.category || ""} className="min-h-11 rounded-xl border border-[#dbe1ea] bg-white px-3 text-sm font-black"><option value="">All services</option>{availableCategories.map((service) => <option key={service.slug} value={service.slug}>{service.shortName}</option>)}</select><select name="sort" defaultValue={query.sort || "newest"} className="min-h-11 rounded-xl border border-[#dbe1ea] bg-white px-3 text-sm font-black"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select><button className="min-h-11 rounded-xl bg-[#061b3f] px-4 text-sm font-black text-white">Apply</button></form><div className="mt-7 grid gap-4 lg:grid-cols-2">{filtered.map((job) => <article key={job.id} className="rounded-3xl border border-[#e7ebef] bg-white p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.12em] text-[#159548]">{job.service}</p><h2 className="mt-2 text-xl font-black capitalize">{(job.service_subtype || job.service).replaceAll("-", " ")}</h2></div><span className="whitespace-nowrap text-sm font-black text-[#167d3c]">{job.budget_amount == null ? "Open budget" : `£${Number(job.budget_amount).toFixed(2).replace(/\.00$/, "")}`}</span></div><p className="mt-3 text-sm text-[#657089]">{job.postcode} · {job.requested_timing || "Flexible timing"}</p><p className="mt-3 line-clamp-2 text-sm leading-6 text-[#39465b]">{job.optional_note || shortJobDetail(job.pricing_answers) || "Customer has not added a description."}</p><p className="mt-4 text-xs font-bold text-[#8390a1]">Posted {new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(job.created_at))}</p><Link href={`/work/jobs/${job.id}`} className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-[#23a955] px-5 font-black text-[#061b3f]">View job</Link></article>)}{!filtered.length && <EmptyState title="No matching jobs right now. We’ll show new jobs here when they match your services and area." action="Edit services and area" href="/work/profile" />}</div></WorkspaceShell>;
 }
