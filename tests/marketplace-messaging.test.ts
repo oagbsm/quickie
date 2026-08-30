@@ -56,6 +56,25 @@ test("messages may contain text, images, or both but not neither", () => {
   assert.match(migration, /body is null or length\(trim\(body\)\) between 1 and 4000/);
 });
 
+test("customer conversation composer fits narrow mobile widths without changing send behavior", () => {
+  assert.match(composer, /className="mt-4 grid min-w-0 gap-2"/);
+  assert.match(composer, /className="flex min-w-0 gap-1\.5 sm:gap-2"/);
+  assert.match(composer, /shrink-0 cursor-pointer/);
+  assert.match(composer, /min-w-0 flex-1/);
+  assert.match(composer, /type="submit" disabled=\{busy\}/);
+  assert.match(composer, /fetch\("\/api\/marketplace\/messages"/);
+  assert.match(composer, /accept="image\/jpeg,image\/png,image\/webp"/);
+});
+
+test("conversation bubbles keep sender alignment, safe wrapping, compact timestamps and bounded images", () => {
+  assert.match(conversationBubble, /max-w-\[82%\]/);
+  assert.match(conversationBubble, /ml-auto bg-\[#061b3f\]/);
+  assert.match(conversationBubble, /break-words/);
+  assert.match(conversationBubble, /max-h-48 max-w-full/);
+  assert.match(conversationBubble, /text-\[10px\]/);
+  assert.match(conversationBubble, /target="_blank"/);
+});
+
 test("customer job details resolve the public token to the internal job id and show bidder-backed offers", () => {
   assert.match(customerJobPage, /\.eq\("public_token", token\)/);
   assert.match(customerJobPage, /\.eq\("job_id", data\.id\)/);
