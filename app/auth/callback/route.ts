@@ -76,7 +76,7 @@ function successfulCallbackDestination(
     return customer;
   }
 
-  const signIn = new URL("/auth/portal/sign-in", appOrigin);
+  const signIn = new URL("/sign-in", appOrigin);
   signIn.searchParams.set("confirmed", "1");
   if (user.email) signIn.searchParams.set("email", user.email);
   return signIn;
@@ -108,8 +108,8 @@ async function ensureMarketplaceCustomer(user: User) {
 async function ensureProviderSignupProfile(user: User) {
   const admin = createSupabaseAdminClient();
   const displayName = String(user.user_metadata?.full_name || user.user_metadata?.name || "").trim();
-  const { error } = await admin.from("cleaner_profiles").upsert(
-    { user_id: user.id, display_name: displayName || "Provider", role: "cleaner", provider_status: "draft", stripe_status: "not_started", updated_at: new Date().toISOString() },
+  const { error } = await admin.from("marketplace_providers").upsert(
+    { user_id: user.id, display_name: displayName || "Provider", provider_status: "draft", stripe_status: "not_started", updated_at: new Date().toISOString() },
     { onConflict: "user_id" },
   );
   return !error;
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type") as EmailOtpType | null;
-  const next = safeInternalNextPath(url.searchParams.get("next"), "/portal");
+  const next = safeInternalNextPath(url.searchParams.get("next"), "/");
   const draft = url.searchParams.get("draft");
   const providerInvite = url.searchParams.get("provider_invite");
   const purpose = url.searchParams.get("purpose");
@@ -172,8 +172,8 @@ export async function GET(request: NextRequest) {
   if (verificationFailed || !user) {
     const failureDestination = providerInvite
       ? new URL(`/provider/invite/accept?${new URLSearchParams({ token: providerInvite, error: code ? "oauth" : "confirmation" })}`, appOrigin)
-      : code || draft
-        ? new URL(`/sign-in?${new URLSearchParams({ ...(draft ? { draft } : {}), ...(next !== "/portal" ? { next } : {}), error: code ? "oauth" : "confirmation" })}`, appOrigin)
+        : code || draft
+        ? new URL(`/sign-in?${new URLSearchParams({ ...(draft ? { draft } : {}), ...(next !== "/" ? { next } : {}), error: code ? "oauth" : "confirmation" })}`, appOrigin)
         : failedCallbackDestination(next, email, appOrigin);
     const response = NextResponse.redirect(failureDestination);
     return staleSession
@@ -210,7 +210,6 @@ export async function GET(request: NextRequest) {
   const customerFlow = Boolean(
     draft ||
       purpose === "customer-signup" ||
-      next === "/portal" ||
       next === "/my-jobs" ||
       next.startsWith("/jobs/") ||
       next.startsWith("/messages/"),
@@ -230,7 +229,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!url.searchParams.has("next") && !purpose)
-    return NextResponse.redirect(new URL("/portal", appOrigin));
+    return NextResponse.redirect(new URL("/", appOrigin));
 
   return NextResponse.redirect(
     successfulCallbackDestination(next, purpose, user, appOrigin),

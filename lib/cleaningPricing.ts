@@ -5,7 +5,7 @@ export function calculateCleaningQuote(input: CleaningPriceInput) {
   const bedrooms = Math.min(8, Math.max(0, Number(input.bedrooms) || 0));
   const bathrooms = Math.min(8, Math.max(1, Number(input.bathrooms) || 1));
   let minutes = 60 + bedrooms * 30 + bathrooms * 25;
-  if (input.service === "Airbnb turnover") minutes += 30;
+  if (input.service === "Short-stay cleaning") minutes += 30;
   if (input.service === "Deep clean") minutes += 90;
   if (input.service === "End of tenancy") minutes += 150;
   if (input.service === "After builders") minutes += 180;

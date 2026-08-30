@@ -1,46 +1,46 @@
 import type { Metadata } from "next";
 import SolutionPage from "@/app/components/public/SolutionPage";
 export const metadata: Metadata = {
-  title: "Airbnb turnover coordination for STR operators | Quickola",
+  title: "Short-stay cleaning help | Quickola",
   description:
-    "Organise repeat turnaround cleans and track booking status for short-let properties in the Slough area.",
+    "Post short-stay cleaning jobs and compare offers from independent local providers.",
   alternates: { canonical: "/solutions/airbnb" },
 };
 export default function Page() {
   return (
     <SolutionPage
-      eyebrow="Airbnb & serviced accommodation"
-      title="Make repeat property turnarounds easier to coordinate."
-      intro="Keep property instructions and turnaround timing together, then bring your existing cleaner into the workflow."
-      sectionTitle="Repeat bookings without repeating instructions."
-      sectionIntro="Keep the details for each short-let property ready for the next guest changeover, without rebuilding the brief in a message thread."
+      eyebrow="Short-stay cleaning"
+      title="Find help between guest stays."
+      intro="Post the cleaning job, share the timing and compare offers from independent providers."
+      sectionTitle="Clear details for every cleaning job."
+      sectionIntro="Share the property type, timing and requirements once so providers can understand the work before making an offer."
       uses={[
-        "Reusable property and access instructions",
-        "Turnaround requests around guest changeovers",
-        "Requested timing and arrival information",
+        "Clear job and access details",
+        "Timing around guest changeovers",
+        "Offers from local providers",
+        "Message before choosing",
         "Booking progress visibility",
-        "Completed-clean history by property",
       ]}
       capabilities={[
         [
-          "Property instructions",
-          "Save access, parking and cleaning requirements against each accommodation.",
+          "Job details",
+          "Share access, parking and cleaning requirements with providers considering the job.",
         ],
         [
           "Changeover timing",
-          "Request a clean around the required guest departure and arrival window.",
+          "Add the required departure and arrival window to your job post.",
         ],
         [
-          "Cleaner assignment",
-          "Invite your cleaner, assign the turnover and keep the next action clear.",
+          "Provider choice",
+          "Compare independent providers, ask questions and choose the offer that suits you.",
         ],
         [
           "Booking progress",
-          "Follow each request from review through confirmation and completion.",
+          "Follow the job from offer review through booking and completion where supported.",
         ],
       ]}
-      scheduleTitle="Turnaround timing stays attached to the property."
-      schedule="Share the window and property details once. Your booking creates the clean, then your cleaner completes the checklist and evidence before the property is marked ready."
+      scheduleTitle="Timing stays attached to the job."
+      schedule="Share the window and details once. Providers can respond with their availability, and you can message before booking."
     />
   );
 }

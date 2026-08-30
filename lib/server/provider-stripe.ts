@@ -125,8 +125,8 @@ export async function syncProviderStripeStatus(accountId: string, account?: Prov
   const stripeAccount = account || await retrieveProviderAccount(accountId);
   const assessment = assessProviderStripeAccount(stripeAccount);
   const admin = createSupabaseAdminClient();
-  const { data: current } = await admin.from("cleaner_profiles").select("user_id,provider_status").eq("stripe_account_id", stripeAccount.id).maybeSingle();
-  const result = await admin.from("cleaner_profiles").update({ stripe_account_id: stripeAccount.id, stripe_status: assessment.status, marketplace_active: current?.provider_status === "approved" && assessment.payoutsEnabled, updated_at: new Date().toISOString() }).eq("stripe_account_id", stripeAccount.id);
+  const { data: current } = await admin.from("marketplace_providers").select("user_id,provider_status").eq("stripe_account_id", stripeAccount.id).maybeSingle();
+  const result = await admin.from("marketplace_providers").update({ stripe_account_id: stripeAccount.id, stripe_status: assessment.status, marketplace_active: current?.provider_status === "approved" && assessment.payoutsEnabled, updated_at: new Date().toISOString() }).eq("stripe_account_id", stripeAccount.id);
   if (result.error) {
     console.error("[provider-stripe] status sync failed", { accountId, code: result.error.code, message: result.error.message });
     throw new Error("provider_stripe_status_sync_failed");
@@ -144,7 +144,7 @@ export async function syncProviderStripeStatus(accountId: string, account?: Prov
 
 export async function createProviderPayoutLink(providerId: string, returnPath = "/work/onboarding") {
   const admin = createSupabaseAdminClient();
-  const { data: profile, error } = await admin.from("cleaner_profiles").select("user_id,stripe_account_id").eq("user_id", providerId).maybeSingle();
+  const { data: profile, error } = await admin.from("marketplace_providers").select("user_id,stripe_account_id").eq("user_id", providerId).maybeSingle();
   if (error || !profile) throw new Error("provider_not_found");
   const stripe = getStripe();
   const providerEmail = await resolveProviderEmail(providerId);
@@ -181,7 +181,7 @@ export async function createProviderPayoutLink(providerId: string, returnPath = 
     console.info("[provider-stripe] provider country configured", { providerId, accountId: account.id, country: QUICKOLA_PROVIDER_COUNTRY });
     console.info("[provider-stripe] Accounts v2 responsibilities configured", { providerId, accountId: account.id, feesCollector: "application", lossesCollector: "application" });
     accountId = account.id;
-    const update = await admin.from("cleaner_profiles").update({ stripe_account_id: accountId, stripe_status: "onboarding", updated_at: new Date().toISOString() }).eq("user_id", providerId);
+    const update = await admin.from("marketplace_providers").update({ stripe_account_id: accountId, stripe_status: "onboarding", updated_at: new Date().toISOString() }).eq("user_id", providerId);
     if (update.error) throw new Error("provider_stripe_account_save_failed");
   } else {
     console.info("[provider-stripe] existing account reused", { providerId, accountId });
@@ -212,7 +212,7 @@ export async function createProviderPayoutLink(providerId: string, returnPath = 
 
 export async function refreshProviderPayoutStatus(providerId: string) {
   const admin = createSupabaseAdminClient();
-  const { data: profile } = await admin.from("cleaner_profiles").select("stripe_account_id").eq("user_id", providerId).maybeSingle();
+  const { data: profile } = await admin.from("marketplace_providers").select("stripe_account_id").eq("user_id", providerId).maybeSingle();
   if (!profile?.stripe_account_id) return "not_started" as const;
   return syncProviderStripeStatus(profile.stripe_account_id);
 }

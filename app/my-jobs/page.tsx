@@ -50,7 +50,7 @@ export default async function MyJobsPage() {
   const jobIds = (posted || []).map((job) => job.id);
   const { data: conversations } = jobIds.length ? await admin.from("marketplace_conversations").select("id,job_id").in("job_id", jobIds) : { data: [] };
   const providerIds = (posted || []).flatMap((job) => normalizeMarketplaceRelation(job.marketplace_quotes).map((quote) => (quote as Quote).provider_id || (quote as Quote).bidder_user_id).filter(Boolean) as string[]);
-  const { data: providerProfiles } = providerIds.length ? await admin.from("cleaner_profiles").select("user_id,display_name,business_name").in("user_id", [...new Set(providerIds)]) : { data: [] };
+  const { data: providerProfiles } = providerIds.length ? await admin.from("marketplace_providers").select("user_id,display_name,business_name").in("user_id", [...new Set(providerIds)]) : { data: [] };
   const providerNames = new Map((providerProfiles || []).map((profile) => [profile.user_id, profile.business_name || profile.display_name || "Your provider"]));
   const conversationIdsByJob = new Map<string, string[]>();
   for (const conversation of conversations || []) conversationIdsByJob.set(conversation.job_id, [...(conversationIdsByJob.get(conversation.job_id) || []), conversation.id]);

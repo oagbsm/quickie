@@ -80,7 +80,7 @@ export function getTransactionalEmailOrigin(environment: AppOriginEnvironment = 
 
 export function safeInternalNextPath(
   value: string | null | undefined,
-  fallback = "/portal",
+  fallback = "/",
 ) {
   if (
     !value ||
@@ -99,7 +99,6 @@ export function safeInternalNextPath(
       !parsed.pathname.startsWith("/jobs/") &&
       !parsed.pathname.startsWith("/messages/") &&
       parsed.pathname !== "/my-jobs" &&
-      parsed.pathname !== "/portal" &&
       parsed.pathname !== "/admin" &&
       parsed.pathname !== "/work" &&
       !parsed.pathname.startsWith("/work/")

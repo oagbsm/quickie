@@ -20,7 +20,7 @@ export const getCurrentAccountContext = cache(async (): Promise<CurrentAccountCo
   const records = createSupabaseAdminClient();
   const [adminResult, providerResult, customerResult] = await Promise.all([
     records.from("admin_users").select("user_id").eq("user_id", user.id).eq("active", true).maybeSingle(),
-    records.from("cleaner_profiles").select("user_id,provider_status").eq("user_id", user.id).maybeSingle(),
+    records.from("marketplace_providers").select("user_id,provider_status").eq("user_id", user.id).maybeSingle(),
     records.from("marketplace_customers").select("id").eq("auth_user_id", user.id).maybeSingle(),
   ]);
   if (adminResult.data) return { role: "admin", providerStatus: null };

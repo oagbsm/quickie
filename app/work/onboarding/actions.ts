@@ -49,7 +49,7 @@ export async function saveProviderOnboarding(form: FormData) {
     const upload = await admin.storage.from("marketplace-provider-photos").upload(photoPath, Buffer.from(await photo.arrayBuffer()), { contentType: photo.type, upsert: true });
     if (upload.error) redirect("/work/onboarding?error=photo");
   }
-  const update = await admin.from("cleaner_profiles").update({ display_name: displayName || businessName, business_name: businessName || null, phone, provider_type: providerType, profile_photo_url: photoPath, base_town: "Maidenhead", ...(termsAccepted ? { provider_terms_accepted_at: new Date().toISOString(), terms_version: "provider-2026-08" } : {}), updated_at: new Date().toISOString() }).eq("user_id", provider.providerId);
+  const update = await admin.from("marketplace_providers").update({ display_name: displayName || businessName, business_name: businessName || null, phone, provider_type: providerType, profile_photo_url: photoPath, base_town: "Maidenhead", ...(termsAccepted ? { provider_terms_accepted_at: new Date().toISOString(), terms_version: "provider-2026-08" } : {}), updated_at: new Date().toISOString() }).eq("user_id", provider.providerId);
   if (update.error) redirect("/work/onboarding?error=save");
   if (services.length || currentStep >= 2) await saveServicesAndCoverage(provider.providerId, services);
   revalidatePath("/work");
@@ -62,7 +62,7 @@ export async function updateProviderTerms(accepted: boolean) {
   if (!provider) return { ok: false as const, error: "auth" };
   if (!provider.emailConfirmedAt) return { ok: false as const, error: "email_unverified" };
   const admin = createSupabaseAdminClient();
-  const update = await admin.from("cleaner_profiles").update({
+  const update = await admin.from("marketplace_providers").update({
     provider_terms_accepted_at: accepted ? new Date().toISOString() : null,
     terms_version: accepted ? "provider-2026-08" : null,
     updated_at: new Date().toISOString(),
@@ -82,7 +82,7 @@ export async function uploadProviderProfilePhoto(form: FormData) {
   const photoPath = `${provider.providerId}/${Date.now()}-${photo.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
   const upload = await admin.storage.from("marketplace-provider-photos").upload(photoPath, Buffer.from(await photo.arrayBuffer()), { contentType: photo.type, upsert: true });
   if (upload.error) return { ok: false as const, error: "photo" };
-  const update = await admin.from("cleaner_profiles").update({ profile_photo_url: photoPath, updated_at: new Date().toISOString() }).eq("user_id", provider.providerId);
+  const update = await admin.from("marketplace_providers").update({ profile_photo_url: photoPath, updated_at: new Date().toISOString() }).eq("user_id", provider.providerId);
   if (update.error) return { ok: false as const, error: "save" };
   revalidatePath("/work/onboarding");
   return { ok: true as const, photoPath };
@@ -95,7 +95,7 @@ export async function submitProviderApplication() {
   if (!provider.emailConfirmedAt) redirect("/work/onboarding?error=email_unverified");
   const admin = createSupabaseAdminClient();
   const [{ data: profile }, { count: servicesCount }, { count: areasCount }] = await Promise.all([
-    admin.from("cleaner_profiles").select("*").eq("user_id", provider.providerId).maybeSingle(),
+    admin.from("marketplace_providers").select("*").eq("user_id", provider.providerId).maybeSingle(),
     admin.from("marketplace_provider_services").select("id", { count: "exact", head: true }).eq("provider_id", provider.providerId).eq("active", true),
     admin.from("marketplace_provider_service_areas").select("id", { count: "exact", head: true }).eq("provider_id", provider.providerId).eq("active", true),
   ]);
@@ -103,7 +103,7 @@ export async function submitProviderApplication() {
   if (!profile || !isProviderProfileComplete(profile, servicesCount || 0, areasCount || 0)) redirect("/work/onboarding?error=incomplete");
   if (!profile.provider_terms_accepted_at) redirect("/work/onboarding?error=terms");
   if (profile.provider_status === "approved") redirect("/work");
-  await admin.from("cleaner_profiles").update({ provider_status: "pending_review", submitted_at: new Date().toISOString(), action_required_reason: null, updated_at: new Date().toISOString() }).eq("user_id", provider.providerId).in("provider_status", ["draft", "action_required"]);
+  await admin.from("marketplace_providers").update({ provider_status: "pending_review", submitted_at: new Date().toISOString(), action_required_reason: null, updated_at: new Date().toISOString() }).eq("user_id", provider.providerId).in("provider_status", ["draft", "action_required"]);
   await admin.from("marketplace_provider_status_history").insert({ provider_id: provider.providerId, from_status: provider.providerStatus, to_status: "pending_review", changed_by: provider.user.id });
   revalidatePath("/work");
   redirect("/work/onboarding");

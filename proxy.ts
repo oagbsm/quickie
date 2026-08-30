@@ -62,12 +62,11 @@ export async function proxy(request: NextRequest) {
 }
 
 function isProtectedPortalPath(pathname: string) {
-  return pathname === "/portal" || pathname === "/jobs" || pathname === "/my-jobs" || pathname.startsWith("/messages/");
+  return pathname === "/jobs" || pathname === "/my-jobs" || pathname.startsWith("/messages/");
 }
 
 export const config = {
   matcher: [
-    "/portal",
     "/jobs",
     "/my-jobs",
     "/messages/:path*",

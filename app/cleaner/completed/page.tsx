@@ -1,4 +1,0 @@
-import TurnoverCards from "../TurnoverCards";
-import CleanerNavigation from "../CleanerNavigation";
-import { requireCleanerUser } from "@/lib/cleaner/auth";
-export default async function Page(){const {supabase,workerId}=await requireCleanerUser();const {data}=await supabase.from("work_items").select("id,property_public_name,property_general_area,turnover_date,access_start_at,window_end_at,estimated_duration_minutes,status,properties(nickname,postcode),assignments!inner(worker_id,status)").eq("status","ready").eq("assignments.worker_id",workerId).order("turnover_date",{ascending:false});return <><p className="text-sm font-extrabold text-[#2d67b2]">YOUR WORK</p><h1 className="mt-1 text-3xl font-extrabold">Completed</h1><TurnoverCards items={data||[]} empty="Completed turnovers will appear here."/><CleanerNavigation /></>}

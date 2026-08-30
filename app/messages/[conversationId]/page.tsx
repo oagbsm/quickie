@@ -38,7 +38,7 @@ export default async function MessagesPage({ params, searchParams, providerOnly 
 
   const conversationProviderId = conversation.provider_id || conversation.bidder_user_id;
   const { data: providerProfile } = isCustomer && conversationProviderId
-    ? await admin.from("cleaner_profiles").select("user_id,display_name,business_name,profile_photo_url").eq("user_id", conversationProviderId).maybeSingle()
+    ? await admin.from("marketplace_providers").select("user_id,display_name,business_name,profile_photo_url").eq("user_id", conversationProviderId).maybeSingle()
     : { data: null };
   const providerPhoto = isCustomer && providerProfile?.profile_photo_url
     ? (await admin.storage.from("marketplace-provider-photos").createSignedUrl(providerProfile.profile_photo_url, 3600)).data?.signedUrl || null

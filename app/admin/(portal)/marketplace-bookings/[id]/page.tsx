@@ -10,7 +10,7 @@ export default async function MarketplaceBookingDetailPage({ params }: { params:
   const [jobResult, customerResult, providerResult, quoteResult] = await Promise.all([
     db.from("marketplace_jobs").select("*").eq("id", booking.job_id).maybeSingle(),
     db.from("marketplace_customers").select("*").eq("id", booking.customer_id).maybeSingle(),
-    db.from("cleaner_profiles").select("*").eq("user_id", booking.provider_id).maybeSingle(),
+    db.from("marketplace_providers").select("*").eq("user_id", booking.provider_id).maybeSingle(),
     db.from("marketplace_quotes").select("*").eq("id", booking.quote_id).maybeSingle(),
   ]);
   const actualJob = jobResult.data; const actualCustomer = customerResult.data; const actualProvider = providerResult.data; const actualQuote = quoteResult.data;

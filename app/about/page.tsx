@@ -3,9 +3,9 @@ import Link from "next/link";
 import Header from "../homepagecomponents/Header";
 import Footer from "../components/Footer";
 export const metadata: Metadata = {
-  title: "About Quickola | STR turnover coordination",
+  title: "About Quickola | Local service marketplace",
   description:
-    "Quickola coordinates STR turnover workflows for operators using their own cleaners in the Slough area.",
+    "Quickola helps customers post local service jobs and compare offers from independent providers.",
 };
 export default function Page() {
   return (
@@ -20,8 +20,8 @@ export default function Page() {
             Cleaning operations should not depend on scattered messages.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-white/72">
-            Quickola is turnover coordination software for operators managing
-            short-term-rental properties. The controlled pilot begins in Slough.
+            Quickola is a local service marketplace. Customers post a job, receive
+            offers from independent providers, and choose how to proceed.
           </p>
         </div>
       </section>
@@ -30,7 +30,7 @@ export default function Page() {
           {[
             [
               "One clear workflow",
-              "Bring your bookings, properties and existing cleaners into one place without rebuilding every brief in a message thread.",
+              "Share one clear brief and keep offers, messages and booking details together.",
             ],
             [
               "Clear requested and confirmed states",
@@ -38,7 +38,7 @@ export default function Page() {
             ],
             [
               "A focused operations platform",
-              "The account keeps properties, turnovers, checklists and readiness evidence together without pretending to be a general property CRM.",
+              "A focused marketplace workflow helps customers and providers communicate clearly from job post to booking.",
             ],
           ].map(([h, p]) => (
             <article key={h} className="border-t-2 border-[#071638] pt-5">
@@ -49,7 +49,7 @@ export default function Page() {
         </div>
         <div className="mx-auto mt-14 max-w-[1080px]">
           <Link
-            href="/business/sign-up"
+            href="/create-account"
             className="inline-flex rounded-xl bg-[#079448] px-6 py-4 font-black text-white"
           >
             Create account

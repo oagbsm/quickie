@@ -19,7 +19,7 @@ export async function acceptProviderInvitation(rawToken: string, user: { id: str
     return { ok: false as const, error: "expired" };
   }
   if (!user.email || user.email.trim().toLowerCase() !== invitation.email.trim().toLowerCase()) return { ok: false as const, error: "email_mismatch" };
-  const profile = await client.from("cleaner_profiles").upsert({ user_id: user.id, display_name: invitation.invited_name, business_name: invitation.invited_name, service_area: invitation.service_area, provider_status: "draft", stripe_status: "not_started", marketplace_active: false, updated_at: new Date().toISOString() }, { onConflict: "user_id" }).select("user_id").single();
+  const profile = await client.from("marketplace_providers").upsert({ user_id: user.id, display_name: invitation.invited_name, business_name: invitation.invited_name, service_area: invitation.service_area, provider_status: "draft", stripe_status: "not_started", marketplace_active: false, updated_at: new Date().toISOString() }, { onConflict: "user_id" }).select("user_id").single();
   if (profile.error) return { ok: false as const, error: "profile" };
   const existingCustomer = await client.from("marketplace_customers").select("id").eq("auth_user_id", user.id).maybeSingle();
   if (!existingCustomer.data) await client.from("marketplace_customers").insert({ auth_user_id: user.id, email: user.email, display_name: invitation.invited_name, mobile: invitation.phone || null });

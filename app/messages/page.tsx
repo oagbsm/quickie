@@ -52,7 +52,7 @@ export default async function MessagesIndex({ providerOnly = false, searchParams
   const providerIds = conversations.map((conversation) => conversation.provider_id || conversation.bidder_user_id).filter(Boolean);
   const [{ data: jobs }, { data: profiles }, { data: quotes }, { data: messages }, { data: bookings }] = await Promise.all([
     jobIds.length ? admin.from("marketplace_jobs").select("id,service,service_subtype,postcode").in("id", jobIds) : Promise.resolve({ data: [] }),
-    providerIds.length ? admin.from("cleaner_profiles").select("user_id,display_name,business_name,profile_photo_url").in("user_id", providerIds) : Promise.resolve({ data: [] }),
+    providerIds.length ? admin.from("marketplace_providers").select("user_id,display_name,business_name,profile_photo_url").in("user_id", providerIds) : Promise.resolve({ data: [] }),
     jobIds.length ? admin.from("marketplace_quotes").select("job_id,provider_id,bidder_user_id,amount_pence,status").in("job_id", jobIds).in("status", ["pending", "submitted", "selected", "accepted"]) : Promise.resolve({ data: [] }),
     conversations.length ? admin.from("marketplace_messages").select("conversation_id,body,created_at,sender_id").in("conversation_id", conversations.map((conversation) => conversation.id)).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
     conversations.length ? admin.from("marketplace_bookings").select("conversation_id,payment_status,status").in("conversation_id", conversations.map((conversation) => conversation.id)) : Promise.resolve({ data: [] }),

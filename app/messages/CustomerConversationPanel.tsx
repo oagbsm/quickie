@@ -18,7 +18,7 @@ export default async function CustomerConversationPanel({ conversationId }: { co
   if (!conversation) notFound();
   const providerId = conversation.provider_id || conversation.bidder_user_id;
   const [{ data: provider }, { data: job }, { data: messages }, { data: attachments }, { data: quote }, { data: booking }] = await Promise.all([
-    providerId ? admin.from("cleaner_profiles").select("user_id,display_name,business_name,profile_photo_url").eq("user_id", providerId).maybeSingle() : Promise.resolve({ data: null }),
+    providerId ? admin.from("marketplace_providers").select("user_id,display_name,business_name,profile_photo_url").eq("user_id", providerId).maybeSingle() : Promise.resolve({ data: null }),
     admin.from("marketplace_jobs").select("id,public_token,service,service_subtype,postcode").eq("id", conversation.job_id).maybeSingle(),
     admin.from("marketplace_messages").select("id,sender_id,body,created_at").eq("conversation_id", conversationId).order("created_at", { ascending: true }),
     admin.from("marketplace_message_attachments").select("id,message_id,storage_path").eq("conversation_id", conversationId).order("created_at", { ascending: true }),

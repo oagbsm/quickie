@@ -3,9 +3,9 @@ import Link from "next/link";
 import Header from "@/app/homepagecomponents/Header";
 import Footer from "@/app/components/Footer";
 export const metadata: Metadata = {
-  title: "Quickola STR turnover coordination pilot | Slough",
+  title: "Quickola service area | Slough",
   description:
-    "Quickola is piloting STR turnover coordination software in Slough for operators using their own cleaners.",
+    "Quickola is currently focused on connecting customers and independent service providers in and around Slough.",
   alternates: { canonical: "/service-area" },
 };
 export default function Page() {
@@ -17,12 +17,12 @@ export default function Page() {
           <div className="mx-auto max-w-[1050px]">
             <p className="eyebrow !text-[#66dd78]">Service area</p>
             <h1 className="mt-4 max-w-4xl text-5xl font-black leading-none tracking-[-.05em] sm:text-6xl">
-              STR turnover coordination focused on Slough.
+              Local service jobs focused on Slough.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/75">
-              Quickola is currently focused on operators in and around Slough
-              who want to coordinate their own properties, bookings and
-              cleaners in one workflow.
+              Quickola is currently focused on customers and independent
+              providers in and around Slough who want a clearer way to arrange
+              local service work.
             </p>
           </div>
         </section>
@@ -36,17 +36,16 @@ export default function Page() {
             </div>
             <div className="grid gap-5 text-[#526078]">
               <p>
-                We review the main postcode, property type, booking workflow and
-                operational requirements so the software is a good fit.
+                We use the main postcode and job details to keep the marketplace
+                focused on the areas currently being launched.
               </p>
               <p>
-                A submitted enquiry is not an accepted account. Access to the
-                pilot depends on the operator, properties and workflow being a
-                suitable fit.
+                Availability depends on the current local launch and the
+                independent providers available for the requested service.
               </p>
               <p>
-                Quickola does not advertise nationwide coverage and does not
-                offer public household one-off cleaning.
+                Quickola does not advertise nationwide coverage; availability
+                remains intentionally local while the marketplace launches.
               </p>
             </div>
           </div>
@@ -57,10 +56,10 @@ export default function Page() {
               Operating in or around Slough?
             </h2>
             <p className="mt-3 max-w-2xl leading-7 text-[#526078]">
-              Tell us the primary postcode and the properties you manage. We
-              will assess whether the current software pilot is a suitable fit.
+              Tell us the postcode and service you need. We will show the
+              marketplace options currently available for your area.
             </p>
-            <Link href="/business/sign-up" className="button-primary mt-6 px-6">
+            <Link href="/create-account" className="button-primary mt-6 px-6">
               Create account
             </Link>
           </div>

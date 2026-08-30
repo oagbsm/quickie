@@ -30,12 +30,12 @@ export default function SolutionPage(props: Props) {
             </p>
             <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
               <Link
-                href="/business/sign-up"
+                href="/create-account"
                 className="public-button public-button-primary"
               >
                 Create account
               </Link>
-              <p className="public-note">STR workflow pilot for businesses in Slough.</p>
+              <p className="public-note">Local marketplace currently focused on Maidenhead and nearby areas.</p>
             </div>
           </div>
         </section>
@@ -109,7 +109,7 @@ export default function SolutionPage(props: Props) {
               </p>
             </div>
             <Link
-              href="/business/sign-up"
+              href="/create-account"
               className="public-button public-button-primary shrink-0"
             >
               Create account

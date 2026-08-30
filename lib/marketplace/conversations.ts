@@ -27,8 +27,8 @@ export async function getOrCreateMarketplaceConversation({
     if (!quote.data) throw new Error("provider has no offer for job");
   } else {
     if (actorUserId !== providerId) throw new Error("provider identity mismatch");
-    const profile = await admin.from("cleaner_profiles").select("user_id,provider_status,stripe_status,marketplace_active").eq("user_id", providerId).maybeSingle();
-    if (profile.error) throw queryFailure("cleaner_profiles lookup", profile.error);
+    const profile = await admin.from("marketplace_providers").select("user_id,provider_status,stripe_status,marketplace_active").eq("user_id", providerId).maybeSingle();
+    if (profile.error) throw queryFailure("marketplace_providers lookup", profile.error);
     if (!profile.data || !canProviderOperate(profile.data)) throw new Error("provider is not ready");
     const quote = await admin.from("marketplace_quotes").select("id").eq("job_id", jobId).or(`provider_id.eq.${providerId},bidder_user_id.eq.${providerId}`).limit(1).maybeSingle();
     if (!quote.error && !quote.data) {

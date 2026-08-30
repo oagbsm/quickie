@@ -1,7 +1,7 @@
 import Header from "../homepagecomponents/Header";
 import Footer from "../components/Footer";
 export const metadata = {
-  title: "Privacy Policy | Quickola Property Services",
+  title: "Privacy Policy | Quickola",
   description:
     "How Quickola uses and protects customer and booking information.",
 };

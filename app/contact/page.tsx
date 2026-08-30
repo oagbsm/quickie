@@ -239,7 +239,7 @@ export default async function ContactPage({
               General questions
             </h2>
             <p className="mt-3 text-[15px] font-semibold leading-[1.6] text-[#556177]">
-              Message us about Quickola Property Services, accessibility or
+              Message us about Quickola, accessibility or
               general support.
             </p>
           </div>

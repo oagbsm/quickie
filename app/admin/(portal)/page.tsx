@@ -13,9 +13,9 @@ export default async function Page() {
   const admin = createSupabaseAdminClient();
   const [{ data: jobs }, { data: quotes }, { data: bookings }, { data: providers }] = await Promise.all([
     admin.from("marketplace_jobs").select("id,service,service_subtype,postcode,status,created_at,updated_at,marketplace_quotes(id,created_at,status),marketplace_bookings(id,status,payment_status,amount_pence,created_at)").order("created_at", { ascending: false }).limit(1000),
-    admin.from("marketplace_quotes").select("id,job_id,provider_id,amount_pence,status,created_at,cleaner_profiles(display_name,business_name)").order("created_at", { ascending: false }).limit(1000),
+    admin.from("marketplace_quotes").select("id,job_id,provider_id,amount_pence,status,created_at,marketplace_providers(display_name,business_name)").order("created_at", { ascending: false }).limit(1000),
     admin.from("marketplace_bookings").select("id,job_id,customer_id,provider_id,status,payment_status,amount_pence,platform_fee_pence,created_at").order("created_at", { ascending: false }).limit(1000),
-    admin.from("cleaner_profiles").select("user_id,display_name,business_name,provider_status,marketplace_active").limit(1000),
+    admin.from("marketplace_providers").select("user_id,display_name,business_name,provider_status,marketplace_active").limit(1000),
   ]);
   const jobRows = jobs || [];
   const quoteRows = quotes || [];
@@ -29,7 +29,7 @@ export default async function Page() {
   const recent = [
     ...jobRows.slice(0, 10).map((job) => ({ tone: "green", text: `New job posted: ${job.service_subtype || job.service} in ${job.postcode || "local area"}`, at: job.created_at, href: `/admin/jobs/${job.id}` })),
     ...bookingRows.slice(0, 8).map((booking) => ({ tone: "blue", text: "Provider accepted a booking", at: booking.created_at, href: `/admin/marketplace-bookings/${booking.id}` })),
-    ...quoteRows.slice(0, 5).map((quote) => ({ tone: "slate", text: `${nameOf(Array.isArray(quote.cleaner_profiles) ? quote.cleaner_profiles[0] : quote.cleaner_profiles)} submitted a quote`, at: quote.created_at, href: `/admin/jobs/${quote.job_id}` })),
+    ...quoteRows.slice(0, 5).map((quote) => ({ tone: "slate", text: `${nameOf(Array.isArray(quote.marketplace_providers) ? quote.marketplace_providers[0] : quote.marketplace_providers)} submitted a quote`, at: quote.created_at, href: `/admin/jobs/${quote.job_id}` })),
   ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, 4);
   const totalFees = bookingRows.reduce((sum, booking) => sum + Number(booking.platform_fee_pence || 0), 0);
   const totalGmv = bookingRows.reduce((sum, booking) => sum + Number(booking.amount_pence || 0), 0);

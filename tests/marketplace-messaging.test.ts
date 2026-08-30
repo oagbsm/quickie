@@ -32,7 +32,7 @@ test("message attachments are private, validated, and participant-authorized", (
   assert.match(composer, /formData\.append\("attachments", file, file\.name\)/);
   assert.match(conversation, /createSignedUrl\(attachment\.storage_path/);
   assert.match(conversation, /MarketplaceMessageBubble/);
-  assert.match(conversation, /cleaner_profiles/);
+  assert.match(conversation, /marketplace_providers/);
   assert.match(conversation, /\/providers\/\$\{conversationProviderId\}/);
   assert.match(conversation, /providerName/);
   assert.match(conversationBubble, /hasBody/);

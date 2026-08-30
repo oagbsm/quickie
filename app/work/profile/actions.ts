@@ -33,7 +33,7 @@ export async function updateProviderProfile(form: FormData) {
   const provider = await requireProviderWorkspaceAccess();
   const admin = createSupabaseAdminClient();
   const { data: existingProfile, error: existingProfileError } = await admin
-    .from("cleaner_profiles")
+    .from("marketplace_providers")
     .select("display_name,business_name")
     .eq("user_id", provider.providerId)
     .maybeSingle();
@@ -54,7 +54,7 @@ export async function updateProviderProfile(form: FormData) {
     .select("job_type_slug,qualification_verified")
     .eq("provider_id", provider.providerId);
   const verified = new Map((existing || []).map((item) => [item.job_type_slug, item.qualification_verified]));
-  const phoneColumn = await admin.from("cleaner_profiles").select("phone").eq("user_id", provider.providerId).maybeSingle();
+  const phoneColumn = await admin.from("marketplace_providers").select("phone").eq("user_id", provider.providerId).maybeSingle();
   let profilePhotoPath = text(form, "existingPhotoPath") || null;
   const photoAction = text(form, "photoAction");
   if (photoAction === "remove") profilePhotoPath = null;
@@ -77,8 +77,8 @@ export async function updateProviderProfile(form: FormData) {
     update.display_name = displayName;
   }
   update.business_name = businessName || null;
-  const profile = await admin.from("cleaner_profiles").update(update).eq("user_id", provider.providerId);
-  if (profile.error) { logSupabaseFailure("update cleaner_profiles", profile.error); redirect("/work/profile?error=save"); }
+  const profile = await admin.from("marketplace_providers").update(update).eq("user_id", provider.providerId);
+  if (profile.error) { logSupabaseFailure("update marketplace_providers", profile.error); redirect("/work/profile?error=save"); }
 
   const currentAreas = await admin.from("marketplace_provider_service_areas").select("id,postcode_district").eq("provider_id", provider.providerId);
   if (currentAreas.error) { logSupabaseFailure("read provider service areas", currentAreas.error); redirect("/work/profile?error=save"); }

@@ -25,8 +25,7 @@ test("marketplace role resolver has deterministic admin precedence", () => {
   assert.match(roles, /if \(customerResult\.data\) return \{ role: "customer"/);
 });
 
-test("direct role destinations do not route through the portal", () => {
+test("direct role destinations remain marketplace-specific", () => {
   assert.match(roles, /destinationForAccount/);
   assert.doesNotMatch(home, /getMarketplaceProvider/);
-  assert.doesNotMatch(read("lib/admin/auth.ts"), /redirect\("\/portal"\)/);
 });

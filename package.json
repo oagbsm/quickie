@@ -7,19 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:phase1": "node --experimental-strip-types --experimental-default-type=module --test tests/phase1.test.ts",
-    "test:turnovers": "node --experimental-strip-types --experimental-default-type=module --test tests/turnover-v1.test.ts",
-    "test:str-security": "node --experimental-strip-types --experimental-default-type=module --test tests/str-security.test.ts",
-    "test:auth-routing": "node --experimental-strip-types --experimental-default-type=module --test tests/cleaner-auth-routing.test.ts tests/invitation-auth.test.ts",
-    "test:reservations": "node --experimental-strip-types --experimental-default-type=module --test tests/reservations.test.ts",
-    "test:calendar-sync": "node --experimental-strip-types --experimental-default-type=module --test tests/calendar-sync.test.ts",
-    "test:calendar-sync:integration": "node --env-file=.env.local scripts/verify-calendar-sync-e2e.mjs",
-    "test:reservations:integration": "node --env-file=.env.local scripts/verify-reservations-e2e.mjs",
-    "test:str-integration": "node --env-file=.env.local scripts/verify-str-e2e.mjs",
-    "seed:str": "node --env-file=.env.local scripts/seed-str-v1.mjs",
-    "test:e2e": "playwright test",
-    "test:e2e:reservations": "RUN_RESERVATION_E2E=1 node --env-file=.env.local node_modules/@playwright/test/cli.js test tests/e2e/reservations.spec.ts --workers=1",
-    "test:e2e:calendar-sync": "RUN_CALENDAR_E2E=1 node --env-file=.env.local node_modules/@playwright/test/cli.js test tests/e2e/calendar-sources.spec.ts --workers=1"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@google/genai": "^2.16.0",

@@ -26,7 +26,7 @@ export default async function PublicProviderProfile({ params, searchParams }: { 
   const query = await searchParams;
   const admin = createSupabaseAdminClient();
   const [{ data: profile }, { data: services }, { data: areas }, { count: completedJobs }] = await Promise.all([
-    admin.from("cleaner_profiles").select("display_name,business_name,marketplace_bio,profile_photo_url,years_experience,provider_status").eq("user_id", providerId).eq("provider_status", "approved").maybeSingle(),
+    admin.from("marketplace_providers").select("display_name,business_name,marketplace_bio,profile_photo_url,years_experience,provider_status").eq("user_id", providerId).eq("provider_status", "approved").maybeSingle(),
     admin.from("marketplace_provider_services").select("category_slug,job_type_slug").eq("provider_id", providerId).eq("active", true),
     admin.from("marketplace_provider_service_areas").select("postcode_district").eq("provider_id", providerId).eq("active", true).order("postcode_district"),
     admin.from("marketplace_bookings").select("id", { count: "exact", head: true }).eq("provider_id", providerId).eq("status", "completed"),

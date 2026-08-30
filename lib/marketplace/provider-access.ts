@@ -17,7 +17,7 @@ export async function getMarketplaceProvider(): Promise<MarketplaceProvider | nu
   if (!user) return null;
   if (await getCurrentAccountRole() !== "provider") return null;
   const admin = createSupabaseAdminClient();
-  const { data: profile, error } = await admin.from("cleaner_profiles").select(providerColumns).eq("user_id", user.id).maybeSingle();
+  const { data: profile, error } = await admin.from("marketplace_providers").select(providerColumns).eq("user_id", user.id).maybeSingle();
   if (error || !profile) return null;
   return { user, providerId: profile.user_id, providerStatus: (profile.provider_status || "draft") as ProviderStatus, stripeStatus: (profile.stripe_status || "not_started") as ProviderStripeStatus, stripeAccountId: profile.stripe_account_id || null, emailConfirmedAt: user.email_confirmed_at || user.confirmed_at || null, profile: profile as Record<string, unknown> };
 }
@@ -32,7 +32,7 @@ export async function getOrCreateMarketplaceProvider() {
   if (!user) return null;
   const admin = createSupabaseAdminClient();
   const displayName = String(user.user_metadata?.full_name || user.user_metadata?.name || "").trim();
-  const { error } = await admin.from("cleaner_profiles").upsert({ user_id: user.id, display_name: displayName || "Provider", role: "cleaner", provider_status: "draft", stripe_status: "not_started", updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  const { error } = await admin.from("marketplace_providers").upsert({ user_id: user.id, display_name: displayName || "Provider", provider_status: "draft", stripe_status: "not_started", updated_at: new Date().toISOString() }, { onConflict: "user_id" });
   if (error) return null;
   return getMarketplaceProvider();
 }

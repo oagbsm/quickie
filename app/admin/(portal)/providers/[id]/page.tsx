@@ -9,7 +9,7 @@ export default async function ProviderDetailPage({ params }: { params: Promise<{
   const { id } = await params;
   const admin = createSupabaseAdminClient();
   const [{ data: provider }, { data: services }, { data: areas }, { data: user }] = await Promise.all([
-    admin.from("cleaner_profiles").select("*").eq("user_id", id).maybeSingle(),
+    admin.from("marketplace_providers").select("*").eq("user_id", id).maybeSingle(),
     admin.from("marketplace_provider_services").select("category_slug,job_type_slug,active,qualification_verified").eq("provider_id", id).order("category_slug"),
     admin.from("marketplace_provider_service_areas").select("postcode_district,active").eq("provider_id", id).order("postcode_district"),
     admin.auth.admin.getUserById(id).then((result) => ({ data: result.data.user })),

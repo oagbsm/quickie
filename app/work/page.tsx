@@ -26,7 +26,7 @@ export default async function WorkPage({ searchParams }: { searchParams: Promise
     return <WorkspaceShell><ProviderStatusCard provider={provider} /></WorkspaceShell>;
   }
   const admin = createSupabaseAdminClient();
-  const { data: profile } = await admin.from("cleaner_profiles").select("service_area,marketplace_provider_services(category_slug,active),marketplace_provider_service_areas(postcode_district,active)").eq("user_id", provider.user.id).maybeSingle();
+  const { data: profile } = await admin.from("marketplace_providers").select("service_area,marketplace_provider_services(category_slug,active),marketplace_provider_service_areas(postcode_district,active)").eq("user_id", provider.user.id).maybeSingle();
   const activeServices = new Set((profile?.marketplace_provider_services || []).filter((item) => item.active).map((item) => item.category_slug));
   const activeAreas = (profile?.marketplace_provider_service_areas || []).filter((item) => item.active).map((item) => item.postcode_district);
   if (!canProviderBrowseJobs(provider, activeServices.size)) return <WorkspaceShell><ProviderStatusCard provider={provider} /></WorkspaceShell>;
