@@ -136,3 +136,16 @@ test("profile submission CTA follows the same readiness and lifecycle rules as o
   assert.match(actions, /to_status: "pending_review"/);
   assert.match(actions, /redirect\("\/work\/onboarding"\)/);
 });
+
+test("provider profile presents real marketplace information without fake metrics", () => {
+  assert.match(profile, /View public profile/);
+  assert.match(profile, /`\/providers\/\$\{provider\.providerId\}`/);
+  assert.match(profile, /marketplace_bookings/);
+  assert.match(profile, /marketplace_reviews/);
+  assert.match(profile, /marketplace_provider_service_areas/);
+  assert.match(profile, /selectedServices\.filter/);
+  assert.match(profile, /No service areas added yet/);
+  assert.match(profile, /Tell customers about your experience/);
+  assert.match(profile, /New to Quickola/);
+  assert.doesNotMatch(profile, /response rate|acceptance rate|repeat customer|earnings/);
+});

@@ -9,7 +9,7 @@ export type ProviderStatus = "draft" | "pending_review" | "approved" | "action_r
 export type ProviderStripeStatus = "not_started" | "onboarding" | "restricted" | "verification_pending" | "ready";
 export type MarketplaceProvider = { user: User; providerId: string; providerStatus: ProviderStatus; stripeStatus: ProviderStripeStatus; stripeAccountId: string | null; emailConfirmedAt: string | null; profile: Record<string, unknown> };
 
-const providerColumns = "user_id,display_name,business_name,service_area,phone,marketplace_bio,profile_photo_url,provider_status,stripe_status,stripe_account_id,provider_type,base_town,postcode,postcode_area,postcode_district,years_experience,provider_terms_accepted_at,terms_version,submitted_at,approved_at,action_required_reason,suspended_at,availability_days,available_now,marketplace_active";
+const providerColumns = "user_id,display_name,business_name,service_area,phone,marketplace_bio,profile_photo_url,provider_status,stripe_status,stripe_account_id,provider_type,base_town,postcode,postcode_area,postcode_district,years_experience,provider_terms_accepted_at,terms_version,submitted_at,approved_at,action_required_reason,suspended_at,availability_days,available_now,marketplace_active,created_at";
 
 export async function getMarketplaceProvider(): Promise<MarketplaceProvider | null> {
   const supabase = await createSupabaseServerClient();
