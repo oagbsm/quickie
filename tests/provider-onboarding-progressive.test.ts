@@ -13,8 +13,8 @@ const profile = readFileSync(new URL("../app/work/profile/page.tsx", import.meta
 
 test("provider onboarding separates Maidenhead browsing from quote readiness", () => {
   assert.match(onboarding, /Basic profile/);
-  assert.match(onboarding, /See matching Maidenhead jobs/);
-  assert.match(onboarding, /Get ready to send quotes/);
+  assert.match(onboarding, /Continue to quote readiness/);
+  assert.match(onboarding, /Quote readiness/);
   assert.doesNotMatch(onboarding, /Where do you work|Select one or more postcode districts/);
   assert.match(actions, /base_town: "Maidenhead"/);
   assert.match(actions, /MAIDENHEAD_MARKET_POSTCODE_DISTRICTS/);
@@ -43,8 +43,8 @@ test("unimplemented qualification checks do not block provider quoting or profil
   assert.match(qualificationCompatibility, /qualification_verified/);
   assert.doesNotMatch(qualificationCompatibility, /or ps\.qualification_verified/);
   assert.doesNotMatch(profile, /Service requirements|Checks needed for|Contact Quickola/);
-  assert.match(profile, /Getting paid/);
-  assert.match(profile, /Your services/);
+  assert.match(profile, /Payouts/);
+  assert.match(profile, /Services/);
   assert.match(onboarding, /quoteReadinessComplete = profileComplete && hasPhoto && termsAccepted && emailVerified/);
   assert.doesNotMatch(onboarding, /qualification verification for selected regulated work/);
 });
@@ -94,7 +94,7 @@ test("submitted provider states do not reopen editable onboarding", () => {
   assert.match(page, /<PendingReview/);
   assert.match(status, /You’re all signed up!/);
   assert.match(status, /Awaiting Quickola approval/);
-  assert.match(pendingScreen, /View available jobs/);
+  assert.doesNotMatch(pendingScreen, /View available jobs/);
   assert.doesNotMatch(pendingScreen, /Submit for review|Change photo|Set up payouts|Refresh payouts|Save setup|form action/);
   assert.match(status, /You’re approved/);
   assert.match(status, /status === "suspended"/);

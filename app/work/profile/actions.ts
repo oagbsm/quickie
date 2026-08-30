@@ -43,9 +43,9 @@ export async function updateProviderProfile(form: FormData) {
   const businessName = text(form, "businessName");
   const areas = postcodeDistricts(form.getAll("serviceArea").map(String).join(" ") || text(form, "serviceAreas"));
   const selectedCategories = new Set(form.getAll("category").map(String));
+  const selectedJobValues = new Set(form.getAll("service").map(String));
   const services = marketplaceServices
-    .filter((service) => selectedCategories.has(service.slug))
-    .flatMap((service) => service.jobs.filter((job) => job.active).map((job) => ({ category_slug: service.slug, job_type_slug: job.slug })));
+    .flatMap((service) => service.jobs.filter((job) => job.active && (selectedCategories.has(service.slug) || selectedJobValues.has(`${service.slug}|${job.slug}`))).map((job) => ({ category_slug: service.slug, job_type_slug: job.slug })));
   if ((!nameLocked && (displayName.length < 1 || displayName.length > 120)) || !areas.length || !services.length || text(form, "bio").length > 500)
     redirect("/work/profile?error=required");
 

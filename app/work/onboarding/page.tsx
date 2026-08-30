@@ -13,6 +13,7 @@ export default async function ProviderOnboardingPage({ searchParams }: { searchP
   if (account.role !== "provider") redirect(destinationForAccount(account) || "/");
   let provider = await getOrCreateMarketplaceProvider();
   if (!provider) redirect("/pro/login?next=/work/onboarding");
+  if (provider.providerStatus === "approved" && query.edit === "1") redirect("/work/profile?edit=1");
   const providerId = provider.providerId;
   if (["return", "refresh"].includes(query.payouts || "")) {
     try {

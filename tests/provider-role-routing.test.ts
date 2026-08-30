@@ -15,7 +15,7 @@ test("provider root routing keeps pending providers out of customer home", () =>
 
 test("pending provider work view remains isolated while exposing the review CTA", () => {
   assert.match(work, /\["pending_review", "suspended"\]/);
-  assert.match(pending, /View available jobs/);
+  assert.doesNotMatch(pending, /View available jobs/);
   assert.match(pending, /You’re all signed up!/);
 });
 

@@ -18,12 +18,18 @@ function selectedServices(form: FormData) {
 
 async function saveServicesAndCoverage(providerId: string, services: string[]) {
   const admin = createSupabaseAdminClient();
-  const { data: existing } = await admin.from("marketplace_provider_services").select("category_slug,job_type_slug,qualification_verified").eq("provider_id", providerId);
+  const { data: existing, error: existingError } = await admin.from("marketplace_provider_services").select("category_slug,job_type_slug,qualification_verified").eq("provider_id", providerId);
+  if (existingError) redirect("/work/onboarding?error=save");
   const verified = new Set((existing || []).filter((item) => item.qualification_verified).map((item) => `${item.category_slug}|${item.job_type_slug}`));
-  await admin.from("marketplace_provider_services").delete().eq("provider_id", providerId);
-  if (services.length) await admin.from("marketplace_provider_services").insert(services.map((item) => { const [category_slug, job_type_slug] = item.split("|"); return { provider_id: providerId, category_slug, job_type_slug, active: true, qualification_verified: verified.has(item) }; }));
+  const removed = await admin.from("marketplace_provider_services").delete().eq("provider_id", providerId);
+  if (removed.error) redirect("/work/onboarding?error=save");
   if (services.length) {
-    await admin.from("marketplace_provider_service_areas").upsert(MAIDENHEAD_MARKET_POSTCODE_DISTRICTS.map((postcode_district) => ({ provider_id: providerId, postcode_district, active: true })), { onConflict: "provider_id,postcode_district" });
+    const inserted = await admin.from("marketplace_provider_services").insert(services.map((item) => { const [category_slug, job_type_slug] = item.split("|"); return { provider_id: providerId, category_slug, job_type_slug, active: true, qualification_verified: verified.has(item) }; }));
+    if (inserted.error) redirect("/work/onboarding?error=save");
+  }
+  if (services.length) {
+    const areas = await admin.from("marketplace_provider_service_areas").upsert(MAIDENHEAD_MARKET_POSTCODE_DISTRICTS.map((postcode_district) => ({ provider_id: providerId, postcode_district, active: true })), { onConflict: "provider_id,postcode_district" });
+    if (areas.error) redirect("/work/onboarding?error=save");
   }
 }
 
@@ -54,7 +60,7 @@ export async function saveProviderOnboarding(form: FormData) {
   if (services.length || currentStep >= 2) await saveServicesAndCoverage(provider.providerId, services);
   revalidatePath("/work");
   revalidatePath("/work/onboarding");
-  redirect(currentStep === 2 && services.length ? "/work" : `/work/onboarding?saved=1&step=${Math.min(3, currentStep + 1)}`);
+  redirect(`/work/onboarding?saved=1&step=${Math.min(3, currentStep + 1)}`);
 }
 
 export async function updateProviderTerms(accepted: boolean) {
