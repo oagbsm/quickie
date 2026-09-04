@@ -105,30 +105,34 @@ export async function POST(request: Request) {
   if (files.some((file) => !ALLOWED_TYPES.has(file.type))) return failure(request, returnTo, "attachment_invalid_type", { conversationId, userId: user.id, attachmentCount: rawFiles.length });
   if (files.some((file) => file.size > MAX_FILE_SIZE)) return failure(request, returnTo, "attachment_too_large", { conversationId, userId: user.id, attachmentCount: rawFiles.length });
 
-  const uploaded: Array<{ path: string; file: File }> = [];
+  const { data: message, error: messageError } = await supabase.rpc("create_marketplace_message", { target_conversation: conversationId, message_body: body || null, target_client_message_id: clientMessageId || null });
+  if (messageError || !message) {
+    logFailure("message_insert_failed", { conversationId, userId: user.id, error: safeError(messageError || new Error("Message insert returned no row")) });
+    return failure(request, returnTo, "message_db_failed", { conversationId, userId: user.id, attachmentCount: rawFiles.length, error: safeError(messageError || new Error("Message insert returned no row")) });
+  }
+
+  const existingAttachmentRows = clientMessageId
+    ? await admin.from("marketplace_message_attachments").select("storage_path").eq("message_id", message.id).eq("client_message_id", clientMessageId)
+    : { data: [] };
+  const protectedPaths = new Set((existingAttachmentRows.data || []).map((row) => row.storage_path));
+  const uploaded: Array<{ path: string; file: File; index: number }> = [];
   const uploadKey = clientMessageId || crypto.randomUUID();
   for (const [index, file] of files.entries()) {
     const path = `${conversationId}/${user.id}/${uploadKey}-${index}.${EXTENSIONS[file.type]}`;
     try {
       const upload = await admin.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: true });
       if (upload.error) throw upload.error;
-      uploaded.push({ path, file });
+      uploaded.push({ path, file, index });
     } catch (error) {
       logFailure("upload_failed", { conversationId, userId: user.id, fileName: file.name, fileType: file.type, fileSize: file.size, storagePath: path, error: safeError(error) });
-      if (uploaded.length) await admin.storage.from(BUCKET).remove(uploaded.map((item) => item.path));
+      const removable = uploaded.map((item) => item.path).filter((path) => !protectedPaths.has(path));
+      if (removable.length) await admin.storage.from(BUCKET).remove(removable);
       return failure(request, returnTo, "attachment_upload_failed");
     }
   }
 
-  const { data: message, error: messageError } = await supabase.rpc("create_marketplace_message", { target_conversation: conversationId, message_body: body || null, target_client_message_id: clientMessageId || null });
-  if (messageError || !message) {
-    logFailure("message_insert_failed", { conversationId, userId: user.id, error: safeError(messageError || new Error("Message insert returned no row")) });
-    if (uploaded.length) await admin.storage.from(BUCKET).remove(uploaded.map((item) => item.path));
-    return failure(request, returnTo, "message_db_failed", { conversationId, userId: user.id, attachmentCount: rawFiles.length, error: safeError(messageError || new Error("Message insert returned no row")) });
-  }
-
   if (uploaded.length) {
-    const attachmentRows = uploaded.map(({ path, file }, index) => ({
+    const attachmentRows = uploaded.map(({ path, file, index }) => ({
       message_id: message.id,
       conversation_id: conversationId,
       uploader_id: user.id,
@@ -144,7 +148,8 @@ export async function POST(request: Request) {
     const attachmentError = attachmentInsert.error;
     if (attachmentError) {
       logFailure("attachment_insert_failed", { conversationId, userId: user.id, messageId: message.id, storagePaths: uploaded.map((item) => item.path), error: safeError(attachmentError) });
-      await admin.storage.from(BUCKET).remove(uploaded.map((item) => item.path));
+      const removable = uploaded.map((item) => item.path).filter((path) => !protectedPaths.has(path));
+      if (removable.length) await admin.storage.from(BUCKET).remove(removable);
       return failure(request, returnTo, "attachment_db_failed");
     }
   }

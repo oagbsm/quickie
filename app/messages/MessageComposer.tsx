@@ -12,6 +12,7 @@ export default function MessageComposer({ conversationId, returnTo, readOnly = f
   const [body, setBody] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState<"idle" | "uploading" | "sending">("idle");
   const [error, setError] = useState(false);
   const [clientMessageId, setClientMessageId] = useState<string | null>(null);
 
@@ -19,6 +20,7 @@ export default function MessageComposer({ conversationId, returnTo, readOnly = f
     event.preventDefault();
     if (busy) return;
     setBusy(true);
+    setPhase(selectedFiles.length ? "uploading" : "sending");
     setError(false);
     const submissionId = clientMessageId || crypto.randomUUID();
     setClientMessageId(submissionId);
@@ -35,6 +37,7 @@ export default function MessageComposer({ conversationId, returnTo, readOnly = f
     } catch (requestError) {
       console.error("[marketplace-message] client submit failed", { name: requestError instanceof Error ? requestError.name : "UnknownError" });
       setBusy(false);
+      setPhase("idle");
       setError(true);
     }
   }

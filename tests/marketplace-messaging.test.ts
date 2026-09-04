@@ -8,6 +8,8 @@ const conversation = read("app/messages/[conversationId]/page.tsx");
 const upload = read("app/api/marketplace/messages/route.ts");
 const composer = read("app/messages/MessageComposer.tsx");
 const migration = read("supabase/migrations/202608290002_marketplace_message_attachments.sql");
+const idempotencyMigration = read("supabase/migrations/202609040008_marketplace_message_idempotency.sql");
+const attachmentFixMigration = read("supabase/migrations/202609040009_fix_marketplace_message_attachment_conflict.sql");
 const jobPage = read("app/work/jobs/[id]/page.tsx");
 const conversationBubble = read("app/components/marketplace/MarketplaceMessageBubble.tsx");
 const customerJobPage = read("app/jobs/[token]/page.tsx");
@@ -94,6 +96,11 @@ test("message submissions are idempotent for repeated client keys, including att
   assert.match(upload, /ignoreDuplicates: true/);
   assert.match(upload, /client_attachment_index: clientMessageId \? index : null/);
   assert.match(upload, /upsert: true/);
+  assert.match(upload, /existingAttachmentRows/);
+  assert.match(upload, /protectedPaths/);
+  assert.match(upload, /messageError/);
+  assert.match(idempotencyMigration, /client_submission_uidx/);
+  assert.match(attachmentFixMigration, /create unique index marketplace_message_attachments_client_submission_uidx/);
   assert.match(read("app/work/jobs/ProviderJobActions.tsx"), /event\.preventDefault\(\)/);
 });
 
