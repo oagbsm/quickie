@@ -13,6 +13,7 @@ const profile = readFileSync(new URL("../app/work/profile/page.tsx", import.meta
 const workFeed = readFileSync(new URL("../app/work/page.tsx", import.meta.url), "utf8");
 const matching = readFileSync(new URL("../lib/marketplace/provider-job-matching.ts", import.meta.url), "utf8");
 const jobDetail = readFileSync(new URL("../app/work/jobs/[id]/page.tsx", import.meta.url), "utf8");
+const stripe = readFileSync(new URL("../lib/server/provider-stripe.ts", import.meta.url), "utf8");
 
 test("provider onboarding separates Maidenhead browsing from quote readiness", () => {
   assert.match(onboarding, /Basic profile/);
@@ -86,6 +87,26 @@ test("Stripe return refreshes status before rendering onboarding", () => {
   assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /refreshProviderPayoutStatus\(providerId\)/);
   assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /profileComplete/);
   assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /displayError/);
+});
+
+test("Stripe payout readiness uses live due and verification state", () => {
+  assert.match(stripe, /getStripe\(\)\.v2\.core\.accounts\.retrieve/);
+  assert.match(stripe, /requirements\?\.currently_due/);
+  assert.match(stripe, /requirements\?\.past_due/);
+  assert.match(stripe, /requirements\?\.pending_verification/);
+  assert.match(stripe, /transferCapability\?\.status === "active"/);
+  assert.match(stripe, /snapshot\.payouts_enabled === true/);
+  assert.match(stripe, /payoutSetupCompleted = accountStarted && actionableRequirements\.length === 0/);
+  assert.match(stripe, /pendingVerificationCount > 0/);
+  assert.doesNotMatch(stripe, /charges_enabled === true/);
+});
+
+test("Stripe refresh persists live assessment and leaves state unchanged on failure", () => {
+  assert.match(stripe, /const assessment = assessProviderStripeAccount\(stripeAccount\)/);
+  assert.match(stripe, /stripe_status: assessment\.status/);
+  assert.match(stripe, /if \(result\.error\)/);
+  assert.match(stripe, /throw new Error\("provider_stripe_status_sync_failed"\)/);
+  assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /try \{\s*await refreshProviderPayoutStatus\(providerId\)/);
 });
 
 test("profile photo picker is only visible when needed or explicitly changed", () => {
