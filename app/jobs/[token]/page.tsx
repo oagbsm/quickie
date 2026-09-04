@@ -13,6 +13,7 @@ import { ACTIVE_MARKETPLACE_OFFER_STATUSES, formatMarketplaceAmount, formatMarke
 import { formatMarketplaceProviderName } from "@/lib/marketplace/presentation";
 import { resolveProviderPhotoUrl } from "@/lib/marketplace/provider-photo";
 import CustomerJobManageMenu from "@/app/jobs/CustomerJobManageMenu";
+import ProviderAvatar from "@/app/components/marketplace/ProviderAvatar";
 
 export const metadata: Metadata = { title: "Quickola job", robots: { index: false, follow: false } };
 
@@ -34,7 +35,8 @@ export default async function JobPage({ params, searchParams }: { params: Promis
   const { data: quoteRows } = await admin.from("marketplace_quotes").select("id,amount_pence,availability_text,message,status,provider_id,bidder_user_id,scheduled_date,arrival_window_start,arrival_window_end").eq("job_id", data.id).in("status", [...ACTIVE_MARKETPLACE_OFFER_STATUSES]).order("created_at", { ascending: true });
   const quoteProviderIds = [...new Set((quoteRows || []).map(getMarketplaceQuoteProviderId).filter(Boolean))];
   const { data: quoteProviderProfiles } = quoteProviderIds.length ? await admin.from("marketplace_providers").select("user_id,display_name,business_name,profile_photo_url").in("user_id", quoteProviderIds) : { data: [] };
-  const quoteProfilesById = new Map((quoteProviderProfiles || []).map((profile) => [profile.user_id, profile]));
+  const resolvedQuoteProfiles = await Promise.all((quoteProviderProfiles || []).map(async (profile) => ({ ...profile, profile_photo_url: await resolveProviderPhotoUrl(admin, profile.profile_photo_url) })));
+  const quoteProfilesById = new Map(resolvedQuoteProfiles.map((profile) => [profile.user_id, profile]));
   const quotes = (quoteRows || []).map((quote) => ({ ...quote, marketplace_providers: quoteProfilesById.get(getMarketplaceQuoteProviderId(quote) || "") || null }));
   const { data: conversations } = isOwner ? await admin.from("marketplace_conversations").select("id,provider_id,bidder_user_id,created_at").eq("job_id", data.id) : { data: [] };
   const conversationByProvider = new Map((conversations || []).map((item) => [item.provider_id || item.bidder_user_id, item.id]));
@@ -60,7 +62,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
   const title = getMarketplaceJobDisplayTitle(data.service, data.service_subtype, selectedJob?.name || service?.name || data.service);
   const acceptedProfile = Array.isArray(acceptedQuote?.marketplace_providers) ? acceptedQuote.marketplace_providers[0] : acceptedQuote?.marketplace_providers;
   const providerName = formatMarketplaceProviderName(acceptedProfile?.business_name || acceptedProfile?.display_name);
-  const acceptedProviderPhotoUrl = acceptedProfile?.profile_photo_url ? (await admin.storage.from("marketplace-provider-photos").createSignedUrl(acceptedProfile.profile_photo_url, 3600)).data?.signedUrl || null : null;
+  const acceptedProviderPhotoUrl = await resolveProviderPhotoUrl(admin, acceptedProfile?.profile_photo_url);
   const acceptedProviderId = acceptedQuote?.provider_id || acceptedQuote?.bidder_user_id || null;
   const schedule = formatMarketplaceSchedule(acceptedBooking || acceptedQuote || null);
   const review = acceptedBooking ? (await admin.from("marketplace_reviews").select("rating,review_text,created_at").eq("booking_id", acceptedBooking.id).maybeSingle()).data : null;
@@ -112,7 +114,7 @@ function Offers({ quotes, token, jobId, conversationByProvider }: { quotes: Arra
       return <article key={quote.id} className="rounded-2xl border border-[#e7ebef] bg-white p-5 shadow-[0_2px_12px_rgba(6,27,63,0.03)]">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            {profile?.profile_photo_url ? <img src={profile.profile_photo_url} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover" /> : <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#eef8f1] text-lg font-black text-[#167d3c]" aria-hidden="true">{name.charAt(0).toUpperCase()}</div>}
+            <ProviderAvatar src={profile?.profile_photo_url} name={name} className="h-11 w-11" />
             <div className="min-w-0">{providerId ? <Link href={`/providers/${providerId}?job=${jobId}&offer=${quote.id}&returnTo=/jobs/${token}`} className="font-black text-[#061b3f]">{name}</Link> : <p className="font-black">{name}</p>}{quote.availability_text && <p className="mt-1 text-sm text-[#526078]">{quote.availability_text}</p>}</div>
           </div>
           <p className="shrink-0 text-2xl font-black">{formatMarketplaceAmount(quote.amount_pence)}</p>

@@ -15,7 +15,7 @@ test("confirmed booking copy is driven by persisted payment state", () => {
 });
 
 test("booking confirmation preserves real provider identity, photo fallback and routes", () => {
-  assert.match(page, /createSignedUrl\(acceptedProfile\.profile_photo_url/);
+  assert.match(page, /resolveProviderPhotoUrl\(admin, acceptedProfile\?\.profile_photo_url\)/);
   assert.match(page, /providerPhotoUrl \? <img/);
   assert.match(page, /providerPhotoUrl \? <img[\s\S]*aria-hidden=\"true\"/);
   assert.match(page, /href=\{messageHref\}/);

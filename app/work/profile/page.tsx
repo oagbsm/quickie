@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { marketplaceServices } from "@/app/data/marketplace";
 import { getMarketplaceProvider, isProviderReadyToSubmit } from "@/lib/marketplace/provider-access";
+import { resolveProviderPhotoUrl } from "@/lib/marketplace/provider-photo";
 import { destinationForAccount, getCurrentAccountContext } from "@/lib/auth/account-role";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { refreshProviderPayoutStatus } from "@/lib/server/provider-stripe";
@@ -33,7 +34,7 @@ export default async function ProviderProfilePage({ searchParams }: { searchPara
   const canSubmit = ["draft", "action_required"].includes(provider.providerStatus) && profileReadyToSubmit;
   const needsSetup = ["draft", "action_required"].includes(provider.providerStatus) && !profileReadyToSubmit;
   const photoPath = String(provider.profile.profile_photo_url || "") || null;
-  const photoUrl = photoPath?.startsWith("http") ? photoPath : photoPath ? (await admin.storage.from("marketplace-provider-photos").createSignedUrl(photoPath, 600)).data?.signedUrl || null : null;
+  const photoUrl = await resolveProviderPhotoUrl(admin, photoPath, 600);
   const name = String(provider.profile.display_name || provider.profile.business_name || "Provider");
   const providerType = String(provider.profile.provider_type || "").replaceAll("_", " ");
   const reviewRatings = (reviews || []).map((review) => Number(review.rating)).filter((rating) => Number.isFinite(rating));

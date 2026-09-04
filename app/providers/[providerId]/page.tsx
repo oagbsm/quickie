@@ -6,6 +6,7 @@ import { chooseMarketplaceQuote, startCustomerConversation } from "@/app/jobs/ac
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatMarketplaceSchedule } from "@/lib/marketplace/customer-job-state";
+import { resolveProviderPhotoUrl } from "@/lib/marketplace/provider-photo";
 
 type QuoteContext = { token: string; quoteId: string; quoteAmount: number; quoteStatus: string; conversationId: string | null; bookingPaid: boolean; bookingStatus: string | null; schedule: ReturnType<typeof formatMarketplaceSchedule>; jobTitle: string; serviceSubtype: string; postcodeDistrict: string; requestedTiming: string; availabilityText: string };
 
@@ -49,7 +50,7 @@ export default async function PublicProviderProfile({ params, searchParams }: { 
       context = { token: job.public_token, quoteId: quote.id, quoteAmount: booking?.amount_pence || quote.amount_pence, quoteStatus: quote.status, conversationId: booking?.conversation_id || conversation?.id || null, bookingPaid: booking?.payment_status === "paid", bookingStatus: booking?.status || null, schedule: formatMarketplaceSchedule(booking || quote), jobTitle: (job.service_subtype || job.service).replaceAll("-", " "), serviceSubtype: job.service_subtype, postcodeDistrict: String(job.postcode || "").trim().split(/\s+/)[0].toUpperCase(), requestedTiming: job.requested_timing || "Flexible timing", availabilityText: quote.availability_text || "Flexible availability" };
     }
   }
-  const photoUrl = profile.profile_photo_url ? (await admin.storage.from("marketplace-provider-photos").createSignedUrl(profile.profile_photo_url, 3600)).data?.signedUrl : null;
+  const photoUrl = await resolveProviderPhotoUrl(admin, profile.profile_photo_url);
   const serviceRows = services || [];
   const areaRows = areas || [];
   const name = profile.business_name || profile.display_name || "Quickola provider";

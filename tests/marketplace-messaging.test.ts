@@ -25,6 +25,7 @@ const conversationHelpers = read("lib/marketplace/conversations.ts");
 const providerActions = read("app/work/actions.ts");
 const providerPhoto = read("lib/marketplace/provider-photo.ts");
 const customerMessagesList = read("app/messages/CustomerMessagesList.tsx");
+const providerAvatar = read("app/components/marketplace/ProviderAvatar.tsx");
 const customerConversationPanel = read("app/messages/CustomerConversationPanel.tsx");
 const promotionActions = read("app/messages/actions.ts");
 const promoteButton = read("app/messages/PromoteContentButton.tsx");
@@ -182,10 +183,16 @@ test("customer provider avatars resolve private storage paths and keep a safe fa
   assert.match(index, /Promise\.all\(profileRows\.map\(async \(profile\) =>/);
   assert.match(index, /resolveProviderPhotoUrl\(admin, profile\.profile_photo_url\)/);
   assert.match(customerMessagesList, /profile\?\.profile_photo_url \? <img/);
+  assert.match(providerAvatar, /onError=\{\(\) => setFailed\(true\)\}/);
+  assert.match(providerAvatar, /!failed/);
   assert.match(customerMessagesList, /providerName\.slice\(0, 1\)\.toUpperCase\(\)/);
   assert.match(customerConversationPanel, /resolveProviderPhotoUrl\(admin, provider\?\.profile_photo_url\)/);
   assert.match(customerConversationPanel, /providerPhoto \? <img/);
   assert.match(conversation, /resolveProviderPhotoUrl\(admin, providerProfile\?\.profile_photo_url\)/);
+  assert.match(customerJobPage, /resolvedQuoteProfiles/);
+  assert.match(customerJobPage, /resolveProviderPhotoUrl\(admin, profile\.profile_photo_url\)/);
+  assert.match(customerJobPage, /resolveProviderPhotoUrl\(admin, acceptedProfile\?\.profile_photo_url\)/);
+  assert.match(customerJobPage, /ProviderAvatar src=\{profile\?\.profile_photo_url\}/);
 });
 
 test("selected-provider conversations remain writable while losing conversations are server-closed", () => {

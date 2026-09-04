@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { marketplaceServices } from "@/app/data/marketplace";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getOrCreateMarketplaceProvider, isProviderBasicProfileComplete, isProviderReadyToSubmit } from "@/lib/marketplace/provider-access";
+import { resolveProviderPhotoUrl } from "@/lib/marketplace/provider-photo";
 import { refreshProviderPayoutStatus } from "@/lib/server/provider-stripe";
 import OnboardingForm from "./OnboardingForm";
 import PendingReview from "./PendingReview";
@@ -29,8 +30,7 @@ export default async function ProviderOnboardingPage({ searchParams }: { searchP
     admin.from("marketplace_provider_services").select("category_slug,job_type_slug,active").eq("provider_id", provider.providerId),
     admin.from("marketplace_provider_service_areas").select("id", { count: "exact", head: true }).eq("provider_id", provider.providerId).eq("active", true),
   ]);
-  const photoPath = String(provider.profile.profile_photo_url || "");
-  const photoUrl = photoPath.startsWith("http") ? photoPath : photoPath ? (await admin.storage.from("marketplace-provider-photos").createSignedUrl(photoPath, 600)).data?.signedUrl || null : null;
+  const photoUrl = await resolveProviderPhotoUrl(admin, String(provider.profile.profile_photo_url || "") || null, 600);
   const initial = { ...provider.profile, email: provider.user.email || "" };
   const initialServices = (services || []).filter((service) => service.active).map((service) => `${service.category_slug}|${service.job_type_slug}`);
   const profileComplete = isProviderReadyToSubmit(provider.profile, (services || []).filter((service) => service.active).length, areasCount || 0, provider.emailConfirmedAt, provider.stripeStatus);
