@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { randomBytes } from "node:crypto";
 import { hashProviderInviteToken, sendProviderInvitationEmail } from "@/lib/server/provider-invitations";
+import { sendProviderApprovedEmail } from "@/lib/marketplace/email/transactional";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim();
 export async function adminSignOut() {
   const supabase = await createSupabaseServerClient();
@@ -64,7 +65,14 @@ export async function updateMarketplaceProviderStatus(f: FormData) {
   if (!current) redirect("/admin/providers?error=provider_not_found");
   const update = await admin.from("marketplace_providers").update({ provider_status: nextStatus, marketplace_active: nextStatus === "approved" && current.stripe_status === "ready", action_required_reason: nextStatus === "action_required" ? reason : null, approved_at: nextStatus === "approved" ? new Date().toISOString() : null, suspended_at: nextStatus === "suspended" ? new Date().toISOString() : null, updated_at: new Date().toISOString() }).eq("user_id", providerId);
   if (update.error) redirect("/admin/providers?error=status_update");
-  await admin.from("marketplace_provider_status_history").insert({ provider_id: providerId, from_status: current.provider_status, to_status: nextStatus, reason: reason || null, changed_by: user.id });
+  const history = await admin.from("marketplace_provider_status_history").insert({ provider_id: providerId, from_status: current.provider_status, to_status: nextStatus, reason: reason || null, changed_by: user.id });
+  if (!history.error && current.provider_status !== "approved" && nextStatus === "approved") {
+    try {
+      await sendProviderApprovedEmail(providerId);
+    } catch (error) {
+      console.error("marketplace_provider_approval_email_failed", { providerId, reason: error instanceof Error ? error.message.slice(0, 120) : "unknown" });
+    }
+  }
   revalidatePath("/admin/providers"); revalidatePath("/work"); revalidatePath("/work/onboarding");
   redirect("/admin/providers?success=status");
 }

@@ -94,6 +94,26 @@ export async function sendMarketplaceTransactionalEmail(input: EmailInput) {
   }
 }
 
+export async function sendProviderApprovedEmail(providerId: string) {
+  const admin = createSupabaseAdminClient();
+  const [{ data: provider }, authResult] = await Promise.all([
+    admin.from("marketplace_providers").select("user_id,display_name,business_name").eq("user_id", providerId).maybeSingle(),
+    admin.auth.admin.getUserById(providerId),
+  ]);
+  const recipientEmail = authResult.data.user?.email;
+  if (!provider || !recipientEmail) return;
+  const providerName = String(provider.display_name || provider.business_name || "").trim();
+  const firstName = providerName.split(/\s+/)[0] || "there";
+  await sendMarketplaceTransactionalEmail({
+    eventType: "provider_approved",
+    dedupeKey: `provider_approved:${provider.user_id}`,
+    recipientUserId: provider.user_id,
+    recipientEmail,
+    subject: "You're approved to start working on Quickola",
+    html: layout(`<p>Hi ${escapeHtml(firstName)},</p><p>Good news — your Quickola provider account has been approved.</p><p>You can now view matching jobs in your area, send offers and message customers through Quickola.</p>${cta(link("/work"), "View available jobs")}<p>Quickola<br>Local jobs. Local professionals.</p>`),
+  });
+}
+
 export async function notifyFirstMarketplaceMessage(conversationId: string, senderId: string) {
   const admin = createSupabaseAdminClient();
   const { data: conversation } = await admin.from("marketplace_conversations").select("id,job_id,customer_id,provider_id,bidder_user_id,marketplace_jobs(service,service_subtype,postcode,public_token)").eq("id", conversationId).maybeSingle();

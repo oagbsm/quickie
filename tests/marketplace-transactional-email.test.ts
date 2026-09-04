@@ -10,6 +10,7 @@ const jobsActions = read("app/jobs/actions.ts");
 const customerMessages = read("app/messages/actions.ts");
 const messageApi = read("app/api/marketplace/messages/route.ts");
 const webhook = read("app/api/stripe/webhook/route.ts");
+const adminActions = read("app/admin/actions.ts");
 
 test("transactional email delivery is server-only and database-deduplicated", () => {
   assert.match(email, /import "server-only"/);
@@ -104,4 +105,18 @@ test("completion notifications remain deduplicated and isolated from lifecycle a
   assert.match(jobsActions, /notifyCompletionOutcome\(bookingId, "confirmed"/);
   assert.match(jobsActions, /notifyCompletionOutcome\(bookingId, "issue_reported"\)/);
   assert.match(workActions, /notifyCustomerCompletionRequest\(bookingId\)/);
+});
+
+test("provider approval email is transition-gated and isolated", () => {
+  assert.match(email, /export async function sendProviderApprovedEmail\(providerId: string\)/);
+  assert.match(email, /eventType: "provider_approved"/);
+  assert.match(email, /dedupeKey: `provider_approved:\$\{provider\.user_id\}`/);
+  assert.match(email, /subject: "You're approved to start working on Quickola"/);
+  assert.match(email, /cta\(link\("\/work"\), "View available jobs"\)/);
+  assert.match(email, /auth\.admin\.getUserById\(providerId\)/);
+  assert.match(adminActions, /current\.provider_status !== "approved" && nextStatus === "approved"/);
+  assert.match(adminActions, /if \(!history\.error && current\.provider_status !== "approved" && nextStatus === "approved"\)/);
+  assert.match(adminActions, /try \{\s*await sendProviderApprovedEmail\(providerId\);/);
+  assert.match(adminActions, /marketplace_provider_approval_email_failed/);
+  assert.match(adminActions, /marketplace_provider_status_history.*insert/);
 });
