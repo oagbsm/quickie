@@ -1,6 +1,7 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { canProviderOperate } from "@/lib/marketplace/provider-access";
 import { normalizeJobSlug } from "@/app/data/marketplace";
+import { marketplaceAreaDistrict, marketplaceJobDistrict } from "@/lib/marketplace/provider-job-matching";
 
 type ConversationResult = { id: string };
 
@@ -36,8 +37,8 @@ export async function getOrCreateMarketplaceConversation({
       if (services.error) throw queryFailure("marketplace_provider_services lookup", services.error);
       const areas = await admin.from("marketplace_provider_service_areas").select("postcode_district").eq("provider_id", providerId).eq("active", true);
       if (areas.error) throw queryFailure("marketplace_provider_service_areas lookup", areas.error);
-      const outward = String(job.postcode || "").trim().split(/\s+/)[0].toUpperCase();
-      const eligible = (services.data || []).some((service) => service.category_slug === job.service && normalizeJobSlug(job.service, service.job_type_slug) === normalizeJobSlug(job.service, job.service_subtype || "")) && (areas.data || []).some((area) => area.postcode_district.toUpperCase() === outward);
+      const district = marketplaceJobDistrict(job.postcode);
+      const eligible = (services.data || []).some((service) => String(service.category_slug || "").trim().toLowerCase() === String(job.service || "").trim().toLowerCase() && normalizeJobSlug(job.service, service.job_type_slug) === normalizeJobSlug(job.service, job.service_subtype || "")) && (areas.data || []).some((area) => marketplaceAreaDistrict(area.postcode_district) === district);
       if (!eligible) throw new Error("provider is not eligible for job");
     }
   }

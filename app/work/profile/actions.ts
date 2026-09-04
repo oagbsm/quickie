@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { marketplaceServices } from "@/app/data/marketplace";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireProviderProfileEditAccess } from "@/lib/marketplace/provider-access";
-import { extractMarketplaceServiceAreas, normaliseMarketplaceServiceAreas } from "@/lib/marketplace/service-areas";
+import { extractMarketplaceServiceAreas, isActiveMarketplacePostcodeDistrict, normaliseMarketplaceServiceAreas } from "@/lib/marketplace/service-areas";
 
 const text = (form: FormData, name: string) => String(form.get(name) || "").trim();
 
@@ -42,6 +42,7 @@ export async function updateProviderProfile(form: FormData) {
   const businessName = text(form, "businessName");
   const submittedAreas = form.getAll("serviceArea").map(String);
   const areas = normaliseMarketplaceServiceAreas(submittedAreas.length ? submittedAreas : extractMarketplaceServiceAreas(text(form, "serviceAreas")));
+  if (areas.some((area) => !isActiveMarketplacePostcodeDistrict(area))) redirect("/work/profile?error=service_area_launch");
   const selectedCategories = new Set(form.getAll("category").map(String));
   const selectedJobValues = new Set(form.getAll("service").map(String));
   const services = marketplaceServices

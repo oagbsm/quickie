@@ -180,8 +180,9 @@ test("provider job feed matches current provider services and active districts",
   assert.match(workFeed, /marketplace_provider_service_areas/);
   assert.match(workFeed, /in\("status", \["posted", "finding_provider"\]\)/);
   assert.doesNotMatch(workFeed, /get_marketplace_browse_opportunities/);
-  assert.match(matching, /getPostcodeDistrict/);
-  assert.match(matching, /ACTIVE_PUBLIC_SEO_POSTCODE_DISTRICTS/);
+  assert.match(matching, /marketplaceJobDistrict/);
+  assert.doesNotMatch(matching, /ACTIVE_PUBLIC_SEO_POSTCODE_DISTRICTS/);
+  assert.match(matching, /marketplaceAreaDistrict/);
   assert.match(matching, /job\.service/);
   assert.match(matching, /job\.service_subtype/);
   assert.match(matching, /service\.active !== false/);

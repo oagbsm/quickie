@@ -7,6 +7,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getJob } from "@/app/data/marketplace";
 import { getCurrentAccountRole } from "@/lib/auth/account-role";
 import { notifyMatchingProvidersForJob } from "@/lib/marketplace/email/transactional";
+import { isActiveMarketplacePostcodeDistrict } from "@/lib/marketplace/service-areas";
+import { marketplaceJobDistrict } from "@/lib/marketplace/provider-job-matching";
 
 const text = (form: FormData, key: string) => String(form.get(key) || "").trim();
 const normaliseMobile = (value: string) => { const compact = value.replace(/[^\d+]/g, ""); return compact.startsWith("07") ? `+44${compact.slice(1)}` : compact; };
@@ -61,6 +63,7 @@ export async function publishPendingMarketplaceJob(draftToken: string) {
     if (existing) return { token: existing.public_token };
   }
   const payload = draft.payload as DraftPayload;
+  if (!isActiveMarketplacePostcodeDistrict(marketplaceJobDistrict(payload.postcode))) return { error: "outside_launch_area" as const };
   let customer = (await admin.from("marketplace_customers").select("id,email").eq("auth_user_id", user.id).maybeSingle()).data;
   if (!customer) {
     const inserted = await admin.from("marketplace_customers").insert({ auth_user_id: user.id, email: user.email || null, display_name: payload.name || user.user_metadata?.full_name || null, mobile: payload.mobile ? normaliseMobile(payload.mobile) : null }).select("id,email").single();
@@ -104,6 +107,7 @@ export async function submitConsumerJob(_state: { message: string }, form: FormD
   const category = text(form, "category"); const service = text(form, "service"); const description = text(form, "description"); const when = text(form, "when"); const postcode = text(form, "postcode"); const mobile = text(form, "contact"); const name = text(form, "name"); const budget = text(form, "budget");
   const selectedJob = getJob(category, service);
   if (!selectedJob || !postcode) return { message: "Check the job type and postcode, then try again." };
+  if (!isActiveMarketplacePostcodeDistrict(marketplaceJobDistrict(postcode))) return { message: "Quickola is currently available in SL6 only. More nearby areas are coming soon." };
   if (budget && (!/^\d+(?:\.\d{1,2})?$/.test(budget) || Number(budget) <= 0 || Number(budget) > 100000)) return { message: "Enter a budget between £1 and £100,000, or choose Open to offers." };
   let answers: Record<string, string | number> = {};
   try { const parsed = JSON.parse(text(form, "answers") || "{}"); if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) answers = parsed; } catch { /* optional answers remain empty */ }
@@ -114,6 +118,7 @@ export async function submitConsumerJob(_state: { message: string }, form: FormD
   const published = await publishPendingMarketplaceJob(draft!.draft_token);
   if (published.token) redirect("/my-jobs");
   if (published.error === "authentication_required") redirect(`/sign-in?draft=${draft!.draft_token}`);
+  if (published.error === "outside_launch_area") return { message: "Quickola is currently available in SL6 only. More nearby areas are coming soon." };
   if (published.error) return { message: "We couldn’t complete posting this job. Your details are still on this page; please try again." };
   return { message: "" };
 }

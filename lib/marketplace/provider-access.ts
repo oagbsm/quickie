@@ -2,8 +2,9 @@ import type { User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getPostcodeDistrict, normaliseUkPostcode } from "@/lib/uk-address";
+import { normaliseUkPostcode } from "@/lib/uk-address";
 import { destinationForAccount, getCurrentAccountContext, getCurrentAccountRole } from "@/lib/auth/account-role";
+import { marketplaceAreaDistrict, marketplaceJobDistrict } from "@/lib/marketplace/provider-job-matching";
 
 export type ProviderStatus = "draft" | "pending_review" | "approved" | "action_required" | "suspended";
 export type ProviderStripeStatus = "not_started" | "onboarding" | "restricted" | "verification_pending" | "ready";
@@ -43,9 +44,9 @@ export function isProviderBasicProfileComplete(provider: MarketplaceProvider) { 
 export function isProviderReadyToSubmit(profile: Record<string, unknown>, servicesCount: number, areasCount: number, emailConfirmedAt: string | null | undefined, stripeStatus: string | null | undefined) { const name = String(profile.display_name || profile.business_name || "").trim(); const phone = String(profile.phone || "").trim(); return Boolean(name && phone && profile.provider_type && profile.base_town && profile.profile_photo_url && profile.provider_terms_accepted_at && servicesCount > 0 && areasCount > 0 && emailConfirmedAt && stripeStatus === "ready"); }
 export function canProviderBrowseJobs(provider: MarketplaceProvider, servicesCount: number) { return provider.providerStatus !== "suspended" && Boolean(provider.emailConfirmedAt) && isProviderBasicProfileComplete(provider) && servicesCount > 0; }
 export function isProviderProfileComplete(profile: Record<string, unknown>, servicesCount: number, areasCount: number) { const name = String(profile.display_name || profile.business_name || "").trim(); const phone = String(profile.phone || "").trim(); return Boolean(name && profile.profile_photo_url && phone && profile.marketplace_bio && profile.provider_type && profile.base_town && servicesCount > 0 && areasCount > 0 && profile.provider_terms_accepted_at); }
-export function providerCoversJob(serviceAreas: Array<{ postcode_district?: string | null }> | string[], jobPostcodeOrDistrict: string) { const district = getPostcodeDistrict(jobPostcodeOrDistrict) || jobPostcodeOrDistrict.trim().toUpperCase(); return serviceAreas.some((area) => { const value = typeof area === "string" ? area : area.postcode_district || ""; return value.trim().toUpperCase() === district; }); }
+export function providerCoversJob(serviceAreas: Array<{ postcode_district?: string | null }> | string[], jobPostcodeOrDistrict: string) { const district = marketplaceJobDistrict(jobPostcodeOrDistrict); return serviceAreas.some((area) => marketplaceAreaDistrict(typeof area === "string" ? area : area.postcode_district) === district); }
 export function providerOffersService(services: Array<{ category_slug?: string | null; job_type_slug?: string | null }>, category: string, jobType: string) { return services.some((service) => service.category_slug === category && service.job_type_slug === jobType); }
-export function normaliseProviderPostcode(value: string) { const postcode = normaliseUkPostcode(value); return { postcode, district: getPostcodeDistrict(postcode) }; }
+export function normaliseProviderPostcode(value: string) { const postcode = normaliseUkPostcode(value); return { postcode, district: marketplaceJobDistrict(postcode) }; }
 export async function getApprovedMarketplaceProvider() { const provider = await getMarketplaceProvider(); return provider && provider.providerStatus === "approved" ? provider : null; }
 export async function getOperationalMarketplaceProvider() { const provider = await getMarketplaceProvider(); return provider && canProviderOperate(provider) ? provider : null; }
 export async function getSignedInUser() { const supabase = await createSupabaseServerClient(); return (await supabase.auth.getUser()).data.user; }
