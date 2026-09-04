@@ -7,8 +7,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyCompletionOutcome, notifyFirstMarketplaceOffer } from "@/lib/marketplace/email/transactional";
 import { getOperationalMarketplaceProvider } from "@/lib/marketplace/provider-access";
 import { getOrCreateMarketplaceConversation } from "@/lib/marketplace/conversations";
-import { getStripe } from "@/lib/server/marketplace-payments";
-import { createMarketplaceCheckout } from "@/app/jobs/payment-actions";
 import { getCurrentAccountRole } from "@/lib/auth/account-role";
 import { transferMarketplaceProviderFunds } from "@/lib/server/marketplace-transfers";
 
@@ -47,31 +45,34 @@ export async function chooseMarketplaceQuote(formData: FormData) {
   const { data: customer } = await admin.from("marketplace_customers").select("id,email").eq("auth_user_id", user.id).maybeSingle();
   const { data: job } = await admin.from("marketplace_jobs").select("id,customer_id").eq("public_token", token).maybeSingle();
   if (!customer || !job || job.customer_id !== customer.id) redirect(`/jobs/${token}?error=ownership`);
-  try {
-    getStripe();
-  } catch (error) {
-    console.error("[marketplace-payment] Stripe configuration check failed", { stage: "accept-offer", token, quoteId, userId: user.id, reason: error instanceof Error ? error.message : "unknown" });
-    if (error instanceof Error && ["stripe_not_configured", "stripe_test_key_required"].includes(error.message)) redirect(`/jobs/${token}?error=stripe_config`);
-    redirect(`/jobs/${token}?error=selection`);
-  }
-  // Keep the existing offer unchanged if the payment migration is still pending.
-  const { error: paymentSchemaError } = await admin.from("marketplace_bookings").select("payment_status").limit(1);
-  if (paymentSchemaError) {
-    const missingPaymentSchema = paymentSchemaError.code === "42703" || /payment_status|schema cache|column .* does not exist/i.test(paymentSchemaError.message || "");
-    console.error("[marketplace-payment] Booking payment schema check failed", { stage: "accept-offer", token, quoteId, userId: user.id, code: paymentSchemaError.code, reason: paymentSchemaError.message });
-    redirect(`/jobs/${token}?error=${missingPaymentSchema ? "payment_setup" : "selection"}`);
-  }
   const { error } = await supabase.rpc("accept_marketplace_offer", { target_quote: quoteId });
   if (error) {
     console.error("[marketplace-payment] Offer acceptance failed", { stage: "accept-offer", token, quoteId, userId: user.id, code: error.code, reason: error.message });
     redirect(returnTo.startsWith("/") ? `${returnTo}?error=selection` : `/jobs/${token}?error=selection`);
   }
   revalidatePath(returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : `/jobs/${token}`);
-  const checkoutData = new FormData();
-  checkoutData.set("token", token);
-  checkoutData.set("quoteId", quoteId);
-  checkoutData.set("returnTo", returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : `/jobs/${token}`);
-  return createMarketplaceCheckout(checkoutData);
+  redirect(`${returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : `/jobs/${token}`}?selected=1`);
+}
+
+export async function changeMarketplaceProvider(formData: FormData) {
+  if (await getCurrentAccountRole() !== "customer") redirect("/");
+  const token = String(formData.get("token") || "");
+  const quoteId = String(formData.get("quoteId") || "");
+  if (!token || !quoteId) redirect(`/jobs/${token}?error=selection`);
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect(`/sign-in?next=${encodeURIComponent(`/jobs/${token}`)}`);
+  const admin = createSupabaseAdminClient();
+  const { data: customer } = await admin.from("marketplace_customers").select("id").eq("auth_user_id", user.id).maybeSingle();
+  const { data: job } = await admin.from("marketplace_jobs").select("id,customer_id").eq("public_token", token).maybeSingle();
+  if (!customer || !job || job.customer_id !== customer.id) redirect(`/jobs/${token}?error=ownership`);
+  const { error } = await supabase.rpc("change_marketplace_selected_quote", { target_quote: quoteId });
+  if (error) {
+    console.error("[marketplace-payment] Provider reselection failed", { token, quoteId, userId: user.id, code: error.code, reason: error.message });
+    redirect(`/jobs/${token}?error=${/paid|locked|unavailable/i.test(error.message) ? "locked" : "selection"}`);
+  }
+  revalidatePath(`/jobs/${token}`);
+  redirect(`/jobs/${token}?selected=1`);
 }
 
 export async function startCustomerConversation(formData: FormData) {

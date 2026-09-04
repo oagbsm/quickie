@@ -123,9 +123,10 @@ test("customer job details resolve the public token to the internal job id and s
   assert.doesNotMatch(customerJobPage, /Availability to confirm/);
 });
 
-test("customer offers and conversations use the same active statuses and internal job identity", () => {
+test("customer offers preserve active statuses and keep declined quote history visible", () => {
   assert.match(quoteState, /ACTIVE_MARKETPLACE_OFFER_STATUSES = \["pending", "submitted", "selected", "accepted"\]/);
-  assert.match(customerJobPage, /\.in\("status", \[\.\.\.ACTIVE_MARKETPLACE_OFFER_STATUSES\]\)/);
+  assert.match(customerJobPage, /customerVisibleQuoteStatuses = \[\.\.\.ACTIVE_MARKETPLACE_OFFER_STATUSES, "declined"\]/);
+  assert.match(customerJobPage, /\.in\("status", customerVisibleQuoteStatuses\)/);
   assert.match(customerJobActions, /\.eq\("public_token", token\)/);
   assert.match(customerJobActions, /jobId: job\.id, providerId, actorUserId: user\.id, customerId: customer\.id/);
   assert.match(customerJobActions, /redirect\(`\/messages\/\$\{conversation\.id\}`\)/);
