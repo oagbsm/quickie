@@ -26,14 +26,18 @@ export async function createMarketplaceCheckout(formData: FormData) {
     redirect(`/jobs/${token}?error=payment`);
   }
 
-  const { data: existingBooking, error: bookingSchemaError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id").eq("job_id", job.id).maybeSingle();
+  const { data: existingBooking, error: bookingSchemaError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id,status,completion_status,payout_hold_status").eq("job_id", job.id).maybeSingle();
   if (bookingSchemaError) {
     console.error("[marketplace-payment] Booking lookup failed", { stage: "create-checkout", token, quoteId, userId: user.id, code: bookingSchemaError.code, reason: bookingSchemaError.message });
     redirect(`/jobs/${token}?error=payment_setup`);
   }
   const amountPence = Number(quote.amount_pence);
   if (!Number.isInteger(amountPence) || amountPence <= 0) redirect(`/jobs/${token}?error=payment`);
-  if (existingBooking?.payment_status === "paid") redirect(returnTo);
+  if (existingBooking && (["paid", "refunded", "refund_pending", "partially_refunded", "cancelled"].includes(existingBooking.payment_status || "") || ["completed", "cancelled"].includes(existingBooking.status || "") || existingBooking.completion_status === "completed" || existingBooking.payout_hold_status === "held")) redirect(returnTo);
+  if (existingBooking) {
+    const { data: activeDispute } = await admin.from("marketplace_disputes").select("id").eq("booking_id", existingBooking.id).in("status", ["open", "in_review", "resolved_customer"]).maybeSingle();
+    if (activeDispute) redirect(returnTo);
+  }
 
   const providerId = quote.provider_id || quote.bidder_user_id;
   const { data: conversation } = providerId
@@ -42,10 +46,10 @@ export async function createMarketplaceCheckout(formData: FormData) {
   const platformFeePence = calculateMarketplacePlatformFeePence(amountPence);
   let booking = existingBooking;
   if (!booking) {
-    const inserted = await admin.from("marketplace_bookings").insert({ job_id: job.id, quote_id: quote.id, customer_id: customer.id, provider_id: providerId, conversation_id: conversation?.id || null, amount_pence: amountPence, currency: "gbp", platform_fee_pence: platformFeePence, payment_status: "pending_payment", status: "awaiting_booking_fee" }).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id").single();
+    const inserted = await admin.from("marketplace_bookings").insert({ job_id: job.id, quote_id: quote.id, customer_id: customer.id, provider_id: providerId, conversation_id: conversation?.id || null, amount_pence: amountPence, currency: "gbp", platform_fee_pence: platformFeePence, payment_status: "pending_payment", status: "awaiting_booking_fee" }).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id,status,completion_status,payout_hold_status").single();
     if (inserted.error) {
       console.error("[marketplace-payment] Booking creation failed", { stage: "create-checkout", token, quoteId, userId: user.id, code: inserted.error.code, reason: inserted.error.message });
-      const retry = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id").eq("quote_id", quote.id).maybeSingle();
+      const retry = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id,status,completion_status,payout_hold_status").eq("quote_id", quote.id).maybeSingle();
       if (retry.error || !retry.data) {
         console.error("[marketplace-payment] Existing booking retry failed", { stage: "create-checkout", token, quoteId, userId: user.id, code: retry.error?.code, reason: retry.error?.message || "booking_not_found" });
         redirect(`/jobs/${token}?error=payment`);
@@ -54,16 +58,17 @@ export async function createMarketplaceCheckout(formData: FormData) {
     } else booking = inserted.data;
   } else if (booking.quote_id !== quote.id) {
     if (booking.payment_status === "paid") redirect(returnTo);
-    const updated = await admin.from("marketplace_bookings").update({ quote_id: quote.id, provider_id: providerId, conversation_id: conversation?.id || booking.conversation_id, amount_pence: amountPence, platform_fee_pence: platformFeePence, stripe_checkout_session_id: null, stripe_payment_intent_id: null, paid_at: null }).eq("id", booking.id).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id").single();
+    const updated = await admin.from("marketplace_bookings").update({ quote_id: quote.id, provider_id: providerId, conversation_id: conversation?.id || booking.conversation_id, amount_pence: amountPence, platform_fee_pence: platformFeePence, stripe_checkout_session_id: null, stripe_payment_intent_id: null, paid_at: null }).eq("id", booking.id).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id,status,completion_status,payout_hold_status").single();
     if (updated.error || !updated.data) {
       console.error("[marketplace-payment] Booking reselection update failed", { stage: "create-checkout", token, quoteId, bookingId: booking.id, userId: user.id, code: updated.error?.code, reason: updated.error?.message || "booking_not_updated" });
       redirect(`${returnTo}?error=payment`);
     }
     booking = updated.data;
   } else if (!booking.conversation_id && conversation?.id) {
-    const updated = await admin.from("marketplace_bookings").update({ conversation_id: conversation.id }).eq("id", booking.id).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id").single();
+    const updated = await admin.from("marketplace_bookings").update({ conversation_id: conversation.id }).eq("id", booking.id).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id,status,completion_status,payout_hold_status").single();
     if (!updated.error && updated.data) booking = updated.data;
   }
+  if (!booking) redirect(`${returnTo}?error=payment`);
 
   let checkoutUrl: string | null = null;
   let checkoutSessionId: string | null = null;
