@@ -10,7 +10,7 @@ test("confirmed booking copy is driven by persisted payment state", () => {
   assert.match(page, /booking\.payment_status === "paid"/);
   assert.match(page, /Booking confirmed/);
   assert.match(page, /Payment processing/);
-  assert.match(page, /payment === "success" && !acceptedBooking\?\.payment_status/);
+  assert.match(page, /paymentReturnPending = payment === "success" && acceptedBooking\?\.payment_status !== "paid"/);
   assert.doesNotMatch(page, /payment === "success".*Payment submitted/);
   assert.match(page, /acceptedBooking\.payment_status === "paid" \? <BookingConfirmation/);
   assert.match(page, /<BookingPanel token=\{token\}/);

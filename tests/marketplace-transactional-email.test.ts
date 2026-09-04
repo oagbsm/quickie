@@ -10,6 +10,7 @@ const jobsActions = read("app/jobs/actions.ts");
 const customerMessages = read("app/messages/actions.ts");
 const messageApi = read("app/api/marketplace/messages/route.ts");
 const webhook = read("app/api/stripe/webhook/route.ts");
+const paymentFinalization = read("lib/server/marketplace-payment-finalization.ts");
 const adminActions = read("app/admin/actions.ts");
 
 test("transactional email delivery is server-only and database-deduplicated", () => {
@@ -36,7 +37,7 @@ test("the six requested events use the authoritative marketplace paths", () => {
   assert.match(jobsActions, /notifyFirstMarketplaceOffer\(job\.id\)/);
   assert.doesNotMatch(customerMessages, /notifyFirstMarketplaceMessage\(conversationId, user\.id\)/);
   assert.match(messageApi, /notifyFirstMarketplaceMessage\(conversationId, user\.id\)/);
-  assert.match(webhook, /notifyBookingPaid\(booking\.id\)/);
+  assert.match(webhook, /finalizeMarketplacePayment\(admin, booking, session\)/);
   assert.doesNotMatch(jobsActions, /quote_selected/);
 });
 
@@ -94,8 +95,8 @@ test("matching notifications reuse the provider job-board matcher and avoid priv
 
 test("booking notifications are triggered from the verified Stripe webhook, not browser success", () => {
   assert.match(webhook, /session\.payment_status !== "paid"/);
-  assert.match(webhook, /payment_status: "paid"/);
-  assert.match(webhook, /try \{ await notifyBookingPaid/);
+  assert.match(paymentFinalization, /payment_status: "paid"/);
+  assert.match(paymentFinalization, /notifyBookingPaid\(booking\.id\)/);
 });
 
 test("completion notifications remain deduplicated and isolated from lifecycle actions", () => {

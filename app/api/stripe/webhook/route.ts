@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import Stripe from "stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { describeStripeError, getStripe, getStripeWebhookSecret } from "@/lib/server/marketplace-payments";
-import { notifyBookingPaid } from "@/lib/marketplace/email/transactional";
+import { finalizeMarketplacePayment } from "@/lib/server/marketplace-payment-finalization";
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -43,20 +43,12 @@ export async function POST(request: Request) {
 
   const { data: quote } = await admin.from("marketplace_quotes").select("id,job_id,status").eq("id", booking.quote_id).maybeSingle();
   if (!quote || quote.job_id !== booking.job_id || !["accepted", "selected"].includes(quote.status)) { await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "quote_not_accepted" }).eq("stripe_event_id", event.id); return NextResponse.json({ error: "quote_not_accepted" }, { status: 400 }); }
-  const { error: updateError } = await admin.from("marketplace_bookings").update({ payment_status: "paid", stripe_checkout_session_id: session.id, stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || null, paid_at: new Date().toISOString(), status: "booked" }).eq("id", booking.id).neq("payment_status", "paid");
-  if (updateError) {
+  try { await finalizeMarketplacePayment(admin, booking, session); } catch (error) {
     await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "booking_update_failed" }).eq("stripe_event_id", event.id);
-    console.error("[marketplace-payment] booking payment update failed", { eventId: event.id, bookingId, code: updateError.code, reason: updateError.message });
+    console.error("[marketplace-payment] booking payment update failed", { eventId: event.id, bookingId, reason: error instanceof Error ? error.message : "unknown" });
     return NextResponse.json({ error: "booking_update_failed" }, { status: 500 });
   }
-  const { error: jobError } = await admin.from("marketplace_jobs").update({ status: "booked", updated_at: new Date().toISOString() }).eq("id", booking.job_id).in("status", ["awaiting_booking", "finding_provider", "posted"]);
-  if (jobError) {
-    await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "job_update_failed" }).eq("stripe_event_id", event.id);
-    console.error("[marketplace-payment] job update failed", { eventId: event.id, bookingId, jobId: booking.job_id, code: jobError.code, reason: jobError.message });
-    return NextResponse.json({ error: "job_update_failed" }, { status: 500 });
-  }
   console.info("[marketplace-payment] booking marked paid", { eventId: event.id, bookingId, quoteId: booking.quote_id, jobId: booking.job_id, amountPence: booking.amount_pence, currency: booking.currency });
-  try { await notifyBookingPaid(booking.id); } catch (notificationError) { console.error("marketplace_booking_email_failed", { bookingId: booking.id, reason: notificationError instanceof Error ? notificationError.message.slice(0, 120) : "unknown" }); }
   const jobRelation = Array.isArray(booking.marketplace_jobs) ? booking.marketplace_jobs[0] : booking.marketplace_jobs;
   revalidatePath("/my-jobs");
   if (jobRelation?.public_token) revalidatePath(`/jobs/${jobRelation.public_token}`);
