@@ -34,7 +34,7 @@ test("the six requested events use the authoritative marketplace paths", () => {
   assert.match(postJob, /notifyMatchingProvidersForJob\(job\.id\)/);
   assert.match(workActions, /notifyFirstMarketplaceOffer\(jobId\)/);
   assert.match(jobsActions, /notifyFirstMarketplaceOffer\(job\.id\)/);
-  assert.match(customerMessages, /notifyFirstMarketplaceMessage\(conversationId, user\.id\)/);
+  assert.doesNotMatch(customerMessages, /notifyFirstMarketplaceMessage\(conversationId, user\.id\)/);
   assert.match(messageApi, /notifyFirstMarketplaceMessage\(conversationId, user\.id\)/);
   assert.match(webhook, /notifyBookingPaid\(booking\.id\)/);
   assert.doesNotMatch(jobsActions, /quote_selected/);

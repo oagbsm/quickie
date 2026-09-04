@@ -16,6 +16,20 @@ const quoteState = read("lib/marketplace/customer-job-state.ts");
 const workOffers = read("app/work/offers/page.tsx");
 const workActions = read("app/work/actions.ts");
 const quoteSubmissionMigration = read("supabase/migrations/202608290001_remove_unimplemented_provider_qualification_gate.sql");
+const readNotificationsMigration = read("supabase/migrations/202609040001_marketplace_message_read_notifications.sql");
+const transactionalEmail = read("lib/marketplace/email/transactional.ts");
+const closedConversationMigration = read("supabase/migrations/202609040003_close_losing_marketplace_conversations.sql");
+const conversationHelpers = read("lib/marketplace/conversations.ts");
+const providerActions = read("app/work/actions.ts");
+const providerPhoto = read("lib/marketplace/provider-photo.ts");
+const customerMessagesList = read("app/messages/CustomerMessagesList.tsx");
+const customerConversationPanel = read("app/messages/CustomerConversationPanel.tsx");
+const promotionActions = read("app/messages/actions.ts");
+const promoteButton = read("app/messages/PromoteContentButton.tsx");
+const messageBubble = read("app/components/marketplace/MarketplaceMessageBubble.tsx");
+const promotionMigration = read("supabase/migrations/202609040002_customer_conversation_job_promotions.sql");
+const providerJobPage = read("app/work/jobs/[id]/page.tsx");
+const customerJobPageForPromotions = read("app/jobs/[token]/page.tsx");
 
 test("provider messaging stays on provider routes while customer routes remain separate", () => {
   assert.ok(index.includes('providerOnly ? "/work/messages"'));
@@ -103,4 +117,74 @@ test("provider My Work includes bidder-backed quotes and preserves offer lifecyc
   assert.match(quoteSubmissionMigration, /insert into public\.marketplace_quotes\(job_id, provider_id, bidder_user_id/);
   assert.match(quoteSubmissionMigration, /auth\.uid\(\), quote_amount/);
   assert.doesNotMatch(workOffers, /cleaner_profiles/);
+});
+
+test("message email notifications are claimed once per unread recipient episode", () => {
+  assert.match(readNotificationsMigration, /customer_last_read_at/);
+  assert.match(readNotificationsMigration, /provider_last_read_at/);
+  assert.match(readNotificationsMigration, /customer_last_notified_at/);
+  assert.match(readNotificationsMigration, /provider_last_notified_at/);
+  assert.match(readNotificationsMigration, /for update;/);
+  assert.match(readNotificationsMigration, /mark_marketplace_conversation_read/);
+  assert.match(readNotificationsMigration, /claim_marketplace_message_email_notification/);
+  assert.match(readNotificationsMigration, /last_notified_at is not null and/);
+  assert.match(readNotificationsMigration, /last_read_at <= last_notified_at/);
+  assert.match(readNotificationsMigration, /sender_id is distinct from recipient_user_id/);
+  assert.match(conversation, /mark_marketplace_conversation_read/);
+  assert.match(upload, /notifyFirstMarketplaceMessage\(conversationId, user\.id\)/);
+  assert.match(transactionalEmail, /claim_marketplace_message_email_notification/);
+  assert.match(transactionalEmail, /sourceId: notificationMessageId/);
+  assert.match(transactionalEmail, /:\$\{notificationMessageId\}/);
+});
+
+test("customer provider avatars resolve private storage paths and keep a safe fallback", () => {
+  assert.match(providerPhoto, /marketplace-provider-photos/);
+  assert.match(providerPhoto, /createSignedUrl\(value, expiresIn\)/);
+  assert.match(providerPhoto, /return error \? null : data\?\.signedUrl \|\| null/);
+  assert.match(providerPhoto, /value\.startsWith\("\/"\)/);
+  assert.match(providerPhoto, /protocol === "http:" \|\| url\.protocol === "https:"/);
+  assert.match(index, /Promise\.all\(profileRows\.map\(async \(profile\) =>/);
+  assert.match(index, /resolveProviderPhotoUrl\(admin, profile\.profile_photo_url\)/);
+  assert.match(customerMessagesList, /profile\?\.profile_photo_url \? <img/);
+  assert.match(customerMessagesList, /providerName\.slice\(0, 1\)\.toUpperCase\(\)/);
+  assert.match(customerConversationPanel, /resolveProviderPhotoUrl\(admin, provider\?\.profile_photo_url\)/);
+  assert.match(customerConversationPanel, /providerPhoto \? <img/);
+  assert.match(conversation, /resolveProviderPhotoUrl\(admin, providerProfile\?\.profile_photo_url\)/);
+});
+
+test("selected-provider conversations remain writable while losing conversations are server-closed", () => {
+  assert.match(conversationHelpers, /isMarketplaceConversationReadOnly/);
+  assert.match(conversationHelpers, /in\("status", \["accepted", "selected"\]\)/);
+  assert.match(closedConversationMigration, /conversation_closed/);
+  assert.match(closedConversationMigration, /coalesce\(c\.provider_id, c\.bidder_user_id\) is distinct from coalesce\(q\.provider_id, q\.bidder_user_id\)/);
+  assert.match(closedConversationMigration, /drop policy if exists "marketplace participants send messages"/);
+  assert.match(upload, /isMarketplaceConversationReadOnly\(admin, conversationId\)/);
+  assert.match(upload, /supabase\.rpc\("create_marketplace_message"/);
+  assert.match(providerActions, /isMarketplaceConversationReadOnly\(admin, conversation\.id\)/);
+  assert.match(customerConversationPanel, /readOnly=\{conversationReadOnly\}/);
+  assert.match(conversation, /readOnly=\{conversationReadOnly\}/);
+  assert.match(conversation, /isMarketplaceConversationReadOnly\(admin, conversationId\)/);
+  assert.match(composer, /This conversation is closed because another provider was selected for this job/);
+});
+
+test("customer conversation content can be explicitly promoted into the job scope", () => {
+  assert.match(promotionActions, /message\.sender_id !== user\.id/);
+  assert.match(promotionActions, /conversation\.customer_id !== customer\.id/);
+  assert.match(promotionActions, /eq\("message_id", message\.id\)/);
+  assert.match(promotionActions, /marketplace-message-attachments/);
+  assert.match(promotionActions, /marketplace-job-photos/);
+  assert.match(promotionActions, /source_message_attachment_id: attachment\.id/);
+  assert.match(promotionActions, /marketplace_job_detail_promotions/);
+  assert.match(promotionActions, /code === "23505"/);
+  assert.match(promotionMigration, /unique\(job_id, source_message_id\)/);
+  assert.match(promotionMigration, /source_message_attachment_id uuid/);
+  assert.match(providerJobPage, /marketplace_job_photos/);
+  assert.match(providerJobPage, /optional_note/);
+  assert.match(customerJobPageForPromotions, /marketplace_job_photos/);
+  assert.match(messageBubble, /canPromote && isMine/);
+  assert.match(messageBubble, /PromoteContentButton kind="photo"/);
+  assert.match(messageBubble, /PromoteContentButton kind="detail"/);
+  assert.match(promoteButton, /This \{kind === "photo" \? "photo" : "detail"\} will be added/);
+  assert.match(promoteButton, /Add to job/);
+  assert.match(promoteButton, /Add detail to job/);
 });

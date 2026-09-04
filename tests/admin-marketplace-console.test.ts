@@ -6,6 +6,7 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 const dashboard = read("app/admin/(portal)/page.tsx");
 const nav = read("app/admin/components/AdminNav.tsx");
 const jobs = read("app/admin/(portal)/jobs/page.tsx");
+const jobDetail = read("app/admin/(portal)/jobs/[id]/page.tsx");
 const providers = read("app/admin/(portal)/providers/page.tsx");
 const payments = read("app/admin/(portal)/payments/page.tsx");
 const customers = read("app/admin/(portal)/customers/page.tsx");
@@ -55,4 +56,19 @@ test("marketplace compatibility destinations exist", () => {
   assert.match(read("app/admin/(portal)/marketplace-bookings/page.tsx"), /marketplace_bookings/);
   assert.match(read("app/admin/(portal)/marketplace-bookings/[id]/page.tsx"), /Offer accepted \/ booking created/);
   assert.match(read("app/admin/(portal)/providers/[id]/page.tsx"), /Operational eligibility/);
+});
+
+test("admin jobs detail exposes the complete marketplace lifecycle", () => {
+  assert.match(jobDetail, /marketplace_quotes/);
+  assert.match(jobDetail, /marketplace_providers/);
+  assert.match(jobDetail, /marketplace_provider_services/);
+  assert.match(jobDetail, /marketplace_provider_service_areas/);
+  assert.match(jobDetail, /marketplace_reviews/);
+  assert.match(jobDetail, /Booking, payment and completion/);
+  assert.match(jobDetail, /Provider review history/);
+  assert.match(jobDetail, /stripe_payment_intent_id/);
+  assert.match(jobDetail, /marketplace_disputes/);
+  assert.match(jobDetail, /marketplace_refunds/);
+  assert.match(jobDetail, /await requireAdmin\(\)/);
+  assert.doesNotMatch(jobDetail, /cleaner_profiles/);
 });

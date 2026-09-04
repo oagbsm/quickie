@@ -38,7 +38,7 @@ export function getCustomerJobLifecycleState({ offerCount, acceptedQuote, bookin
 }
 
 export function getCustomerJobLifecycleLabel(state: CustomerJobLifecycleState) {
-  return { waiting_for_offers: "Waiting", offers_received: "Offers", provider_selected_unpaid: "Pay now", payment_pending: "Confirming", booked: "Booked", provider_on_the_way: "On the way", provider_arrived: "In progress", awaiting_customer_completion: "Confirm job", completed: "Completed", cancelled: "Cancelled" }[state];
+  return { waiting_for_offers: "Waiting", offers_received: "Offers", provider_selected_unpaid: "Pay now", payment_pending: "Confirming", booked: "Booked", provider_on_the_way: "On the way", provider_arrived: "In progress", awaiting_customer_completion: "Confirm completion", completed: "Completed", cancelled: "Cancelled" }[state];
 }
 
 export function normalizeMarketplaceRelation<T>(relation: T | T[] | null | undefined): T[] {

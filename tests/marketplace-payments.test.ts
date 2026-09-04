@@ -9,6 +9,7 @@ const checkout = read("app/jobs/payment-actions.ts");
 const customerActions = read("app/jobs/actions.ts");
 const providerActions = read("app/work/actions.ts");
 const migration = read("supabase/migrations/202608300010_marketplace_delayed_provider_transfers.sql");
+const completionReviewMigration = read("supabase/migrations/202609040004_marketplace_completion_review.sql");
 
 test("commission is fixed at 10 percent with integer-pence provider settlement", () => {
   assert.match(payments, /MARKETPLACE_PLATFORM_FEE_PERCENT = 10/);
@@ -36,11 +37,12 @@ test("provider transfer is gated by persisted paid completion and stored provide
 });
 
 test("completion and issue actions preserve authorization boundaries", () => {
-  assert.match(customerActions, /rpc\("confirm_marketplace_completion"/);
+  assert.match(customerActions, /rpc\("confirm_marketplace_completion_with_review"/);
   assert.match(customerActions, /transferMarketplaceProviderFunds\(bookingId\)/);
   assert.match(providerActions, /rpc\("update_marketplace_booking_status"/);
   assert.match(migration, /current_booking\.payment_status <> 'paid'/);
   assert.match(migration, /provider_transfer_status = 'blocked'/);
+  assert.match(completionReviewMigration, /c\.auth_user_id = auth\.uid\(\)/);
 });
 
 test("transfer state persists safe retry and success identifiers", () => {

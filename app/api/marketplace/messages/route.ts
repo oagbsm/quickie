@@ -3,6 +3,7 @@ import { getMarketplaceProvider } from "@/lib/marketplace/provider-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyFirstMarketplaceMessage } from "@/lib/marketplace/email/transactional";
+import { isMarketplaceConversationReadOnly } from "@/lib/marketplace/conversations";
 
 const BUCKET = "marketplace-message-attachments";
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -10,7 +11,7 @@ const MAX_FILES = 5;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const EXTENSIONS: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
-type FailureCode = "send" | "unauthorized" | "attachment_empty" | "attachment_invalid_type" | "attachment_too_large" | "attachment_upload_failed" | "message_db_failed" | "attachment_db_failed";
+type FailureCode = "send" | "unauthorized" | "conversation_closed" | "attachment_empty" | "attachment_invalid_type" | "attachment_too_large" | "attachment_upload_failed" | "message_db_failed" | "attachment_db_failed";
 
 function go(request: Request, path: string) {
   return NextResponse.redirect(new URL(path, request.url), 303);
@@ -88,6 +89,8 @@ export async function POST(request: Request) {
     return failure(request, fallback, "unauthorized", { conversationId, userId: user.id, attachmentCount: rawFiles.length });
   }
 
+  if (await isMarketplaceConversationReadOnly(admin, conversationId)) return failure(request, fallback, "conversation_closed", { conversationId, userId: user.id });
+
   const defaultReturnTo = `${isProvider ? "/work/messages" : "/messages"}/${conversationId}`;
   const prefix = isProvider ? "/work/messages/" : "/messages/";
   const returnTo = requestedReturnTo.startsWith(prefix) && !requestedReturnTo.startsWith("//") ? requestedReturnTo : defaultReturnTo;
@@ -114,11 +117,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const { data: message, error: messageError } = await admin
-    .from("marketplace_messages")
-    .insert({ conversation_id: conversationId, sender_id: user.id, body: body || null })
-    .select("id")
-    .single();
+  const { data: message, error: messageError } = await supabase.rpc("create_marketplace_message", { target_conversation: conversationId, message_body: body || null });
   if (messageError || !message) {
     logFailure("message_insert_failed", { conversationId, userId: user.id, error: safeError(messageError || new Error("Message insert returned no row")) });
     if (uploaded.length) await admin.storage.from(BUCKET).remove(uploaded.map((item) => item.path));

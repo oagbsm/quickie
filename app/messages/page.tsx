@@ -7,6 +7,7 @@ import { canProviderOperate, requireProviderWorkspaceAccess } from "@/lib/market
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { destinationForAccount, getCurrentAccountContext } from "@/lib/auth/account-role";
+import { resolveProviderPhotoUrl } from "@/lib/marketplace/provider-photo";
 import CustomerMessagesList from "./CustomerMessagesList";
 
 export default async function MessagesIndex({ providerOnly = false, searchParams }: { providerOnly?: boolean; searchParams?: Promise<{ conversation?: string }> }) {
@@ -59,6 +60,9 @@ export default async function MessagesIndex({ providerOnly = false, searchParams
   ]);
   const jobRows = (jobs || []) as Array<{ id: string; service?: string; service_subtype?: string; postcode?: string }>;
   const profileRows = (profiles || []) as Array<{ user_id: string; display_name?: string; business_name?: string; profile_photo_url?: string | null }>;
+  const resolvedProfileRows = isCustomer
+    ? await Promise.all(profileRows.map(async (profile) => ({ ...profile, profile_photo_url: await resolveProviderPhotoUrl(admin, profile.profile_photo_url) })))
+    : profileRows;
   const messageRows = (messages || []) as Array<{ conversation_id: string; body: string; created_at: string; sender_id: string }>;
   const jobsById = new Map(jobRows.map((job) => [job.id, job]));
   const profilesById = new Map(profileRows.map((profile) => [profile.user_id, profile]));
@@ -66,7 +70,7 @@ export default async function MessagesIndex({ providerOnly = false, searchParams
   for (const message of messageRows) if (!latestMessageByConversation.has(message.conversation_id)) latestMessageByConversation.set(message.conversation_id, message);
   const bookingByConversation = new Map((bookings || []).map((booking) => [booking.conversation_id, booking]));
 
-  if (isCustomer) return <><MarketplaceHeader /><CustomerMessagesList conversations={conversations} jobs={jobRows} profiles={profileRows} quotes={(quotes || []) as Array<{ job_id: string; provider_id?: string | null; bidder_user_id?: string | null; amount_pence: number; status: string }>} messages={messageRows} bookings={(bookings || []) as Array<{ conversation_id: string; payment_status?: string | null }>} selectedConversationId={(await searchParams)?.conversation} /></>;
+  if (isCustomer) return <><MarketplaceHeader /><CustomerMessagesList conversations={conversations} jobs={jobRows} profiles={resolvedProfileRows} quotes={(quotes || []) as Array<{ job_id: string; provider_id?: string | null; bidder_user_id?: string | null; amount_pence: number; status: string }>} messages={messageRows} bookings={(bookings || []) as Array<{ conversation_id: string; payment_status?: string | null }>} selectedConversationId={(await searchParams)?.conversation} /></>;
 
   return <main className="min-h-screen bg-[#f7f8fa] text-[#061b3f]">{isProvider && !isCustomer ? <ProviderHeader /> : <MarketplaceHeader />}<section className="mx-auto max-w-3xl px-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))] py-10 sm:px-8 md:pb-10"><p className="text-sm font-black uppercase tracking-[.14em] text-[#159548]">MESSAGES</p><h1 className="mt-2 text-4xl font-black">Messages</h1><p className="mt-2 text-[#657089]">{isCustomer ? "Conversations about your Quickola jobs." : "Messages with customers about their marketplace work."}</p><div className="mt-7 grid gap-3">{conversations.map((conversation) => { const job = jobsById.get(conversation.job_id); const providerId = conversation.provider_id || conversation.bidder_user_id; const profile = providerId ? profilesById.get(providerId) : undefined; const quote = (quotes || []).find((item) => item.job_id === conversation.job_id && (item.provider_id || item.bidder_user_id) === providerId); const booking = bookingByConversation.get(conversation.id); const booked = booking?.payment_status === "paid"; const latest = latestMessageByConversation.get(conversation.id); const title = (job?.service_subtype || job?.service || "Quickola job").replaceAll("-", " "); return <Link key={conversation.id} href={isProvider ? `/work/messages/${conversation.id}` : `/messages/${conversation.id}`} className="rounded-2xl border border-[#e7ebef] bg-white p-5"><div className="flex items-start justify-between gap-4"><div><h2 className="font-black capitalize">{title}</h2><p className="mt-2 text-sm text-[#657089]">{isCustomer ? profile?.business_name || profile?.display_name || "Local person" : job?.postcode || "Approximate area"}</p></div><div className="text-right">{quote && <span className="font-black">£{Math.round(quote.amount_pence / 100)}</span>}{booked && <span className="mt-2 block text-xs font-black text-[#167d3c]">Booked ✓</span>}</div></div><p className="mt-3 line-clamp-2 text-sm text-[#526078]">{latest?.body || (quote ? "Discussing your job" : "No messages yet")}</p><span className="mt-3 inline-block font-black text-[#167d3c]">Open conversation →</span></Link>; })}{!conversations.length && <p className="rounded-2xl border border-dashed bg-white p-8 text-[#657089]">{isCustomer || !isProvider ? "No messages yet. When someone contacts you, you’ll see it here." : "No customer messages yet."}</p>}</div></section><div className="md:hidden"><MobileBottomNav active="messages" /></div></main>;
 }

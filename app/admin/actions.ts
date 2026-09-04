@@ -7,6 +7,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { randomBytes } from "node:crypto";
 import { hashProviderInviteToken, sendProviderInvitationEmail } from "@/lib/server/provider-invitations";
 import { sendProviderApprovedEmail } from "@/lib/marketplace/email/transactional";
+import { issueMarketplaceRefund } from "@/lib/server/marketplace-refunds";
+import { reconcileMarketplaceProviderTransfer } from "@/lib/server/marketplace-transfers";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim();
 export async function adminSignOut() {
   const supabase = await createSupabaseServerClient();
@@ -89,4 +91,81 @@ export async function setMarketplaceProviderQualification(f: FormData) {
   if (error) redirect("/admin/providers?error=qualification_update");
   revalidatePath("/admin/providers");
   redirect("/admin/providers?success=qualification");
+}
+
+export async function issueMarketplaceBookingRefund(f: FormData) {
+  const { user } = await requireAdmin();
+  const bookingId = value(f, "bookingId");
+  const amountPence = Math.round(Number(value(f, "amountPence")));
+  const reason = value(f, "reason");
+  if (!bookingId || !Number.isSafeInteger(amountPence) || amountPence <= 0 || !reason) redirect("/admin/marketplace-bookings?error=refund");
+  try {
+    const result = await issueMarketplaceRefund(bookingId, amountPence, reason, user.id);
+    await createSupabaseAdminClient().from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_refund_requested", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: null, new_value: { amount_pence: amountPence, reason, status: result.status, refund_id: result.refundId || null } });
+  } catch (error) {
+    console.error("marketplace_refund_failed", { bookingId, reason: error instanceof Error ? error.message : "unknown" });
+    redirect(`/admin/marketplace-bookings/${bookingId}?error=refund`);
+  }
+  revalidatePath(`/admin/marketplace-bookings/${bookingId}`);
+  revalidatePath("/admin/payments");
+  redirect(`/admin/marketplace-bookings/${bookingId}?success=refund`);
+}
+
+export async function reconcileMarketplaceBookingTransfer(f: FormData) {
+  const { user } = await requireAdmin();
+  const bookingId = value(f, "bookingId");
+  if (!bookingId) redirect("/admin/marketplace-bookings");
+  try {
+    const result = await reconcileMarketplaceProviderTransfer(bookingId);
+    await createSupabaseAdminClient().from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_transfer_reconciled", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: null, new_value: { status: result.status, transfer_id: result.transferId || null } });
+  } catch (error) {
+    console.error("marketplace_transfer_reconciliation_failed", { bookingId, reason: error instanceof Error ? error.message : "unknown" });
+    redirect(`/admin/marketplace-bookings/${bookingId}?error=transfer`);
+  }
+  revalidatePath(`/admin/marketplace-bookings/${bookingId}`);
+  redirect(`/admin/marketplace-bookings/${bookingId}`);
+}
+
+export async function cancelMarketplaceBookingAsAdmin(f: FormData) {
+  const { user, supabase } = await requireAdmin();
+  const bookingId = value(f, "bookingId");
+  const reasonCode = value(f, "reasonCode");
+  const reasonText = value(f, "reasonText");
+  if (!bookingId || !reasonCode || !reasonText) redirect(`/admin/marketplace-bookings/${bookingId}?error=cancel`);
+  const { data, error } = await supabase.rpc("cancel_marketplace_booking", { target_booking: bookingId, reason_code: reasonCode, reason_text: reasonText });
+  if (error) redirect(`/admin/marketplace-bookings/${bookingId}?error=cancel`);
+  await createSupabaseAdminClient().from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_booking_cancelled", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: null, new_value: { status: data?.status || "cancelled", reason_code: reasonCode, reason_text: reasonText } });
+  revalidatePath(`/admin/marketplace-bookings/${bookingId}`); revalidatePath("/admin/marketplace-bookings");
+  redirect(`/admin/marketplace-bookings/${bookingId}?success=cancel`);
+}
+
+export async function holdMarketplacePayout(f: FormData) {
+  const { user } = await requireAdmin();
+  const bookingId = value(f, "bookingId"); const reason = value(f, "reason");
+  if (!bookingId || !reason) redirect(`/admin/marketplace-bookings/${bookingId}?error=hold`);
+  const admin = createSupabaseAdminClient();
+  const update = await admin.from("marketplace_bookings").update({ payout_hold_status: "held", payout_hold_reason: reason, payout_hold_at: new Date().toISOString(), payout_hold_by: user.id, updated_at: new Date().toISOString() }).eq("id", bookingId).eq("payout_hold_status", "none");
+  if (update.error) redirect(`/admin/marketplace-bookings/${bookingId}?error=hold`);
+  await admin.from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_payout_held", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: { payout_hold_status: "none" }, new_value: { payout_hold_status: "held", reason } });
+  revalidatePath(`/admin/marketplace-bookings/${bookingId}`); redirect(`/admin/marketplace-bookings/${bookingId}`);
+}
+
+export async function releaseMarketplacePayoutHold(f: FormData) {
+  const { user, supabase } = await requireAdmin(); const bookingId = value(f, "bookingId");
+  if (!bookingId) redirect("/admin/marketplace-bookings");
+  const admin = createSupabaseAdminClient();
+  const { error } = await supabase.rpc("release_marketplace_payout_hold", { target_booking: bookingId });
+  if (error) redirect(`/admin/marketplace-bookings/${bookingId}?error=hold`);
+  await admin.from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_payout_hold_released", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: { payout_hold_status: "held" }, new_value: { payout_hold_status: "none" } });
+  revalidatePath(`/admin/marketplace-bookings/${bookingId}`); redirect(`/admin/marketplace-bookings/${bookingId}`);
+}
+
+export async function resolveMarketplaceDispute(f: FormData) {
+  const { user, supabase } = await requireAdmin();
+  const disputeId = value(f, "disputeId"); const resolutionStatus = value(f, "resolutionStatus"); const resolutionCode = value(f, "resolutionCode"); const resolutionNotes = value(f, "resolutionNotes");
+  if (!disputeId || !resolutionCode || !["resolved_provider", "resolved_customer", "closed"].includes(resolutionStatus)) redirect("/admin/marketplace-bookings?error=dispute");
+  const { data: dispute, error } = await supabase.rpc("resolve_marketplace_dispute", { target_dispute: disputeId, resolution_status: resolutionStatus, resolution_code: resolutionCode, resolution_notes: resolutionNotes || null });
+  if (error) redirect("/admin/marketplace-bookings?error=dispute");
+  await createSupabaseAdminClient().from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_dispute_resolved", entity_type: "marketplace_dispute", entity_id: disputeId, previous_value: null, new_value: { booking_id: dispute?.booking_id, status: resolutionStatus, resolution_code: resolutionCode } });
+  revalidatePath("/admin/marketplace-bookings"); redirect("/admin/marketplace-bookings");
 }

@@ -7,7 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "playwright test"
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "sandbox:check": "node --env-file=.env.test --experimental-strip-types --experimental-default-type=module scripts/marketplace-sandbox.ts check",
+    "sandbox:seed": "node --env-file=.env.test --experimental-strip-types --experimental-default-type=module scripts/marketplace-sandbox.ts seed",
+    "sandbox:reset": "node --env-file=.env.test --experimental-strip-types --experimental-default-type=module scripts/marketplace-sandbox.ts reset",
+    "sandbox:scenarios": "node --env-file=.env.test --experimental-strip-types --experimental-default-type=module scripts/marketplace-scenarios.ts"
   },
   "dependencies": {
     "@google/genai": "^2.16.0",

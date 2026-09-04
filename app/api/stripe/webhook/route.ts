@@ -27,25 +27,31 @@ export async function POST(request: Request) {
   console.info("[marketplace-payment] checkout verified", { eventId: event.id, sessionId: session.id, bookingId, amountTotal: session.amount_total, currency: session.currency, paymentStatus: session.payment_status });
 
   const admin = createSupabaseAdminClient();
+  const { data: eventClaim, error: eventClaimError } = await admin.rpc("claim_stripe_webhook_event", { target_event_id: event.id, target_event_type: event.type });
+  if (eventClaimError) return NextResponse.json({ error: "webhook_ledger_failed" }, { status: 500 });
+  if (["duplicate_processing", "duplicate_processed"].includes(eventClaim)) return NextResponse.json({ received: true });
   const { data: booking, error: bookingLookupError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,conversation_id,amount_pence,currency,payment_status,marketplace_jobs(public_token)").eq("id", bookingId).maybeSingle();
   if (bookingLookupError) {
+    await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "booking_lookup_failed" }).eq("stripe_event_id", event.id);
     console.error("[marketplace-payment] booking lookup failed", { eventId: event.id, bookingId, code: bookingLookupError.code, reason: bookingLookupError.message });
     return NextResponse.json({ error: "booking_lookup_failed" }, { status: 500 });
   }
-  if (!booking) return NextResponse.json({ error: "booking_not_found" }, { status: 404 });
-  if (session.metadata?.job_id !== booking.job_id || session.metadata?.quote_id !== booking.quote_id) return NextResponse.json({ error: "metadata_mismatch" }, { status: 400 });
-  if (session.currency && session.currency !== booking.currency) return NextResponse.json({ error: "currency_mismatch" }, { status: 400 });
-  if (session.amount_total !== Number(booking.amount_pence)) return NextResponse.json({ error: "amount_mismatch" }, { status: 400 });
+  if (!booking) { await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "booking_not_found" }).eq("stripe_event_id", event.id); return NextResponse.json({ error: "booking_not_found" }, { status: 404 }); }
+  if (session.metadata?.job_id !== booking.job_id || session.metadata?.quote_id !== booking.quote_id) { await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "metadata_mismatch" }).eq("stripe_event_id", event.id); return NextResponse.json({ error: "metadata_mismatch" }, { status: 400 }); }
+  if (session.currency && session.currency !== booking.currency) { await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "currency_mismatch" }).eq("stripe_event_id", event.id); return NextResponse.json({ error: "currency_mismatch" }, { status: 400 }); }
+  if (session.amount_total !== Number(booking.amount_pence)) { await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "amount_mismatch" }).eq("stripe_event_id", event.id); return NextResponse.json({ error: "amount_mismatch" }, { status: 400 }); }
 
   const { data: quote } = await admin.from("marketplace_quotes").select("id,job_id,status").eq("id", booking.quote_id).maybeSingle();
-  if (!quote || quote.job_id !== booking.job_id || !["accepted", "selected"].includes(quote.status)) return NextResponse.json({ error: "quote_not_accepted" }, { status: 400 });
+  if (!quote || quote.job_id !== booking.job_id || !["accepted", "selected"].includes(quote.status)) { await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "quote_not_accepted" }).eq("stripe_event_id", event.id); return NextResponse.json({ error: "quote_not_accepted" }, { status: 400 }); }
   const { error: updateError } = await admin.from("marketplace_bookings").update({ payment_status: "paid", stripe_checkout_session_id: session.id, stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || null, paid_at: new Date().toISOString(), status: "booked" }).eq("id", booking.id).neq("payment_status", "paid");
   if (updateError) {
+    await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "booking_update_failed" }).eq("stripe_event_id", event.id);
     console.error("[marketplace-payment] booking payment update failed", { eventId: event.id, bookingId, code: updateError.code, reason: updateError.message });
     return NextResponse.json({ error: "booking_update_failed" }, { status: 500 });
   }
   const { error: jobError } = await admin.from("marketplace_jobs").update({ status: "booked", updated_at: new Date().toISOString() }).eq("id", booking.job_id).in("status", ["awaiting_booking", "finding_provider", "posted"]);
   if (jobError) {
+    await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "job_update_failed" }).eq("stripe_event_id", event.id);
     console.error("[marketplace-payment] job update failed", { eventId: event.id, bookingId, jobId: booking.job_id, code: jobError.code, reason: jobError.message });
     return NextResponse.json({ error: "job_update_failed" }, { status: 500 });
   }
@@ -55,5 +61,6 @@ export async function POST(request: Request) {
   revalidatePath("/my-jobs");
   if (jobRelation?.public_token) revalidatePath(`/jobs/${jobRelation.public_token}`);
   if (booking.conversation_id) revalidatePath(`/messages/${booking.conversation_id}`);
+  await admin.from("stripe_webhook_events").update({ status: "processed", processed_at: new Date().toISOString(), error_message: null }).eq("stripe_event_id", event.id);
   return NextResponse.json({ received: true });
 }

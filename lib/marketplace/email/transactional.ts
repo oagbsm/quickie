@@ -18,9 +18,11 @@ type EmailInput = {
   subject: string;
   html: string;
 };
+export type EmailDispatchResult = { status: "sent"; providerMessageId: string | null } | { status: "failed" | "ambiguous" | "skipped"; reason: string };
 
 const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
 const origin = () => getTransactionalEmailOrigin({ appUrl: process.env.APP_URL, siteUrl: process.env.NEXT_PUBLIC_SITE_URL, nodeEnv: process.env.NODE_ENV });
+const sandboxRecipient = (role: "customer" | "provider", fallback: string) => process.env.NODE_ENV !== "production" && process.env.QUICKOLA_SANDBOX === "true" ? process.env[`SANDBOX_${role.toUpperCase()}_EMAIL_RECIPIENT`]?.trim() || fallback : fallback;
 const title = (job: { service_subtype?: string | null; service?: string | null }) => (job.service_subtype || job.service || "Local service").replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const district = (postcode: string | null | undefined) => String(postcode || "").trim().split(/\s+/)[0] || "your area";
 const link = (path: string) => buildAbsoluteAppUrl(path);
@@ -128,6 +130,9 @@ export async function notifyFirstMarketplaceMessage(conversationId: string, send
   const recipient = await admin.auth.admin.getUserById(recipientUserId);
   const email = recipient.data.user?.email;
   if (!email || !job) return;
+  const { data: notificationMessageId, error: claimError } = await admin.rpc("claim_marketplace_message_email_notification", { target_conversation: conversationId, recipient_user_id: recipientUserId });
+  if (claimError) throw claimError;
+  if (!notificationMessageId) return;
   const providerProfile = providerId ? (await admin.from("marketplace_providers").select("display_name,business_name").eq("user_id", providerId).maybeSingle()).data : null;
   const providerName = providerProfile?.display_name || providerProfile?.business_name || "Your provider";
   const jobTitle = title(job);
@@ -136,23 +141,23 @@ export async function notifyFirstMarketplaceMessage(conversationId: string, send
   const eventType = isProviderSender ? "first_provider_message" : "first_customer_message";
   const subject = isProviderSender ? `${providerName} sent you a message` : `New message about ${jobTitle}`;
   const body = isProviderSender ? `<h1>${escapeHtml(providerName)} sent you a message</h1><p>About your ${escapeHtml(jobTitle)} job in ${escapeHtml(area)}.</p>` : `<h1>You have a new message</h1><p>A customer sent you a message about ${escapeHtml(jobTitle)} in ${escapeHtml(area)}.</p>`;
-  await sendMarketplaceTransactionalEmail({ eventType, dedupeKey: `${eventType}:${conversationId}:${recipientUserId}`, recipientUserId, recipientEmail: email, jobId: conversation.job_id, conversationId, subject, html: layout(`${body}${cta(link(path), "View message")}`) });
+  await sendMarketplaceTransactionalEmail({ eventType, dedupeKey: `${eventType}:${conversationId}:${recipientUserId}:${notificationMessageId}`, recipientUserId, recipientEmail: email, jobId: conversation.job_id, conversationId, sourceId: notificationMessageId, subject, html: layout(`${body}${cta(link(path), "View message")}`) });
 }
 
-export async function notifyFirstMarketplaceOffer(jobId: string, sourceId?: string) {
+export async function notifyFirstMarketplaceOffer(jobId: string, sourceId?: string): Promise<EmailDispatchResult> {
   const admin = createSupabaseAdminClient();
   const { data: job } = await admin.from("marketplace_jobs").select("id,public_token,service,service_subtype,postcode,customer_id").eq("id", jobId).maybeSingle();
-  if (!job?.customer_id) return;
+  if (!job?.customer_id) return { status: "skipped", reason: "customer_missing" };
   const quoteQuery = admin.from("marketplace_quotes").select("id,status").eq("job_id", jobId).in("status", ACTIVE_MARKETPLACE_OFFER_STATUSES).order("created_at", { ascending: true }).limit(1);
   const { data: quotes } = sourceId ? await admin.from("marketplace_quotes").select("id,status").eq("id", sourceId).eq("job_id", jobId).in("status", ACTIVE_MARKETPLACE_OFFER_STATUSES).limit(1) : await quoteQuery;
   const quote = quotes?.[0];
-  if (!quote) return;
+  if (!quote) return { status: "skipped", reason: "offer_missing" };
   const { data: customer } = await admin.from("marketplace_customers").select("auth_user_id").eq("id", job.customer_id).maybeSingle();
-  if (!customer?.auth_user_id) return;
+  if (!customer?.auth_user_id) return { status: "skipped", reason: "customer_identity_missing" };
   const user = await admin.auth.admin.getUserById(customer.auth_user_id);
-  if (!user.data.user?.email) return;
+  if (!user.data.user?.email) return { status: "skipped", reason: "recipient_missing" };
   const jobTitle = title(job);
-  await sendMarketplaceTransactionalEmail({ eventType: "first_offer", dedupeKey: `first_offer:${job.id}:${customer.auth_user_id}`, recipientUserId: customer.auth_user_id, recipientEmail: user.data.user.email, jobId, sourceId: quote.id, subject: `You received an offer for ${jobTitle}`, html: layout(`<h1>Your job received its first offer</h1><p>Your ${escapeHtml(jobTitle)} job has received an offer from a local provider.</p>${cta(link(`/jobs/${job.public_token}`), "View offer")}`) });
+  return sendMarketplaceTransactionalEmail({ eventType: "first_offer", dedupeKey: `first_offer:${job.id}:${customer.auth_user_id}`, recipientUserId: customer.auth_user_id, recipientEmail: sandboxRecipient("customer", user.data.user.email), jobId, sourceId: quote.id, subject: `You received an offer for ${jobTitle}`, html: layout(`<h1>Your job received its first offer</h1><p>Your ${escapeHtml(jobTitle)} job has received an offer from a local provider.</p>${cta(link(`/jobs/${job.public_token}`), "View offer")}`) });
 }
 
 export async function notifyMatchingProvidersForJob(jobId: string) {
@@ -201,28 +206,28 @@ export async function notifyBookingPaid(bookingId: string) {
   }
 }
 
-export async function notifyCustomerCompletionRequest(bookingId: string) {
+export async function notifyCustomerCompletionRequest(bookingId: string): Promise<EmailDispatchResult> {
   const admin = createSupabaseAdminClient();
   const { data: booking } = await admin.from("marketplace_bookings").select("id,job_id,customer_id,marketplace_jobs(public_token,service,service_subtype)").eq("id", bookingId).maybeSingle();
-  if (!booking) return;
+  if (!booking) return { status: "skipped", reason: "booking_missing" };
   const job = Array.isArray(booking.marketplace_jobs) ? booking.marketplace_jobs[0] : booking.marketplace_jobs;
   const customer = booking.customer_id ? (await admin.from("marketplace_customers").select("auth_user_id").eq("id", booking.customer_id).maybeSingle()).data : null;
   const user = customer?.auth_user_id ? (await admin.auth.admin.getUserById(customer.auth_user_id)).data.user : null;
-  if (!user?.email || !job) return;
+  if (!user?.email || !job) return { status: "skipped", reason: "recipient_missing" };
   const customerAuthUserId = customer?.auth_user_id;
-  if (!customerAuthUserId) return;
+  if (!customerAuthUserId) return { status: "skipped", reason: "customer_identity_missing" };
   const jobTitle = title(job);
-  await sendMarketplaceTransactionalEmail({ eventType: "completion_confirmation_customer", dedupeKey: `completion_confirmation_customer:${booking.id}:${customerAuthUserId}`, recipientUserId: customerAuthUserId, recipientEmail: user.email, jobId: booking.job_id, bookingId, subject: `Please confirm your ${jobTitle} job is complete`, html: layout(`<h1>Your provider marked the job complete</h1><p>Please check the work and confirm completion, or report a problem if something needs attention.</p>${cta(link(`/jobs/${job.public_token}`), "Review the job")}`) });
+  return sendMarketplaceTransactionalEmail({ eventType: "completion_confirmation_customer", dedupeKey: `completion_confirmation_customer:${booking.id}:${customerAuthUserId}`, recipientUserId: customerAuthUserId, recipientEmail: sandboxRecipient("customer", user.email), jobId: booking.job_id, bookingId, subject: `Please confirm your ${jobTitle} job is complete`, html: layout(`<h1>Your provider marked the job complete</h1><p>Please check the work and confirm completion, or report a problem if something needs attention.</p>${cta(link(`/jobs/${job.public_token}`), "Review the job")}`) });
 }
 
-export async function notifyCompletionOutcome(bookingId: string, outcome: "confirmed" | "issue_reported", transferStatus?: "paid" | "blocked" | "failed" | "already_processing") {
+export async function notifyCompletionOutcome(bookingId: string, outcome: "confirmed" | "issue_reported", transferStatus?: "paid" | "blocked" | "failed" | "already_processing"): Promise<EmailDispatchResult> {
   const admin = createSupabaseAdminClient();
   const { data: booking } = await admin.from("marketplace_bookings").select("id,job_id,provider_id,marketplace_jobs(service,service_subtype)").eq("id", bookingId).maybeSingle();
-  if (!booking?.provider_id) return;
+  if (!booking?.provider_id) return { status: "skipped", reason: "provider_identity_missing" };
   const user = (await admin.auth.admin.getUserById(booking.provider_id)).data.user;
-  if (!user?.email) return;
+  if (!user?.email) return { status: "skipped", reason: "recipient_missing" };
   const jobTitle = title(Array.isArray(booking.marketplace_jobs) ? booking.marketplace_jobs[0] : booking.marketplace_jobs || {});
   const confirmed = outcome === "confirmed";
   const transferCopy = transferStatus === "paid" || transferStatus === "already_processing" ? "Your provider transfer is being processed." : "Your payment needs attention and will be reviewed.";
-  await sendMarketplaceTransactionalEmail({ eventType: confirmed ? "completion_confirmed_provider" : "completion_issue_provider", dedupeKey: `${confirmed ? "completion_confirmed_provider" : "completion_issue_provider"}:${booking.id}:${booking.provider_id}`, recipientUserId: booking.provider_id, recipientEmail: user.email, jobId: booking.job_id, bookingId, subject: confirmed ? "Job completed — payment processing" : "Payment on hold — customer reported a problem", html: layout(confirmed ? `<h1>Job completed</h1><p>The customer confirmed your ${escapeHtml(jobTitle)} job. ${transferCopy}</p>${cta(link(`/work/jobs/${booking.job_id}`), "View job")}` : `<h1>Payment on hold</h1><p>The customer reported a problem with the ${escapeHtml(jobTitle)} job. Provider payment is blocked while it is reviewed.</p>${cta(link(`/work/jobs/${booking.job_id}`), "View job")}`) });
+  return sendMarketplaceTransactionalEmail({ eventType: confirmed ? "completion_confirmed_provider" : "completion_issue_provider", dedupeKey: `${confirmed ? "completion_confirmed_provider" : "completion_issue_provider"}:${booking.id}:${booking.provider_id}`, recipientUserId: booking.provider_id, recipientEmail: sandboxRecipient("provider", user.email), jobId: booking.job_id, bookingId, subject: confirmed ? "Job completed — payment processing" : "Payment on hold — customer reported a problem", html: layout(confirmed ? `<h1>Job completed</h1><p>The customer confirmed your ${escapeHtml(jobTitle)} job. ${transferCopy}</p>${cta(link(`/work/jobs/${booking.job_id}`), "View job")}` : `<h1>Payment on hold</h1><p>The customer reported a problem with the ${escapeHtml(jobTitle)} job. Provider payment is blocked while it is reviewed.</p>${cta(link(`/work/jobs/${booking.job_id}`), "View job")}`) });
 }

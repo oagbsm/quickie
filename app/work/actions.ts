@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireProviderOperationalAccess } from "@/lib/marketplace/provider-access";
-import { getOrCreateMarketplaceConversation } from "@/lib/marketplace/conversations";
+import { getOrCreateMarketplaceConversation, isMarketplaceConversationReadOnly } from "@/lib/marketplace/conversations";
 import { notifyCustomerCompletionRequest, notifyFirstMarketplaceMessage, notifyFirstMarketplaceOffer } from "@/lib/marketplace/email/transactional";
 
 export async function submitWorkOffer(formData: FormData) {
@@ -61,6 +61,8 @@ export async function sendProviderJobMessage(formData: FormData) {
     redirect(`/work/jobs/${jobId}?error=message`);
   }
 
+  const admin = createSupabaseAdminClient();
+  if (await isMarketplaceConversationReadOnly(admin, conversation.id)) redirect(`/work/jobs/${jobId}?error=conversation_closed`);
   const { error } = await supabase.rpc("create_marketplace_message", { target_conversation: conversation.id, message_body: body });
   if (error) {
     console.error("[sendProviderJobMessage] FAILED", { stage: "insert-message", providerId: provider.providerId, jobId, conversationId: conversation.id, code: error.code, message: error.message, details: error.details, hint: error.hint });
@@ -97,5 +99,19 @@ export async function advanceMarketplaceBooking(formData: FormData) {
     try { await notifyCustomerCompletionRequest(bookingId); } catch (notificationError) { console.error("marketplace_completion_email_failed", { bookingId, reason: notificationError instanceof Error ? notificationError.message.slice(0, 120) : "unknown" }); }
   }
   revalidatePath(`/work/jobs/${jobId}`);
+  redirect(`/work/jobs/${jobId}`);
+}
+
+export async function cancelMarketplaceBookingAsProvider(formData: FormData) {
+  const jobId = String(formData.get("jobId") || "");
+  const bookingId = String(formData.get("bookingId") || "");
+  const reasonCode = String(formData.get("reasonCode") || "provider_request").trim();
+  const reasonText = String(formData.get("reasonText") || "").trim();
+  const provider = await requireProviderOperationalAccess();
+  if (!provider || !bookingId || !jobId || !reasonCode || !reasonText) redirect(`/work/jobs/${jobId}?error=cancel`);
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("cancel_marketplace_booking", { target_booking: bookingId, reason_code: reasonCode, reason_text: reasonText });
+  if (error) redirect(`/work/jobs/${jobId}?error=cancel`);
+  revalidatePath(`/work/jobs/${jobId}`); revalidatePath("/work/offers");
   redirect(`/work/jobs/${jobId}`);
 }

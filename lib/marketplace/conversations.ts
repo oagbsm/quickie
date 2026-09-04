@@ -52,6 +52,16 @@ export async function getOrCreateMarketplaceConversation({
   throw new Error(`conversation insert failed: ${inserted.error?.message || "unknown error"}`);
 }
 
+export async function isMarketplaceConversationReadOnly(admin: ReturnType<typeof createSupabaseAdminClient>, conversationId: string) {
+  const { data: conversation } = await admin.from("marketplace_conversations").select("id,job_id,provider_id,bidder_user_id").eq("id", conversationId).maybeSingle();
+  if (!conversation) return false;
+  const { data: accepted } = await admin.from("marketplace_quotes").select("provider_id,bidder_user_id").eq("job_id", conversation.job_id).in("status", ["accepted", "selected"]).limit(1).maybeSingle();
+  if (!accepted) return false;
+  const conversationProvider = conversation.provider_id || conversation.bidder_user_id;
+  const winningProvider = accepted.provider_id || accepted.bidder_user_id;
+  return Boolean(conversationProvider && winningProvider && conversationProvider !== winningProvider);
+}
+
 function queryFailure(operation: string, error: { code?: string; message?: string; details?: string; hint?: string }) {
   console.error("Marketplace conversation query failed", { operation, code: error.code, message: error.message, details: error.details, hint: error.hint });
   return new Error(`${operation} failed: ${error.message || "unknown error"}`);

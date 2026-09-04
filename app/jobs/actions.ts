@@ -144,10 +144,13 @@ export async function confirmMarketplaceCompletion(formData: FormData) {
   if (await getCurrentAccountRole() !== "customer") redirect("/");
   const token = String(formData.get("token") || "");
   const bookingId = String(formData.get("bookingId") || "");
+  const rating = Number(formData.get("rating") || 0);
+  const review = String(formData.get("review") || "").trim().slice(0, 1000);
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) redirect(`/jobs/${token}?error=review`);
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !token || !bookingId) redirect(`/jobs/${token}`);
-  const { error } = await supabase.rpc("confirm_marketplace_completion", { target_booking: bookingId });
+  const { error } = await supabase.rpc("confirm_marketplace_completion_with_review", { target_booking: bookingId, review_rating: rating, review_body: review || null });
   if (error) redirect(`/jobs/${token}?error=completion`);
   let transferStatus: "paid" | "blocked" | "failed" | "already_processing" = "failed";
   try {
@@ -165,11 +168,28 @@ export async function reportMarketplaceCompletionIssue(formData: FormData) {
   if (await getCurrentAccountRole() !== "customer") redirect("/");
   const token = String(formData.get("token") || "");
   const bookingId = String(formData.get("bookingId") || "");
+  const reasonCode = String(formData.get("reasonCode") || "customer_completion_issue").trim();
+  const reasonText = String(formData.get("reasonText") || "").trim().slice(0, 2000);
+  if (!bookingId || !reasonText) redirect(`/jobs/${token}?error=completion`);
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.rpc("report_marketplace_completion_issue", { target_booking: bookingId });
+  const { error } = await supabase.rpc("report_marketplace_completion_issue", { target_booking: bookingId, reason_code: reasonCode, reason_text: reasonText });
   if (error) redirect(`/jobs/${token}?error=completion`);
   try { await notifyCompletionOutcome(bookingId, "issue_reported"); } catch (notificationError) { console.error("marketplace_completion_email_failed", { bookingId, reason: notificationError instanceof Error ? notificationError.message.slice(0, 120) : "unknown" }); }
   revalidatePath(`/jobs/${token}`);
+  redirect(`/jobs/${token}`);
+}
+
+export async function cancelMarketplaceBooking(formData: FormData) {
+  if (await getCurrentAccountRole() !== "customer") redirect("/");
+  const token = String(formData.get("token") || "");
+  const bookingId = String(formData.get("bookingId") || "");
+  const reasonCode = String(formData.get("reasonCode") || "customer_request").trim();
+  const reasonText = String(formData.get("reasonText") || "").trim();
+  if (!bookingId || !reasonCode || !reasonText) redirect(`/jobs/${token}?error=cancel`);
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("cancel_marketplace_booking", { target_booking: bookingId, reason_code: reasonCode, reason_text: reasonText });
+  if (error) redirect(`/jobs/${token}?error=cancel`);
+  revalidatePath(`/jobs/${token}`); revalidatePath("/my-jobs");
   redirect(`/jobs/${token}`);
 }
 
