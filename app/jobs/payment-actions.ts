@@ -60,6 +60,7 @@ export async function createMarketplaceCheckout(formData: FormData) {
 
   let checkoutUrl: string | null = null;
   let checkoutSessionId: string | null = null;
+  let checkoutIdempotencyKey = `marketplace-booking:${booking.id}`;
   let stripeStage = "configuration";
   try {
     const stripe = getStripe();
@@ -70,6 +71,7 @@ export async function createMarketplaceCheckout(formData: FormData) {
       if (existingSession.status === "complete" || existingSession.payment_status === "paid") {
         redirect(`${returnTo}?payment=success`);
       }
+      checkoutIdempotencyKey = `marketplace-booking:${booking.id}:retry:${existingSession.id}`;
     }
     if (!checkoutUrl) {
       stripeStage = "checkout-creation";
@@ -86,7 +88,7 @@ export async function createMarketplaceCheckout(formData: FormData) {
         payment_intent_data: { transfer_group: `marketplace_booking:${booking.id}` },
         success_url: successUrl.toString(),
         cancel_url: cancelUrl.toString(),
-      }, { idempotencyKey: `marketplace-booking:${booking.id}` });
+      }, { idempotencyKey: checkoutIdempotencyKey });
       if (!session.url) throw new Error("stripe_checkout_url_missing");
       checkoutUrl = session.url;
       checkoutSessionId = session.id;

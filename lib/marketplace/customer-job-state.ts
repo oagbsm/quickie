@@ -49,7 +49,6 @@ export function normalizeMarketplaceRelation<T>(relation: T | T[] | null | undef
 export function getMarketplacePaymentState(booking?: BookingSnapshot | null): MarketplacePaymentState {
   if (!booking) return "none";
   if (booking.payment_status === "paid") return "paid";
-  if (booking.stripe_checkout_session_id) return "payment_processing";
   return "payment_required";
 }
 

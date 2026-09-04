@@ -23,6 +23,9 @@ test("checkout charges the full quote and does not create a destination charge",
   assert.match(checkout, /platform_fee_pence: platformFeePence/);
   assert.match(checkout, /payment_intent_data: \{ transfer_group:/);
   assert.doesNotMatch(checkout, /transfer_data|application_fee_amount/);
+  assert.match(checkout, /checkoutIdempotencyKey = `marketplace-booking:\$\{booking\.id\}`/);
+  assert.match(checkout, /retry:\$\{existingSession\.id\}/);
+  assert.match(checkout, /idempotencyKey: checkoutIdempotencyKey/);
 });
 
 test("provider transfer is gated by persisted paid completion and stored provider account", () => {

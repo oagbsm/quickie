@@ -12,6 +12,8 @@ test("confirmed booking copy is driven by persisted payment state", () => {
   assert.match(page, /Payment processing/);
   assert.match(page, /payment === "success" && !acceptedBooking\?\.payment_status/);
   assert.doesNotMatch(page, /payment === "success".*Payment submitted/);
+  assert.match(page, /acceptedBooking\.payment_status === "paid" \? <BookingConfirmation/);
+  assert.match(page, /<BookingPanel token=\{token\}/);
 });
 
 test("booking confirmation preserves real provider identity, photo fallback and routes", () => {
