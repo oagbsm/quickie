@@ -10,6 +10,8 @@ export default function ProviderJobActions({ jobId, offer, error, canOperate = t
   const [panel, setPanel] = useState<"question" | "quote" | null>(null);
   const [amount, setAmount] = useState("");
   const [availability, setAvailability] = useState("flexible");
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageClientId] = useState(() => crypto.randomUUID());
   const isAccepted = !!offer && ["selected", "accepted"].includes(offer.status);
   const canQuote = !offer || ["withdrawn", "declined", "expired"].includes(offer.status);
   const formattedAmount = amount ? new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 2 }).format(Number(amount)) : "";
@@ -31,10 +33,11 @@ export default function ProviderJobActions({ jobId, offer, error, canOperate = t
       {canQuote && <button type="button" onClick={() => setPanel(panel === "quote" ? null : "quote")} aria-expanded={panel === "quote"} className="min-h-12 rounded-xl bg-[#23a955] px-5 font-black text-[#061b3f]">Send a quote</button>}
     </div>}
 
-    {panel === "question" && <form action={sendProviderJobMessage} className="mt-5 grid gap-3 rounded-2xl border border-[#dbe1ea] bg-[#fbfcfd] p-4 sm:p-5">
+    {panel === "question" && <form action={sendProviderJobMessage} onSubmit={(event) => { if (sendingMessage) { event.preventDefault(); return; } setSendingMessage(true); }} className="mt-5 grid gap-3 rounded-2xl border border-[#dbe1ea] bg-[#fbfcfd] p-4 sm:p-5">
       <input type="hidden" name="jobId" value={jobId} />
+      <input type="hidden" name="clientMessageId" value={messageClientId} />
       <label className="text-sm font-black text-[#061b3f]">Your question or message<textarea name="body" required maxLength={4000} placeholder="Ask anything useful about the job…" className="mt-2 min-h-28 w-full rounded-xl border border-[#dbe1ea] bg-white p-3 font-normal" /></label>
-      <button className="min-h-11 rounded-xl bg-[#061b3f] px-4 font-black text-white">Send message</button>
+      <button disabled={sendingMessage} className="min-h-11 rounded-xl bg-[#061b3f] px-4 font-black text-white disabled:opacity-60">{sendingMessage ? "Sending…" : "Send message"}</button>
     </form>}
 
     {panel === "quote" && <form action={submitWorkOffer} className="mt-5 grid gap-4 rounded-2xl border border-[#dbe1ea] bg-[#fbfcfd] p-4 sm:p-5">

@@ -78,6 +78,22 @@ test("customer conversation composer fits narrow mobile widths without changing 
   assert.match(composer, /type="submit" disabled=\{busy\}/);
   assert.match(composer, /fetch\("\/api\/marketplace\/messages"/);
   assert.match(composer, /accept="image\/jpeg,image\/png,image\/webp"/);
+  assert.match(composer, /crypto\.randomUUID\(\)/);
+  assert.match(upload, /clientMessageId/);
+  assert.match(upload, /target_client_message_id/);
+});
+
+test("message submissions are idempotent for repeated client keys, including attachments", () => {
+  const idempotency = read("supabase/migrations/202609040008_marketplace_message_idempotency.sql");
+  assert.match(idempotency, /client_message_id uuid/);
+  assert.match(idempotency, /marketplace_messages_client_submission_uidx/);
+  assert.match(idempotency, /on conflict \(conversation_id, sender_id, client_message_id\)/);
+  assert.match(idempotency, /client_message_id_required/);
+  assert.match(idempotency, /client_attachment_index integer/);
+  assert.match(upload, /ignoreDuplicates: true/);
+  assert.match(upload, /client_attachment_index: clientMessageId \? index : null/);
+  assert.match(upload, /upsert: true/);
+  assert.match(read("app/work/jobs/ProviderJobActions.tsx"), /event\.preventDefault\(\)/);
 });
 
 test("conversation bubbles keep sender alignment, safe wrapping, compact timestamps and bounded images", () => {

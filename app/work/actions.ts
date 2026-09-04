@@ -40,6 +40,7 @@ export async function submitWorkOffer(formData: FormData) {
 export async function sendProviderJobMessage(formData: FormData) {
   const jobId = String(formData.get("jobId") || "");
   const body = String(formData.get("body") || "").trim();
+  const clientMessageId = String(formData.get("clientMessageId") || "").trim();
   if (!jobId || !body || body.length > 4000) redirect(`/work/jobs/${jobId}?error=message`);
   const provider = await requireProviderOperationalAccess();
   if (!provider) redirect(`/work/jobs/${jobId}?error=quote_setup`);
@@ -63,7 +64,7 @@ export async function sendProviderJobMessage(formData: FormData) {
 
   const admin = createSupabaseAdminClient();
   if (await isMarketplaceConversationReadOnly(admin, conversation.id)) redirect(`/work/jobs/${jobId}?error=conversation_closed`);
-  const { error } = await supabase.rpc("create_marketplace_message", { target_conversation: conversation.id, message_body: body });
+  const { error } = await supabase.rpc("create_marketplace_message", { target_conversation: conversation.id, message_body: body, target_client_message_id: clientMessageId || crypto.randomUUID() });
   if (error) {
     console.error("[sendProviderJobMessage] FAILED", { stage: "insert-message", providerId: provider.providerId, jobId, conversationId: conversation.id, code: error.code, message: error.message, details: error.details, hint: error.hint });
     redirect(`/work/jobs/${jobId}?error=message`);

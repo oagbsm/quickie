@@ -49,6 +49,7 @@ export async function POST(request: Request) {
 
   const conversationId = String(form.get("conversationId") || "");
   const body = String(form.get("body") || "").trim();
+  const clientMessageId = String(form.get("clientMessageId") || "").trim();
   const requestedReturnTo = String(form.get("returnTo") || "");
   const rawFiles = form.getAll("attachments");
   console.info("[marketplace-message] incoming form", { conversationId, bodyLength: body.length, attachmentValues: rawFiles.length, attachmentMeta: rawFiles.map((item) => item instanceof File ? { kind: "file", name: item.name, type: item.type, size: item.size } : { kind: typeof item }) });
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
     console.error("[marketplace-message] rejected", { reason: "missing_conversation", attachmentCount: rawFiles.length });
     return go(request, "/messages?error=send");
   }
+  if (clientMessageId && !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(clientMessageId)) return go(request, "/messages?error=send");
 
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -104,10 +106,11 @@ export async function POST(request: Request) {
   if (files.some((file) => file.size > MAX_FILE_SIZE)) return failure(request, returnTo, "attachment_too_large", { conversationId, userId: user.id, attachmentCount: rawFiles.length });
 
   const uploaded: Array<{ path: string; file: File }> = [];
-  for (const file of files) {
-    const path = `${conversationId}/${user.id}/${crypto.randomUUID()}.${EXTENSIONS[file.type]}`;
+  const uploadKey = clientMessageId || crypto.randomUUID();
+  for (const [index, file] of files.entries()) {
+    const path = `${conversationId}/${user.id}/${uploadKey}-${index}.${EXTENSIONS[file.type]}`;
     try {
-      const upload = await admin.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false });
+      const upload = await admin.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: true });
       if (upload.error) throw upload.error;
       uploaded.push({ path, file });
     } catch (error) {
@@ -117,7 +120,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const { data: message, error: messageError } = await supabase.rpc("create_marketplace_message", { target_conversation: conversationId, message_body: body || null });
+  const { data: message, error: messageError } = await supabase.rpc("create_marketplace_message", { target_conversation: conversationId, message_body: body || null, target_client_message_id: clientMessageId || null });
   if (messageError || !message) {
     logFailure("message_insert_failed", { conversationId, userId: user.id, error: safeError(messageError || new Error("Message insert returned no row")) });
     if (uploaded.length) await admin.storage.from(BUCKET).remove(uploaded.map((item) => item.path));
@@ -125,18 +128,23 @@ export async function POST(request: Request) {
   }
 
   if (uploaded.length) {
-    const { error: attachmentError } = await admin.from("marketplace_message_attachments").insert(uploaded.map(({ path, file }) => ({
+    const attachmentRows = uploaded.map(({ path, file }, index) => ({
       message_id: message.id,
       conversation_id: conversationId,
       uploader_id: user.id,
       storage_path: path,
       mime_type: file.type,
       file_size: file.size,
-    })));
+      client_message_id: clientMessageId || null,
+      client_attachment_index: clientMessageId ? index : null,
+    }));
+    const attachmentInsert = clientMessageId
+      ? await admin.from("marketplace_message_attachments").upsert(attachmentRows, { onConflict: "message_id,client_message_id,client_attachment_index", ignoreDuplicates: true })
+      : await admin.from("marketplace_message_attachments").insert(attachmentRows);
+    const attachmentError = attachmentInsert.error;
     if (attachmentError) {
       logFailure("attachment_insert_failed", { conversationId, userId: user.id, messageId: message.id, storagePaths: uploaded.map((item) => item.path), error: safeError(attachmentError) });
       await admin.storage.from(BUCKET).remove(uploaded.map((item) => item.path));
-      await admin.from("marketplace_messages").delete().eq("id", message.id);
       return failure(request, returnTo, "attachment_db_failed");
     }
   }
