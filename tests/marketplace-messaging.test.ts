@@ -30,6 +30,7 @@ const messageBubble = read("app/components/marketplace/MarketplaceMessageBubble.
 const promotionMigration = read("supabase/migrations/202609040002_customer_conversation_job_promotions.sql");
 const providerJobPage = read("app/work/jobs/[id]/page.tsx");
 const customerJobPageForPromotions = read("app/jobs/[token]/page.tsx");
+const myJobs = read("app/my-jobs/page.tsx");
 
 test("provider messaging stays on provider routes while customer routes remain separate", () => {
   assert.ok(index.includes('providerOnly ? "/work/messages"'));
@@ -110,7 +111,7 @@ test("customer job details resolve the public token to the internal job id and s
   assert.match(customerJobPage, /\.eq\("job_id", data\.id\)/);
   assert.match(customerJobPage, /getMarketplaceQuoteProviderId/);
   assert.match(customerJobPage, /\.in\("user_id", quoteProviderIds\)/);
-  assert.match(customerJobPage, /Offers \<span className=\"text-\[#657089\]\"\>\(\{quotes\.length\}\)\<\/span\>/);
+  assert.match(customerJobPage, /Quotes \<span className=\"text-\[#657089\]\"\>\(\{quotes\.length\}\)\<\/span\>/);
   assert.doesNotMatch(customerJobPage, /Availability to confirm/);
 });
 
@@ -120,6 +121,18 @@ test("customer offers and conversations use the same active statuses and interna
   assert.match(customerJobActions, /\.eq\("public_token", token\)/);
   assert.match(customerJobActions, /jobId: job\.id, providerId, actorUserId: user\.id, customerId: customer\.id/);
   assert.match(customerJobActions, /redirect\(`\/messages\/\$\{conversation\.id\}`\)/);
+});
+
+test("customer job navigation and conversation summaries stay distinct", () => {
+  assert.match(myJobs, /conversationIds\.length === 1 \? `\/messages\/\$\{conversationIds\[0\]\}`/);
+  assert.match(myJobs, /`\/messages\?job=\$\{job\.id\}`/);
+  assert.match(customerJobPage, /Provider conversations/);
+  assert.match(customerJobPage, /Question before quote/);
+  assert.match(customerJobPage, /View conversation/);
+  assert.match(customerJobPage, /Providers can ask questions before sending a quote/);
+  assert.match(customerJobPage, /waiting \? "Waiting for quotes"/);
+  assert.match(myJobs, /Waiting for quotes/);
+  assert.match(myJobs, /activeQuotes\.length === 1 \? "quote" : "quotes"/);
 });
 
 test("provider My Work includes bidder-backed quotes and preserves offer lifecycle states", () => {

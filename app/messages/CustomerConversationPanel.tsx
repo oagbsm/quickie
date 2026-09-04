@@ -9,6 +9,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatMarketplaceAmount } from "@/lib/marketplace/customer-job-state";
 import { resolveProviderPhotoUrl } from "@/lib/marketplace/provider-photo";
 import { isMarketplaceConversationReadOnly } from "@/lib/marketplace/conversations";
+import { getMarketplaceJobDisplayTitle } from "@/app/data/marketplace";
 
 export default async function CustomerConversationPanel({ conversationId }: { conversationId: string }) {
   const supabase = await createSupabaseServerClient();
@@ -42,7 +43,7 @@ export default async function CustomerConversationPanel({ conversationId }: { co
   const byMessage = new Map<string, typeof signedAttachments>();
   for (const attachment of signedAttachments) byMessage.set(attachment.message_id, [...(byMessage.get(attachment.message_id) || []), attachment]);
   const providerName = provider?.business_name || provider?.display_name || "Your provider";
-  const title = (job.service_subtype || job.service || "Quickola job").replaceAll("-", " ");
+  const title = getMarketplaceJobDisplayTitle(job.service, job.service_subtype, job.service_subtype || job.service);
   const profileHref = providerId ? `/providers/${providerId}?job=${job.id}&offer=${quote?.id || ""}&returnTo=/messages?conversation=${conversationId}` : null;
   const returnTo = `/messages?conversation=${conversationId}`;
   const isAccepted = quote?.status === "accepted" || quote?.status === "selected";

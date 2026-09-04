@@ -14,6 +14,7 @@ import { formatMarketplaceAmount } from "@/lib/marketplace/customer-job-state";
 import { formatMarketplaceProviderName } from "@/lib/marketplace/presentation";
 import { resolveProviderPhotoUrl } from "@/lib/marketplace/provider-photo";
 import { isMarketplaceConversationReadOnly } from "@/lib/marketplace/conversations";
+import { getMarketplaceJobDisplayTitle } from "@/app/data/marketplace";
 
 type Attachment = { id: string; message_id: string; storage_path: string; url: string | null };
 
@@ -65,7 +66,7 @@ export default async function MessagesPage({ params, searchParams, providerOnly 
   const signed: Attachment[] = await Promise.all((attachments || []).map(async (attachment) => ({ ...attachment, url: (await admin.storage.from("marketplace-message-attachments").createSignedUrl(attachment.storage_path, 3600)).data?.signedUrl || null })));
   const byMessage = new Map<string, Attachment[]>();
   for (const attachment of signed) byMessage.set(attachment.message_id, [...(byMessage.get(attachment.message_id) || []), attachment]);
-  const title = (job.service_subtype || job.service || "Quickola job").replaceAll("-", " ");
+  const title = getMarketplaceJobDisplayTitle(job.service, job.service_subtype, job.service_subtype || job.service);
   const isAccepted = quote?.status === "accepted" || quote?.status === "selected";
   const providerName = formatMarketplaceProviderName(providerProfile?.business_name || providerProfile?.display_name);
   const providerProfileHref = conversationProviderId ? `/providers/${conversationProviderId}?job=${conversation.job_id}&offer=${quote?.id || ""}&returnTo=/messages/${conversationId}` : null;

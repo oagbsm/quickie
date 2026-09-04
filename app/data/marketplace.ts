@@ -178,5 +178,9 @@ const legacyJobAliases: Record<string, Record<string, string>> = {
 export function normalizeJobSlug(categorySlug: string, jobSlug: string) { const category = legacyCategoryAliases[categorySlug] || categorySlug; return legacyJobAliases[category]?.[jobSlug] || jobSlug; }
 export function getService(slug: string) { return marketplaceServices.find((service) => service.slug === (legacyCategoryAliases[slug] || slug)); }
 export function getJob(categorySlug: string, jobSlug: string) { const category = legacyCategoryAliases[categorySlug] || categorySlug; return getService(category)?.jobs.find((item) => item.slug === normalizeJobSlug(category, jobSlug)); }
+export function getMarketplaceJobDisplayTitle(categorySlug: string | null | undefined, jobSlug?: string | null, fallback?: string | null) {
+  const catalogJob = categorySlug && jobSlug ? getJob(categorySlug, jobSlug) : undefined;
+  return catalogJob?.name || fallback || categorySlug?.replaceAll("-", " ") || "Quickola job";
+}
 export function findJob(slug: string) { for (const service of marketplaceServices) { const found = service.jobs.find((item) => item.slug === normalizeJobSlug(service.slug, slug)); if (found) return { service, job: found }; } return undefined; }
 export function getLocation(slug: string) { return marketplaceLocations.find((location) => location.slug === slug); }
