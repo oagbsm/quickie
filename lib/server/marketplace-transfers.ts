@@ -5,6 +5,17 @@ import { calculateProviderEarnings } from "@/lib/marketplace/provider-earnings";
 
 export type MarketplaceTransferResult = { status: "paid" | "blocked" | "failed" | "already_processing"; transferId?: string };
 
+function logSupabaseTransferLookupFailure(bookingId: string, stage: string, error: { code?: string; message?: string; details?: string; hint?: string }) {
+  console.error("[marketplace-transfer] Supabase lookup failed", {
+    bookingId,
+    stage,
+    supabaseCode: error.code || "unknown",
+    message: (error.message || "unknown").slice(0, 200),
+    details: (error.details || "").slice(0, 200),
+    hint: (error.hint || "").slice(0, 200),
+  });
+}
+
 /**
  * Transfer the persisted provider share after customer confirmation.
  * The database claim and Stripe idempotency key together make retries safe;
@@ -13,7 +24,10 @@ export type MarketplaceTransferResult = { status: "paid" | "blocked" | "failed" 
 export async function transferMarketplaceProviderFunds(bookingId: string): Promise<MarketplaceTransferResult> {
   const admin = createSupabaseAdminClient();
   const { data: booking, error: lookupError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,provider_id,amount_pence,currency,payment_status,status,completion_status,provider_transfer_status,provider_transfer_amount_pence,stripe_transfer_id,payout_hold_status,refunded_amount_pence,provider_transfer_error").eq("id", bookingId).maybeSingle();
-  if (lookupError) throw new Error("booking_transfer_lookup_failed");
+  if (lookupError) {
+    logSupabaseTransferLookupFailure(bookingId, "booking_lookup", lookupError);
+    throw new Error("booking_transfer_lookup_failed");
+  }
   if (!booking) throw new Error("booking_not_found");
   if (booking.provider_transfer_status === "paid" || booking.stripe_transfer_id) return { status: "paid", transferId: booking.stripe_transfer_id || undefined };
   if (booking.provider_transfer_status === "processing") return { status: "already_processing" };

@@ -54,6 +54,14 @@ test("provider payout is blocked by cancellation, refund, or operational hold", 
   assert.match(transfers, /calculateProviderEarnings/);
 });
 
+test("transfer lookup failures retain bounded internal Supabase diagnostics", () => {
+  assert.match(transfers, /logSupabaseTransferLookupFailure/);
+  assert.match(transfers, /"booking_lookup"/);
+  assert.match(transfers, /supabaseCode/);
+  assert.match(transfers, /\.slice\(0, 200\)/);
+  assert.match(transfers, /booking_transfer_lookup_failed/);
+});
+
 test("partial refunds recalculate the transfer and prevent refund/transfer overlap", () => {
   assert.match(transfers, /partially_refunded/);
   assert.match(transfers, /earnings\.providerEarningsPence/);
