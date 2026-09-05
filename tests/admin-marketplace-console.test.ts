@@ -92,8 +92,12 @@ test("admin marketplace views expose real job, provider, and payment state", () 
   assert.doesNotMatch(providers, /NEED MORE SUPPLY/);
   assert.match(providers, /View dossier/);
   assert.match(payments, /payment_status/);
-  assert.match(payments, /platform_fee_pence/);
-  assert.match(payments, /no live Stripe calls/);
+  assert.match(payments, /financialEvents/);
+  assert.match(payments, /No live Stripe calls are made here/);
+  assert.match(payments, /Customer payments/);
+  assert.match(payments, /Provider transfers/);
+  assert.match(payments, /marketplace_refunds/);
+  assert.match(payments, /read-only/);
 });
 
 test("admin sidebar uses the calmer grouped navigation and coherent icon set", () => {
