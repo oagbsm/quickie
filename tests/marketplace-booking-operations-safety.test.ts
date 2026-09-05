@@ -183,6 +183,14 @@ test("dispute resolution never invokes provider transfer", () => {
   assert.match(resolutionAction, /refundStatus === "already_processing"/);
 });
 
+test("refund completion resolves disputes only after refund success", () => {
+  const refundOrderMigration = read("supabase/migrations/20260905160000_fix_dispute_refund_order.sql");
+  assert.match(adminActions, /dispute_lookup_after_refund/);
+  assert.match(adminActions, /dispute_resolution_after_refund/);
+  assert.match(refundOrderMigration, /payment_status in \('cancelled', 'refund_pending'\)/);
+  assert.match(refundOrderMigration, /status = 'resolved_customer'/);
+});
+
 test("admin dispute continuation validates the RPC result and persisted state before success redirect", () => {
   assert.match(adminActions, /\[marketplace-dispute-resolution\]/);
   assert.match(adminActions, /preflight_dispute_lookup/);

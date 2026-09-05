@@ -118,6 +118,21 @@ export async function issueMarketplaceBookingRefund(f: FormData) {
   try {
     const result = await issueMarketplaceRefund(bookingId, amountPence, reason, user.id);
     await createSupabaseAdminClient().from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_refund_requested", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: null, new_value: { amount_pence: amountPence, reason, status: result.status, refund_id: result.refundId || null } });
+    if (result.status === "succeeded") {
+      const admin = createSupabaseAdminClient();
+      const { data: dispute, error: disputeLookupError } = await admin.from("marketplace_disputes").select("id").eq("booking_id", bookingId).in("status", ["open", "in_review"]).maybeSingle();
+      if (disputeLookupError) {
+        console.error("[marketplace-refund]", { bookingId, stage: "dispute_lookup_after_refund", result: "refund_succeeded_dispute_unresolved", error: { code: disputeLookupError.code, message: disputeLookupError.message.slice(0, 240) } });
+        redirect(`/admin/marketplace-bookings/${bookingId}?error=dispute`);
+      }
+      if (dispute) {
+        const { error: resolutionError } = await (await createSupabaseServerClient()).rpc("resolve_marketplace_dispute", { target_dispute: dispute.id, p_resolution_status: "resolved_customer", p_resolution_code: "customer_refund", p_resolution_notes: reason.slice(0, 2000) });
+        if (resolutionError) {
+          console.error("[marketplace-refund]", { bookingId, stage: "dispute_resolution_after_refund", result: "refund_succeeded_dispute_unresolved", error: { code: resolutionError.code, message: resolutionError.message.slice(0, 240) } });
+          redirect(`/admin/marketplace-bookings/${bookingId}?error=dispute`);
+        }
+      }
+    }
   } catch (error) {
     console.error("[marketplace-refund]", { bookingId, stage: "admin_action_failure", requestedRefundAmountPence: amountPence, error: { name: error instanceof Error ? error.name : "UnknownError", message: error instanceof Error ? error.message.slice(0, 240) : "unknown" } });
     redirect(`/admin/marketplace-bookings/${bookingId}?error=refund`);
@@ -228,6 +243,21 @@ export async function resolveMarketplaceDispute(f: FormData) {
     logDisputeResolution({ bookingId, disputeId, outcome: resolutionChoice, stage: "preflight_booking_lookup", error: beforeBooking.error || new Error("booking_not_found") });
     redirect(`/admin/marketplace-bookings/${bookingId}?error=dispute`);
   }
+  let refundStatus: string | null = null;
+  if (resolutionChoice === "refund") {
+    const remaining = Number(beforeBooking.data.amount_pence || 0) - Number(beforeBooking.data.refunded_amount_pence || 0);
+    const refundMode = value(f, "refundMode") || "full";
+    const requestedAmount = refundMode === "full" ? remaining : parseGbpToPence(value(f, "refundAmountGbp"));
+    if (!requestedAmount || requestedAmount <= 0 || requestedAmount > remaining) redirect(`/admin/marketplace-bookings/${bookingId}?error=refund`);
+    try {
+      const refund = await issueMarketplaceRefund(bookingId, requestedAmount, resolutionNotes || "Customer refund after dispute resolution", user.id);
+      refundStatus = refund.status;
+      if (refund.status !== "succeeded") redirect(`/admin/marketplace-bookings/${bookingId}?error=refund`);
+    } catch (refundError) {
+      console.error("[marketplace-refund]", { bookingId, stage: "dispute_refund_before_resolution", result: "not_resolved", error: { name: refundError instanceof Error ? refundError.name : "UnknownError", message: refundError instanceof Error ? refundError.message.slice(0, 240) : "unknown" } });
+      redirect(`/admin/marketplace-bookings/${bookingId}?error=refund`);
+    }
+  }
   const { data: rpcData, error } = await supabase.rpc("resolve_marketplace_dispute", { target_dispute: disputeId, p_resolution_status: resolutionStatus, p_resolution_code: resolutionChoice === "continue" ? "job_can_continue" : "customer_refund", p_resolution_notes: resolutionNotes || null });
   const rpcRow = firstRpcRow(rpcData);
   if (error || !rpcRow || rpcRow.id !== disputeId || rpcRow.booking_id !== bookingId || rpcRow.status !== resolutionStatus) {
@@ -247,8 +277,7 @@ export async function resolveMarketplaceDispute(f: FormData) {
     redirect(`/admin/marketplace-bookings/${bookingId}?error=dispute`);
   }
   logDisputeResolution({ bookingId, disputeId, outcome: resolutionChoice, stage: "persisted_state_validated", result: "success", completionStatus: booking.completion_status, payoutHoldStatus: booking.payout_hold_status, disputeStatus: afterDispute.data.status });
-  let refundStatus: string | null = null;
-  if (resolutionChoice === "refund") {
+  if (resolutionChoice === "refund" && refundStatus !== "succeeded") {
     const remaining = Number(booking.amount_pence || 0) - Number(booking.refunded_amount_pence || 0);
     const refundMode = value(f, "refundMode") || "full";
     const requestedAmount = refundMode === "full" ? remaining : parseGbpToPence(value(f, "refundAmountGbp"));
