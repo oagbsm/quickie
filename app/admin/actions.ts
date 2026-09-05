@@ -187,10 +187,36 @@ export async function releaseMarketplacePayoutHold(f: FormData) {
 
 export async function resolveMarketplaceDispute(f: FormData) {
   const { user, supabase } = await requireAdmin();
-  const disputeId = value(f, "disputeId"); const resolutionStatus = value(f, "resolutionStatus"); const resolutionCode = value(f, "resolutionCode"); const resolutionNotes = value(f, "resolutionNotes");
-  if (!disputeId || !resolutionCode || !["resolved_provider", "resolved_customer", "closed"].includes(resolutionStatus)) redirect("/admin/marketplace-bookings?error=dispute");
-  const { data: dispute, error } = await supabase.rpc("resolve_marketplace_dispute", { target_dispute: disputeId, resolution_status: resolutionStatus, resolution_code: resolutionCode, resolution_notes: resolutionNotes || null });
-  if (error) redirect("/admin/marketplace-bookings?error=dispute");
-  await createSupabaseAdminClient().from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_dispute_resolved", entity_type: "marketplace_dispute", entity_id: disputeId, previous_value: null, new_value: { booking_id: dispute?.booking_id, status: resolutionStatus, resolution_code: resolutionCode } });
-  revalidatePath("/admin/marketplace-bookings"); redirect("/admin/marketplace-bookings");
+  const disputeId = value(f, "disputeId");
+  const resolutionChoice = value(f, "resolutionChoice");
+  const resolutionNotes = value(f, "resolutionNotes").slice(0, 2000);
+  const resolutionStatus = resolutionChoice === "continue" ? "resolved_provider" : resolutionChoice === "refund" ? "resolved_customer" : "";
+  if (!disputeId || !resolutionStatus) redirect("/admin/marketplace-bookings?error=dispute");
+  const admin = createSupabaseAdminClient();
+  const { data: dispute, error } = await supabase.rpc("resolve_marketplace_dispute", { target_dispute: disputeId, resolution_status: resolutionStatus, resolution_code: resolutionChoice === "continue" ? "job_can_continue" : "customer_refund", resolution_notes: resolutionNotes || null });
+  if (error || !dispute?.booking_id) redirect(`/admin/marketplace-bookings?error=dispute`);
+
+  const { data: booking } = await admin.from("marketplace_bookings").select("id,job_id,amount_pence,refunded_amount_pence,payment_status").eq("id", dispute.booking_id).maybeSingle();
+  if (!booking) redirect(`/admin/marketplace-bookings/${dispute.booking_id}?error=dispute`);
+  let refundStatus: string | null = null;
+  if (resolutionChoice === "refund") {
+    const remaining = Number(booking.amount_pence || 0) - Number(booking.refunded_amount_pence || 0);
+    let refundFailure = false;
+    try {
+      const refund = await issueMarketplaceRefund(booking.id, remaining, resolutionNotes || "Customer refund after dispute resolution", user.id);
+      refundStatus = refund.status;
+      refundFailure = refund.status === "failed";
+    } catch (refundError) {
+      console.error("marketplace_dispute_refund_failed", { disputeId, bookingId: booking.id, reason: refundError instanceof Error ? refundError.message.slice(0, 120) : "unknown" });
+      refundFailure = true;
+    }
+    if (refundFailure) redirect(`/admin/marketplace-bookings/${booking.id}?error=refund`);
+  }
+  await admin.from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_dispute_resolved", entity_type: "marketplace_dispute", entity_id: disputeId, previous_value: null, new_value: { booking_id: booking.id, status: resolutionStatus, outcome: resolutionChoice, refund_status: refundStatus } });
+  const { data: job } = await admin.from("marketplace_jobs").select("public_token").eq("id", booking.job_id).maybeSingle();
+  revalidatePath(`/admin/marketplace-bookings/${booking.id}`);
+  revalidatePath("/admin/marketplace-bookings");
+  revalidatePath(`/work/jobs/${booking.job_id}`);
+  if (job?.public_token) { revalidatePath(`/jobs/${job.public_token}`); revalidatePath("/my-jobs"); }
+  redirect(`/admin/marketplace-bookings/${booking.id}?success=${resolutionChoice === "continue" ? "dispute_continue" : refundStatus === "already_processing" ? "refund_pending" : "refund"}`);
 }

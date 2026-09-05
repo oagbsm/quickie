@@ -10,6 +10,9 @@ const transfers = read("lib/server/marketplace-transfers.ts");
 const adminActions = read("app/admin/actions.ts");
 const jobActions = read("app/jobs/actions.ts");
 const bookingAdminPage = read("app/admin/(portal)/marketplace-bookings/[id]/page.tsx");
+const disputeResolutionMigration = read("supabase/migrations/20260905100000_marketplace_dispute_resolution_outcomes.sql");
+const providerJobPage = read("app/work/jobs/[id]/page.tsx");
+const customerState = read("lib/marketplace/customer-job-state.ts");
 
 test("Stripe webhook events are uniquely claimed and retryable after failure", () => {
   assert.match(migration, /stripe_event_id text not null unique/);
@@ -127,4 +130,35 @@ test("provider transfer attempts rotate only after definitive failures", () => {
   assert.match(adminActions, /provider_transfer_status !== "failed"/);
   assert.match(adminActions, /booking\.stripe_transfer_id/);
   assert.doesNotMatch(bookingAdminPage, /Check Stripe platform/);
+});
+
+test("dispute resolution has explicit continue and refund outcomes", () => {
+  assert.match(disputeResolutionMigration, /resolution_status not in \('resolved_provider', 'resolved_customer'\)/);
+  assert.match(disputeResolutionMigration, /completion_status = 'awaiting_customer_completion'/);
+  assert.match(disputeResolutionMigration, /status = 'awaiting_customer_completion'/);
+  assert.match(disputeResolutionMigration, /payout_hold_reason = 'unresolved_dispute'/);
+  assert.match(disputeResolutionMigration, /provider_transfer_status = case[\s\S]*then 'pending'/);
+  assert.match(disputeResolutionMigration, /payment_status = case when payment_status = 'paid' then 'refund_pending'/);
+  assert.match(disputeResolutionMigration, /provider_transfer_status = 'blocked'/);
+  assert.match(adminActions, /resolutionChoice === "continue"/);
+  assert.match(adminActions, /resolutionChoice === "refund"/);
+  assert.match(adminActions, /issueMarketplaceRefund\(booking\.id/);
+  assert.match(bookingAdminPage, /ResolveDisputeForm/);
+});
+
+test("open completion issues are consistent across customer and provider surfaces", () => {
+  assert.match(customerState, /completion_status === "issue_reported"/);
+  assert.match(customerState, /refund_pending/);
+  assert.match(customerState, /refunded/);
+  assert.match(providerJobPage, /issueBeingReviewed/);
+  assert.match(providerJobPage, /Issue being reviewed/);
+  assert.match(providerJobPage, /Customer reported an issue/);
+  assert.match(read("app/admin/(portal)/marketplace-bookings/page.tsx"), /issue_being_reviewed/);
+});
+
+test("dispute resolution never invokes provider transfer", () => {
+  const resolutionAction = adminActions.slice(adminActions.indexOf("export async function resolveMarketplaceDispute"));
+  assert.doesNotMatch(resolutionAction, /transferMarketplaceProviderFunds/);
+  assert.match(resolutionAction, /issueMarketplaceRefund/);
+  assert.match(resolutionAction, /refundStatus === "already_processing"/);
 });

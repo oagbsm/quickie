@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-const label = (status: string) => ({ awaiting_booking_fee: "Upcoming", booked: "Upcoming", en_route: "In progress", arrived: "In progress", in_progress: "In progress", completed: "Completed", cancelled: "Cancelled" }[status] || status.replaceAll("_", " "));
+const label = (status: string) => ({ awaiting_booking_fee: "Upcoming", booked: "Upcoming", en_route: "In progress", arrived: "In progress", in_progress: "In progress", issue_being_reviewed: "Issue being reviewed", completed: "Completed", cancelled: "Cancelled" }[status] || status.replaceAll("_", " "));
 const tone = (status: string) => status === "completed" ? "bg-[#e7f6ec] text-[#177b42]" : status === "cancelled" ? "bg-[#f1f3f6] text-[#66758c]" : ["en_route", "arrived", "in_progress"].includes(status) ? "bg-[#fff4dc] text-[#9a6900]" : "bg-[#e7eefb] text-[#2864ad]";
 
 export default async function MarketplaceBookingsPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; page?: string }> }) {
