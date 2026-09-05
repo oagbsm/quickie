@@ -178,3 +178,17 @@ test("admin dispute continuation validates the RPC result and persisted state be
   assert.match(adminActions, /error=dispute/);
   assert.match(disputeResolutionMigration, /where d\.id = target_dispute and d\.status in \('open', 'in_review'\)/);
 });
+
+test("deployed dispute RPC migration removes PL/pgSQL parameter ambiguity without changing outcomes", () => {
+  const rpcFix = read("supabase/migrations/20260905143000_fix_marketplace_dispute_resolution_rpc.sql");
+  assert.match(rpcFix, /drop function if exists public\.resolve_marketplace_dispute/);
+  assert.match(rpcFix, /p_resolution_status text/);
+  assert.match(rpcFix, /p_resolution_code text/);
+  assert.match(rpcFix, /p_resolution_notes text/);
+  assert.doesNotMatch(rpcFix, /trim\(resolution_code\)/);
+  assert.match(rpcFix, /status = 'resolved_provider'/);
+  assert.match(rpcFix, /completion_status = 'awaiting_customer_completion'/);
+  assert.match(rpcFix, /payout_hold_reason = case/);
+  assert.match(rpcFix, /payment_status = case when current_booking\.payment_status = 'paid' then 'refund_pending'/);
+  assert.match(rpcFix, /provider_transfer_status = 'blocked'/);
+});
