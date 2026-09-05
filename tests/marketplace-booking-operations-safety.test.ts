@@ -104,3 +104,18 @@ test("failed provider transfers have one admin-only, confirmed retry entry point
   assert.match(retryForm, /Retry .*payout to this provider/);
   assert.match(retryForm, /PendingButton/);
 });
+
+test("Stripe platform diagnostic is admin-only, read-only, and secret-safe", () => {
+  assert.match(adminActions, /diagnoseMarketplaceStripeAccount/);
+  assert.match(adminActions, /await requireAdmin\(\)/);
+  assert.match(adminActions, /stripe\.accounts\.retrieveCurrent\(\)/);
+  assert.match(adminActions, /stripe\.balance\.retrieve\(\)/);
+  assert.match(adminActions, /\[marketplace-stripe-diagnostic\]/);
+  assert.match(adminActions, /accountId/);
+  assert.match(adminActions, /livemode/);
+  assert.match(adminActions, /gbpAvailable/);
+  assert.match(adminActions, /gbpPending/);
+  assert.doesNotMatch(adminActions, /STRIPE_SECRET_KEY[^\n]*console/);
+  assert.doesNotMatch(adminActions, /transferMarketplaceProviderFunds\(bookingId\).*diagnose/);
+  assert.match(bookingAdminPage, /Check Stripe platform/);
+});
