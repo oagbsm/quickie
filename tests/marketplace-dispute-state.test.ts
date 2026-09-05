@@ -49,3 +49,12 @@ test("partial refund amount is remaining paid amount and full refund stays disti
   assert.equal(getMarketplaceBookingLifecycleState(full), "refunded");
   assert.equal(getMarketplacePaymentState({ payment_status: "paid" }), "paid");
 });
+
+test("partial-refund paid state cannot become payment required or awaiting completion", () => {
+  const partial = { amount_pence: 26600, refunded_amount_pence: 5000, payment_status: "paid", status: "awaiting_customer_completion", completion_status: "issue_reported", payout_hold_status: "held", payout_hold_reason: "unresolved_dispute" };
+  assert.equal(getMarketplacePaymentState(partial), "paid");
+  assert.equal(getCustomerJobLifecycleState({ offerCount: 1, acceptedQuote: quote, booking: partial, hasActiveDispute: true }), "completion_issue_reported");
+  assert.notEqual(getCustomerJobLifecycleState({ offerCount: 1, acceptedQuote: quote, booking: partial, hasActiveDispute: true }), "provider_selected_unpaid");
+  assert.notEqual(getMarketplaceBookingLifecycleState(partial, true), "awaiting_customer_completion");
+  assert.notEqual(getMarketplaceBookingLifecycleState(partial, true), "payment_required");
+});

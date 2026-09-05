@@ -10,6 +10,7 @@ test("provider earnings use the combined ten percent fee in integer pence", () =
   assert.deepEqual(calculateProviderEarnings(10000), { customerPaidPence: 10000, totalFeesPence: 1000, providerEarningsPence: 9000 });
   assert.deepEqual(calculateProviderEarnings(16500), { customerPaidPence: 16500, totalFeesPence: 1650, providerEarningsPence: 14850 });
   assert.deepEqual(calculateProviderEarnings(16500, 500), { customerPaidPence: 16000, totalFeesPence: 1600, providerEarningsPence: 14400 });
+  assert.deepEqual(calculateProviderEarnings(26600, 5000), { customerPaidPence: 21600, totalFeesPence: 2160, providerEarningsPence: 19440 });
 });
 
 test("only verified paid completed bookings are eligible for payout totals", () => {

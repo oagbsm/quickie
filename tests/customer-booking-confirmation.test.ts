@@ -7,7 +7,7 @@ const page = read("app/jobs/[token]/page.tsx");
 const presentation = read("lib/marketplace/presentation.ts");
 
 test("confirmed booking copy is driven by persisted payment state", () => {
-  assert.match(page, /booking\.payment_status === "paid"/);
+  assert.match(page, /getMarketplacePaymentState\(booking\) === "paid"/);
   assert.match(page, /Booking confirmed/);
   assert.match(page, /Payment processing/);
   assert.match(page, /paymentReturnPending = payment === "success" && acceptedBooking\?\.payment_status !== "paid"/);

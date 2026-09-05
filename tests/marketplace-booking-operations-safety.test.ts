@@ -12,6 +12,7 @@ const jobActions = read("app/jobs/actions.ts");
 const bookingAdminPage = read("app/admin/(portal)/marketplace-bookings/[id]/page.tsx");
 const disputeResolutionMigration = read("supabase/migrations/20260905100000_marketplace_dispute_resolution_outcomes.sql");
 const providerJobPage = read("app/work/jobs/[id]/page.tsx");
+const providerPaymentsPage = read("app/work/payments/page.tsx");
 const customerState = read("lib/marketplace/customer-job-state.ts");
 const money = read("lib/marketplace/money.ts");
 const customerJobPage = read("app/jobs/[token]/page.tsx");
@@ -93,6 +94,8 @@ test("partial-refund UI preserves paid booking semantics across surfaces", () =>
   assert.match(bookingAdminPage, /getMarketplaceBookingLifecycleState/);
   assert.match(providerJobPage, /getMarketplacePaymentState\(booking\) === "paid"/);
   assert.match(providerJobPage, /Issue being reviewed/);
+  assert.match(providerPaymentsPage, /Refunds have been reflected in the amounts shown above/);
+  assert.match(providerPaymentsPage, /earnings\.providerEarningsPence/);
 });
 
 test("refunds never proceed after a successful provider transfer and indeterminate Stripe results stay pending", () => {
