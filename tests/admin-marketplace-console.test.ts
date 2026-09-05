@@ -83,7 +83,7 @@ test("admin marketplace views expose real job, provider, and payment state", () 
   assert.match(jobs, /offers/);
   assert.match(providers, /stripe_status/);
   assert.match(providers, /provider_status/);
-  assert.match(providers, /Needs review/);
+  assert.match(providers, /Needs attention/);
   assert.match(providers, /View dossier/);
   assert.match(payments, /payment_status/);
   assert.match(payments, /platform_fee_pence/);
