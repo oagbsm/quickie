@@ -86,6 +86,15 @@ test("refund policy uses integer GBP parsing and exposes partial refund state", 
   assert.match(providerJobPage, /Partial refund issued/);
 });
 
+test("partial-refund UI preserves paid booking semantics across surfaces", () => {
+  assert.match(customerJobPage, /getMarketplacePaymentState\(acceptedBooking\) === "paid"/);
+  assert.match(customerJobPage, /paymentLocked=\{getMarketplacePaymentState\(acceptedBooking\) === "paid"\}/);
+  assert.match(customerJobPage, /isPartialMarketplaceRefund/);
+  assert.match(bookingAdminPage, /getMarketplaceBookingLifecycleState/);
+  assert.match(providerJobPage, /getMarketplacePaymentState\(booking\) === "paid"/);
+  assert.match(providerJobPage, /Issue being reviewed/);
+});
+
 test("refunds never proceed after a successful provider transfer and indeterminate Stripe results stay pending", () => {
   assert.match(refunds, /refund_after_transfer_not_supported/);
   assert.match(refunds, /indeterminate/);

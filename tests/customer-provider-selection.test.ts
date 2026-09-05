@@ -12,7 +12,7 @@ test("customer selection is separate from payment and keeps the selected quote v
   assert.match(actions, /redirect\(`\$\{returnTo\.startsWith/);
   assert.doesNotMatch(actions.slice(actions.indexOf("export async function chooseMarketplaceQuote"), actions.indexOf("export async function changeMarketplaceProvider")), /createMarketplaceCheckout/);
   assert.match(page, /selectedQuoteId=\{acceptedQuote\?\.id \|\| null\}/);
-  assert.match(page, /paymentLocked=\{acceptedBooking\?\.payment_status === "paid"\}/);
+  assert.match(page, /paymentLocked=\{getMarketplacePaymentState\(acceptedBooking\) === "paid"\}/);
   assert.match(page, /changeMarketplaceProvider/);
 });
 
