@@ -16,6 +16,8 @@ const providerPaymentsPage = read("app/work/payments/page.tsx");
 const customerState = read("lib/marketplace/customer-job-state.ts");
 const money = read("lib/marketplace/money.ts");
 const customerJobPage = read("app/jobs/[token]/page.tsx");
+const forceSettlementMigration = read("supabase/migrations/20260905210000_marketplace_partial_refund_force_settlement.sql");
+const forceSettlementForm = read("app/admin/(portal)/marketplace-bookings/ForceSettlementForm.tsx");
 
 test("Stripe webhook events are uniquely claimed and retryable after failure", () => {
   assert.match(migration, /stripe_event_id text not null unique/);
@@ -134,7 +136,8 @@ test("failed provider transfers have one admin-only, confirmed retry entry point
   assert.match(adminActions, /definitiveFailureCodes/);
   assert.match(adminActions, /provider_transfer_error/);
   assert.match(adminActions, /booking\.stripe_transfer_id/);
-  assert.equal((adminActions.match(/transferMarketplaceProviderFunds\(bookingId\)/g) || []).length, 1);
+  const retryAction = adminActions.slice(adminActions.indexOf("export async function retryMarketplaceProviderTransfer"), adminActions.indexOf("export async function cancelMarketplaceBookingAsAdmin"));
+  assert.equal((retryAction.match(/transferMarketplaceProviderFunds\(bookingId\)/g) || []).length, 1);
   assert.match(bookingAdminPage, /booking\.provider_transfer_status === "failed"/);
   const retryForm = read("app/admin/(portal)/marketplace-bookings/RetryPayoutForm.tsx");
   assert.match(retryForm, /Retry payout/);
@@ -247,6 +250,38 @@ test("partial-refund continue makes the booking completion-eligible without rele
   assert.match(rpcFix, /completion_status = 'awaiting_customer_completion'/);
   assert.match(rpcFix, /payout_hold_reason.*then null/);
   assert.doesNotMatch(rpcFix, /transferMarketplaceProviderFunds|stripe\.transfers/);
+});
+
+test("force settlement is admin-only, partial-refund-only, audited, and transfers once after persistence", () => {
+  assert.match(adminActions, /export async function forceSettleMarketplacePartialRefund/);
+  assert.match(adminActions, /settlementNote/);
+  assert.match(adminActions, /force_settle_marketplace_partial_refund/);
+  assert.match(adminActions, /marketplace_partial_refund_force_settlement/);
+  assert.match(adminActions, /transferMarketplaceProviderFunds\(bookingId\)/);
+  assert.match(bookingAdminPage, /forceSettlementEligible/);
+  assert.match(bookingAdminPage, /ForceSettlementForm/);
+  assert.match(forceSettlementForm, /window\.confirm/);
+  assert.match(forceSettlementForm, /settlement reason/i);
+  assert.match(forceSettlementMigration, /is_quickola_admin/);
+  assert.match(forceSettlementMigration, /partial_refund_required/);
+  assert.match(forceSettlementMigration, /admin_force_provider_settlement/);
+  assert.match(forceSettlementMigration, /status = 'completed'/);
+  assert.match(forceSettlementMigration, /completion_status = 'completed'/);
+  assert.match(forceSettlementMigration, /payout_hold_status = 'none'/);
+  assert.match(forceSettlementMigration, /provider_transfer_status = case when provider_transfer_status = 'blocked' then 'pending'/);
+  assert.match(forceSettlementMigration, /resolution_notes = trim\(settlement_note\)/);
+  assert.doesNotMatch(forceSettlementMigration, /stripe\.transfers|issueMarketplaceRefund|transferMarketplaceProviderFunds/);
+});
+
+test("force settlement blocks successful, fully refunded, unpaid, and unrelated-hold bookings", () => {
+  assert.match(adminActions, /before\.provider_transfer_status !== "paid"/);
+  assert.match(adminActions, /!before\.stripe_transfer_id/);
+  assert.match(adminActions, /before\.payout_hold_status === "held"/);
+  assert.match(adminActions, /unresolved_dispute.*customer_issue_reported.*customer_resolution_refund/);
+  assert.match(forceSettlementMigration, /provider_transfer_already_paid/);
+  assert.match(forceSettlementMigration, /booking_not_paid/);
+  assert.match(forceSettlementMigration, /unrelated_payout_hold/);
+  assert.match(forceSettlementMigration, /coalesce\(current_booking\.refunded_amount_pence, 0\) >=/);
 });
 
 test("deployed dispute RPC migration removes PL/pgSQL parameter ambiguity without changing outcomes", () => {

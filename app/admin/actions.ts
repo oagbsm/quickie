@@ -10,6 +10,7 @@ import { sendProviderApprovedEmail } from "@/lib/marketplace/email/transactional
 import { issueMarketplaceRefund } from "@/lib/server/marketplace-refunds";
 import { reconcileMarketplaceProviderTransfer, transferMarketplaceProviderFunds } from "@/lib/server/marketplace-transfers";
 import { parseGbpToPence } from "@/lib/marketplace/money";
+import { calculateProviderEarnings } from "@/lib/marketplace/provider-earnings";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim();
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function safeDisputeResolutionError(error: unknown) {
@@ -222,6 +223,52 @@ export async function releaseMarketplacePayoutHold(f: FormData) {
   if (error) redirect(`/admin/marketplace-bookings/${bookingId}?error=hold`);
   await admin.from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_payout_hold_released", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: { payout_hold_status: "held" }, new_value: { payout_hold_status: "none" } });
   revalidatePath(`/admin/marketplace-bookings/${bookingId}`); redirect(`/admin/marketplace-bookings/${bookingId}`);
+}
+
+export async function forceSettleMarketplacePartialRefund(f: FormData) {
+  const { user, supabase } = await requireAdmin();
+  const bookingId = value(f, "bookingId");
+  const settlementNote = value(f, "settlementNote").slice(0, 2000);
+  if (!uuid.test(bookingId) || settlementNote.length < 5) redirect(`/admin/marketplace-bookings/${bookingId}?error=settlement`);
+
+  const admin = createSupabaseAdminClient();
+  const { data: before, error: beforeError } = await admin.from("marketplace_bookings").select("id,amount_pence,refunded_amount_pence,payment_status,status,completion_status,provider_transfer_status,stripe_transfer_id,payout_hold_status,payout_hold_reason,job_id").eq("id", bookingId).maybeSingle();
+  const remainingPaidPence = before ? Math.max(0, Number(before.amount_pence || 0) - Number(before.refunded_amount_pence || 0)) : 0;
+  const earnings = before ? calculateProviderEarnings(Number(before.amount_pence || 0), Number(before.refunded_amount_pence || 0)) : null;
+  const eligible = Boolean(before && !beforeError && ["paid", "partially_refunded"].includes(before.payment_status || "") && Number(before.refunded_amount_pence || 0) > 0 && Number(before.refunded_amount_pence || 0) < Number(before.amount_pence || 0) && remainingPaidPence > 0 && !["cancelled", "completed"].includes(before.status || "") && before.provider_transfer_status !== "paid" && !before.stripe_transfer_id && before.payout_hold_status === "held" && ["unresolved_dispute", "customer_issue_reported", "customer_resolution_refund"].includes(before.payout_hold_reason || "") && ["pending", "blocked"].includes(before.provider_transfer_status || ""));
+  if (!eligible || !before || !earnings) {
+    console.error("[marketplace-force-settlement]", { bookingId, stage: "preflight", error: { code: "settlement_not_eligible", message: "Booking is not an eligible partial-refund settlement" } });
+    redirect(`/admin/marketplace-bookings/${bookingId}?error=settlement_unavailable`);
+  }
+
+  const { error: resolutionError } = await supabase.rpc("force_settle_marketplace_partial_refund", { target_booking: bookingId, settlement_note: settlementNote });
+  if (resolutionError) {
+    console.error("[marketplace-force-settlement]", { bookingId, stage: "settlement_rpc", error: safeDisputeResolutionError(resolutionError) });
+    redirect(`/admin/marketplace-bookings/${bookingId}?error=settlement`);
+  }
+
+  const { data: after, error: afterError } = await admin.from("marketplace_bookings").select("id,job_id,amount_pence,refunded_amount_pence,payment_status,status,completion_status,provider_transfer_status,stripe_transfer_id,payout_hold_status,payout_hold_reason").eq("id", bookingId).maybeSingle();
+  if (afterError || !after || after.status !== "completed" || after.completion_status !== "completed" || !["paid", "partially_refunded"].includes(after.payment_status || "") || Number(after.refunded_amount_pence || 0) !== Number(before.refunded_amount_pence || 0) || after.payout_hold_status === "held" || after.provider_transfer_status === "paid" || after.stripe_transfer_id) {
+    console.error("[marketplace-force-settlement]", { bookingId, stage: "settlement_state_validation", error: { code: "settlement_state_invalid", message: "Settlement state was not persisted safely" } });
+    redirect(`/admin/marketplace-bookings/${bookingId}?error=settlement`);
+  }
+
+  await admin.from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_partial_refund_force_settlement", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: { payment_status: before.payment_status, status: before.status, completion_status: before.completion_status, provider_transfer_status: before.provider_transfer_status, payout_hold_status: before.payout_hold_status, refunded_amount_pence: before.refunded_amount_pence }, new_value: { resolution_code: "admin_force_provider_settlement", settlement_note: settlementNote, original_amount_pence: Number(before.amount_pence || 0), refunded_amount_pence: Number(before.refunded_amount_pence || 0), remaining_paid_pence: remainingPaidPence, provider_earnings_pence: earnings.providerEarningsPence, provider_transfer_status: after.provider_transfer_status } });
+
+  let transferResult;
+  try {
+    transferResult = await transferMarketplaceProviderFunds(bookingId);
+  } catch (transferError) {
+    console.error("[marketplace-force-settlement]", { bookingId, stage: "provider_transfer", error: safeDisputeResolutionError(transferError) });
+    redirect(`/admin/marketplace-bookings/${bookingId}?error=transfer`);
+  }
+  await admin.from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_partial_refund_force_settlement_transfer", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: { provider_transfer_status: after.provider_transfer_status }, new_value: { status: transferResult.status, transfer_id: transferResult.transferId || null, amount_pence: earnings.providerEarningsPence } });
+  const job = await admin.from("marketplace_jobs").select("public_token").eq("id", after.job_id).maybeSingle();
+  revalidatePath(`/admin/marketplace-bookings/${bookingId}`);
+  revalidatePath("/admin/marketplace-bookings");
+  if (after.job_id) revalidatePath(`/work/jobs/${after.job_id}`);
+  if (job.data?.public_token) revalidatePath(`/jobs/${job.data.public_token}`);
+  redirect(`/admin/marketplace-bookings/${bookingId}?${transferResult.status === "paid" ? "success=settlement" : transferResult.status === "already_processing" ? "success=settlement_processing" : "error=transfer"}`);
 }
 
 export async function resolveMarketplaceDispute(f: FormData) {

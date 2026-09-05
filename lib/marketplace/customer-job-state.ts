@@ -46,8 +46,8 @@ export function getMarketplaceBookingLifecycleState(booking: LifecycleBookingSna
   if (booking?.payment_status === "refund_pending") return "refund_pending";
   if (getMarketplacePaymentState(booking) !== "paid") return "payment_required";
   if (hasActiveDispute || booking.completion_status === "issue_reported" || (booking.payout_hold_status === "held" && booking.payout_hold_reason === "unresolved_dispute")) return "issue_being_reviewed";
-  if (isPartialMarketplaceRefund(booking)) return "booked";
   if (booking.completion_status === "completed" || booking.status === "completed") return "completed";
+  if (isPartialMarketplaceRefund(booking)) return "booked";
   if (booking.status === "awaiting_customer_completion" || booking.completion_status === "awaiting_customer_completion") return "awaiting_customer_completion";
   if (booking.status === "arrived" || booking.status === "in_progress") return "provider_arrived";
   if (booking.status === "en_route") return "provider_on_the_way";
@@ -66,8 +66,8 @@ export function getCustomerJobLifecycleState({ offerCount, acceptedQuote, bookin
   const paymentState = getMarketplacePaymentState(booking);
   if (paymentState !== "paid") return paymentState === "payment_processing" ? "payment_pending" : "provider_selected_unpaid";
   if (hasActiveDispute || booking?.completion_status === "issue_reported" || (booking?.payout_hold_status === "held" && booking?.payout_hold_reason === "unresolved_dispute")) return "completion_issue_reported";
-  if (isPartialMarketplaceRefund(booking)) return "partially_refunded";
   if (booking?.completion_status === "completed" || booking?.status === "completed") return "completed";
+  if (isPartialMarketplaceRefund(booking)) return "partially_refunded";
   if (booking?.status === "awaiting_customer_completion" && booking?.completion_status === "awaiting_customer_completion") return "awaiting_customer_completion";
   if (booking?.status === "arrived" || booking?.status === "in_progress") return "provider_arrived";
   if (booking?.status === "en_route") return "provider_on_the_way";

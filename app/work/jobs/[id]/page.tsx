@@ -34,6 +34,7 @@ function formatMoney(amount: number | null) {
 function formatBookingStatus(status: string, paymentStatus: string | null, lifecycle: string | null, partialRefund = false) {
   if (lifecycle === "issue_being_reviewed") return "Issue being reviewed — completion and payout are on hold";
   if (paymentStatus === "refunded") return "Customer refunded — no payout expected";
+  if (status === "completed") return "Completed / settled";
   if (partialRefund || paymentStatus === "partially_refunded") return "Partial refund issued — payout on hold";
   if (status === "issue_being_reviewed") return "Issue being reviewed — Customer reported an issue. Completion and payout are temporarily on hold while Quickola reviews it.";
   if (status === "awaiting_booking_fee" && paymentStatus !== "paid") return "Awaiting customer payment";
