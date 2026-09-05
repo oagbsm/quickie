@@ -167,6 +167,10 @@ test("admin dispute continuation validates the RPC result and persisted state be
   assert.match(adminActions, /\[marketplace-dispute-resolution\]/);
   assert.match(adminActions, /preflight_dispute_lookup/);
   assert.match(adminActions, /resolve_marketplace_dispute/);
+  assert.match(adminActions, /p_resolution_status: resolutionStatus/);
+  assert.match(adminActions, /p_resolution_code: resolutionChoice/);
+  assert.match(adminActions, /p_resolution_notes: resolutionNotes/);
+  assert.doesNotMatch(adminActions, /\{ target_dispute: disputeId, resolution_status:/);
   assert.match(adminActions, /firstRpcRow/);
   assert.match(adminActions, /rpc_result_validation/);
   assert.match(adminActions, /persisted_state_validation/);

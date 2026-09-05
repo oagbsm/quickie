@@ -215,7 +215,7 @@ export async function resolveMarketplaceDispute(f: FormData) {
     logDisputeResolution({ bookingId, disputeId, outcome: resolutionChoice, stage: "preflight_booking_lookup", error: beforeBooking.error || new Error("booking_not_found") });
     redirect(`/admin/marketplace-bookings/${bookingId}?error=dispute`);
   }
-  const { data: rpcData, error } = await supabase.rpc("resolve_marketplace_dispute", { target_dispute: disputeId, resolution_status: resolutionStatus, resolution_code: resolutionChoice === "continue" ? "job_can_continue" : "customer_refund", resolution_notes: resolutionNotes || null });
+  const { data: rpcData, error } = await supabase.rpc("resolve_marketplace_dispute", { target_dispute: disputeId, p_resolution_status: resolutionStatus, p_resolution_code: resolutionChoice === "continue" ? "job_can_continue" : "customer_refund", p_resolution_notes: resolutionNotes || null });
   const rpcRow = firstRpcRow(rpcData);
   if (error || !rpcRow || rpcRow.id !== disputeId || rpcRow.booking_id !== bookingId || rpcRow.status !== resolutionStatus) {
     logDisputeResolution({ bookingId, disputeId, outcome: resolutionChoice, stage: "rpc_result_validation", result: rpcRow ? "invalid" : null, error: error || new Error("invalid_rpc_result") });
