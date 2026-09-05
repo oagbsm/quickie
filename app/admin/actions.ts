@@ -8,8 +8,9 @@ import { randomBytes } from "node:crypto";
 import { hashProviderInviteToken, sendProviderInvitationEmail } from "@/lib/server/provider-invitations";
 import { sendProviderApprovedEmail } from "@/lib/marketplace/email/transactional";
 import { issueMarketplaceRefund } from "@/lib/server/marketplace-refunds";
-import { reconcileMarketplaceProviderTransfer } from "@/lib/server/marketplace-transfers";
+import { reconcileMarketplaceProviderTransfer, transferMarketplaceProviderFunds } from "@/lib/server/marketplace-transfers";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim();
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export async function adminSignOut() {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
@@ -124,6 +125,29 @@ export async function reconcileMarketplaceBookingTransfer(f: FormData) {
   }
   revalidatePath(`/admin/marketplace-bookings/${bookingId}`);
   redirect(`/admin/marketplace-bookings/${bookingId}`);
+}
+
+export async function retryMarketplaceProviderTransfer(f: FormData) {
+  const { user } = await requireAdmin();
+  const bookingId = value(f, "bookingId");
+  if (!uuid.test(bookingId)) redirect("/admin/marketplace-bookings?error=transfer");
+
+  const admin = createSupabaseAdminClient();
+  const { data: booking, error } = await admin.from("marketplace_bookings").select("id,provider_transfer_status,stripe_transfer_id").eq("id", bookingId).maybeSingle();
+  if (error || !booking || booking.provider_transfer_status !== "failed" || booking.stripe_transfer_id) {
+    redirect(`/admin/marketplace-bookings/${bookingId}?error=transfer_unavailable`);
+  }
+
+  let result;
+  try {
+    result = await transferMarketplaceProviderFunds(bookingId);
+  } catch (retryError) {
+    console.error("marketplace_transfer_retry_failed", { bookingId, reason: retryError instanceof Error ? retryError.message.slice(0, 120) : "unknown" });
+    redirect(`/admin/marketplace-bookings/${bookingId}?error=transfer`);
+  }
+  await admin.from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_transfer_retry", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: { provider_transfer_status: "failed" }, new_value: { status: result.status, transfer_id: result.transferId || null } });
+  revalidatePath(`/admin/marketplace-bookings/${bookingId}`);
+  redirect(`/admin/marketplace-bookings/${bookingId}?${result.status === "paid" ? "success=transfer" : "error=transfer"}`);
 }
 
 export async function cancelMarketplaceBookingAsAdmin(f: FormData) {

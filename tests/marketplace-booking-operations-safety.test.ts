@@ -9,6 +9,7 @@ const refunds = read("lib/server/marketplace-refunds.ts");
 const transfers = read("lib/server/marketplace-transfers.ts");
 const adminActions = read("app/admin/actions.ts");
 const jobActions = read("app/jobs/actions.ts");
+const bookingAdminPage = read("app/admin/(portal)/marketplace-bookings/[id]/page.tsx");
 
 test("Stripe webhook events are uniquely claimed and retryable after failure", () => {
   assert.match(migration, /stripe_event_id text not null unique/);
@@ -89,4 +90,17 @@ test("refund persistence failures do not convert an ambiguous Stripe result into
   assert.match(refunds, /Stripe refund succeeded but its audit row could not be updated/);
   assert.match(refunds, /Refund recorded but booking payment state could not be updated/);
   assert.match(refunds, /status: "already_processing", refundId: refund\.id/);
+});
+
+test("failed provider transfers have one admin-only, confirmed retry entry point", () => {
+  assert.match(adminActions, /retryMarketplaceProviderTransfer/);
+  assert.match(adminActions, /await requireAdmin\(\)/);
+  assert.match(adminActions, /provider_transfer_status !== "failed"/);
+  assert.match(adminActions, /booking\.stripe_transfer_id/);
+  assert.equal((adminActions.match(/transferMarketplaceProviderFunds\(bookingId\)/g) || []).length, 1);
+  assert.match(bookingAdminPage, /booking\.provider_transfer_status === "failed"/);
+  const retryForm = read("app/admin/(portal)/marketplace-bookings/RetryPayoutForm.tsx");
+  assert.match(retryForm, /Retry payout/);
+  assert.match(retryForm, /Retry .*payout to this provider/);
+  assert.match(retryForm, /PendingButton/);
 });
