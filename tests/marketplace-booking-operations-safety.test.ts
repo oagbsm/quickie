@@ -162,3 +162,19 @@ test("dispute resolution never invokes provider transfer", () => {
   assert.match(resolutionAction, /issueMarketplaceRefund/);
   assert.match(resolutionAction, /refundStatus === "already_processing"/);
 });
+
+test("admin dispute continuation validates the RPC result and persisted state before success redirect", () => {
+  assert.match(adminActions, /\[marketplace-dispute-resolution\]/);
+  assert.match(adminActions, /preflight_dispute_lookup/);
+  assert.match(adminActions, /resolve_marketplace_dispute/);
+  assert.match(adminActions, /firstRpcRow/);
+  assert.match(adminActions, /rpc_result_validation/);
+  assert.match(adminActions, /persisted_state_validation/);
+  assert.match(adminActions, /status === "resolved_provider"/);
+  assert.match(adminActions, /completion_status === "awaiting_customer_completion"/);
+  assert.match(adminActions, /payout_hold_reason !== "unresolved_dispute"/);
+  assert.match(adminActions, /payment_status === "paid"/);
+  assert.match(adminActions, /refunded_amount_pence === beforeBooking\.data\.refunded_amount_pence/);
+  assert.match(adminActions, /error=dispute/);
+  assert.match(disputeResolutionMigration, /where d\.id = target_dispute and d\.status in \('open', 'in_review'\)/);
+});
