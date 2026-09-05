@@ -21,7 +21,7 @@ type BookingSnapshot = {
 };
 
 export type MarketplacePaymentState = "none" | "payment_required" | "payment_processing" | "paid";
-export type CustomerJobLifecycleState = "waiting_for_offers" | "offers_received" | "provider_selected_unpaid" | "payment_pending" | "refund_pending" | "refunded" | "booked" | "provider_on_the_way" | "provider_arrived" | "awaiting_customer_completion" | "completion_issue_reported" | "completed" | "cancelled";
+export type CustomerJobLifecycleState = "waiting_for_offers" | "offers_received" | "provider_selected_unpaid" | "payment_pending" | "refund_pending" | "partially_refunded" | "refunded" | "booked" | "provider_on_the_way" | "provider_arrived" | "awaiting_customer_completion" | "completion_issue_reported" | "completed" | "cancelled";
 
 type LifecycleBookingSnapshot = BookingSnapshot & { status?: string | null; completion_status?: string | null; payout_hold_status?: string | null; payout_hold_reason?: string | null };
 
@@ -49,6 +49,7 @@ export function getCustomerJobLifecycleState({ offerCount, acceptedQuote, bookin
   if (booking?.payment_status === "refunded") return "refunded";
   if (booking?.payment_status === "refund_pending") return "refund_pending";
   const paymentState = getMarketplacePaymentState(booking);
+  if (booking?.payment_status === "partially_refunded") return "partially_refunded";
   if (paymentState !== "paid") return paymentState === "payment_processing" ? "payment_pending" : "provider_selected_unpaid";
   if (booking?.status === "cancelled") return "cancelled";
   if (booking?.completion_status === "completed" || booking?.status === "completed") return "completed";
@@ -60,7 +61,7 @@ export function getCustomerJobLifecycleState({ offerCount, acceptedQuote, bookin
 }
 
 export function getCustomerJobLifecycleLabel(state: CustomerJobLifecycleState) {
-  return { waiting_for_offers: "Waiting", offers_received: "Offers", provider_selected_unpaid: "Pay now", payment_pending: "Confirming", refund_pending: "Refund processing", refunded: "Refunded", booked: "Booked", provider_on_the_way: "On the way", provider_arrived: "In progress", awaiting_customer_completion: "Confirm completion", completion_issue_reported: "Issue reported", completed: "Completed", cancelled: "Cancelled" }[state];
+  return { waiting_for_offers: "Waiting", offers_received: "Offers", provider_selected_unpaid: "Pay now", payment_pending: "Confirming", refund_pending: "Refund processing", partially_refunded: "Partial refund", refunded: "Refunded", booked: "Booked", provider_on_the_way: "On the way", provider_arrived: "In progress", awaiting_customer_completion: "Confirm completion", completion_issue_reported: "Issue reported", completed: "Completed", cancelled: "Cancelled" }[state];
 }
 
 export function normalizeMarketplaceRelation<T>(relation: T | T[] | null | undefined): T[] {
@@ -70,7 +71,7 @@ export function normalizeMarketplaceRelation<T>(relation: T | T[] | null | undef
 
 export function getMarketplacePaymentState(booking?: BookingSnapshot | null): MarketplacePaymentState {
   if (!booking) return "none";
-  if (booking.payment_status === "paid") return "paid";
+  if (["paid", "partially_refunded"].includes(booking.payment_status || "")) return "paid";
   return "payment_required";
 }
 

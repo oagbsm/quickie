@@ -7,6 +7,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireProviderOperationalAccess } from "@/lib/marketplace/provider-access";
 import { getOrCreateMarketplaceConversation, isMarketplaceConversationReadOnly } from "@/lib/marketplace/conversations";
 import { notifyCustomerCompletionRequest, notifyFirstMarketplaceMessage, notifyFirstMarketplaceOffer } from "@/lib/marketplace/email/transactional";
+import { issueMarketplaceRefund } from "@/lib/server/marketplace-refunds";
 
 export async function submitWorkOffer(formData: FormData) {
   const jobId = String(formData.get("jobId") || "");
@@ -111,8 +112,19 @@ export async function cancelMarketplaceBookingAsProvider(formData: FormData) {
   const provider = await requireProviderOperationalAccess();
   if (!provider || !bookingId || !jobId || !reasonCode || !reasonText) redirect(`/work/jobs/${jobId}?error=cancel`);
   const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
   const { error } = await supabase.rpc("cancel_marketplace_booking", { target_booking: bookingId, reason_code: reasonCode, reason_text: reasonText });
   if (error) redirect(`/work/jobs/${jobId}?error=cancel`);
+  const { data: cancelledBooking } = await createSupabaseAdminClient().from("marketplace_bookings").select("amount_pence,refunded_amount_pence,payment_status").eq("id", bookingId).maybeSingle();
+  if (cancelledBooking?.payment_status === "refund_pending" && user) {
+    try {
+      const refund = await issueMarketplaceRefund(bookingId, Number(cancelledBooking.amount_pence || 0) - Number(cancelledBooking.refunded_amount_pence || 0), "Full refund after provider cancellation", user.id);
+      if (refund.status === "failed") redirect(`/work/jobs/${jobId}?error=refund`);
+    } catch (refundError) {
+      console.error("marketplace_cancellation_refund_failed", { bookingId, reason: refundError instanceof Error ? refundError.message.slice(0, 160) : "unknown" });
+      redirect(`/work/jobs/${jobId}?error=refund`);
+    }
+  }
   revalidatePath(`/work/jobs/${jobId}`); revalidatePath("/work/offers");
   redirect(`/work/jobs/${jobId}`);
 }

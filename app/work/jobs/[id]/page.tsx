@@ -7,7 +7,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { canProviderOperate, requireProviderBrowseAccess } from "@/lib/marketplace/provider-access";
 import { getMarketplaceBookingLifecycleState } from "@/lib/marketplace/customer-job-state";
 import { isMarketplaceJobMatch } from "@/lib/marketplace/provider-job-matching";
-import { advanceMarketplaceBooking, withdrawWorkOffer } from "@/app/work/actions";
+import { advanceMarketplaceBooking, cancelMarketplaceBookingAsProvider, withdrawWorkOffer } from "@/app/work/actions";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
@@ -32,6 +32,8 @@ function formatMoney(amount: number | null) {
 }
 
 function formatBookingStatus(status: string, paymentStatus: string | null) {
+  if (paymentStatus === "refunded") return "Customer refunded — no payout expected";
+  if (paymentStatus === "partially_refunded") return "Partial refund issued — payout on hold";
   if (status === "issue_being_reviewed") return "Issue being reviewed — Customer reported an issue. Completion and payout are temporarily on hold while Quickola reviews it.";
   if (status === "awaiting_booking_fee" && paymentStatus !== "paid") return "Awaiting customer payment";
   if (status === "awaiting_booking_fee") return "Booked";
@@ -46,7 +48,7 @@ export default async function WorkJobPage({ params, searchParams }: { params: Pr
   const { data: job } = await admin.from("marketplace_jobs").select("id,service,service_subtype,postcode,approximate_area,pricing_answers,requested_timing,optional_note,budget_amount,status,created_at").eq("id", id).maybeSingle();
   if (!job) notFound();
   const { data: ownOffer } = await admin.from("marketplace_quotes").select("id,status,amount_pence").eq("job_id", id).or(`provider_id.eq.${provider.providerId},bidder_user_id.eq.${provider.providerId}`).maybeSingle();
-  const { data: booking } = await admin.from("marketplace_bookings").select("id,status,payment_status,amount_pence,scheduled_date,arrival_window_start,arrival_window_end,provider_id,completion_status,payout_hold_status,payout_hold_reason,provider_transfer_status").eq("job_id", id).eq("provider_id", provider.providerId).maybeSingle();
+  const { data: booking } = await admin.from("marketplace_bookings").select("id,status,payment_status,amount_pence,refunded_amount_pence,scheduled_date,arrival_window_start,arrival_window_end,provider_id,completion_status,payout_hold_status,payout_hold_reason,provider_transfer_status").eq("job_id", id).eq("provider_id", provider.providerId).maybeSingle();
   if (!ownOffer) {
     const [{ data: providerServices }, { data: providerAreas }] = await Promise.all([
       admin.from("marketplace_provider_services").select("category_slug,job_type_slug,active").eq("provider_id", provider.providerId),

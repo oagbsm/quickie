@@ -9,6 +9,7 @@ import { hashProviderInviteToken, sendProviderInvitationEmail } from "@/lib/serv
 import { sendProviderApprovedEmail } from "@/lib/marketplace/email/transactional";
 import { issueMarketplaceRefund } from "@/lib/server/marketplace-refunds";
 import { reconcileMarketplaceProviderTransfer, transferMarketplaceProviderFunds } from "@/lib/server/marketplace-transfers";
+import { parseGbpToPence } from "@/lib/marketplace/money";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim();
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function safeDisputeResolutionError(error: unknown) {
@@ -108,9 +109,9 @@ export async function setMarketplaceProviderQualification(f: FormData) {
 export async function issueMarketplaceBookingRefund(f: FormData) {
   const { user } = await requireAdmin();
   const bookingId = value(f, "bookingId");
-  const amountPence = Math.round(Number(value(f, "amountPence")));
+  const amountPence = parseGbpToPence(value(f, "amountGbp")) ?? (value(f, "amountPence") ? Number(value(f, "amountPence")) : null);
   const reason = value(f, "reason");
-  if (!bookingId || !Number.isSafeInteger(amountPence) || amountPence <= 0 || !reason) redirect("/admin/marketplace-bookings?error=refund");
+  if (!bookingId || amountPence === null || !Number.isSafeInteger(amountPence) || amountPence <= 0 || !reason) redirect("/admin/marketplace-bookings?error=refund");
   try {
     const result = await issueMarketplaceRefund(bookingId, amountPence, reason, user.id);
     await createSupabaseAdminClient().from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_refund_requested", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: null, new_value: { amount_pence: amountPence, reason, status: result.status, refund_id: result.refundId || null } });
@@ -170,6 +171,15 @@ export async function cancelMarketplaceBookingAsAdmin(f: FormData) {
   if (!bookingId || !reasonCode || !reasonText) redirect(`/admin/marketplace-bookings/${bookingId}?error=cancel`);
   const { data, error } = await supabase.rpc("cancel_marketplace_booking", { target_booking: bookingId, reason_code: reasonCode, reason_text: reasonText });
   if (error) redirect(`/admin/marketplace-bookings/${bookingId}?error=cancel`);
+  if (data?.payment_status === "refund_pending") {
+    try {
+      const refund = await issueMarketplaceRefund(bookingId, Number(data.amount_pence || 0) - Number(data.refunded_amount_pence || 0), "Full refund after admin cancellation", user.id);
+      if (refund.status === "failed") redirect(`/admin/marketplace-bookings/${bookingId}?error=refund`);
+    } catch (refundError) {
+      console.error("marketplace_cancellation_refund_failed", { bookingId, reason: refundError instanceof Error ? refundError.message.slice(0, 160) : "unknown" });
+      redirect(`/admin/marketplace-bookings/${bookingId}?error=refund`);
+    }
+  }
   await createSupabaseAdminClient().from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_booking_cancelled", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: null, new_value: { status: data?.status || "cancelled", reason_code: reasonCode, reason_text: reasonText } });
   revalidatePath(`/admin/marketplace-bookings/${bookingId}`); revalidatePath("/admin/marketplace-bookings");
   redirect(`/admin/marketplace-bookings/${bookingId}?success=cancel`);
@@ -237,9 +247,12 @@ export async function resolveMarketplaceDispute(f: FormData) {
   let refundStatus: string | null = null;
   if (resolutionChoice === "refund") {
     const remaining = Number(booking.amount_pence || 0) - Number(booking.refunded_amount_pence || 0);
+    const refundMode = value(f, "refundMode") || "full";
+    const requestedAmount = refundMode === "full" ? remaining : parseGbpToPence(value(f, "refundAmountGbp"));
+    if (!requestedAmount || requestedAmount <= 0 || requestedAmount > remaining) redirect(`/admin/marketplace-bookings/${booking.id}?error=refund`);
     let refundFailure = false;
     try {
-      const refund = await issueMarketplaceRefund(booking.id, remaining, resolutionNotes || "Customer refund after dispute resolution", user.id);
+      const refund = await issueMarketplaceRefund(booking.id, requestedAmount, resolutionNotes || "Customer refund after dispute resolution", user.id);
       refundStatus = refund.status;
       refundFailure = refund.status === "failed";
     } catch (refundError) {

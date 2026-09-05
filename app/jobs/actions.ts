@@ -9,6 +9,7 @@ import { getOperationalMarketplaceProvider } from "@/lib/marketplace/provider-ac
 import { getOrCreateMarketplaceConversation } from "@/lib/marketplace/conversations";
 import { getCurrentAccountRole } from "@/lib/auth/account-role";
 import { transferMarketplaceProviderFunds } from "@/lib/server/marketplace-transfers";
+import { issueMarketplaceRefund } from "@/lib/server/marketplace-refunds";
 
 type MarketplaceCompletionStage = "input_validation" | "booking_context_lookup" | "confirm_completion_rpc" | "provider_payout_release" | "completion_notification";
 
@@ -216,8 +217,19 @@ export async function cancelMarketplaceBooking(formData: FormData) {
   const reasonText = String(formData.get("reasonText") || "").trim();
   if (!bookingId || !reasonCode || !reasonText) redirect(`/jobs/${token}?error=cancel`);
   const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
   const { error } = await supabase.rpc("cancel_marketplace_booking", { target_booking: bookingId, reason_code: reasonCode, reason_text: reasonText });
   if (error) redirect(`/jobs/${token}?error=cancel`);
+  const { data: cancelledBooking } = await createSupabaseAdminClient().from("marketplace_bookings").select("amount_pence,refunded_amount_pence,payment_status").eq("id", bookingId).maybeSingle();
+  if (cancelledBooking?.payment_status === "refund_pending" && user) {
+    try {
+      const refund = await issueMarketplaceRefund(bookingId, Number(cancelledBooking.amount_pence || 0) - Number(cancelledBooking.refunded_amount_pence || 0), "Full refund after customer cancellation", user.id);
+      if (refund.status === "failed") redirect(`/jobs/${token}?error=refund`);
+    } catch (refundError) {
+      console.error("marketplace_cancellation_refund_failed", { bookingId, reason: refundError instanceof Error ? refundError.message.slice(0, 160) : "unknown" });
+      redirect(`/jobs/${token}?error=refund`);
+    }
+  }
   revalidatePath(`/jobs/${token}`); revalidatePath("/my-jobs");
   redirect(`/jobs/${token}`);
 }

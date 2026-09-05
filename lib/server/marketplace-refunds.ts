@@ -6,10 +6,12 @@ export type MarketplaceRefundResult = { status: "succeeded" | "failed" | "alread
 
 export async function issueMarketplaceRefund(bookingId: string, amountPence: number, reason: string, adminUserId: string): Promise<MarketplaceRefundResult> {
   const admin = createSupabaseAdminClient();
-  const { data: booking } = await admin.from("marketplace_bookings").select("id,amount_pence,currency,payment_status,stripe_payment_intent_id,refunded_amount_pence,provider_transfer_status").eq("id", bookingId).maybeSingle();
+  const { data: booking } = await admin.from("marketplace_bookings").select("id,amount_pence,currency,payment_status,stripe_payment_intent_id,refunded_amount_pence,provider_transfer_status,payout_hold_status").eq("id", bookingId).maybeSingle();
   if (!booking || !["paid", "refund_pending", "partially_refunded"].includes(booking.payment_status) || !booking.stripe_payment_intent_id) throw new Error("refund_not_eligible");
   if (["processing", "paid"].includes(booking.provider_transfer_status || "")) throw new Error("refund_after_transfer_not_supported");
-  const remaining = Number(booking.amount_pence || 0) - Number(booking.refunded_amount_pence || 0);
+  const { data: succeededRefunds } = await admin.from("marketplace_refunds").select("amount_pence").eq("booking_id", bookingId).eq("status", "succeeded");
+  const recordedRefunded = Math.max(Number(booking.refunded_amount_pence || 0), (succeededRefunds || []).reduce((sum, refund) => sum + Number(refund.amount_pence || 0), 0));
+  const remaining = Number(booking.amount_pence || 0) - recordedRefunded;
   if (!Number.isSafeInteger(amountPence) || amountPence <= 0 || amountPence > remaining) throw new Error("refund_amount_invalid");
   const refundType = amountPence === Number(booking.amount_pence) ? "full" : "partial";
   const inserted = await admin.from("marketplace_refunds").insert({ booking_id: bookingId, stripe_payment_intent_id: booking.stripe_payment_intent_id, amount_pence: amountPence, currency: booking.currency || "gbp", refund_type: refundType, reason: reason.trim(), requested_by_admin_id: adminUserId }).select("id,stripe_refund_id,status").maybeSingle();
@@ -24,16 +26,19 @@ export async function issueMarketplaceRefund(bookingId: string, amountPence: num
       return { status: "already_processing", refundId: refund.id };
     }
     if (refund.status !== "succeeded") return { status: "already_processing", refundId: refund.id };
-    const nextRefunded = Number(booking.refunded_amount_pence || 0) + amountPence;
-    const persistedBooking = await admin.from("marketplace_bookings").update({ refunded_amount_pence: nextRefunded, payment_status: nextRefunded >= Number(booking.amount_pence) ? "refunded" : "partially_refunded", updated_at: new Date().toISOString() }).eq("id", bookingId).select("id").maybeSingle();
+    const nextRefunded = recordedRefunded + amountPence;
+    const persistedBooking = await admin.from("marketplace_bookings").update({ refunded_amount_pence: nextRefunded, payment_status: nextRefunded >= Number(booking.amount_pence) ? "refunded" : "partially_refunded", payout_hold_status: "held", payout_hold_reason: "customer_refund", payout_hold_at: new Date().toISOString(), provider_transfer_status: "blocked", provider_transfer_error: "customer_refund_pending", updated_at: new Date().toISOString() }).eq("id", bookingId).eq("refunded_amount_pence", Number(booking.refunded_amount_pence || 0)).select("id").maybeSingle();
     if (persistedBooking.error || !persistedBooking.data) {
       console.error("[marketplace-refund] Refund recorded but booking payment state could not be updated", { bookingId, refundId: refund.id });
       return { status: "already_processing", refundId: refund.id };
     }
     return { status: "succeeded", refundId: refund.id };
   } catch (error) {
-    await admin.from("marketplace_refunds").update({ status: "failed", failure_reason: describeStripeError(error).message }).eq("id", inserted.data.id).eq("status", "pending");
-    console.error("[marketplace-refund] refund failed", { bookingId, reason: describeStripeError(error).message });
-    return { status: "failed" };
+    const stripeError = describeStripeError(error);
+    const errorType = stripeError.type || "";
+    const indeterminate = !stripeError.statusCode || ["StripeConnectionError", "StripeAPIError", "StripeRateLimitError"].includes(errorType);
+    if (!indeterminate) await admin.from("marketplace_refunds").update({ status: "failed", failure_reason: stripeError.message }).eq("id", inserted.data.id).eq("status", "pending");
+    console.error("[marketplace-refund] refund failed", { bookingId, reason: stripeError.message, indeterminate });
+    return { status: indeterminate ? "already_processing" : "failed" };
   }
 }

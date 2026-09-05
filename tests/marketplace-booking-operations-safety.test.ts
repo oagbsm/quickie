@@ -13,6 +13,8 @@ const bookingAdminPage = read("app/admin/(portal)/marketplace-bookings/[id]/page
 const disputeResolutionMigration = read("supabase/migrations/20260905100000_marketplace_dispute_resolution_outcomes.sql");
 const providerJobPage = read("app/work/jobs/[id]/page.tsx");
 const customerState = read("lib/marketplace/customer-job-state.ts");
+const money = read("lib/marketplace/money.ts");
+const customerJobPage = read("app/jobs/[token]/page.tsx");
 
 test("Stripe webhook events are uniquely claimed and retryable after failure", () => {
   assert.match(migration, /stripe_event_id text not null unique/);
@@ -71,6 +73,24 @@ test("partial refunds recalculate the transfer and prevent refund/transfer overl
   assert.match(transfers, /earnings\.providerEarningsPence/);
   assert.match(refunds, /refund_after_transfer_not_supported/);
   assert.match(read("supabase/migrations/20260905074615_marketplace_transfer_refund_safety.sql"), /paid_transfer_fields_check/);
+});
+
+test("refund policy uses integer GBP parsing and exposes partial refund state", () => {
+  assert.match(money, /pence = Number\(pounds\) \* 100/);
+  assert.match(money, /Number\.isSafeInteger\(pence\)/);
+  assert.match(adminActions, /parseGbpToPence/);
+  assert.match(bookingAdminPage, /Remaining refundable/);
+  assert.match(bookingAdminPage, /RefundForm/);
+  assert.match(customerState, /partially_refunded/);
+  assert.match(customerJobPage, /Partial refund issued/);
+  assert.match(providerJobPage, /Partial refund issued/);
+});
+
+test("refunds never proceed after a successful provider transfer and indeterminate Stripe results stay pending", () => {
+  assert.match(refunds, /refund_after_transfer_not_supported/);
+  assert.match(refunds, /indeterminate/);
+  assert.match(refunds, /status: indeterminate \? "already_processing" : "failed"/);
+  assert.match(refunds, /provider_transfer_status: "blocked"/);
 });
 
 test("ambiguous provider transfers reconcile from Stripe without unsafe recreation", () => {
