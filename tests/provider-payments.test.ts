@@ -17,6 +17,7 @@ test("only verified paid completed bookings are eligible for payout totals", () 
   assert.equal(isEligibleProviderEarnings("pending_payment", "completed", earnings), false);
   assert.equal(isEligibleProviderEarnings("paid", "awaiting_customer_completion", earnings), false);
   assert.equal(isEligibleProviderEarnings("paid", "completed", earnings), true);
+  assert.equal(isEligibleProviderEarnings("partially_refunded", "completed", calculateProviderEarnings(16500, 6500)), true);
   assert.equal(formatProviderPayoutStatus({ paymentStatus: "paid", bookingStatus: "completed", transferStatus: "pending", payoutHoldStatus: "none", hasActiveDispute: false, earnings }), "Pending");
   assert.equal(formatProviderPayoutStatus({ paymentStatus: "paid", bookingStatus: "completed", transferStatus: "paid", payoutHoldStatus: "none", hasActiveDispute: false, earnings }), "Paid out");
   assert.equal(formatProviderPayoutStatus({ paymentStatus: "paid", bookingStatus: "completed", transferStatus: "pending", payoutHoldStatus: "held", hasActiveDispute: false, earnings }), "On hold");
@@ -26,6 +27,6 @@ test("only verified paid completed bookings are eligible for payout totals", () 
 test("payments page is server-protected and navigation exposes it", () => {
   assert.match(page, /requireProviderWorkspaceAccess/);
   assert.match(page, /\.eq\("provider_id", provider\.providerId\)/);
-  assert.match(page, /stripe processing fees are not shown separately/i);
+  assert.match(page, /Quickola’s 10% fee includes payment processing/i);
   assert.match(navigation, /href="\/work\/payments"/);
 });

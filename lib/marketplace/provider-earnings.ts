@@ -15,7 +15,7 @@ export function calculateProviderEarnings(amountPence: number, refundedAmountPen
 }
 
 export function isEligibleProviderEarnings(paymentStatus: string | null | undefined, bookingStatus: string | null | undefined, earnings: ProviderEarnings) {
-  return paymentStatus === "paid" && bookingStatus === "completed" && earnings.customerPaidPence > 0;
+  return ["paid", "partially_refunded"].includes(paymentStatus || "") && bookingStatus === "completed" && earnings.customerPaidPence > 0;
 }
 
 export function formatProviderPayoutStatus({ paymentStatus, bookingStatus, transferStatus, payoutHoldStatus, hasActiveDispute, earnings }: { paymentStatus: string | null | undefined; bookingStatus: string | null | undefined; transferStatus: string | null | undefined; payoutHoldStatus: string | null | undefined; hasActiveDispute: boolean; earnings: ProviderEarnings }) {
@@ -23,7 +23,7 @@ export function formatProviderPayoutStatus({ paymentStatus, bookingStatus, trans
   if (payoutHoldStatus === "held" || hasActiveDispute) return "On hold";
   if (!isEligibleProviderEarnings(paymentStatus, bookingStatus, earnings)) return "Pending";
   if (transferStatus === "paid") return "Paid out";
-  if (transferStatus === "processing") return "Processing";
-  if (transferStatus === "blocked") return "Action required";
+  if (transferStatus === "failed") return "Failed";
+  if (transferStatus === "blocked") return "On hold";
   return "Pending";
 }

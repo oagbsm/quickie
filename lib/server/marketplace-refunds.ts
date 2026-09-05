@@ -6,8 +6,9 @@ export type MarketplaceRefundResult = { status: "succeeded" | "failed" | "alread
 
 export async function issueMarketplaceRefund(bookingId: string, amountPence: number, reason: string, adminUserId: string): Promise<MarketplaceRefundResult> {
   const admin = createSupabaseAdminClient();
-  const { data: booking } = await admin.from("marketplace_bookings").select("id,amount_pence,currency,payment_status,stripe_payment_intent_id,refunded_amount_pence").eq("id", bookingId).maybeSingle();
+  const { data: booking } = await admin.from("marketplace_bookings").select("id,amount_pence,currency,payment_status,stripe_payment_intent_id,refunded_amount_pence,provider_transfer_status").eq("id", bookingId).maybeSingle();
   if (!booking || !["paid", "refund_pending", "partially_refunded"].includes(booking.payment_status) || !booking.stripe_payment_intent_id) throw new Error("refund_not_eligible");
+  if (["processing", "paid"].includes(booking.provider_transfer_status || "")) throw new Error("refund_after_transfer_not_supported");
   const remaining = Number(booking.amount_pence || 0) - Number(booking.refunded_amount_pence || 0);
   if (!Number.isSafeInteger(amountPence) || amountPence <= 0 || amountPence > remaining) throw new Error("refund_amount_invalid");
   const refundType = amountPence === Number(booking.amount_pence) ? "full" : "partial";

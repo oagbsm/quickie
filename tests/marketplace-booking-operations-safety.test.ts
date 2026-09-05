@@ -46,10 +46,19 @@ test("cancellation and disputes are server-authoritative and hold payout", () =>
 test("provider payout is blocked by cancellation, refund, or operational hold", () => {
   assert.match(transfers, /payout_hold_status === "held"/);
   assert.match(transfers, /refunded_amount_pence/);
-  assert.match(transfers, /payment_status !== "paid"/);
+  assert.match(transfers, /payment_status === "paid"/);
   assert.match(transfers, /marketplace-provider-transfer:\$\{booking\.id\}/);
   assert.match(transfers, /marketplace_disputes/);
   assert.match(transfers, /booking_dispute_lookup_failed/);
+  assert.match(transfers, /pendingRefund/);
+  assert.match(transfers, /calculateProviderEarnings/);
+});
+
+test("partial refunds recalculate the transfer and prevent refund/transfer overlap", () => {
+  assert.match(transfers, /partially_refunded/);
+  assert.match(transfers, /earnings\.providerEarningsPence/);
+  assert.match(refunds, /refund_after_transfer_not_supported/);
+  assert.match(read("supabase/migrations/20260905074615_marketplace_transfer_refund_safety.sql"), /paid_transfer_fields_check/);
 });
 
 test("ambiguous provider transfers reconcile from Stripe without unsafe recreation", () => {

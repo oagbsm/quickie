@@ -29,7 +29,7 @@ test("checkout charges the full quote and does not create a destination charge",
 });
 
 test("provider transfer is gated by persisted paid completion and stored provider account", () => {
-  assert.match(transfers, /payment_status !== "paid"/);
+  assert.match(transfers, /payment_status === "paid"/);
   assert.match(transfers, /completion_status !== "completed"/);
   assert.match(transfers, /status !== "completed"/);
   assert.match(transfers, /provider\.stripe_account_id/);

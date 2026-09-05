@@ -1,6 +1,7 @@
 import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { calculateMarketplaceProviderAmountPence, describeStripeError, getStripe } from "@/lib/server/marketplace-payments";
+import { describeStripeError, getStripe } from "@/lib/server/marketplace-payments";
+import { calculateProviderEarnings } from "@/lib/marketplace/provider-earnings";
 
 export type MarketplaceTransferResult = { status: "paid" | "blocked" | "failed" | "already_processing"; transferId?: string };
 
@@ -11,24 +12,26 @@ export type MarketplaceTransferResult = { status: "paid" | "blocked" | "failed" 
  */
 export async function transferMarketplaceProviderFunds(bookingId: string): Promise<MarketplaceTransferResult> {
   const admin = createSupabaseAdminClient();
-  const { data: booking, error: lookupError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,provider_id,amount_pence,platform_fee_pence,currency,payment_status,status,completion_status,provider_transfer_status,provider_transfer_amount_pence,stripe_transfer_id,payout_hold_status,refunded_amount_pence").eq("id", bookingId).maybeSingle();
+  const { data: booking, error: lookupError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,provider_id,amount_pence,currency,payment_status,status,completion_status,provider_transfer_status,provider_transfer_amount_pence,stripe_transfer_id,payout_hold_status,refunded_amount_pence,provider_transfer_error").eq("id", bookingId).maybeSingle();
   if (lookupError) throw new Error("booking_transfer_lookup_failed");
   if (!booking) throw new Error("booking_not_found");
   if (booking.provider_transfer_status === "paid" || booking.stripe_transfer_id) return { status: "paid", transferId: booking.stripe_transfer_id || undefined };
-  if (booking.provider_transfer_status === "processing" || booking.provider_transfer_status === "blocked") return { status: booking.provider_transfer_status === "processing" ? "already_processing" : "blocked" };
+  if (booking.provider_transfer_status === "processing") return { status: "already_processing" };
 
   const { data: activeDispute, error: disputeError } = await admin.from("marketplace_disputes").select("id").eq("booking_id", booking.id).in("status", ["open", "in_review", "resolved_customer"]).maybeSingle();
   if (disputeError) throw new Error("booking_dispute_lookup_failed");
-  if (booking.payment_status !== "paid" || booking.completion_status !== "completed" || booking.status !== "completed" || booking.payout_hold_status === "held" || Number(booking.refunded_amount_pence || 0) > 0 || activeDispute) {
+  const { data: pendingRefund, error: pendingRefundError } = await admin.from("marketplace_refunds").select("id").eq("booking_id", booking.id).eq("status", "pending").maybeSingle();
+  if (pendingRefundError) throw new Error("booking_refund_lookup_failed");
+  const earnings = calculateProviderEarnings(Number(booking.amount_pence || 0), Number(booking.refunded_amount_pence || 0));
+  if (!(booking.payment_status === "paid" || booking.payment_status === "partially_refunded") || booking.completion_status !== "completed" || booking.status !== "completed" || booking.payout_hold_status === "held" || earnings.customerPaidPence <= 0 || activeDispute || pendingRefund) {
     await admin.from("marketplace_bookings").update({ provider_transfer_status: "blocked", provider_transfer_error: "completion_or_payment_not_ready", updated_at: new Date().toISOString() }).eq("id", booking.id).in("provider_transfer_status", ["pending", "failed"]);
     return { status: "blocked" };
   }
-  const amountPence = Number(booking.amount_pence);
-  const platformFeePence = Number(booking.platform_fee_pence);
-  const providerAmountPence = calculateMarketplaceProviderAmountPence(amountPence, platformFeePence);
+  const providerAmountPence = earnings.providerEarningsPence;
   if (providerAmountPence <= 0) return { status: "blocked" };
 
-  const { data: claimed } = await admin.from("marketplace_bookings").update({ provider_transfer_status: "processing", provider_transfer_amount_pence: providerAmountPence, provider_transfer_error: null, updated_at: new Date().toISOString() }).eq("id", booking.id).in("provider_transfer_status", ["pending", "failed"]).select("id").maybeSingle();
+  const { data: claimed, error: claimError } = await admin.from("marketplace_bookings").update({ provider_transfer_status: "processing", provider_transfer_amount_pence: providerAmountPence, provider_transfer_error: null, updated_at: new Date().toISOString() }).eq("id", booking.id).in("provider_transfer_status", ["pending", "failed"]).neq("payout_hold_status", "held").select("id").maybeSingle();
+  if (claimError) throw new Error("booking_transfer_claim_failed");
   if (!claimed) {
     const { data: current } = await admin.from("marketplace_bookings").select("provider_transfer_status,stripe_transfer_id").eq("id", booking.id).maybeSingle();
     return current?.stripe_transfer_id || current?.provider_transfer_status === "paid" ? { status: "paid", transferId: current.stripe_transfer_id || undefined } : { status: "already_processing" };
