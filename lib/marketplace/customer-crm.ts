@@ -18,6 +18,7 @@ export function genuineCustomerBooking(booking: CrmBooking) { return Boolean(boo
 export function netBookingValue(booking: CrmBooking) { return Math.max(0, Number(booking.amount_pence || 0) - Number(booking.refunded_amount_pence || 0)); }
 export function humanService(job?: CrmJob | null) { return getMarketplaceJobDisplayTitle(job?.service, job?.service_subtype, job?.service_subtype || job?.service); }
 export function relativeAge(date?: string | null, now = Date.now()) { if (!date) return null; return Math.max(0, Math.floor((now - new Date(date).getTime()) / 86400000)); }
+export function relativeDateLabel(date?: string | null, now = Date.now()) { const age = relativeAge(date, now); if (age === null) return "—"; if (age === 0) return "Today"; if (age === 1) return "Yesterday"; return age >= 60 ? `${Math.floor(age / 30)}mo ago` : `${age}d ago`; }
 
 export function rebookingOpportunity(bookings: CrmBooking[], jobs: CrmJob[], reviews: CrmReview[], now = Date.now()) {
   const genuine = bookings.filter(genuineCustomerBooking).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -32,15 +33,20 @@ export function rebookingOpportunity(bookings: CrmBooking[], jobs: CrmJob[], rev
   return opportunities.filter((candidate, index, all) => all.findIndex((item) => item.job?.service === candidate.job?.service) === index);
 }
 
-export function atRiskReason(bookings: CrmBooking[], issues: CrmIssue[], reviews: CrmReview[], refunds: CrmRefund[], now = Date.now()) {
+export function riskReasons(bookings: CrmBooking[], issues: CrmIssue[], reviews: CrmReview[], refunds: CrmRefund[], now = Date.now()) {
   const genuineIds = new Set(bookings.filter(genuineCustomerBooking).map((booking) => booking.id));
-  if (issues.some((issue) => ["open", "in_review"].includes(issue.status) && genuineIds.has(issue.booking_id))) return "Open issue";
+  const reasons: string[] = [];
+  if (issues.some((issue) => ["open", "in_review"].includes(issue.status) && genuineIds.has(issue.booking_id))) reasons.push("Open issue");
   const recentReview = reviews.filter((review) => relativeAge(review.created_at, now) !== null && relativeAge(review.created_at, now)! <= 90).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-  if (recentReview && recentReview.rating <= 3) return `${recentReview.rating}-star review`;
-  const recentRefund = refunds.find((refund) => refund.status === "succeeded" && genuineIds.has(refund.booking_id) && (!refund.created_at || (relativeAge(refund.created_at, now) ?? 999) <= 90));
-  if (recentRefund) return "Recent refund";
-  return null;
+  if (recentReview && recentReview.rating <= 3) reasons.push(`${recentReview.rating}★ latest review`);
+  const successfulRefunds = refunds.filter((refund) => refund.status === "succeeded" && genuineIds.has(refund.booking_id) && (!refund.created_at || (relativeAge(refund.created_at, now) ?? 999) <= 90)).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+  const issueBookingIds = new Set(issues.map((issue) => issue.booking_id));
+  const recoveredRefund = successfulRefunds.find((refund) => bookings.some((booking) => genuineCustomerBooking(booking) && booking.status === "completed" && !issueBookingIds.has(booking.id) && !refunds.some((candidate) => candidate.booking_id === booking.id && candidate.status === "succeeded") && new Date(booking.created_at).getTime() > new Date(refund.created_at || 0).getTime()));
+  if (successfulRefunds[0] && !recoveredRefund) reasons.push(`Recent ${formatPence(successfulRefunds[0].amount_pence)} refund`);
+  return reasons;
 }
+
+export function atRiskReason(bookings: CrmBooking[], issues: CrmIssue[], reviews: CrmReview[], refunds: CrmRefund[], now = Date.now()) { return riskReasons(bookings, issues, reviews, refunds, now)[0] || null; }
 
 export function relationshipState({ bookings, jobs, issues, reviews, refunds, now = Date.now() }: { bookings: CrmBooking[]; jobs: CrmJob[]; issues: CrmIssue[]; reviews: CrmReview[]; refunds: CrmRefund[]; now?: number }) {
   const genuine = bookings.filter(genuineCustomerBooking).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -70,3 +76,5 @@ export function customerMetrics(bookings: CrmBooking[], jobs: CrmJob[], reviews:
 }
 
 export function repeatRate(customers: Array<{ bookings: CrmBooking[] }>) { const bookers = customers.filter((customer) => customer.bookings.some(genuineCustomerBooking)).length; const repeat = customers.filter((customer) => customer.bookings.filter(genuineCustomerBooking).length >= 2).length; return { bookers, repeat, rate: bookers ? repeat / bookers : 0 }; }
+export function formatPence(pence: number) { return `£${(Number(pence || 0) / 100).toFixed(2)}`; }
+export function valueLabel(spendPence: number, genuineBookings: number) { if (!genuineBookings) return "REGISTERED"; if (spendPence >= 50000) return "HIGH VALUE"; if (genuineBookings >= 2) return "REPEAT"; return "CUSTOMER"; }

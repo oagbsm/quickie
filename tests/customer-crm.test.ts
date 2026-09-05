@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { customerMetrics, genuineCustomerBooking, netBookingValue, rebookingOpportunity, relationshipState, repeatRate } from "../lib/marketplace/customer-crm.ts";
+import { customerMetrics, genuineCustomerBooking, netBookingValue, rebookingOpportunity, relationshipState, repeatRate, relativeDateLabel, riskReasons } from "../lib/marketplace/customer-crm.ts";
 
 const day = (offset: number) => new Date(Date.UTC(2026, 8, 5 - offset)).toISOString();
 const booking = (id: string, jobId: string, overrides: Record<string, unknown> = {}) => ({ id, job_id: jobId, customer_id: "c1", provider_id: "p1", amount_pence: 10000, refunded_amount_pence: 0, payment_status: "paid", status: "completed", created_at: day(10), ...overrides });
@@ -41,4 +41,22 @@ test("risk, rebooking, lapsed, and emergency-service rules are conservative", ()
   assert.equal(relationshipState({ bookings: [booking("b3", "j1", { created_at: day(250) })], jobs: [cleaningJob], issues: [], reviews: [], refunds: [], now: new Date(day(0)).getTime() }).state, "LAPSED");
   assert.equal(relationshipState({ bookings: [oldCleaning], jobs: [cleaningJob], issues: [{ booking_id: "b1", status: "open" }], reviews: [], refunds: [], now: new Date(day(0)).getTime() }).state, "AT RISK");
   assert.equal(relationshipState({ bookings: [oldCleaning], jobs: [cleaningJob], issues: [{ booking_id: "b1", status: "resolved_customer" }], reviews: [], refunds: [], now: new Date(day(0)).getTime() }).state, "REBOOK DUE");
+});
+
+test("risk reasons are concrete, prioritized, temporary, and recover after clean activity", () => {
+  const job = { id: "j1", customer_id: "c1", service: "plumbing", service_subtype: "drain-unblocking", created_at: day(100) };
+  const first = booking("b1", "j1", { created_at: day(20) });
+  const refund = { booking_id: "b1", amount_pence: 5000, status: "succeeded", created_at: day(10) };
+  assert.deepEqual(riskReasons([first], [], [{ booking_id: "b1", customer_id: "c1", rating: 2, created_at: day(5) }], [refund], new Date(day(0)).getTime()), ["2★ latest review", "Recent £50.00 refund"]);
+  assert.deepEqual(riskReasons([first], [{ booking_id: "b1", status: "open" }], [], [refund], new Date(day(0)).getTime()), ["Open issue", "Recent £50.00 refund"]);
+  assert.deepEqual(riskReasons([first], [{ booking_id: "b1", status: "resolved_customer" }], [], [{ ...refund, created_at: day(120) }], new Date(day(0)).getTime()), []);
+  const cleanLater = booking("b2", "j1", { created_at: day(2) });
+  assert.deepEqual(riskReasons([first, cleanLater], [], [], [refund], new Date(day(0)).getTime()), []);
+});
+
+test("relative dates use Today and Yesterday instead of zero-day labels", () => {
+  const now = new Date("2026-09-05T12:00:00Z").getTime();
+  assert.equal(relativeDateLabel("2026-09-05T09:00:00Z", now), "Today");
+  assert.equal(relativeDateLabel("2026-09-04T09:00:00Z", now), "Yesterday");
+  assert.equal(relativeDateLabel("2026-07-01T09:00:00Z", now), "2mo ago");
 });

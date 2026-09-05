@@ -112,6 +112,10 @@ test("customer operations use marketplace-owned records and link to dossiers", (
   assert.match(customers, /admin\/customers\/\$\{row\.customer\.id\}/);
   assert.doesNotMatch(customers, /Offers made/);
   assert.match(customers, /Repeat customers/);
+  assert.match(customers, /Customer health/);
+  assert.match(customers, /riskReasons/);
+  assert.match(customers, /relativeDateLabel/);
+  assert.match(customers, /profile_photo_url/);
   assert.match(customers, /Rebooking opportunities/);
   assert.match(customers, /ServiceCombobox/);
   assert.doesNotMatch(customers, />Active<\/span>/);
