@@ -11,7 +11,7 @@ import { formatMarketplaceProviderName } from "@/lib/marketplace/presentation";
 import { getMarketplaceJobDisplayTitle } from "@/app/data/marketplace";
 
 type Quote = { id: string; amount_pence: number; status: string; provider_id?: string | null; bidder_user_id?: string | null };
-type Booking = { quote_id: string; amount_pence: number; payment_status?: string | null; stripe_checkout_session_id?: string | null; status?: string | null; completion_status?: string | null };
+type Booking = { quote_id: string; amount_pence: number; payment_status?: string | null; stripe_checkout_session_id?: string | null; status?: string | null; completion_status?: string | null; payout_hold_status?: string | null; payout_hold_reason?: string | null };
 type PostedRow = { id: string; public_token: string | null; service: string; service_subtype: string | null; postcode: string; requested_timing?: string | null; budget_amount: number | null; marketplace_quotes?: Quote[] | Quote; marketplace_bookings?: Booking[] | Booking };
 type JobView = { job: { id: string; public_token: string | null; service: string; service_subtype: string | null; postcode: string; requested_timing?: string | null; budget_amount: number | null }; activeQuotes: Quote[]; acceptedQuote?: Quote; booking?: Booking; providerName?: string; state: string; statusLabel: string; conversationIds: string[]; latestMessageAt?: string; jobHref: string; title: string; amount?: number; budget: string };
 
@@ -24,7 +24,7 @@ export default async function MyJobsPage() {
   if (await getApprovedMarketplaceProvider()) redirect("/work");
   const admin = createSupabaseAdminClient();
   const { data: customer, error: customerError } = await admin.from("marketplace_customers").select("id").eq("auth_user_id", user.id).maybeSingle();
-  const extendedSelect = "id,public_token,service,service_subtype,postcode,requested_timing,budget_amount,status,created_at,marketplace_quotes(id,amount_pence,status,provider_id,bidder_user_id),marketplace_bookings(id,quote_id,amount_pence,payment_status,stripe_checkout_session_id,paid_at,status,completion_status,scheduled_date,arrival_window_start,arrival_window_end)";
+  const extendedSelect = "id,public_token,service,service_subtype,postcode,requested_timing,budget_amount,status,created_at,marketplace_quotes(id,amount_pence,status,provider_id,bidder_user_id),marketplace_bookings(id,quote_id,amount_pence,payment_status,stripe_checkout_session_id,paid_at,status,completion_status,payout_hold_status,payout_hold_reason,scheduled_date,arrival_window_start,arrival_window_end)";
   const legacySelect = "id,public_token,service,service_subtype,postcode,requested_timing,budget_amount,status,created_at,marketplace_quotes(id,amount_pence,status,provider_id,bidder_user_id),marketplace_bookings(id,quote_id,amount_pence,payment_status,stripe_checkout_session_id,paid_at)";
   let posted: PostedRow[] | null = null;
   let postedError = customerError || (!customer ? { code: "customer_not_found", message: "No marketplace customer record for authenticated user" } : null);

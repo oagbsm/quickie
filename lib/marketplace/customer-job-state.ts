@@ -23,9 +23,28 @@ type BookingSnapshot = {
 export type MarketplacePaymentState = "none" | "payment_required" | "payment_processing" | "paid";
 export type CustomerJobLifecycleState = "waiting_for_offers" | "offers_received" | "provider_selected_unpaid" | "payment_pending" | "refund_pending" | "refunded" | "booked" | "provider_on_the_way" | "provider_arrived" | "awaiting_customer_completion" | "completion_issue_reported" | "completed" | "cancelled";
 
-type LifecycleBookingSnapshot = BookingSnapshot & { status?: string | null; completion_status?: string | null; payout_hold_status?: string | null };
+type LifecycleBookingSnapshot = BookingSnapshot & { status?: string | null; completion_status?: string | null; payout_hold_status?: string | null; payout_hold_reason?: string | null };
 
-export function getCustomerJobLifecycleState({ offerCount, acceptedQuote, booking }: { offerCount: number; acceptedQuote?: QuoteSnapshot | null; booking?: LifecycleBookingSnapshot | null }): CustomerJobLifecycleState {
+export type MarketplaceBookingLifecycleState = "payment_required" | "refund_pending" | "refunded" | "booked" | "provider_on_the_way" | "provider_arrived" | "issue_being_reviewed" | "awaiting_customer_completion" | "completed" | "cancelled";
+
+export function getMarketplaceBookingLifecycleState(booking: LifecycleBookingSnapshot | null | undefined, hasActiveDispute = false): MarketplaceBookingLifecycleState {
+  if (booking?.payment_status === "refunded") return "refunded";
+  if (booking?.payment_status === "refund_pending") return "refund_pending";
+  if (booking?.payment_status !== "paid") return "payment_required";
+  if (booking.status === "cancelled") return "cancelled";
+  if (booking.completion_status === "completed" || booking.status === "completed") return "completed";
+  if (hasActiveDispute || booking.completion_status === "issue_reported" || (booking.payout_hold_status === "held" && booking.payout_hold_reason === "unresolved_dispute")) return "issue_being_reviewed";
+  if (booking.status === "awaiting_customer_completion" || booking.completion_status === "awaiting_customer_completion") return "awaiting_customer_completion";
+  if (booking.status === "arrived" || booking.status === "in_progress") return "provider_arrived";
+  if (booking.status === "en_route") return "provider_on_the_way";
+  return "booked";
+}
+
+export function getMarketplaceBookingLifecycleLabel(state: MarketplaceBookingLifecycleState) {
+  return { payment_required: "Payment required", refund_pending: "Refund processing", refunded: "Refunded", booked: "Booked", provider_on_the_way: "On the way", provider_arrived: "In progress", issue_being_reviewed: "Issue being reviewed", awaiting_customer_completion: "Awaiting customer completion", completed: "Completed", cancelled: "Cancelled" }[state];
+}
+
+export function getCustomerJobLifecycleState({ offerCount, acceptedQuote, booking, hasActiveDispute = false }: { offerCount: number; acceptedQuote?: QuoteSnapshot | null; booking?: LifecycleBookingSnapshot | null; hasActiveDispute?: boolean }): CustomerJobLifecycleState {
   if (!acceptedQuote) return offerCount > 0 ? "offers_received" : "waiting_for_offers";
   if (booking?.payment_status === "refunded") return "refunded";
   if (booking?.payment_status === "refund_pending") return "refund_pending";
@@ -33,7 +52,7 @@ export function getCustomerJobLifecycleState({ offerCount, acceptedQuote, bookin
   if (paymentState !== "paid") return paymentState === "payment_processing" ? "payment_pending" : "provider_selected_unpaid";
   if (booking?.status === "cancelled") return "cancelled";
   if (booking?.completion_status === "completed" || booking?.status === "completed") return "completed";
-  if (booking?.completion_status === "issue_reported" || booking?.payout_hold_status === "held") return "completion_issue_reported";
+  if (hasActiveDispute || booking?.completion_status === "issue_reported" || (booking?.payout_hold_status === "held" && booking?.payout_hold_reason === "unresolved_dispute")) return "completion_issue_reported";
   if (booking?.status === "awaiting_customer_completion" && booking?.completion_status === "awaiting_customer_completion") return "awaiting_customer_completion";
   if (booking?.status === "arrived" || booking?.status === "in_progress") return "provider_arrived";
   if (booking?.status === "en_route") return "provider_on_the_way";
