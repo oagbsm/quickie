@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { expansionReadiness, isGenuineBooking, moneyPence, outcodeOf, overviewMetrics, percent } from "../lib/marketplace/admin-overview.ts";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const dashboard = read("app/admin/(portal)/page.tsx");
@@ -21,13 +22,44 @@ test("admin navigation is organized around marketplace operations", () => {
   assert.doesNotMatch(nav, /Offers/);
 });
 
-test("admin overview derives action items and today's marketplace information", () => {
-  assert.match(dashboard, /Needs action/);
-  assert.match(dashboard, /pending_review/);
-  assert.match(dashboard, /noOfferJobs/);
-  assert.match(dashboard, /Marketplace today/);
-  assert.match(dashboard, /Recent marketplace activity/);
-  assert.match(dashboard, /Everything looks under control/);
+test("admin overview is an operational marketplace dashboard", () => {
+  assert.match(dashboard, /Today’s bookings/);
+  assert.match(dashboard, /Received ≥1 quote/);
+  assert.match(dashboard, /Customer paid value/);
+  assert.match(dashboard, /Jobs with issues/);
+  assert.match(dashboard, /Outcode expansion readiness/);
+  assert.match(dashboard, /Recent activity/);
+});
+
+test("admin overview keeps partial refunds paid and excludes unpaid/cancelled bookings", () => {
+  const from = new Date("2026-09-01T00:00:00Z");
+  const to = new Date("2026-10-01T00:00:00Z");
+  const jobs = [
+    { id: "job-1", service: "plumbing", service_subtype: "drain-unblocking", postcode: "SL6 1AA", created_at: "2026-09-05T10:00:00Z" },
+    { id: "job-2", service: "plumbing", service_subtype: "leak-fixing", postcode: "SL6 2AA", created_at: "2026-09-05T10:00:00Z" },
+  ];
+  const metrics = overviewMetrics({ jobs, quotes: [{ job_id: "job-1", status: "submitted", created_at: "2026-09-05T11:00:00Z" }], bookings: [
+    { id: "paid-partial", job_id: "job-1", amount_pence: 26600, refunded_amount_pence: 5000, payment_status: "paid", status: "booked", created_at: "2026-09-05T12:00:00Z" },
+    { id: "unpaid", job_id: "job-2", amount_pence: 10000, payment_status: "pending_payment", status: "awaiting_booking_fee", created_at: "2026-09-05T12:00:00Z" },
+  ], disputes: [], reviews: [], providers: [], from, to });
+  assert.equal(metrics.genuineBookings.length, 1);
+  assert.equal(metrics.gmv, 21600);
+  assert.equal(metrics.revenue, 2160);
+  assert.equal(moneyPence(metrics.gmv), "£216.00");
+  assert.equal(percent(metrics.genuineBookings.length, metrics.periodJobs.length), "50%");
+  assert.equal(isGenuineBooking({ id: "cancelled", job_id: "job-1", amount_pence: 100, payment_status: "paid", status: "cancelled", created_at: "2026-09-05T12:00:00Z" }), false);
+});
+
+test("admin overview derives outcodes, readiness thresholds and safe empty percentages", () => {
+  assert.equal(outcodeOf(" sl6 1aa "), "SL6");
+  assert.equal(outcodeOf(null), "Unknown");
+  assert.equal(percent(0, 0), "0%");
+  const from = new Date("2026-09-01T00:00:00Z");
+  const to = new Date("2026-10-01T00:00:00Z");
+  const metrics = overviewMetrics({ jobs: [], quotes: [], bookings: [], disputes: [], reviews: [], providers: [], from, to });
+  assert.equal(metrics.averageRating, null);
+  assert.equal(expansionReadiness(metrics, "SL6").passed, 0);
+  assert.equal(expansionReadiness(metrics, "SL6").status, "EARLY");
 });
 
 test("admin marketplace views expose real job, provider, and payment state", () => {
