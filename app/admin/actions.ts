@@ -8,7 +8,6 @@ import { randomBytes } from "node:crypto";
 import { hashProviderInviteToken, sendProviderInvitationEmail } from "@/lib/server/provider-invitations";
 import { sendProviderApprovedEmail } from "@/lib/marketplace/email/transactional";
 import { issueMarketplaceRefund } from "@/lib/server/marketplace-refunds";
-import { getStripe } from "@/lib/server/marketplace-payments";
 import { reconcileMarketplaceProviderTransfer, transferMarketplaceProviderFunds } from "@/lib/server/marketplace-transfers";
 const value = (f: FormData, n: string) => String(f.get(n) || "").trim();
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -134,8 +133,9 @@ export async function retryMarketplaceProviderTransfer(f: FormData) {
   if (!uuid.test(bookingId)) redirect("/admin/marketplace-bookings?error=transfer");
 
   const admin = createSupabaseAdminClient();
-  const { data: booking, error } = await admin.from("marketplace_bookings").select("id,provider_transfer_status,stripe_transfer_id").eq("id", bookingId).maybeSingle();
-  if (error || !booking || booking.provider_transfer_status !== "failed" || booking.stripe_transfer_id) {
+  const definitiveFailureCodes = ["stripe_balance_insufficient", "stripe_transfer_rejected", "stripe_configuration_failed", "stripe_transfer_failed"];
+  const { data: booking, error } = await admin.from("marketplace_bookings").select("id,provider_transfer_status,provider_transfer_error,stripe_transfer_id").eq("id", bookingId).maybeSingle();
+  if (error || !booking || booking.provider_transfer_status !== "failed" || !definitiveFailureCodes.includes(booking.provider_transfer_error || "") || booking.stripe_transfer_id) {
     redirect(`/admin/marketplace-bookings/${bookingId}?error=transfer_unavailable`);
   }
 
@@ -149,35 +149,6 @@ export async function retryMarketplaceProviderTransfer(f: FormData) {
   await admin.from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_transfer_retry", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: { provider_transfer_status: "failed" }, new_value: { status: result.status, transfer_id: result.transferId || null } });
   revalidatePath(`/admin/marketplace-bookings/${bookingId}`);
   redirect(`/admin/marketplace-bookings/${bookingId}?${result.status === "paid" ? "success=transfer" : "error=transfer"}`);
-}
-
-export async function diagnoseMarketplaceStripeAccount(f: FormData) {
-  await requireAdmin();
-  const bookingId = value(f, "bookingId");
-  if (!uuid.test(bookingId)) redirect("/admin/marketplace-bookings?error=stripe_diagnostic");
-
-  let succeeded = false;
-  try {
-    const stripe = getStripe();
-    const [account, balance] = await Promise.all([stripe.accounts.retrieveCurrent(), stripe.balance.retrieve()]);
-    const gbp = (entries: ReadonlyArray<{ currency: string; amount: number }>) => entries.find((entry) => entry.currency === "gbp")?.amount ?? 0;
-    console.info("[marketplace-stripe-diagnostic]", {
-      accountId: account.id,
-      livemode: balance.livemode,
-      gbpAvailable: gbp(balance.available),
-      gbpPending: gbp(balance.pending),
-    });
-    succeeded = true;
-  } catch (error) {
-    const details = error as { type?: string; code?: string; statusCode?: number; requestId?: string };
-    console.error("[marketplace-stripe-diagnostic] failed", {
-      type: details.type,
-      code: details.code,
-      statusCode: details.statusCode,
-      requestId: details.requestId,
-    });
-  }
-  redirect(`/admin/marketplace-bookings/${bookingId}?${succeeded ? "success=stripe_diagnostic" : "error=stripe_diagnostic"}`);
 }
 
 export async function cancelMarketplaceBookingAsAdmin(f: FormData) {

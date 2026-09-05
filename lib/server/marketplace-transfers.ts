@@ -5,6 +5,24 @@ import { calculateProviderEarnings } from "@/lib/marketplace/provider-earnings";
 
 export type MarketplaceTransferResult = { status: "paid" | "blocked" | "failed" | "already_processing"; transferId?: string };
 
+function isDefinitiveTransferFailure(error: unknown) {
+  const details = describeStripeError(error);
+  if (["stripe_not_configured", "stripe_test_key_required"].includes(details.message)) return true;
+  return details.statusCode !== undefined && details.statusCode >= 400 && details.statusCode < 500 && ![409, 429].includes(details.statusCode);
+}
+
+function safeTransferFailureCode(error: unknown) {
+  const details = describeStripeError(error);
+  if (details.message === "stripe_not_configured" || details.message === "stripe_test_key_required") return "stripe_configuration_failed";
+  if (details.code === "balance_insufficient") return "stripe_balance_insufficient";
+  return isDefinitiveTransferFailure(error) ? "stripe_transfer_rejected" : "stripe_transfer_indeterminate";
+}
+
+async function persistSuccessfulTransfer(admin: ReturnType<typeof createSupabaseAdminClient>, bookingId: string, transferId: string) {
+  const persisted = await admin.from("marketplace_bookings").update({ provider_transfer_status: "paid", stripe_transfer_id: transferId, provider_transferred_at: new Date().toISOString(), provider_transfer_error: null, updated_at: new Date().toISOString() }).eq("id", bookingId).eq("provider_transfer_status", "processing").is("stripe_transfer_id", null).select("id").maybeSingle();
+  return !persisted.error && Boolean(persisted.data);
+}
+
 function logSupabaseTransferLookupFailure(bookingId: string, stage: string, error: { code?: string; message?: string; details?: string; hint?: string }) {
   console.error("[marketplace-transfer] Supabase lookup failed", {
     bookingId,
@@ -23,7 +41,7 @@ function logSupabaseTransferLookupFailure(bookingId: string, stage: string, erro
  */
 export async function transferMarketplaceProviderFunds(bookingId: string): Promise<MarketplaceTransferResult> {
   const admin = createSupabaseAdminClient();
-  const { data: booking, error: lookupError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,provider_id,amount_pence,currency,payment_status,status,completion_status,provider_transfer_status,provider_transfer_amount_pence,stripe_transfer_id,payout_hold_status,refunded_amount_pence,provider_transfer_error").eq("id", bookingId).maybeSingle();
+  const { data: booking, error: lookupError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,provider_id,amount_pence,currency,payment_status,status,completion_status,provider_transfer_status,provider_transfer_amount_pence,provider_transfer_attempt,stripe_transfer_id,payout_hold_status,refunded_amount_pence,provider_transfer_error").eq("id", bookingId).maybeSingle();
   if (lookupError) {
     logSupabaseTransferLookupFailure(bookingId, "booking_lookup", lookupError);
     throw new Error("booking_transfer_lookup_failed");
@@ -44,7 +62,9 @@ export async function transferMarketplaceProviderFunds(bookingId: string): Promi
   const providerAmountPence = earnings.providerEarningsPence;
   if (providerAmountPence <= 0) return { status: "blocked" };
 
-  const { data: claimed, error: claimError } = await admin.from("marketplace_bookings").update({ provider_transfer_status: "processing", provider_transfer_amount_pence: providerAmountPence, provider_transfer_error: null, updated_at: new Date().toISOString() }).eq("id", booking.id).in("provider_transfer_status", ["pending", "failed"]).neq("payout_hold_status", "held").select("id").maybeSingle();
+  const currentAttempt = Number(booking.provider_transfer_attempt || 0);
+  const nextAttempt = currentAttempt + 1;
+  const { data: claimed, error: claimError } = await admin.from("marketplace_bookings").update({ provider_transfer_status: "processing", provider_transfer_amount_pence: providerAmountPence, provider_transfer_attempt: nextAttempt, provider_transfer_error: null, updated_at: new Date().toISOString() }).eq("id", booking.id).eq("provider_transfer_attempt", currentAttempt).in("provider_transfer_status", ["pending", "failed"]).neq("payout_hold_status", "held").select("id,provider_transfer_attempt").maybeSingle();
   if (claimError) throw new Error("booking_transfer_claim_failed");
   if (!claimed) {
     const { data: current } = await admin.from("marketplace_bookings").select("provider_transfer_status,stripe_transfer_id").eq("id", booking.id).maybeSingle();
@@ -57,14 +77,38 @@ export async function transferMarketplaceProviderFunds(bookingId: string): Promi
     return { status: "blocked" };
   }
 
+  let stripe: ReturnType<typeof getStripe>;
   try {
-    const transfer = await getStripe().transfers.create({ amount: providerAmountPence, currency: booking.currency || "gbp", destination: provider.stripe_account_id, transfer_group: `marketplace_booking:${booking.id}`, metadata: { booking_id: booking.id, job_id: booking.job_id, quote_id: booking.quote_id } }, { idempotencyKey: `marketplace-provider-transfer:${booking.id}` });
-    await admin.from("marketplace_bookings").update({ provider_transfer_status: "paid", stripe_transfer_id: transfer.id, provider_transferred_at: new Date().toISOString(), provider_transfer_error: null, updated_at: new Date().toISOString() }).eq("id", booking.id);
+    stripe = getStripe();
+    const existingTransfers = await stripe.transfers.list({ destination: provider.stripe_account_id, transfer_group: `marketplace_booking:${booking.id}`, limit: 10 });
+    const existingTransfer = existingTransfers.data.find((transfer) => transfer.metadata?.booking_id === booking.id || transfer.transfer_group === `marketplace_booking:${booking.id}`);
+    if (existingTransfer) {
+      const persisted = await persistSuccessfulTransfer(admin, booking.id, existingTransfer.id);
+      return persisted ? { status: "paid", transferId: existingTransfer.id } : { status: "already_processing", transferId: existingTransfer.id };
+    }
+  } catch (error) {
+    console.error("[marketplace-transfer] existing transfer search failed", { bookingId, ...describeStripeError(error) });
+    await admin.from("marketplace_bookings").update({ provider_transfer_status: "processing", provider_transfer_error: "stripe_transfer_lookup_indeterminate", updated_at: new Date().toISOString() }).eq("id", booking.id).eq("provider_transfer_status", "processing");
+    return { status: "already_processing" };
+  }
+
+  try {
+    const transfer = await stripe.transfers.create({ amount: providerAmountPence, currency: booking.currency || "gbp", destination: provider.stripe_account_id, transfer_group: `marketplace_booking:${booking.id}`, metadata: { booking_id: booking.id, job_id: booking.job_id, quote_id: booking.quote_id } }, { idempotencyKey: `marketplace-provider-transfer:${booking.id}:${nextAttempt}` });
+    const persisted = await persistSuccessfulTransfer(admin, booking.id, transfer.id);
+    if (!persisted) {
+      console.error("[marketplace-transfer] Stripe transfer succeeded but booking state could not be persisted", { bookingId, transferId: transfer.id });
+      return { status: "already_processing", transferId: transfer.id };
+    }
     return { status: "paid", transferId: transfer.id };
   } catch (error) {
-    console.error("[marketplace-transfer] provider transfer failed", { bookingId, ...describeStripeError(error) });
-    await admin.from("marketplace_bookings").update({ provider_transfer_status: "failed", provider_transfer_error: "stripe_transfer_failed", updated_at: new Date().toISOString() }).eq("id", booking.id);
-    return { status: "failed" };
+    const definitive = isDefinitiveTransferFailure(error);
+    console.error("[marketplace-transfer] provider transfer failed", { bookingId, definitive, ...describeStripeError(error) });
+    if (definitive) {
+      await admin.from("marketplace_bookings").update({ provider_transfer_status: "failed", provider_transfer_error: safeTransferFailureCode(error), updated_at: new Date().toISOString() }).eq("id", booking.id).eq("provider_transfer_status", "processing");
+    } else {
+      await admin.from("marketplace_bookings").update({ provider_transfer_status: "processing", provider_transfer_error: "stripe_transfer_indeterminate", updated_at: new Date().toISOString() }).eq("id", booking.id).eq("provider_transfer_status", "processing");
+    }
+    return definitive ? { status: "failed" } : { status: "already_processing" };
   }
 }
 
@@ -86,7 +130,7 @@ export async function reconcileMarketplaceProviderTransfer(bookingId: string): P
   const transfers = await getStripe().transfers.list({ destination: provider.stripe_account_id, transfer_group: `marketplace_booking:${booking.id}`, limit: 10 });
   const matching = transfers.data.find((transfer) => transfer.metadata?.booking_id === booking.id || transfer.transfer_group === `marketplace_booking:${booking.id}`);
   if (!matching) return { status: "already_processing" };
-  const persisted = await admin.from("marketplace_bookings").update({ provider_transfer_status: "paid", stripe_transfer_id: matching.id, provider_transferred_at: new Date().toISOString(), provider_transfer_error: null, updated_at: new Date().toISOString() }).eq("id", booking.id).eq("provider_transfer_status", "processing").select("id").maybeSingle();
-  if (persisted.error || !persisted.data) return { status: "already_processing", transferId: matching.id };
+  const persisted = await persistSuccessfulTransfer(admin, booking.id, matching.id);
+  if (!persisted) return { status: "already_processing", transferId: matching.id };
   return { status: "paid", transferId: matching.id };
 }

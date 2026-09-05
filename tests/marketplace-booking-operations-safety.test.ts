@@ -96,6 +96,8 @@ test("failed provider transfers have one admin-only, confirmed retry entry point
   assert.match(adminActions, /retryMarketplaceProviderTransfer/);
   assert.match(adminActions, /await requireAdmin\(\)/);
   assert.match(adminActions, /provider_transfer_status !== "failed"/);
+  assert.match(adminActions, /definitiveFailureCodes/);
+  assert.match(adminActions, /provider_transfer_error/);
   assert.match(adminActions, /booking\.stripe_transfer_id/);
   assert.equal((adminActions.match(/transferMarketplaceProviderFunds\(bookingId\)/g) || []).length, 1);
   assert.match(bookingAdminPage, /booking\.provider_transfer_status === "failed"/);
@@ -105,17 +107,24 @@ test("failed provider transfers have one admin-only, confirmed retry entry point
   assert.match(retryForm, /PendingButton/);
 });
 
-test("Stripe platform diagnostic is admin-only, read-only, and secret-safe", () => {
-  assert.match(adminActions, /diagnoseMarketplaceStripeAccount/);
-  assert.match(adminActions, /await requireAdmin\(\)/);
-  assert.match(adminActions, /stripe\.accounts\.retrieveCurrent\(\)/);
-  assert.match(adminActions, /stripe\.balance\.retrieve\(\)/);
-  assert.match(adminActions, /\[marketplace-stripe-diagnostic\]/);
-  assert.match(adminActions, /accountId/);
-  assert.match(adminActions, /livemode/);
-  assert.match(adminActions, /gbpAvailable/);
-  assert.match(adminActions, /gbpPending/);
-  assert.doesNotMatch(adminActions, /STRIPE_SECRET_KEY[^\n]*console/);
-  assert.doesNotMatch(adminActions, /transferMarketplaceProviderFunds\(bookingId\).*diagnose/);
-  assert.match(bookingAdminPage, /Check Stripe platform/);
+test("provider transfer attempts rotate only after definitive failures", () => {
+  const attemptsMigration = read("supabase/migrations/20260905090000_marketplace_transfer_attempts.sql");
+  assert.match(attemptsMigration, /provider_transfer_attempt integer not null default 0/);
+  assert.match(transfers, /provider_transfer_attempt/);
+  assert.match(transfers, /const currentAttempt/);
+  assert.match(transfers, /const nextAttempt = currentAttempt \+ 1/);
+  assert.match(transfers, /marketplace-provider-transfer:\$\{booking\.id\}:\$\{nextAttempt\}/);
+  assert.match(transfers, /if \(booking\.provider_transfer_status === "processing"\) return \{ status: "already_processing" \}/);
+  assert.match(transfers, /\.eq\("provider_transfer_attempt", currentAttempt\)/);
+  assert.match(transfers, /stripe_balance_insufficient/);
+  assert.match(transfers, /stripe_transfer_indeterminate/);
+  assert.match(transfers, /stripe\.transfers\.list/);
+  assert.match(transfers, /const existingTransfer/);
+  assert.ok(transfers.indexOf("const existingTransfer") < transfers.indexOf("stripe.transfers.create"));
+  assert.match(transfers, /provider_transfer_status: "paid"/);
+  assert.match(transfers, /provider_transfer_status: "processing"/);
+  assert.match(transfers, /status: "already_processing"/);
+  assert.match(adminActions, /provider_transfer_status !== "failed"/);
+  assert.match(adminActions, /booking\.stripe_transfer_id/);
+  assert.doesNotMatch(bookingAdminPage, /Check Stripe platform/);
 });
