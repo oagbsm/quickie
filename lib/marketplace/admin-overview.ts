@@ -3,7 +3,7 @@ import { ACTIVE_MARKETPLACE_OFFER_STATUSES } from "./customer-job-state.ts";
 
 export type OverviewJob = { id: string; service?: string | null; service_subtype?: string | null; postcode?: string | null; created_at: string; status?: string | null };
 export type OverviewQuote = { job_id: string; status?: string | null; created_at: string };
-export type OverviewBooking = { id: string; job_id: string; amount_pence?: number | null; refunded_amount_pence?: number | null; payment_status?: string | null; status?: string | null; completion_status?: string | null; payout_hold_status?: string | null; payout_hold_reason?: string | null; created_at: string; customer_completed_at?: string | null; marketplace_jobs?: OverviewJob | OverviewJob[] | null; marketplace_customers?: { display_name?: string | null; email?: string | null } | { display_name?: string | null; email?: string | null }[] | null };
+export type OverviewBooking = { id: string; job_id: string; amount_pence?: number | null; refunded_amount_pence?: number | null; payment_status?: string | null; status?: string | null; completion_status?: string | null; payout_hold_status?: string | null; payout_hold_reason?: string | null; provider_transfer_status?: string | null; created_at: string; customer_completed_at?: string | null; marketplace_jobs?: OverviewJob | OverviewJob[] | null; marketplace_customers?: { display_name?: string | null; email?: string | null } | { display_name?: string | null; email?: string | null }[] | null };
 export type OverviewDispute = { booking_id: string; status: string; opened_at: string; marketplace_bookings?: OverviewBooking | OverviewBooking[] | null };
 export type OverviewReview = { rating: number; created_at: string };
 
@@ -39,7 +39,7 @@ export function overviewMetrics({ jobs, quotes, bookings, disputes, reviews, pro
   const gmv = genuineBookings.reduce((sum, booking) => sum + refundAwareValue(booking), 0);
   const services = Object.entries(periodJobs.reduce<Record<string, number>>((counts, job) => { const key = jobLabel(job); counts[key] = (counts[key] || 0) + 1; return counts; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5);
   const outcodes = Object.entries(periodJobs.reduce<Record<string, number>>((counts, job) => { const key = outcodeOf(job.postcode); counts[key] = (counts[key] || 0) + 1; return counts; }, {})).sort((a, b) => b[1] - a[1]);
-  const noOfferJobs = periodJobs.filter((job) => !quotedJobIds.has(job.id));
+  const noOfferJobs = periodJobs.filter((job) => job.status !== "cancelled" && !quotedJobIds.has(job.id));
   const noOfferAfter24h = noOfferJobs.filter((job) => Date.now() - new Date(job.created_at).getTime() >= 86400000);
   const issueRate = genuineBookings.length ? activeIssues.length / genuineBookings.length : 0;
   const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length : null;

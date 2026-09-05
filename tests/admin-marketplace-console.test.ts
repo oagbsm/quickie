@@ -29,6 +29,22 @@ test("admin overview is an operational marketplace dashboard", () => {
   assert.match(dashboard, /Jobs with issues/);
   assert.match(dashboard, /Outcode expansion readiness/);
   assert.match(dashboard, /Recent activity/);
+  assert.match(dashboard, /Needs attention/);
+  assert.match(dashboard, /unquoted >24h/);
+  assert.match(dashboard, /failed payouts/);
+  assert.match(dashboard, /pendingApprovals/);
+  assert.match(dashboard, /Trailing 30 days/);
+  assert.match(dashboard, /No open customer issues/);
+  assert.match(dashboard, /No reviews yet/);
+});
+
+test("admin overview separates strategic and operational time windows", () => {
+  assert.match(dashboard, /ACTIVE_MARKETPLACE_POSTCODE_DISTRICTS/);
+  assert.match(dashboard, /selectedRange === "today"/);
+  assert.match(dashboard, /const strategicFrom/);
+  assert.match(dashboard, /days === 1/);
+  assert.match(dashboard, /Eligible providers in/);
+  assert.match(dashboard, /selectedOutcode === "all" && <OutcodeTable/);
 });
 
 test("admin overview keeps partial refunds paid and excludes unpaid/cancelled bookings", () => {
