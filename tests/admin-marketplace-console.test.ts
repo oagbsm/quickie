@@ -11,6 +11,7 @@ const jobDetail = read("app/admin/(portal)/jobs/[id]/page.tsx");
 const providers = read("app/admin/(portal)/providers/page.tsx");
 const payments = read("app/admin/(portal)/payments/page.tsx");
 const customers = read("app/admin/(portal)/customers/page.tsx");
+const customerDossier = read("app/admin/(portal)/customers/[id]/page.tsx");
 
 test("admin navigation is organized around marketplace operations", () => {
   assert.match(nav, /Overview/);
@@ -108,8 +109,17 @@ test("customer operations use marketplace-owned records and link to dossiers", (
   assert.match(customers, /marketplace_customers/);
   assert.match(customers, /marketplace_bookings/);
   assert.match(customers, /marketplace_reviews/);
-  assert.match(customers, /admin\/customers\/\$\{customer\.id\}/);
+  assert.match(customers, /admin\/customers\/\$\{row\.customer\.id\}/);
   assert.doesNotMatch(customers, /Offers made/);
+  assert.match(customers, /Repeat customers/);
+  assert.match(customers, /Rebooking opportunities/);
+  assert.match(customers, /ServiceCombobox/);
+  assert.doesNotMatch(customers, />Active<\/span>/);
+  assert.match(customerDossier, /Providers used/);
+  assert.match(customerDossier, /Booking history/);
+  assert.match(customerDossier, /Reviews given/);
+  assert.match(customerDossier, /Issues/);
+  assert.match(customerDossier, /Refunds/);
 });
 
 test("marketplace compatibility destinations exist", () => {
