@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { calculateMarketplacePlatformFeePence, describeStripeError, getStripe, getSiteUrl } from "@/lib/server/marketplace-payments";
@@ -74,6 +75,8 @@ export async function createMarketplaceCheckout(formData: FormData) {
   let checkoutSessionId: string | null = null;
   let checkoutIdempotencyKey = `marketplace-booking:${booking.id}`;
   let stripeStage = "configuration";
+  let completedReturnTo: string | null = null;
+  let paymentFailure: { error: unknown; setupFailure: boolean } | null = null;
   try {
     const stripe = getStripe();
     if (booking.stripe_checkout_session_id) {
@@ -81,11 +84,11 @@ export async function createMarketplaceCheckout(formData: FormData) {
       const existingSession = await stripe.checkout.sessions.retrieve(booking.stripe_checkout_session_id);
       if (existingSession.status === "open" && existingSession.url) checkoutUrl = existingSession.url;
       if (existingSession.status === "complete" || existingSession.payment_status === "paid") {
-        redirect(`${returnTo}?payment=success`);
+        completedReturnTo = `${returnTo}?payment=success`;
       }
       checkoutIdempotencyKey = `marketplace-booking:${booking.id}:retry:${existingSession.id}`;
     }
-    if (!checkoutUrl) {
+    if (!checkoutUrl && !completedReturnTo) {
       stripeStage = "checkout-creation";
       const siteUrl = getSiteUrl();
       const successUrl = new URL(returnTo, `${siteUrl}/`);
@@ -106,13 +109,16 @@ export async function createMarketplaceCheckout(formData: FormData) {
       checkoutSessionId = session.id;
     }
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const details = describeStripeError(error);
     const logLabel = stripeStage === "configuration" ? "Stripe configuration invalid" : stripeStage === "existing-session-retrieval" ? "Existing Stripe session retrieval failed" : "Stripe Checkout creation failed";
     console.error(`[marketplace-payment] ${logLabel}`, { stage: stripeStage, token, quoteId, bookingId: booking.id, userId: user.id, ...details });
     const reason = error instanceof Error ? error.message : "unknown";
     const setupFailure = ["stripe_not_configured", "stripe_test_key_required", "stripe_site_url_invalid", "stripe_webhook_not_configured"].includes(reason);
-    redirect(`${returnTo}?error=${setupFailure ? "payment_setup" : "payment"}`);
+    paymentFailure = { error, setupFailure };
   }
+  if (paymentFailure) redirect(`${returnTo}?error=${paymentFailure.setupFailure ? "payment_setup" : "payment"}`);
+  if (completedReturnTo) redirect(completedReturnTo);
   if (!checkoutUrl) redirect(`${returnTo}?error=payment`);
   if (checkoutSessionId) {
     const { error: saved } = await admin.from("marketplace_bookings").update({ stripe_checkout_session_id: checkoutSessionId, amount_pence: amountPence, platform_fee_pence: platformFeePence }).eq("id", booking.id);

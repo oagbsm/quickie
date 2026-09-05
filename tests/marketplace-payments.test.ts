@@ -28,6 +28,32 @@ test("checkout charges the full quote and does not create a destination charge",
   assert.match(checkout, /idempotencyKey: checkoutIdempotencyKey/);
 });
 
+test("checkout redirects are outside Stripe error handling", () => {
+  assert.match(checkout, /isRedirectError/);
+  assert.match(checkout, /if \(isRedirectError\(error\)\) throw error/);
+  assert.match(checkout, /completedReturnTo = `\$\{returnTo\}\?payment=success`/);
+  assert.match(checkout, /if \(completedReturnTo\) redirect\(completedReturnTo\)/);
+  assert.doesNotMatch(checkout.slice(checkout.indexOf("try {\n    const stripe"), checkout.indexOf("} catch (error)")), /redirect\(/);
+  assert.doesNotMatch(checkout, /Existing Stripe session retrieval failed[\s\S]*NEXT_REDIRECT/);
+});
+
+test("valid existing and new checkout sessions redirect, while real Stripe failures remain payment errors", () => {
+  assert.match(checkout, /existingSession\.status === "open" && existingSession\.url/);
+  assert.match(checkout, /session = await stripe\.checkout\.sessions\.create/);
+  assert.match(checkout, /paymentFailure = \{ error, setupFailure \}/);
+  assert.match(checkout, /if \(paymentFailure\) redirect\(`\$\{returnTo\}\?error=/);
+  assert.match(checkout, /if \(checkoutSessionId\) \{/);
+  assert.match(checkout, /stripe_checkout_session_id: checkoutSessionId/);
+});
+
+test("paid bookings cannot restart checkout and retries reuse the persisted session", () => {
+  assert.match(checkout, /\["paid", "refunded", "refund_pending", "partially_refunded", "cancelled"\]/);
+  assert.match(checkout, /existingBooking\.completion_status === "completed"/);
+  assert.match(checkout, /booking\.stripe_checkout_session_id/);
+  assert.match(checkout, /marketplace-booking:\$\{booking\.id\}:retry:\$\{existingSession\.id\}/);
+  assert.match(checkout, /idempotencyKey: checkoutIdempotencyKey/);
+});
+
 test("provider transfer is gated by persisted paid completion and stored provider account", () => {
   assert.match(transfers, /payment_status === "paid"/);
   assert.match(transfers, /completion_status !== "completed"/);
