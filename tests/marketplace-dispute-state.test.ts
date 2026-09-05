@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getCustomerJobLifecycleState, getMarketplaceBookingLifecycleLabel, getMarketplaceBookingLifecycleState, getMarketplacePaymentState, isPartialMarketplaceRefund } from "../lib/marketplace/customer-job-state.ts";
+import { getCustomerJobLifecycleState, getMarketplaceBookingLifecycleLabel, getMarketplaceBookingLifecycleState, getMarketplacePaymentState, isDisputeControlledPayoutHold, isPartialMarketplaceRefund } from "../lib/marketplace/customer-job-state.ts";
 
 const quote = { status: "accepted" };
 
@@ -57,4 +57,11 @@ test("partial-refund paid state cannot become payment required or awaiting compl
   assert.notEqual(getCustomerJobLifecycleState({ offerCount: 1, acceptedQuote: quote, booking: partial, hasActiveDispute: true }), "provider_selected_unpaid");
   assert.notEqual(getMarketplaceBookingLifecycleState(partial, true), "awaiting_customer_completion");
   assert.notEqual(getMarketplaceBookingLifecycleState(partial, true), "payment_required");
+});
+
+test("dispute-controlled holds are distinct from manual holds", () => {
+  assert.equal(isDisputeControlledPayoutHold({ payout_hold_status: "held", payout_hold_reason: "unresolved_dispute" }, true), true);
+  assert.equal(isDisputeControlledPayoutHold({ payout_hold_status: "held", payout_hold_reason: "customer_resolution_refund" }), true);
+  assert.equal(isDisputeControlledPayoutHold({ payout_hold_status: "held", payout_hold_reason: "manual_review" }), false);
+  assert.equal(isDisputeControlledPayoutHold({ payout_hold_status: "none", payout_hold_reason: "unresolved_dispute" }, true), false);
 });

@@ -35,6 +35,10 @@ export function isPartialMarketplaceRefund(booking: { amount_pence?: number | nu
   return booking?.payment_status !== "refunded" && amount > 0 && refunded > 0 && refunded < amount;
 }
 
+export function isDisputeControlledPayoutHold(booking: { payout_hold_status?: string | null; payout_hold_reason?: string | null } | null | undefined, hasActiveDispute = false) {
+  return booking?.payout_hold_status === "held" && (hasActiveDispute || ["unresolved_dispute", "customer_issue_reported", "customer_resolution_refund"].includes(booking.payout_hold_reason || ""));
+}
+
 export function getMarketplaceBookingLifecycleState(booking: LifecycleBookingSnapshot | null | undefined, hasActiveDispute = false): MarketplaceBookingLifecycleState {
   if (!booking) return "payment_required";
   if (booking?.status === "cancelled") return "cancelled";

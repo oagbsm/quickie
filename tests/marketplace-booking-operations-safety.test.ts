@@ -217,10 +217,36 @@ test("admin dispute continuation validates the RPC result and persisted state be
   assert.match(adminActions, /status === "resolved_provider"/);
   assert.match(adminActions, /completion_status === "awaiting_customer_completion"/);
   assert.match(adminActions, /payout_hold_reason !== "unresolved_dispute"/);
-  assert.match(adminActions, /payment_status === "paid"/);
+  assert.match(adminActions, /\["paid", "partially_refunded"\]\.includes\(booking\.payment_status/);
   assert.match(adminActions, /refunded_amount_pence === beforeBooking\.data\.refunded_amount_pence/);
   assert.match(adminActions, /error=dispute/);
   assert.match(disputeResolutionMigration, /where d\.id = target_dispute and d\.status in \('open', 'in_review'\)/);
+});
+
+test("admin hold controls distinguish dispute holds from manual holds", () => {
+  assert.match(customerState, /isDisputeControlledPayoutHold/);
+  assert.match(bookingAdminPage, /disputeControlledHold/);
+  assert.match(bookingAdminPage, /payout_hold_status === "none"/);
+  assert.match(bookingAdminPage, /This payout hold is controlled by an open customer issue/);
+  assert.match(bookingAdminPage, /Resolve the issue below to release it/);
+  assert.match(migration, /payout_dispute_blocked/);
+});
+
+test("partial-refund dispute continuation does not transfer funds and preserves refund state", () => {
+  assert.doesNotMatch(adminActions.slice(adminActions.indexOf("export async function resolveMarketplaceDispute")), /transferMarketplaceProviderFunds/);
+  assert.match(adminActions, /refunded_amount_pence === beforeBooking\.data\.refunded_amount_pence/);
+  assert.match(transfers, /calculateProviderEarnings/);
+  assert.match(providerJobPage, /Partial refund issued/);
+});
+
+test("partial-refund continue makes the booking completion-eligible without releasing funds", () => {
+  const rpcFix = read("supabase/migrations/20260905170000_fix_partial_refund_dispute_continue.sql");
+  assert.match(rpcFix, /payment_status not in \('paid', 'partially_refunded'\)/);
+  assert.match(rpcFix, /customer_issue_reported', 'customer_refund_pending/);
+  assert.match(rpcFix, /provider_transfer_status.*then 'pending'/);
+  assert.match(rpcFix, /completion_status = 'awaiting_customer_completion'/);
+  assert.match(rpcFix, /payout_hold_reason.*then null/);
+  assert.doesNotMatch(rpcFix, /transferMarketplaceProviderFunds|stripe\.transfers/);
 });
 
 test("deployed dispute RPC migration removes PL/pgSQL parameter ambiguity without changing outcomes", () => {
