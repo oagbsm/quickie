@@ -38,9 +38,9 @@ export const needsAttention = ({ pending, issueCount, failedPayout, actionRequir
 
 export function supplyLabel(count: number) {
   if (count === 0) return "NOT COVERED";
-  if (count < 5) return "NEED MORE SUPPLY";
-  if (count < 10) return "BUILDING";
-  return "HEALTHY";
+  if (count < 5) return "UNDER-SUPPLIED";
+  if (count < 10) return "BUILDING SUPPLY";
+  return "TARGET MET";
 }
 
 export const quoteConversion = (won: number, quotes: number) => quotes > 0 ? `${(won / quotes * 100).toFixed(1)}%` : "0%";

@@ -7,7 +7,7 @@ test("provider operations derive eligibility, services, areas and supply guidanc
   assert.equal(isEligibleProvider({ provider_status: "approved", stripe_status: "restricted", marketplace_active: true }), false);
   assert.deepEqual(activeProviderServices([{ job_type_slug: "plumbing", active: true }, { job_type_slug: "cleaning", active: false }]), ["plumbing"]);
   assert.deepEqual(activeProviderAreas([{ postcode_district: "sl6", active: true }, { postcode_district: "SL6", active: true }]), ["SL6"]);
-  assert.deepEqual([0, 1, 4, 5, 9, 10].map(supplyLabel), ["NOT COVERED", "NEED MORE SUPPLY", "NEED MORE SUPPLY", "BUILDING", "BUILDING", "HEALTHY"]);
+  assert.deepEqual([0, 1, 4, 5, 9, 10].map(supplyLabel), ["NOT COVERED", "UNDER-SUPPLIED", "UNDER-SUPPLIED", "BUILDING SUPPLY", "BUILDING SUPPLY", "TARGET MET"]);
 });
 
 test("provider operations use trailing-period quotes and genuine bookings", () => {

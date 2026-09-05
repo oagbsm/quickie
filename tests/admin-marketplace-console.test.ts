@@ -84,10 +84,24 @@ test("admin marketplace views expose real job, provider, and payment state", () 
   assert.match(providers, /stripe_status/);
   assert.match(providers, /provider_status/);
   assert.match(providers, /Needs attention/);
+  assert.match(providers, /ServiceCombobox/);
+  assert.match(providers, /10 eligible/);
+  assert.match(providers, /more needed/);
+  assert.match(providers, /getMarketplaceJobDisplayTitle/);
+  assert.doesNotMatch(providers, /NEED MORE SUPPLY/);
   assert.match(providers, /View dossier/);
   assert.match(payments, /payment_status/);
   assert.match(payments, /platform_fee_pence/);
   assert.match(payments, /no live Stripe calls/);
+});
+
+test("admin sidebar uses the calmer grouped navigation and coherent icon set", () => {
+  const layout = read("app/admin/(portal)/layout.tsx");
+  assert.match(nav, /FINANCE/);
+  assert.match(nav, /<svg/);
+  assert.doesNotMatch(nav, /▦|♧|♙/);
+  assert.match(layout, /lg:grid-cols-\[228px_1fr\]/);
+  assert.match(layout, /bg-\[#0b294b\]/);
 });
 
 test("customer operations use marketplace-owned records and link to dossiers", () => {
