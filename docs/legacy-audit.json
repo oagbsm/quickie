@@ -1,127 +1,59 @@
 {
-  "audit_scope": "Repository-wide read-only legacy/dead-code audit",
-  "routes": [
-    {"path":"/","type":"public","status":"active","notes":"Marketplace entry"},
-    {"path":"/jobs/[token]","type":"customer","status":"active","notes":"Job, quotes, payment, messaging, completion and review"},
-    {"path":"/my-jobs","type":"customer","status":"active"},
-    {"path":"/messages/[conversationId]","type":"customer/provider","status":"active"},
-    {"path":"/work","type":"provider","status":"active"},
-    {"path":"/work/jobs/[id]","type":"provider","status":"active"},
-    {"path":"/work/onboarding","type":"provider","status":"active"},
-    {"path":"/work/payments","type":"provider","status":"active"},
-    {"path":"/work/profile","type":"provider","status":"active"},
-    {"path":"/provider/invite/[token]","type":"provider","status":"active"},
-    {"path":"/admin","type":"admin","status":"active"},
-    {"path":"/admin/jobs","type":"admin","status":"active"},
-    {"path":"/admin/marketplace-bookings","type":"admin","status":"active"},
-    {"path":"/admin/providers","type":"admin","status":"active"},
-    {"path":"/admin/customers","type":"admin","status":"active"},
-    {"path":"/admin/payments","type":"admin","status":"active"},
-    {"path":"/admin/support","type":"admin","status":"active"},
-    {"path":"/admin/audit","type":"admin","status":"active","notes":"Compatibility re-export of activity log"},
-    {"path":"/admin/settings","type":"admin","status":"active"},
-    {"path":"/admin/messages","type":"admin","status":"legacy","notes":"Redirects to /admin/support"},
-    {"path":"/admin/offers","type":"admin","status":"review","notes":"Orphaned current-quotes view"},
-    {"path":"/admin/providers/qualification","type":"admin","status":"review","notes":"Orphaned guarded manual tool"},
-    {"path":"/provider","type":"compatibility","status":"legacy","notes":"Redirects"},
-    {"path":"/provider/jobs/[id]","type":"compatibility","status":"legacy","notes":"Redirects"},
-    {"path":"/for-providers","type":"compatibility","status":"legacy","notes":"Permanent redirect"},
-    {"path":"/home-tasks","type":"compatibility","status":"legacy","notes":"Redirects to home"},
-    {"path":"/screen2","type":"compatibility","status":"legacy","notes":"Old price-flow redirect"},
-    {"path":"/screen3","type":"compatibility","status":"legacy","notes":"Old price-flow redirect"},
-    {"path":"/solutions/airbnb","type":"public marketing","status":"review"},
-    {"path":"/solutions/letting-agents","type":"public marketing","status":"review"},
-    {"path":"/solutions/offices","type":"public marketing","status":"review"},
-    {"path":"/api/cumar-intake","type":"api","status":"review","notes":"No repository callers; writes legacy requests"},
-    {"path":"/api/cumar-complete","type":"api","status":"review","notes":"No repository callers; writes legacy requests"},
-    {"path":"/api/stripe/webhook","type":"api","status":"active"},
-    {"path":"/api/stripe/connect-webhook","type":"api","status":"active"},
-    {"path":"/api/sandbox/marketplace-email","type":"api","status":"active","notes":"Explicitly sandbox-gated"}
+  "audit_scope": "Repository-wide second-pass legacy/dead-code cleanup",
+  "removed_routes": [
+    {"path":"/solutions/airbnb","reason":"Unsupported short-stay marketing workflow"},
+    {"path":"/solutions/letting-agents","reason":"Unsupported property-manager workflow"},
+    {"path":"/solutions/offices","reason":"Unsupported commercial workflow"},
+    {"path":"/screen2","reason":"Redirect-only legacy price-flow page"},
+    {"path":"/screen3","reason":"Redirect-only legacy price-flow page"},
+    {"path":"/home-tasks","reason":"Redirect-only legacy page"},
+    {"path":"/admin/offers","reason":"Orphaned duplicate admin view"},
+    {"path":"/admin/providers/qualification","reason":"Orphaned retired admin tool"},
+    {"path":"/provider","reason":"Old provider route file; config redirect retained"},
+    {"path":"/provider/jobs/[id]","reason":"Old provider route file; /work is canonical"}
   ],
-  "components": [
-    {"path":"app/components/marketplace/MarketplaceHeader.tsx","status":"active"},
-    {"path":"app/components/marketplace/ProviderHeader.tsx","status":"active"},
-    {"path":"app/components/marketplace/ServiceLandingPage.tsx","status":"active"},
-    {"path":"app/components/marketplace/MarketplaceMessageBubble.tsx","status":"active"},
-    {"path":"app/components/marketplace/ProviderAvatar.tsx","status":"active"},
-    {"path":"app/components/marketplace/ConsumerJobComposer.tsx","status":"active"},
-    {"path":"app/components/public/SolutionPage.tsx","status":"review","notes":"Used by STR/commercial marketing pages"},
-    {"path":"app/admin/components/ServiceCombobox.tsx","status":"active"},
-    {"path":"app/components/PendingButton.tsx","status":"active"},
-    {"path":"app/homepagecomponents/Icons.tsx","status":"active"}
+  "removed_api_routes": [
+    {"path":"/api/cumar-intake","reason":"No repository callers; legacy requests writer"},
+    {"path":"/api/cumar-complete","reason":"No repository callers; legacy requests writer"}
   ],
-  "server_actions": [
-    {"path":"app/jobs/actions.ts","status":"active","notes":"Customer marketplace lifecycle"},
-    {"path":"app/jobs/payment-actions.ts","status":"active","notes":"Checkout"},
-    {"path":"app/work/actions.ts","status":"active","notes":"Provider lifecycle"},
-    {"path":"app/admin/actions.ts","status":"active","notes":"Guarded admin operations"},
-    {"path":"app/work/onboarding/actions.ts","status":"active"},
-    {"path":"app/work/profile/actions.ts","status":"active"},
-    {"path":"app/provider/actions.ts","status":"removed","reason":"No callers; superseded by work actions","confidence":"A"},
-    {"path":"lib/server/marketplace-refunds.ts","status":"active"},
-    {"path":"lib/server/marketplace-transfers.ts","status":"active"},
-    {"path":"lib/server/provider-stripe.ts","status":"active"}
+  "compatibility_routes_retained": [
+    {"path":"/provider","mechanism":"next.config.ts redirect to /jobs"},
+    {"path":"/for-providers","mechanism":"next.config.ts redirect to /jobs"},
+    {"path":"/admin/messages","mechanism":"redirect to /admin/support"},
+    {"path":"/admin/audit","mechanism":"re-export of canonical activity log"},
+    {"path":"/product","mechanism":"existing redirect"},
+    {"path":"/quickola-price-index","mechanism":"existing redirect"},
+    {"path":"/quickola-vs-checkatrade-bark-taskrabbit","mechanism":"existing redirect"},
+    {"path":"/privacy","mechanism":"next.config.ts redirect"},
+    {"path":"/results","mechanism":"next.config.ts redirect"}
   ],
-  "database_objects": [
-    {"name":"marketplace_bookings","type":"table","status":"active"},
-    {"name":"marketplace_jobs","type":"table","status":"active"},
-    {"name":"marketplace_quotes","type":"table","status":"active"},
-    {"name":"marketplace_refunds","type":"table","status":"active"},
-    {"name":"marketplace_disputes","type":"table","status":"active"},
-    {"name":"marketplace_reviews","type":"table","status":"active"},
-    {"name":"marketplace_providers","type":"table","status":"active"},
-    {"name":"requests","type":"table","status":"review","notes":"Legacy Cumar API only"},
-    {"name":"business_accounts/properties/work_items/workers","type":"tables","status":"review","notes":"Historical STR subsystem; do not drop"},
-    {"name":"cleaner_profiles","type":"table/history","status":"review","notes":"Identity transition history; preserve"}
+  "removed_components": [
+    {"path":"app/components/public/SolutionPage.tsx","reason":"No consumers after solution route removal"}
   ],
-  "stripe_code": [
-    {"path":"lib/server/marketplace-payments.ts","category":"customer payment","status":"active"},
-    {"path":"lib/server/marketplace-payment-finalization.ts","category":"payment finalization","status":"active"},
-    {"path":"lib/server/marketplace-refunds.ts","category":"refund","status":"active"},
-    {"path":"lib/server/marketplace-transfers.ts","category":"Connect transfer","status":"active"},
-    {"path":"lib/server/provider-stripe.ts","category":"Connect onboarding","status":"active"},
-    {"path":"app/api/stripe/webhook/route.ts","category":"webhook","status":"active"},
-    {"path":"app/api/stripe/connect-webhook/route.ts","category":"Connect webhook","status":"active"},
-    {"path":"scripts/marketplace-scenarios.ts","category":"sandbox harness","status":"active","notes":"Explicit test-only guard"}
+  "removed_server_actions": [
+    {"path":"app/admin/actions.ts:setMarketplaceProviderQualification","reason":"Only caller was removed qualification page"}
   ],
-  "emails": [
-    {"path":"lib/marketplace/email/transactional.ts","status":"active"},
-    {"path":"lib/server/notifications.ts","status":"active"},
-    {"path":"lib/server/marketplace-notifications.ts","status":"removed","reason":"No consumers; duplicate delivery path","confidence":"A"}
+  "removed_dependencies": [
+    {"name":"@google/genai","reason":"Legacy Cumar/AI path had no remaining imports"}
   ],
-  "dependencies": [
-    {"name":"next","status":"active"},
-    {"name":"react","status":"active"},
-    {"name":"@supabase/ssr","status":"active"},
-    {"name":"@supabase/supabase-js","status":"active"},
-    {"name":"stripe","status":"active"},
-    {"name":"leaflet","status":"active"},
-    {"name":"sharp","status":"framework/runtime"},
-    {"name":"@google/genai","status":"review","notes":"Legacy Cumar/AI path"}
+  "retained_active_systems": [
+    "marketplace payment and checkout",
+    "Stripe webhooks, refunds, Connect onboarding, transfers and idempotency",
+    "completion, reviews, disputes, payout holds and force settlement",
+    "customer ownership, provider onboarding, admin authorization and RLS",
+    "current /work provider routes and current marketplace/admin APIs"
   ],
-  "environment_variables": [
-    {"name":"NEXT_PUBLIC_SUPABASE_URL","status":"current"},
-    {"name":"NEXT_PUBLIC_SUPABASE_ANON_KEY","status":"current"},
-    {"name":"SUPABASE_SERVICE_ROLE_KEY","status":"current server-only"},
-    {"name":"STRIPE_SECRET_KEY","status":"current server-only"},
-    {"name":"STRIPE_WEBHOOK_SECRET","status":"current"},
-    {"name":"STRIPE_CONNECT_WEBHOOK_SECRET","status":"current"},
-    {"name":"RESEND_API_KEY","status":"current server-only"},
-    {"name":"NEXT_PUBLIC_SITE_URL/APP_URL/VERCEL_URL","status":"current URL resolution"},
-    {"name":"CUMAR_MODE","status":"review legacy"},
-    {"name":"SANDBOX_*","status":"test-only"}
+  "database_changes": [],
+  "migration": null,
+  "legacy_database_review": [
+    "requests table and Cumar-era columns",
+    "historical STR/business/cleaner tables and migrations",
+    "cleaner_profiles identity transition history"
   ],
-  "cleanup_candidates": [
-    {"path":"app/provider/actions.ts","type":"server action","reason":"No imports/callers; superseded by work actions","confidence":"A","removed":true},
-    {"path":"lib/cumar.ts","type":"helper","reason":"No imports; legacy Cumar implementation","confidence":"A","removed":true},
-    {"path":"lib/marketplacePricing.ts","type":"helper","reason":"No imports; old pricing flow","confidence":"A","removed":true},
-    {"path":"lib/cleaningPricing.ts","type":"helper","reason":"Only imported by removed old pricing helper","confidence":"A","removed":true},
-    {"path":"lib/server/marketplace-notifications.ts","type":"email helper","reason":"No imports; duplicate newer transactional email path","confidence":"A","removed":true},
-    {"path":"app/admin/(portal)/messages/page.tsx","type":"route","reason":"Retired admin messages screen","confidence":"B","removed":false,"notes":"Converted to support redirect for bookmark compatibility"},
-    {"path":"app/admin/(portal)/offers/page.tsx","type":"route","reason":"Orphaned current-quotes admin view","confidence":"B","removed":false,"notes":"Needs operational confirmation"},
-    {"path":"app/admin/(portal)/providers/qualification/page.tsx","type":"route","reason":"Orphaned guarded qualification tool","confidence":"C","removed":false,"notes":"May be needed for manual checks"},
-    {"path":"app/api/cumar-intake/route.ts","type":"API route","reason":"No repository callers; writes legacy requests","confidence":"B","removed":false,"notes":"Check external traffic first"},
-    {"path":"app/api/cumar-complete/route.ts","type":"API route","reason":"No repository callers; writes legacy requests","confidence":"B","removed":false,"notes":"Check external traffic first"},
-    {"path":"app/solutions/*","type":"marketing routes","reason":"Claims workflows beyond core marketplace","confidence":"C","removed":false,"notes":"Product/marketing decision required"}
+  "manual_review": [
+    "external traffic to retired Cumar endpoints",
+    "Cumar deployment environment variables",
+    "compatibility URL traffic",
+    "legacy database retention and reporting dependencies"
   ]
 }

@@ -93,20 +93,6 @@ export async function updateMarketplaceProviderStatus(f: FormData) {
   redirect("/admin/providers?success=status");
 }
 
-export async function setMarketplaceProviderQualification(f: FormData) {
-  await requireAdmin();
-  const providerId = value(f, "providerId");
-  const categorySlug = value(f, "categorySlug");
-  const jobTypeSlug = value(f, "jobTypeSlug");
-  const verified = value(f, "verified") === "1";
-  if (!providerId || !categorySlug || !jobTypeSlug || !["plumbing", "electrical", "smart-home"].includes(categorySlug)) redirect("/admin/providers?error=qualification_update");
-  const admin = createSupabaseAdminClient();
-  const { error } = await admin.from("marketplace_provider_services").update({ qualification_verified: verified }).eq("provider_id", providerId).eq("category_slug", categorySlug).eq("job_type_slug", jobTypeSlug);
-  if (error) redirect("/admin/providers?error=qualification_update");
-  revalidatePath("/admin/providers");
-  redirect("/admin/providers?success=qualification");
-}
-
 export async function issueMarketplaceBookingRefund(f: FormData) {
   const { user } = await requireAdmin();
   const bookingId = value(f, "bookingId");
