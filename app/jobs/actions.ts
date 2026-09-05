@@ -10,6 +10,24 @@ import { getOrCreateMarketplaceConversation } from "@/lib/marketplace/conversati
 import { getCurrentAccountRole } from "@/lib/auth/account-role";
 import { transferMarketplaceProviderFunds } from "@/lib/server/marketplace-transfers";
 
+type MarketplaceCompletionStage = "input_validation" | "booking_context_lookup" | "confirm_completion_rpc" | "provider_payout_release" | "completion_notification";
+
+function safeMarketplaceCompletionError(error: unknown) {
+  const value = error && typeof error === "object" ? error as Record<string, unknown> : {};
+  const text = (key: string) => typeof value[key] === "string" ? String(value[key]).slice(0, 240) : undefined;
+  return {
+    name: text("name") || "UnknownError",
+    message: text("message") || "unknown",
+    code: text("code"),
+    details: text("details"),
+    hint: text("hint"),
+  };
+}
+
+function logMarketplaceCompletionFailure({ stage, token, jobId, bookingId, error }: { stage: MarketplaceCompletionStage; token: string; jobId?: string | null; bookingId?: string | null; error: unknown }) {
+  console.error("[marketplace-completion]", { stage, token, jobId: jobId || undefined, bookingId: bookingId || undefined, ...safeMarketplaceCompletionError(error) });
+}
+
 export async function submitMarketplaceOffer(formData: FormData) {
   const token = String(formData.get("token") || "");
   const amount = Math.round(Number(formData.get("amount") || 0) * 100);
@@ -147,19 +165,29 @@ export async function confirmMarketplaceCompletion(formData: FormData) {
   const bookingId = String(formData.get("bookingId") || "");
   const rating = Number(formData.get("rating") || 0);
   const review = String(formData.get("review") || "").trim().slice(0, 1000);
-  if (!Number.isInteger(rating) || rating < 1 || rating > 5) redirect(`/jobs/${token}?error=review`);
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    logMarketplaceCompletionFailure({ stage: "input_validation", token, bookingId, error: { name: "ValidationError", message: "rating must be an integer from 1 to 5", code: "invalid_rating" } });
+    redirect(`/jobs/${token}?error=review`);
+  }
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !token || !bookingId) redirect(`/jobs/${token}`);
+  const admin = createSupabaseAdminClient();
+  const { data: bookingContext, error: bookingContextError } = await admin.from("marketplace_bookings").select("id,job_id").eq("id", bookingId).maybeSingle();
+  if (bookingContextError) logMarketplaceCompletionFailure({ stage: "booking_context_lookup", token, bookingId, error: bookingContextError });
+  const jobId = bookingContext?.job_id || null;
   const { error } = await supabase.rpc("confirm_marketplace_completion_with_review", { target_booking: bookingId, review_rating: rating, review_body: review || null });
-  if (error) redirect(`/jobs/${token}?error=completion`);
+  if (error) {
+    logMarketplaceCompletionFailure({ stage: "confirm_completion_rpc", token, jobId, bookingId, error });
+    redirect(`/jobs/${token}?error=completion`);
+  }
   let transferStatus: "paid" | "blocked" | "failed" | "already_processing" = "failed";
   try {
     transferStatus = (await transferMarketplaceProviderFunds(bookingId)).status;
   } catch (transferError) {
-    console.error("[marketplace-transfer] completion settlement failed", { bookingId, reason: transferError instanceof Error ? transferError.message : "unknown" });
+    logMarketplaceCompletionFailure({ stage: "provider_payout_release", token, jobId, bookingId, error: transferError });
   }
-  try { await notifyCompletionOutcome(bookingId, "confirmed", transferStatus); } catch (notificationError) { console.error("marketplace_completion_email_failed", { bookingId, reason: notificationError instanceof Error ? notificationError.message.slice(0, 120) : "unknown" }); }
+  try { await notifyCompletionOutcome(bookingId, "confirmed", transferStatus); } catch (notificationError) { logMarketplaceCompletionFailure({ stage: "completion_notification", token, jobId, bookingId, error: notificationError }); }
   revalidatePath(`/jobs/${token}`);
   revalidatePath("/my-jobs");
   redirect(`/jobs/${token}`);

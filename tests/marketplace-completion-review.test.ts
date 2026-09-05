@@ -9,6 +9,7 @@ const customerPage = read("app/jobs/[token]/page.tsx");
 const providerPage = read("app/work/jobs/[id]/page.tsx");
 const lifecycle = read("lib/marketplace/customer-job-state.ts");
 const migration = read("supabase/migrations/202609040004_marketplace_completion_review.sql");
+const safetyMigration = read("supabase/migrations/202609040006_marketplace_completion_review_safety.sql");
 
 test("provider completion uses the existing authoritative intermediate state", () => {
   assert.match(providerPage, /\["awaiting_customer_completion", "Mark work complete"\]/);
@@ -25,6 +26,35 @@ test("customer confirmation requires a rating and uses one atomic RPC", () => {
   assert.match(migration, /insert into public\.marketplace_reviews/);
   assert.match(migration, /set status = 'completed'/);
   assert.match(migration, /update public\.marketplace_jobs/);
+  assert.match(customerPage, /value=\{value\}>\{"★"\.repeat\(value\)\}/);
+  assert.match(customerPage, /Review <span[^>]*>\(optional\)/);
+});
+
+test("completion validation and safe diagnostics cover rejected submissions", () => {
+  assert.match(action, /rating < 1 \|\| rating > 5/);
+  assert.match(action, /stage: "input_validation"/);
+  assert.match(action, /stage: "confirm_completion_rpc"/);
+  assert.match(action, /\[marketplace-completion\]/);
+  assert.match(action, /code: text\("code"\)/);
+  assert.match(migration, /c\.auth_user_id = auth\.uid\(\)/);
+});
+
+test("the persisted issue/hold state cannot present a completion form", () => {
+  assert.match(lifecycle, /completion_status === "issue_reported"/);
+  assert.match(lifecycle, /payout_hold_status === "held"/);
+  assert.match(lifecycle, /completion_status === "awaiting_customer_completion"/);
+  assert.match(customerPage, /completion_issue_reported/);
+  assert.match(customerPage, /completion confirmation is paused/);
+});
+
+test("completion persists before payout release and payout failure cannot undo it", () => {
+  const completionCall = action.indexOf('rpc("confirm_marketplace_completion_with_review"');
+  const payoutCall = action.indexOf("transferMarketplaceProviderFunds(bookingId)");
+  assert.ok(completionCall >= 0);
+  assert.ok(payoutCall > completionCall);
+  assert.match(action, /stage: "provider_payout_release"/);
+  assert.match(action, /revalidatePath\(`\/jobs\/\$\{token\}`\)/);
+  assert.doesNotMatch(action.slice(payoutCall, action.indexOf("try { await notifyCompletionOutcome")), /redirect\(/);
 });
 
 test("completion state and review rules remain server-authoritative", () => {
@@ -33,6 +63,9 @@ test("completion state and review rules remain server-authoritative", () => {
   assert.match(migration, /c\.auth_user_id = auth\.uid\(\)/);
   assert.match(migration, /where r\.booking_id = target_booking/);
   assert.match(migration, /returns public\.marketplace_bookings/);
+  assert.match(migration, /current_booking\.status <> 'awaiting_customer_completion'/);
+  assert.match(migration, /current_booking\.completion_status <> 'awaiting_customer_completion'/);
+  assert.match(safetyMigration, /payout_hold_status = 'held'/);
 });
 
 test("review provider FK targets the current marketplace provider identity", () => {
