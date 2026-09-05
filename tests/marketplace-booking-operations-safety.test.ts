@@ -110,8 +110,8 @@ test("completion review is atomic and problem reports require the protected disp
 });
 
 test("refund persistence failures do not convert an ambiguous Stripe result into a second attempt", () => {
-  assert.match(refunds, /Stripe refund succeeded but its audit row could not be updated/);
-  assert.match(refunds, /Refund recorded but booking payment state could not be updated/);
+  assert.match(refunds, /stage: "refund_record_persist"/);
+  assert.match(refunds, /stage: "booking_state_persist"/);
   assert.match(refunds, /status: "already_processing", refundId: refund\.id/);
 });
 

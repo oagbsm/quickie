@@ -7,7 +7,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { canProviderOperate, requireProviderBrowseAccess } from "@/lib/marketplace/provider-access";
 import { getMarketplaceBookingLifecycleState } from "@/lib/marketplace/customer-job-state";
 import { isMarketplaceJobMatch } from "@/lib/marketplace/provider-job-matching";
-import { advanceMarketplaceBooking, cancelMarketplaceBookingAsProvider, withdrawWorkOffer } from "@/app/work/actions";
+import { advanceMarketplaceBooking, withdrawWorkOffer } from "@/app/work/actions";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 

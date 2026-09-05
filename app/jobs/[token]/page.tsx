@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import MarketplaceHeader from "@/app/components/marketplace/MarketplaceHeader";
 import MobileBottomNav from "@/app/components/marketplace/MobileBottomNav";
 import { getJob, getMarketplaceJobDisplayTitle, getService } from "@/app/data/marketplace";
-import { cancelMarketplaceBooking, changeMarketplaceProvider, chooseMarketplaceQuote, confirmMarketplaceCompletion, reportMarketplaceCompletionIssue, startCustomerConversation, submitMarketplaceOffer, submitMarketplaceReview } from "@/app/jobs/actions";
+import { changeMarketplaceProvider, chooseMarketplaceQuote, confirmMarketplaceCompletion, reportMarketplaceCompletionIssue, startCustomerConversation, submitMarketplaceOffer, submitMarketplaceReview } from "@/app/jobs/actions";
 import { createMarketplaceCheckout } from "@/app/jobs/payment-actions";
 import { getOperationalMarketplaceProvider } from "@/lib/marketplace/provider-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";

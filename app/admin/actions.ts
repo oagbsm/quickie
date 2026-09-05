@@ -111,12 +111,15 @@ export async function issueMarketplaceBookingRefund(f: FormData) {
   const bookingId = value(f, "bookingId");
   const amountPence = parseGbpToPence(value(f, "amountGbp")) ?? (value(f, "amountPence") ? Number(value(f, "amountPence")) : null);
   const reason = value(f, "reason");
-  if (!bookingId || amountPence === null || !Number.isSafeInteger(amountPence) || amountPence <= 0 || !reason) redirect("/admin/marketplace-bookings?error=refund");
+  if (!bookingId || amountPence === null || !Number.isSafeInteger(amountPence) || amountPence <= 0 || !reason) {
+    console.error("[marketplace-refund]", { bookingId: bookingId || undefined, stage: "admin_input_validation", requestedRefundAmountPence: amountPence, error: { code: "refund_input_invalid", message: "Refund amount and reason are required" } });
+    redirect("/admin/marketplace-bookings?error=refund");
+  }
   try {
     const result = await issueMarketplaceRefund(bookingId, amountPence, reason, user.id);
     await createSupabaseAdminClient().from("admin_audit_log").insert({ admin_user_id: user.id, action: "marketplace_refund_requested", entity_type: "marketplace_booking", entity_id: bookingId, previous_value: null, new_value: { amount_pence: amountPence, reason, status: result.status, refund_id: result.refundId || null } });
   } catch (error) {
-    console.error("marketplace_refund_failed", { bookingId, reason: error instanceof Error ? error.message : "unknown" });
+    console.error("[marketplace-refund]", { bookingId, stage: "admin_action_failure", requestedRefundAmountPence: amountPence, error: { name: error instanceof Error ? error.name : "UnknownError", message: error instanceof Error ? error.message.slice(0, 240) : "unknown" } });
     redirect(`/admin/marketplace-bookings/${bookingId}?error=refund`);
   }
   revalidatePath(`/admin/marketplace-bookings/${bookingId}`);
