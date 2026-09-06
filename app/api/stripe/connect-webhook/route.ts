@@ -25,6 +25,7 @@ export async function POST(request: Request) {
   let event: Stripe.Event | null = null;
   try {
     const secret = getStripeConnectWebhookSecret();
+    console.info("[provider-stripe] connect webhook verification configured", { configuration: "STRIPE_CONNECT_WEBHOOK_SECRET", secretPresent: true });
     try {
       event = getStripe().webhooks.constructEvent(body, signature, secret);
     } catch {

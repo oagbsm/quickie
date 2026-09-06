@@ -8,6 +8,18 @@ export type ProviderStripeState = "not_started" | "onboarding" | "restricted" | 
 export type ProviderPaymentFlow = "platform_transfer" | "direct_charge";
 type ProviderAccount = Stripe.V2.Core.Account;
 const QUICKOLA_PROVIDER_COUNTRY = "GB";
+export const QUICKOLA_PROVIDER_STRIPE_CONFIGURATIONS = ["merchant", "recipient"] as const;
+
+function providerAccountConfiguration() {
+  return {
+    ...(QUICKOLA_PROVIDER_STRIPE_CONFIGURATIONS.includes("merchant") ? {
+      merchant: { capabilities: { card_payments: { requested: true } } },
+    } : {}),
+    ...(QUICKOLA_PROVIDER_STRIPE_CONFIGURATIONS.includes("recipient") ? {
+      recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } },
+    } : {}),
+  };
+}
 
 function recipientTransferCapability(account: ProviderAccount) {
   return account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers;
@@ -97,6 +109,16 @@ export function providerStripeState(account: ProviderAccount): ProviderStripeSta
   return assessProviderStripeAccount(account).status;
 }
 
+function accountHasAppliedConfiguration(account: ProviderAccount) {
+  const snapshot = account as StripeAccountReadinessSnapshot;
+  return Boolean(
+    snapshot.details_submitted ||
+    account.applied_configurations.length > 0 ||
+    account.configuration?.merchant?.applied ||
+    account.configuration?.recipient?.applied,
+  );
+}
+
 async function retrieveProviderAccount(accountId: string) {
   return getStripe().v2.core.accounts.retrieve(accountId, {
     include: ["configuration.merchant", "configuration.recipient", "requirements", "defaults", "identity"],
@@ -154,10 +176,10 @@ export async function createProviderPayoutLink(providerId: string, returnPath = 
   const { data: profile, error } = await admin.from("marketplace_providers").select("user_id,stripe_account_id").eq("user_id", providerId).maybeSingle();
   if (error || !profile) throw new Error("provider_not_found");
   const stripe = getStripe();
-  const providerEmail = await resolveProviderEmail(providerId);
   let accountId = profile.stripe_account_id;
   const existingAccountId = accountId;
   if (!accountId) {
+    const providerEmail = await resolveProviderEmail(providerId);
     console.info("[provider-stripe] creating Accounts v2 connected account", { providerId });
     const account = await stripe.v2.core.accounts.create(
       {
@@ -172,20 +194,7 @@ export async function createProviderPayoutLink(providerId: string, returnPath = 
             losses_collector: "stripe",
           },
         },
-        configuration: {
-          merchant: {
-            capabilities: {
-              card_payments: { requested: true },
-            },
-          },
-          recipient: {
-            capabilities: {
-              stripe_balance: {
-                stripe_transfers: { requested: true },
-              },
-            },
-          },
-        },
+        configuration: providerAccountConfiguration(),
         metadata: { quickola_provider_id: providerId },
         include: ["configuration.merchant", "configuration.recipient", "requirements", "defaults"],
       },
@@ -199,26 +208,34 @@ export async function createProviderPayoutLink(providerId: string, returnPath = 
     if (update.error) throw new Error("provider_stripe_account_save_failed");
   } else {
     console.info("[provider-stripe] existing account reused", { providerId, accountId });
-    // Existing recipient accounts are deliberately not upgraded or mutated.
-    // They remain eligible only for the historical platform-transfer flow.
-    const account = await retrieveProviderAccount(accountId);
-    await syncProviderStripeStatus(accountId, account);
   }
+
+  const account = await retrieveProviderAccount(accountId);
+  const assessment = await syncProviderStripeStatus(accountId, account);
+  if (assessment.payoutSetupCompleted && assessment.payoutsEnabled && assessment.actionableRequirementsCount === 0) {
+    console.info("[provider-stripe] payout setup already complete; no account link needed", { providerId, accountId });
+    return null;
+  }
+
+  const useCaseType = existingAccountId && accountHasAppliedConfiguration(account)
+    ? "account_update"
+    : "account_onboarding";
+  const configurations = [...QUICKOLA_PROVIDER_STRIPE_CONFIGURATIONS];
   const origin = getAppOrigin();
   try {
     const link = await stripe.v2.core.accountLinks.create({
       account: accountId,
       use_case: {
-        type: "account_onboarding",
-        account_onboarding: {
-          configurations: existingAccountId ? ["recipient"] : ["merchant", "recipient"],
+        type: useCaseType,
+        [useCaseType]: {
+          configurations,
           refresh_url: `${origin}${returnPath}?payouts=refresh`,
           return_url: `${origin}${returnPath}?payouts=return`,
           collection_options: { fields: "eventually_due", future_requirements: "include" },
-        },
+        } as Stripe.V2.Core.AccountLinkCreateParams.UseCase.AccountOnboarding | Stripe.V2.Core.AccountLinkCreateParams.UseCase.AccountUpdate,
       },
     });
-    console.info("[provider-stripe] onboarding link created", { providerId, accountId });
+    console.info("[provider-stripe] account link created", { providerId, accountId, useCaseType, configurations });
     return link.url;
   } catch (error) {
     console.error("[provider-stripe] account link failed", { providerId, accountId, ...describeStripeError(error) });

@@ -14,6 +14,7 @@ const workFeed = readFileSync(new URL("../app/work/page.tsx", import.meta.url), 
 const matching = readFileSync(new URL("../lib/marketplace/provider-job-matching.ts", import.meta.url), "utf8");
 const jobDetail = readFileSync(new URL("../app/work/jobs/[id]/page.tsx", import.meta.url), "utf8");
 const stripe = readFileSync(new URL("../lib/server/provider-stripe.ts", import.meta.url), "utf8");
+const connectWebhook = readFileSync(new URL("../app/api/stripe/connect-webhook/route.ts", import.meta.url), "utf8");
 
 test("provider onboarding separates Maidenhead browsing from quote readiness", () => {
   assert.match(onboarding, /Basic profile/);
@@ -107,6 +108,31 @@ test("Stripe refresh persists live assessment and leaves state unchanged on fail
   assert.match(stripe, /if \(result\.error\)/);
   assert.match(stripe, /throw new Error\("provider_stripe_status_sync_failed"\)/);
   assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /try \{\s*await refreshProviderPayoutStatus\(providerId\)/);
+});
+
+test("Accounts v2 payout setup uses one configuration set and the correct link mode", () => {
+  assert.match(stripe, /QUICKOLA_PROVIDER_STRIPE_CONFIGURATIONS = \["merchant", "recipient"\]/);
+  assert.match(stripe, /configuration: providerAccountConfiguration\(\)/);
+  assert.match(stripe, /const configurations = \[\.\.\.QUICKOLA_PROVIDER_STRIPE_CONFIGURATIONS\]/);
+  assert.match(stripe, /type: useCaseType/);
+  assert.match(stripe, /useCaseType = existingAccountId && accountHasAppliedConfiguration\(account\)/);
+  assert.match(stripe, /payoutSetupCompleted && assessment\.payoutsEnabled && assessment\.actionableRequirementsCount === 0/);
+  assert.match(stripe, /return null/);
+});
+
+test("payout setup failures are not reported as service-save failures", () => {
+  assert.match(actions, /errorParam = .*provider_stripe_status_sync_failed.*stripe_status/);
+  assert.match(onboarding, /error === "save"/);
+  assert.match(onboarding, /We couldn’t start payout setup/);
+  assert.match(profile, /We couldn’t start payout setup/);
+});
+
+test("Connect webhook verifies the exact raw request body with the dedicated secret", () => {
+  assert.match(connectWebhook, /const body = await request\.text\(\)/);
+  assert.match(connectWebhook, /constructEvent\(body, signature, secret\)/);
+  assert.match(connectWebhook, /parseEventNotification\(body, signature, secret\)/);
+  assert.match(connectWebhook, /configuration: "STRIPE_CONNECT_WEBHOOK_SECRET"/);
+  assert.doesNotMatch(connectWebhook, /JSON\.parse\(body\)/);
 });
 
 test("profile photo picker is only visible when needed or explicitly changed", () => {

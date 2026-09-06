@@ -58,7 +58,13 @@ export default function OnboardingForm({ services, initial, initialServices, rea
     finally { setPhotoSaving(false); }
   }
 
-  const errorMessage = error ? "We couldn’t save your services. Please try again." : "";
+  const errorMessage = error === "save"
+    ? "We couldn’t save your services. Please try again."
+    : error === "stripe" || error === "stripe_status"
+      ? "We couldn’t start payout setup. Please try again."
+      : error === "provider_email_missing"
+        ? "Verify your email before setting up payouts."
+        : "";
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-[#061b3f]">
       <header className="border-b border-[#e7ebef] bg-white"><div className="mx-auto flex min-h-16 max-w-5xl items-center justify-between gap-4 px-5 sm:px-8"><Link href="/work" className="text-xl font-black">Quickola</Link><ProviderHeaderNavigation pending /></div></header>

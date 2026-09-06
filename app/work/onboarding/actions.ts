@@ -132,11 +132,17 @@ export async function startProviderPayoutSetup(formData?: FormData) {
   const provider = await getMarketplaceProvider();
   if (!provider) redirect("/pro/login?next=/work/onboarding");
   const returnPath = formData?.get("returnPath") === "/work/profile" ? "/work/profile" : "/work/onboarding";
-  let payoutUrl: string;
+  let payoutUrl: string | null;
   try {
     payoutUrl = await createProviderPayoutLink(provider.providerId, returnPath);
   } catch (error) {
-    redirect(`${returnPath}?error=${error instanceof Error && error.message === "provider_email_missing" ? "provider_email_missing" : "stripe"}`);
+    const errorCode = error instanceof Error ? error.message : "";
+    const errorParam = errorCode === "provider_email_missing" ? "provider_email_missing" : errorCode === "provider_stripe_status_sync_failed" ? "stripe_status" : "stripe";
+    redirect(`${returnPath}?error=${errorParam}`);
+  }
+  if (!payoutUrl) {
+    revalidatePath(returnPath);
+    redirect(`${returnPath}?payouts=return`);
   }
   redirect(payoutUrl);
 }
