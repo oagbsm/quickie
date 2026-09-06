@@ -3,12 +3,17 @@ import type { ReactNode } from "react";
 
 type MobileBottomNavProps = { active?: "home" | "messages" | "my-jobs" | "account" };
 
-export default function MobileBottomNav({ active }: MobileBottomNavProps) {
-  return <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e7ebef] bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-1.5 shadow-[0_-2px_10px_rgba(6,27,63,0.04)] backdrop-blur" aria-label="Customer navigation"><div className="mx-auto grid max-w-md grid-cols-5 items-end"><MobileNavItem href="/home" label="Home" active={active === "home"}><HomeIcon /></MobileNavItem><MobileNavItem href="/my-jobs" label="My jobs" active={active === "my-jobs"}><JobsIcon /></MobileNavItem><MobileNavItem href="/#job-composer" label="Post" primary><PlusIcon /></MobileNavItem><MobileNavItem href="/messages" label="Messages" active={active === "messages"}><MessageIcon /></MobileNavItem><MobileNavItem href="/account" label="Account" active={active === "account"}><AccountIcon /></MobileNavItem></div></nav>;
+export default async function MobileBottomNav({ active }: MobileBottomNavProps) {
+  const { createSupabaseServerClient } = await import("@/lib/supabase/server");
+  const { getMarketplaceUnreadMessageCount } = await import("@/lib/marketplace/message-read-state");
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const unreadCount = user ? await getMarketplaceUnreadMessageCount(user.id, "customer") : 0;
+  return <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e7ebef] bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-1.5 shadow-[0_-2px_10px_rgba(6,27,63,0.04)] backdrop-blur" aria-label="Customer navigation"><div className="mx-auto grid max-w-md grid-cols-5 items-end"><MobileNavItem href="/home" label="Home" active={active === "home"}><HomeIcon /></MobileNavItem><MobileNavItem href="/my-jobs" label="My jobs" active={active === "my-jobs"}><JobsIcon /></MobileNavItem><MobileNavItem href="/#job-composer" label="Post" primary><PlusIcon /></MobileNavItem><MobileNavItem href="/messages" label="Messages" active={active === "messages"} unreadCount={unreadCount}><MessageIcon /></MobileNavItem><MobileNavItem href="/account" label="Account" active={active === "account"}><AccountIcon /></MobileNavItem></div></nav>;
 }
 
-function MobileNavItem({ href, label, active, primary, children }: { href: string; label: string; active?: boolean; primary?: boolean; children: ReactNode }) {
-  return <Link href={href} className={`flex min-h-16 flex-col items-center justify-end gap-1 pb-1.5 text-[11px] font-black ${active || primary ? "text-[#159548]" : "text-[#526078]"}`}><span className={`${primary ? "grid h-[30px] w-[30px] place-items-center rounded-full bg-[#23a955] text-white" : "h-7 w-7"}`}>{children}</span><span>{label}</span></Link>;
+function MobileNavItem({ href, label, active, primary, unreadCount = 0, children }: { href: string; label: string; active?: boolean; primary?: boolean; unreadCount?: number; children: ReactNode }) {
+  return <Link href={href} className={`flex min-h-16 flex-col items-center justify-end gap-1 pb-1.5 text-[11px] font-black ${active || primary ? "text-[#159548]" : "text-[#526078]"}`}><span className={`${primary ? "grid h-[30px] w-[30px] place-items-center rounded-full bg-[#23a955] text-white" : "relative h-7 w-7"}`}>{children}{unreadCount > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[#159548] px-1 text-center text-[10px] leading-4 text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>}</span><span>{label}</span></Link>;
 }
 
 function HomeIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10Z" /></svg>; }

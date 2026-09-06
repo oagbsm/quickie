@@ -13,7 +13,10 @@ export default function ProviderJobActions({ jobId, offer, error, canOperate = t
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageClientId] = useState(() => crypto.randomUUID());
   const isCurrent = !authoritativeState || ["CURRENT_SELECTED", "BOOKED_PROVIDER"].includes(authoritativeState);
-  const isAccepted = !!offer && isCurrent && ["selected", "accepted"].includes(offer.status);
+  const isPaidBooking = authoritativeState === "BOOKED_PROVIDER";
+  const isSelectedUnpaid = authoritativeState === "CURRENT_SELECTED";
+  const isAccepted = !!offer && isPaidBooking;
+  const offerLabel = isPaidBooking ? "Booking confirmed" : isSelectedUnpaid ? "Selected by customer · Payment pending" : offer?.status === "pending" || offer?.status === "submitted" ? "Quote sent" : offer?.status?.replaceAll("_", " ");
   const canQuote = !offer || (!isCurrent ? false : ["withdrawn", "declined", "expired"].includes(offer.status));
   const formattedAmount = amount ? new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 2 }).format(Number(amount)) : "";
 
@@ -21,7 +24,7 @@ export default function ProviderJobActions({ jobId, offer, error, canOperate = t
     {offer ? <div className="rounded-2xl bg-[#f5fbf6] p-5">
       <p className="text-xs font-black uppercase tracking-[.14em] text-[#167d3c]">Your quote</p>
       <p className="mt-2 text-2xl font-black">{offer.amount_pence == null ? "Quote submitted" : `£${(offer.amount_pence / 100).toFixed(2).replace(/\.00$/, "")}`}</p>
-      <p className="mt-1 font-bold text-[#526078]">{isCurrent ? offer.status.replaceAll("_", " ") : "Not selected"}</p>
+      <p className="mt-1 font-bold text-[#526078]">{isCurrent ? offerLabel : "Not selected"}</p>
       {!isAccepted && offer.status !== "withdrawn" && <p className="mt-3 text-sm leading-6 text-[#526078]">The customer can review your quote and message you here.</p>}
     </div> : <div>
       <h2 className="text-xl font-black">Ready to help?</h2>

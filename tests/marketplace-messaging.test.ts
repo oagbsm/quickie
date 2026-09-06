@@ -27,6 +27,8 @@ const providerPhoto = read("lib/marketplace/provider-photo.ts");
 const customerMessagesList = read("app/messages/CustomerMessagesList.tsx");
 const providerAvatar = read("app/components/marketplace/ProviderAvatar.tsx");
 const customerConversationPanel = read("app/messages/CustomerConversationPanel.tsx");
+const providerJobDetail = read("app/work/jobs/[id]/page.tsx");
+const unreadState = read("lib/marketplace/message-read-state.ts");
 const promotionActions = read("app/messages/actions.ts");
 const promoteButton = read("app/messages/PromoteContentButton.tsx");
 const messageBubble = read("app/components/marketplace/MarketplaceMessageBubble.tsx");
@@ -85,6 +87,29 @@ test("customer conversation composer fits narrow mobile widths without changing 
   assert.match(composer, /crypto\.randomUUID\(\)/);
   assert.match(upload, /clientMessageId/);
   assert.match(upload, /target_client_message_id/);
+  assert.match(composer, /setOptimistic/);
+  assert.match(composer, /setBody\(""\)/);
+  assert.match(composer, /status: "failed"/);
+  assert.match(composer, /Retry/);
+});
+
+test("unread badges use persisted read timestamps and exclude the viewer's messages", () => {
+  assert.match(unreadState, /customer_last_read_at/);
+  assert.match(unreadState, /provider_last_read_at/);
+  assert.match(unreadState, /message\.sender_id !== viewerId/);
+  assert.match(unreadState, /message\.created_at/);
+  assert.match(read("app/components/marketplace/MobileBottomNav.tsx"), /getMarketplaceUnreadMessageCount/);
+  assert.match(read("app/components/marketplace/ProviderHeader.tsx"), /getMarketplaceUnreadMessageCount/);
+  assert.match(read("app/components/marketplace/ProviderHeaderNavigation.tsx"), /unreadCount > 9 \? "9\+"/);
+});
+
+test("provider job details are compact, generic, and keep the canonical conversation", () => {
+  assert.match(providerJobDetail, /Important details/);
+  assert.match(providerJobDetail, /readableLabel\(key\)/);
+  assert.match(providerJobDetail, /flex flex-wrap gap-x-4/);
+  assert.match(providerJobDetail, /marketplace_conversations/);
+  assert.match(providerJobDetail, /Conversation/);
+  assert.doesNotMatch(providerJobDetail, /<dt className="text-xs font-black uppercase tracking-\[\.1em\] text-\[#8390a1\]">/);
 });
 
 test("message submissions are idempotent for repeated client keys, including attachments", () => {

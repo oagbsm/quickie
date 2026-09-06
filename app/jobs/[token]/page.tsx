@@ -23,7 +23,7 @@ function relativePostedAt(value: string) { const seconds = Math.max(0, Math.floo
 
 export default async function JobPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ offered?: string; selected?: string; error?: string; payment?: string }> }) {
   const { token } = await params;
-  const { offered, selected, error: offerError, payment } = await searchParams;
+  const { offered, error: offerError, payment } = await searchParams;
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin.from("marketplace_jobs").select("id,customer_id,service,service_subtype,pricing_answers,postcode,requested_timing,optional_note,budget_amount,status,created_at").eq("public_token", token).maybeSingle();
   if (error || !data) notFound();
@@ -34,6 +34,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
   const provider = user && !isOwner ? await getOperationalMarketplaceProvider() : null;
   const service = getService(data.service);
   const selectedJob = getJob(data.service, data.service_subtype);
+  const selected = false;
   const customerVisibleQuoteStatuses = [...ACTIVE_MARKETPLACE_OFFER_STATUSES, "declined"] as const;
   const { data: quoteRows } = await admin.from("marketplace_quotes").select("id,amount_pence,availability_text,message,status,provider_id,bidder_user_id,scheduled_date,arrival_window_start,arrival_window_end").eq("job_id", data.id).in("status", customerVisibleQuoteStatuses).order("created_at", { ascending: true });
   const quoteProviderIds = [...new Set((quoteRows || []).map(getMarketplaceQuoteProviderId).filter(Boolean))];
@@ -48,7 +49,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
     admin.from("marketplace_providers").select("user_id,display_name,business_name,profile_photo_url").in("user_id", [...new Set((conversations || []).map((item) => item.provider_id || item.bidder_user_id).filter(Boolean))]),
     admin.from("marketplace_messages").select("conversation_id,body,created_at").in("conversation_id", conversationIds).order("created_at", { ascending: false }),
   ]) : [{ data: [] }, { data: [] }];
-  const conversationSummaries = await Promise.all((conversations || []).map(async (conversation) => {
+  let conversationSummaries = await Promise.all((conversations || []).map(async (conversation) => {
     const providerId = conversation.provider_id || conversation.bidder_user_id;
     const profile = (conversationProfiles || []).find((item) => item.user_id === providerId);
     const latest = (conversationMessages || []).find((item) => item.conversation_id === conversation.id);
@@ -61,6 +62,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
   const liveBooking = (bookings || [])[0] || null;
   const resolvedState = resolveMarketplaceJobState({ job: data, booking: liveBooking, quotes: quotes || [] });
   const acceptedQuote = resolvedState.currentQuoteId ? quotes?.find((quote) => quote.id === resolvedState.currentQuoteId) : undefined;
+  if (acceptedQuote) conversationSummaries = [];
   const selectedBooking = liveBooking;
   if (payment === "success" && isOwner && selectedBooking?.id) {
     try {
@@ -129,7 +131,7 @@ function ProviderConversations({ conversations }: { conversations: Array<{ id: s
 function Offers({ quotes, token, jobId, conversationByProvider, selectedQuoteId, paymentLocked, completed }: { quotes: Array<{ id: string; amount_pence: number; availability_text?: string | null; message?: string | null; status: string; provider_id?: string | null; bidder_user_id?: string | null; marketplace_providers?: { display_name?: string; business_name?: string; profile_photo_url?: string | null } | { display_name?: string; business_name?: string; profile_photo_url?: string | null }[] | null }>; token: string; jobId: string; conversationByProvider: Map<string | null, string>; selectedQuoteId: string | null; paymentLocked: boolean; completed: boolean }) {
   return <section id="quotes" className="mt-8 border-t border-[#e9edf1] pt-7">
     <div className="flex items-baseline justify-between gap-4"><h2 className="text-2xl font-black">Quotes <span className="text-[#657089]">({quotes.length})</span></h2></div>
-    {!quotes.length ? <div className="mt-4 border-t border-[#edf0f3] pt-5"><p className="font-black">No quotes yet</p><p className="mt-1 text-sm text-[#657089]">Providers can ask questions before sending a quote.</p></div> : <div className="mt-4 grid gap-3">{quotes.map((quote) => {
+    {!quotes.filter((quote) => quote.id !== selectedQuoteId).length ? <div className="mt-4 border-t border-[#edf0f3] pt-5"><p className="font-black">{selectedQuoteId ? "Your selected provider is shown above." : "No quotes yet"}</p><p className="mt-1 text-sm text-[#657089]">{selectedQuoteId ? "You can view other offers here if you need to change provider before payment." : "Providers can ask questions before sending a quote."}</p></div> : <div className="mt-4 grid gap-3">{quotes.filter((quote) => quote.id !== selectedQuoteId).map((quote) => {
       const profile = Array.isArray(quote.marketplace_providers) ? quote.marketplace_providers[0] : quote.marketplace_providers;
       const providerId = getMarketplaceQuoteProviderId(quote);
       const name = profile?.business_name || profile?.display_name || "Local provider";
