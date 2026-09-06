@@ -93,11 +93,11 @@ test("partial-refund UI preserves paid booking semantics across surfaces", () =>
   assert.match(customerJobPage, /getMarketplacePaymentState\(acceptedBooking\) === "paid"/);
   assert.match(customerJobPage, /paymentLocked=\{getMarketplacePaymentState\(acceptedBooking\) === "paid"\}/);
   assert.match(customerJobPage, /isPartialMarketplaceRefund/);
-  assert.match(bookingAdminPage, /getMarketplaceBookingLifecycleState/);
+  assert.match(bookingAdminPage, /resolveMarketplacePaymentState/);
   assert.match(providerJobPage, /getMarketplacePaymentState\(providerBooking\) === "paid"/);
   assert.match(providerJobPage, /Issue being reviewed/);
-  assert.match(providerPaymentsPage, /Refunds have been reflected in the amounts shown above/);
-  assert.match(providerPaymentsPage, /earnings\.providerEarningsPence/);
+  assert.match(providerPaymentsPage, /Stripe fee/);
+  assert.match(providerPaymentsPage, /state\.providerNet/);
 });
 
 test("refunds never proceed after a successful provider transfer and indeterminate Stripe results stay pending", () => {

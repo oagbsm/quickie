@@ -92,12 +92,12 @@ test("admin marketplace views expose real job, provider, and payment state", () 
   assert.doesNotMatch(providers, /NEED MORE SUPPLY/);
   assert.match(providers, /View dossier/);
   assert.match(payments, /payment_status/);
-  assert.match(payments, /financialEvents/);
-  assert.match(payments, /No live Stripe calls are made here/);
-  assert.match(payments, /Customer payments/);
-  assert.match(payments, /Provider transfers/);
-  assert.match(payments, /marketplace_refunds/);
-  assert.match(payments, /read-only/);
+  assert.match(payments, /resolveMarketplacePaymentState/);
+  assert.match(payments, /Customer paid/);
+  assert.match(payments, /Quickola fee/);
+  assert.match(payments, /Stripe fee/);
+  assert.match(payments, /Provider net/);
+  assert.match(payments, /Direct charge/);
 });
 
 test("admin sidebar uses the calmer grouped navigation and coherent icon set", () => {
@@ -134,7 +134,7 @@ test("marketplace compatibility destinations exist", () => {
   assert.match(read("app/admin/(portal)/support/page.tsx"), /messages\/page/);
   assert.match(read("app/admin/(portal)/audit/page.tsx"), /activity\/page/);
   assert.match(read("app/admin/(portal)/marketplace-bookings/page.tsx"), /marketplace_bookings/);
-  assert.match(read("app/admin/(portal)/marketplace-bookings/[id]/page.tsx"), /Offer accepted \/ booking created/);
+  assert.match(read("app/admin/(portal)/marketplace-bookings/[id]/page.tsx"), /Technical payment details/);
   assert.match(read("app/admin/(portal)/providers/[id]/page.tsx"), /Operational eligibility/);
 });
 

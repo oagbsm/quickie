@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { bookingFinancialBreakdown, bookingFinancialStatus, financialEvents, financialSummary } from "../lib/marketplace/admin-finance.ts";
+import { resolveMarketplacePaymentState } from "../lib/marketplace/payment-state.ts";
 
 const booking = (overrides: Record<string, unknown> = {}) => ({
   id: "booking-1", job_id: "job-1", amount_pence: 26600, refunded_amount_pence: 5000,
@@ -55,4 +56,19 @@ test("financial mismatch is read-only and detects impossible transfer/refund rel
   assert.equal(bookingFinancialStatus(invalid, []), "Financial mismatch");
   const invalidRefund = booking({ refunded_amount_pence: 30000 });
   assert.equal(bookingFinancialStatus(invalidRefund, []), "Financial mismatch");
+});
+
+test("payment state resolves a direct charge from its persisted allocation", () => {
+  const state = resolveMarketplacePaymentState(
+    { amount_pence: 10000, payment_status: "paid", status: "booked", payment_flow: "direct_charge" },
+    { gross_amount_pence: 10000, quickola_fee_pence: 1000, stripe_fee_pence: 335, provider_net_pence: 8665, payout_status: "pending" },
+  );
+  assert.deepEqual(state, { flow: "direct_charge", customerPaid: 10000, quickolaFee: 1000, stripeFee: 335, providerNet: 8665, paymentLabel: "Customer paid", payoutLabel: "Awaiting completion" });
+});
+
+test("payment state does not invent a Stripe fee for platform transfers", () => {
+  const state = resolveMarketplacePaymentState({ amount_pence: 30000, payment_status: "paid", status: "completed", payment_flow: "platform_transfer", provider_transfer_status: "paid" });
+  assert.equal(state.stripeFee, null);
+  assert.equal(state.providerNet, 27000);
+  assert.equal(state.payoutLabel, "Paid out");
 });
