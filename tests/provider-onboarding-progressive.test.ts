@@ -128,7 +128,8 @@ test("Accounts v2 payout setup uses one configuration set and the correct link m
   assert.match(stripe, /configuration: providerAccountConfiguration\(\)/);
   assert.match(stripe, /const configurations = \[\.\.\.QUICKOLA_PROVIDER_STRIPE_CONFIGURATIONS\]/);
   assert.match(stripe, /type: useCaseType/);
-  assert.match(stripe, /useCaseType = existingAccountId && accountHasAppliedConfiguration\(account\)/);
+  assert.match(stripe, /const useCaseType = "account_onboarding"/);
+  assert.doesNotMatch(stripe, /account_update/);
   assert.match(stripe, /payoutSetupCompleted && assessment\.payoutsEnabled && assessment\.actionableRequirementsCount === 0/);
   assert.match(stripe, /return null/);
 });

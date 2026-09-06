@@ -15,8 +15,16 @@ async function customerMessageContext(messageId: string) {
   const { data: message } = await admin.from("marketplace_messages").select("id,conversation_id,sender_id,body").eq("id", messageId).maybeSingle();
   const { data: conversation } = message ? await admin.from("marketplace_conversations").select("id,job_id,customer_id").eq("id", message.conversation_id).maybeSingle() : { data: null };
   if (!customer || !message || !conversation || conversation.customer_id !== customer.id || message.sender_id !== user.id) return null;
-  const { data: job } = await admin.from("marketplace_jobs").select("id,public_token,optional_note").eq("id", conversation.job_id).eq("customer_id", customer.id).maybeSingle();
-  return job ? { admin, message, conversation, job } : null;
+  const [{ data: job }, { data: booking }, { data: selectedQuote }] = await Promise.all([
+    admin.from("marketplace_jobs").select("id,public_token,optional_note,status").eq("id", conversation.job_id).eq("customer_id", customer.id).maybeSingle(),
+    admin.from("marketplace_bookings").select("id,status,payment_status").eq("job_id", conversation.job_id).maybeSingle(),
+    admin.from("marketplace_quotes").select("id").eq("job_id", conversation.job_id).in("status", ["accepted", "selected"]).maybeSingle(),
+  ]);
+  if (!job) return null;
+  if (booking || selectedQuote || !["posted", "finding_provider", "provider_available"].includes(job.status)) {
+    throw new Error("This job can no longer be changed after a provider has been selected.");
+  }
+  return { admin, message, conversation, job };
 }
 
 function revalidateJob(jobId: string, token: string) {

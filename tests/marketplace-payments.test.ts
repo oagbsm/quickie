@@ -132,7 +132,7 @@ test("provider transfer is gated by persisted paid completion and stored provide
 });
 
 test("completion and issue actions preserve authorization boundaries", () => {
-  assert.match(customerActions, /rpc\("confirm_marketplace_completion_with_review"/);
+  assert.match(customerActions, /rpc\("confirm_marketplace_completion"/);
   assert.match(customerActions, /transferMarketplaceProviderFunds\(bookingId\)/);
   assert.match(providerActions, /rpc\("update_marketplace_booking_status"/);
   assert.match(migration, /current_booking\.payment_status <> 'paid'/);

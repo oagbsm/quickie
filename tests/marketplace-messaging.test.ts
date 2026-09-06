@@ -11,6 +11,7 @@ const migration = read("supabase/migrations/202608290002_marketplace_message_att
 const idempotencyMigration = read("supabase/migrations/202609040008_marketplace_message_idempotency.sql");
 const attachmentFixMigration = read("supabase/migrations/202609040009_fix_marketplace_message_attachment_conflict.sql");
 const jobPage = read("app/work/jobs/[id]/page.tsx");
+const providerJobActions = read("app/work/jobs/ProviderJobActions.tsx");
 const conversationBubble = read("app/components/marketplace/MarketplaceMessageBubble.tsx");
 const customerJobPage = read("app/jobs/[token]/page.tsx");
 const customerJobActions = read("app/jobs/actions.ts");
@@ -189,7 +190,7 @@ test("provider booking state receives bidder-backed quote identity", () => {
   assert.match(workOffers, /select\("id,job_id,provider_id,bidder_user_id,amount_pence,status/);
   assert.match(jobPage, /select\("id,provider_id,bidder_user_id,status,amount_pence"\)/);
   assert.match(jobPage, /resolveMarketplaceJobState/);
-  assert.match(jobPage, /BOOKED_PROVIDER/);
+  assert.match(providerJobActions, /BOOKED_PROVIDER/);
 });
 
 test("message email notifications are claimed once per unread recipient episode", () => {

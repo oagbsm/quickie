@@ -71,7 +71,7 @@ export default async function WorkJobPage({ params, searchParams }: { params: Pr
   const answerDetails = answerRows(job.pricing_answers);
   const resolved = resolveMarketplaceJobState({ job, booking, quotes: ownOffer ? [ownOffer] : [], viewerProviderId: provider.providerId });
   const providerBooking = resolved.currentProviderId === provider.providerId && getMarketplacePaymentState(booking) === "paid" ? booking : null;
-  const accepted = ownOffer && ["CURRENT_SELECTED", "BOOKED_PROVIDER"].includes(resolved.quoteState(ownOffer, provider.providerId));
+  const accepted = Boolean(ownOffer);
   const { data: activeDispute } = providerBooking ? await admin.from("marketplace_disputes").select("id").eq("booking_id", providerBooking.id).in("status", ["open", "in_review"]).maybeSingle() : { data: null };
   const bookingLifecycle = providerBooking ? getMarketplaceBookingLifecycleState(providerBooking, Boolean(activeDispute)) : null;
   if (providerBooking && isPartialMarketplaceRefund(providerBooking)) providerBooking.payment_status = "partially_refunded";

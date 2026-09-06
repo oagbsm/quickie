@@ -10,6 +10,7 @@ const safetyMigration = fs.readFileSync("supabase/migrations/20260906080806_mark
 const cancellationMigration = fs.readFileSync("supabase/migrations/20260906080919_marketplace_pre_payment_cancel_without_booking.sql", "utf8");
 const reselectionMigration = fs.readFileSync("supabase/migrations/20260906083148_marketplace_pre_payment_quote_reselection_eligibility.sql", "utf8");
 const webhook = fs.readFileSync("app/api/stripe/webhook/route.ts", "utf8");
+const messageActions = fs.readFileSync("app/messages/actions.ts", "utf8");
 
 test("customer selection is separate from payment and keeps the selected quote visible", () => {
   assert.match(actions, /rpc\("accept_marketplace_offer"/);
@@ -50,6 +51,13 @@ test("pre-payment cancellation is locked, customer-authorized, and clears paymen
   assert.match(safetyMigration, /update public\.marketplace_jobs set status='cancelled'/);
   assert.match(webhook, /booking\.stripe_checkout_session_id !== session\.id/);
   assert.match(webhook, /stale_or_cancelled_session/);
+});
+
+test("conversation job promotion is rejected after selection or booking", () => {
+  assert.match(messageActions, /marketplace_bookings/);
+  assert.match(messageActions, /marketplace_quotes/);
+  assert.match(messageActions, /\["posted", "finding_provider", "provider_available"\]/);
+  assert.match(messageActions, /This job can no longer be changed after a provider has been selected/);
 });
 
 test("unpaid declined alternatives remain selectable only through eligible reselection", () => {

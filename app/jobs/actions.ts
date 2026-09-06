@@ -173,12 +173,6 @@ export async function confirmMarketplaceCompletion(formData: FormData) {
   if (await getCurrentAccountRole() !== "customer") redirect("/");
   const token = String(formData.get("token") || "");
   const bookingId = String(formData.get("bookingId") || "");
-  const rating = Number(formData.get("rating") || 0);
-  const review = String(formData.get("review") || "").trim().slice(0, 1000);
-  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-    logMarketplaceCompletionFailure({ stage: "input_validation", token, bookingId, error: { name: "ValidationError", message: "rating must be an integer from 1 to 5", code: "invalid_rating" } });
-    redirect(`/jobs/${token}?error=review`);
-  }
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !token || !bookingId) redirect(`/jobs/${token}`);
@@ -186,7 +180,7 @@ export async function confirmMarketplaceCompletion(formData: FormData) {
   const { data: bookingContext, error: bookingContextError } = await admin.from("marketplace_bookings").select("id,job_id,payment_flow").eq("id", bookingId).maybeSingle();
   if (bookingContextError) logMarketplaceCompletionFailure({ stage: "booking_context_lookup", token, bookingId, error: bookingContextError });
   const jobId = bookingContext?.job_id || null;
-  const { error } = await supabase.rpc("confirm_marketplace_completion_with_review", { target_booking: bookingId, review_rating: rating, review_body: review || null });
+  const { error } = await supabase.rpc("confirm_marketplace_completion", { target_booking: bookingId });
   if (error) {
     logMarketplaceCompletionFailure({ stage: "confirm_completion_rpc", token, jobId, bookingId, error });
     redirect(`/jobs/${token}?error=completion`);

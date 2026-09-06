@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { sendProviderJobMessage, submitWorkOffer } from "@/app/work/actions";
+import WithdrawOfferControl from "./WithdrawOfferControl";
 
 type Offer = { id: string; status: string; amount_pence: number | null } | null;
 
@@ -16,6 +17,7 @@ export default function ProviderJobActions({ jobId, offer, error, canOperate = t
   const isPaidBooking = authoritativeState === "BOOKED_PROVIDER";
   const isSelectedUnpaid = authoritativeState === "CURRENT_SELECTED";
   const isAccepted = !!offer && isPaidBooking;
+  const canWithdraw = Boolean(offer && ["pending", "submitted", "accepted", "selected"].includes(offer.status) && authoritativeState !== "BOOKED_PROVIDER" && ["CURRENT_SELECTED", "NOT_SELECTED"].includes(authoritativeState || "NOT_SELECTED"));
   const offerLabel = isPaidBooking ? "Booking confirmed" : isSelectedUnpaid ? "Selected by customer · Payment pending" : offer?.status === "pending" || offer?.status === "submitted" ? "Quote sent" : offer?.status?.replaceAll("_", " ");
   const canQuote = !offer || (!isCurrent ? false : ["withdrawn", "declined", "expired"].includes(offer.status));
   const formattedAmount = amount ? new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 2 }).format(Number(amount)) : "";
@@ -35,6 +37,7 @@ export default function ProviderJobActions({ jobId, offer, error, canOperate = t
     {canOperate && <div className="mt-5 flex flex-col gap-3 sm:flex-row">
       <button type="button" onClick={() => setPanel(panel === "question" ? null : "question")} aria-expanded={panel === "question"} className="min-h-12 rounded-xl border-2 border-[#167d3c] px-5 font-black text-[#167d3c]">{offer ? "Message customer" : "Ask a question"}</button>
       {canQuote && <button type="button" onClick={() => setPanel(panel === "quote" ? null : "quote")} aria-expanded={panel === "quote"} className="min-h-12 rounded-xl bg-[#23a955] px-5 font-black text-[#061b3f]">Send a quote</button>}
+      {canWithdraw && <WithdrawOfferControl jobId={jobId} />}
     </div>}
 
     {panel === "question" && <form action={sendProviderJobMessage} onSubmit={(event) => { if (sendingMessage) { event.preventDefault(); return; } setSendingMessage(true); }} className="mt-5 grid gap-3 rounded-2xl border border-[#dbe1ea] bg-[#fbfcfd] p-4 sm:p-5">

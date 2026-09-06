@@ -6,6 +6,7 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 const action = read("app/jobs/actions.ts");
 const providerAction = read("app/work/actions.ts");
 const customerPage = read("app/jobs/[token]/page.tsx");
+const completionActions = read("app/jobs/CompletionActions.tsx");
 const providerPage = read("app/work/jobs/[id]/page.tsx");
 const lifecycle = read("lib/marketplace/customer-job-state.ts");
 const migration = read("supabase/migrations/202609040004_marketplace_completion_review.sql");
@@ -17,22 +18,20 @@ test("provider completion uses the existing authoritative intermediate state", (
   assert.match(providerAction, /notifyCustomerCompletionRequest\(bookingId\)/);
 });
 
-test("customer confirmation requires a rating and uses one atomic RPC", () => {
-  assert.match(customerPage, /Was the work completed\?/);
-  assert.match(customerPage, /Confirm completion &amp; submit review/);
-  assert.match(customerPage, /name="rating" required/);
-  assert.match(action, /Number\(formData\.get\("rating"\)/);
-  assert.match(action, /confirm_marketplace_completion_with_review/);
+test("customer confirmation is independent from the optional review", () => {
+  assert.match(completionActions, /Confirm job completed/);
+  assert.match(completionActions, /Report a problem/);
+  assert.match(customerPage, /submitMarketplaceReview/);
+  assert.doesNotMatch(action, /Number\(formData\.get\("rating"\)/);
+  assert.match(action, /confirm_marketplace_completion/);
   assert.match(migration, /insert into public\.marketplace_reviews/);
   assert.match(migration, /set status = 'completed'/);
   assert.match(migration, /update public\.marketplace_jobs/);
-  assert.match(customerPage, /value=\{value\}>\{"★"\.repeat\(value\)\}/);
-  assert.match(customerPage, /Review <span[^>]*>\(optional\)/);
+  assert.match(customerPage, /Add a review \(optional\)/);
 });
 
 test("completion validation and safe diagnostics cover rejected submissions", () => {
-  assert.match(action, /rating < 1 \|\| rating > 5/);
-  assert.match(action, /stage: "input_validation"/);
+  assert.match(action, /stage: "confirm_completion_rpc"/);
   assert.match(action, /stage: "confirm_completion_rpc"/);
   assert.match(action, /\[marketplace-completion\]/);
   assert.match(action, /code: text\("code"\)/);
@@ -48,7 +47,7 @@ test("the persisted issue/hold state cannot present a completion form", () => {
 });
 
 test("completion persists before payout release and payout failure cannot undo it", () => {
-  const completionCall = action.indexOf('rpc("confirm_marketplace_completion_with_review"');
+  const completionCall = action.indexOf('rpc("confirm_marketplace_completion"');
   const payoutCall = action.indexOf("transferMarketplaceProviderFunds(bookingId)");
   assert.ok(completionCall >= 0);
   assert.ok(payoutCall > completionCall);

@@ -109,16 +109,6 @@ export function providerStripeState(account: ProviderAccount): ProviderStripeSta
   return assessProviderStripeAccount(account).status;
 }
 
-function accountHasAppliedConfiguration(account: ProviderAccount) {
-  const snapshot = account as StripeAccountReadinessSnapshot;
-  return Boolean(
-    snapshot.details_submitted ||
-    account.applied_configurations.length > 0 ||
-    account.configuration?.merchant?.applied ||
-    account.configuration?.recipient?.applied,
-  );
-}
-
 async function retrieveProviderAccount(accountId: string) {
   return getStripe().v2.core.accounts.retrieve(accountId, {
     include: ["configuration.merchant", "configuration.recipient", "requirements", "defaults", "identity"],
@@ -177,7 +167,6 @@ export async function createProviderPayoutLink(providerId: string, returnPath = 
   if (error || !profile) throw new Error("provider_not_found");
   const stripe = getStripe();
   let accountId = profile.stripe_account_id;
-  const existingAccountId = accountId;
   if (!accountId) {
     const providerEmail = await resolveProviderEmail(providerId);
     console.info("[provider-stripe] creating Accounts v2 connected account", { providerId });
@@ -217,9 +206,7 @@ export async function createProviderPayoutLink(providerId: string, returnPath = 
     return null;
   }
 
-  const useCaseType = existingAccountId && accountHasAppliedConfiguration(account)
-    ? "account_update"
-    : "account_onboarding";
+  const useCaseType = "account_onboarding" as const;
   const configurations = [...QUICKOLA_PROVIDER_STRIPE_CONFIGURATIONS];
   const origin = getAppOrigin();
   try {
@@ -232,7 +219,7 @@ export async function createProviderPayoutLink(providerId: string, returnPath = 
           refresh_url: `${origin}${returnPath}?payouts=refresh`,
           return_url: `${origin}${returnPath}?payouts=return`,
           collection_options: { fields: "eventually_due", future_requirements: "include" },
-        } as Stripe.V2.Core.AccountLinkCreateParams.UseCase.AccountOnboarding | Stripe.V2.Core.AccountLinkCreateParams.UseCase.AccountUpdate,
+        } as Stripe.V2.Core.AccountLinkCreateParams.UseCase.AccountOnboarding,
       },
     });
     console.info("[provider-stripe] account link created", { providerId, accountId, useCaseType, configurations });
