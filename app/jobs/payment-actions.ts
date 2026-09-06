@@ -36,6 +36,7 @@ export async function createMarketplaceCheckout(formData: FormData) {
   const amountPence = Number(quote.amount_pence);
   if (!Number.isInteger(amountPence) || amountPence <= 0) redirect(`/jobs/${token}?error=payment`);
   if (existingBooking && (["paid", "refunded", "refund_pending", "partially_refunded", "cancelled"].includes(existingBooking.payment_status || "") || ["completed", "cancelled"].includes(existingBooking.status || "") || existingBooking.completion_status === "completed" || existingBooking.payout_hold_status === "held")) redirect(returnTo);
+  if (existingBooking && ["completed", "cancelled"].includes(job.status || "")) redirect(returnTo);
   if (existingBooking) {
     const { data: activeDispute } = await admin.from("marketplace_disputes").select("id").eq("booking_id", existingBooking.id).in("status", ["open", "in_review", "resolved_customer"]).maybeSingle();
     if (activeDispute) redirect(returnTo);
@@ -44,15 +45,13 @@ export async function createMarketplaceCheckout(formData: FormData) {
   const providerId = quote.provider_id || quote.bidder_user_id;
   const { data: providerStripe } = providerId ? await admin.from("marketplace_providers").select("stripe_account_id,stripe_status,marketplace_active").eq("user_id", providerId).maybeSingle() : { data: null };
   let selectedPaymentFlow: ProviderPaymentFlow = existingBooking?.payment_flow === "direct_charge" ? "direct_charge" : "platform_transfer";
-  if (!existingBooking || existingBooking.quote_id !== quote.id) {
-    if (providerStripe?.stripe_account_id) {
-      try {
-        const { assessment } = await getProviderDirectChargeAssessment(providerStripe.stripe_account_id);
-        selectedPaymentFlow = assessment.directChargeReady ? "direct_charge" : "platform_transfer";
-      } catch (error) {
-        console.error("[marketplace-payment] direct-charge eligibility lookup failed", { bookingId: existingBooking?.id, providerId, reason: error instanceof Error ? error.message : "unknown" });
-        if (providerStripe.stripe_status === "ready" && providerStripe.marketplace_active) redirect(`${returnTo}?error=payment_setup`);
-      }
+  if (providerStripe?.stripe_account_id) {
+    try {
+      const { assessment } = await getProviderDirectChargeAssessment(providerStripe.stripe_account_id);
+      selectedPaymentFlow = assessment.directChargeReady ? "direct_charge" : "platform_transfer";
+    } catch (error) {
+      console.error("[marketplace-payment] direct-charge eligibility lookup failed", { bookingId: existingBooking?.id, providerId, reason: error instanceof Error ? error.message : "unknown" });
+      if (providerStripe.stripe_status === "ready" && providerStripe.marketplace_active) redirect(`${returnTo}?error=payment_setup`);
     }
   }
   const { data: conversation } = providerId
@@ -84,16 +83,40 @@ export async function createMarketplaceCheckout(formData: FormData) {
   }
   if (!booking) { redirect(`${returnTo}?error=payment`); return; }
 
+  const paymentFlowChanged = booking.payment_flow !== selectedPaymentFlow;
+  const nextCheckoutAttemptId = paymentFlowChanged ? crypto.randomUUID() : booking.stripe_checkout_attempt_id;
+  if (paymentFlowChanged && booking.stripe_checkout_session_id) {
+    try {
+      const stripe = getStripe();
+      const existingSession = await stripe.checkout.sessions.retrieve(
+        booking.stripe_checkout_session_id,
+        undefined,
+        booking.payment_flow === "direct_charge" && booking.stripe_connected_account_id
+          ? { stripeAccount: booking.stripe_connected_account_id }
+          : undefined,
+      );
+      if (existingSession.status === "complete" || existingSession.payment_status === "paid") {
+        redirect(`${returnTo}?payment=success`);
+      }
+      if (existingSession.status === "open") await stripe.checkout.sessions.expire(existingSession.id, undefined, booking.payment_flow === "direct_charge" && booking.stripe_connected_account_id ? { stripeAccount: booking.stripe_connected_account_id } : undefined);
+    } catch (error) {
+      if (isRedirectError(error)) throw error;
+      console.error("[marketplace-payment] stale checkout invalidation failed", { bookingId: booking.id, reason: error instanceof Error ? error.message : "unknown" });
+      redirect(`${returnTo}?error=payment_setup`);
+    }
+  }
+
   const persistedPaymentContext = await admin.from("marketplace_bookings").update({
     payment_flow: selectedPaymentFlow,
     stripe_connected_account_id: selectedPaymentFlow === "direct_charge" ? providerStripe?.stripe_account_id || null : null,
     amount_pence: amountPence,
     currency: "gbp",
     platform_fee_pence: platformFeePence,
+    ...(paymentFlowChanged ? { stripe_checkout_session_id: null, stripe_checkout_attempt_id: nextCheckoutAttemptId } : {}),
   }).eq("id", booking.id).eq("quote_id", quote.id).eq("payment_status", "pending_payment").select("id").maybeSingle();
   if (persistedPaymentContext.error || !persistedPaymentContext.data) redirect(`${returnTo}?error=payment`);
   if (selectedPaymentFlow === "direct_charge" && !providerStripe?.stripe_account_id) redirect(`${returnTo}?error=payment_setup`);
-  booking = { ...booking, payment_flow: selectedPaymentFlow, stripe_connected_account_id: selectedPaymentFlow === "direct_charge" ? providerStripe?.stripe_account_id || null : null };
+  booking = { ...booking, payment_flow: selectedPaymentFlow, stripe_connected_account_id: selectedPaymentFlow === "direct_charge" ? providerStripe?.stripe_account_id || null : null, stripe_checkout_session_id: paymentFlowChanged ? null : booking.stripe_checkout_session_id, stripe_checkout_attempt_id: nextCheckoutAttemptId };
 
   if (!booking.stripe_checkout_session_id && !booking.stripe_checkout_attempt_id) {
     const attemptId = crypto.randomUUID();

@@ -94,6 +94,20 @@ test("direct-charge eligibility lookup errors block ready active providers", () 
   assert.match(checkout, /error=payment_setup/);
 });
 
+test("every unpaid booking re-evaluates payment flow before checkout", () => {
+  assert.match(checkout, /if \(providerStripe\?\.stripe_account_id\) \{/);
+  assert.match(checkout, /selectedPaymentFlow = assessment\.directChargeReady \? "direct_charge" : "platform_transfer"/);
+  assert.match(checkout, /const paymentFlowChanged = booking\.payment_flow !== selectedPaymentFlow/);
+  assert.match(checkout, /stripe_checkout_session_id: null, stripe_checkout_attempt_id: nextCheckoutAttemptId/);
+});
+
+test("changing an unpaid flow invalidates an old checkout before switching architecture", () => {
+  assert.match(checkout, /if \(paymentFlowChanged && booking\.stripe_checkout_session_id\) \{/);
+  assert.match(checkout, /existingSession\.status === "complete" \|\| existingSession\.payment_status === "paid"/);
+  assert.match(checkout, /checkout\.sessions\.expire\(existingSession\.id/);
+  assert.match(checkout, /job\.status \|\| ""/);
+});
+
 test("provider transfer is gated by persisted paid completion and stored provider account", () => {
   assert.match(transfers, /payment_status === "paid"/);
   assert.match(transfers, /completion_status !== "completed"/);
