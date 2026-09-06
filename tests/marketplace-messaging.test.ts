@@ -199,7 +199,7 @@ test("customer provider avatars resolve private storage paths and keep a safe fa
 test("selected-provider conversations remain writable while losing conversations are server-closed", () => {
   assert.match(conversationHelpers, /isMarketplaceConversationReadOnly/);
   assert.match(conversationHelpers, /from\("marketplace_bookings"\)\.select\("provider_id,quote_id,payment_status,status"\)/);
-  assert.match(conversationHelpers, /let winningProvider = booking\?\.provider_id \|\| null/);
+  assert.match(conversationHelpers, /let selectedProvider = booking\?\.provider_id \|\| null/);
   assert.match(conversationHelpers, /if \(!booking\)/);
   assert.match(conversationHelpers, /in\("status", \["accepted", "selected"\]\)/);
   assert.match(closedConversationMigration, /conversation_closed/);
@@ -215,10 +215,10 @@ test("selected-provider conversations remain writable while losing conversations
 });
 
 test("conversation CTA and closed state use the same selected-provider relationship", () => {
-  assert.match(customerConversationPanel, /isAccepted && bookingState === "provider_selected_unpaid"/);
+  assert.match(customerConversationPanel, /const canPay = Boolean\(currentQuote && isAccepted/);
   assert.match(customerConversationPanel, /readOnly=\{conversationReadOnly\}/);
-  assert.match(conversation, /isAccepted && bookingState === "provider_selected_unpaid"/);
-  assert.match(conversationHelpers, /conversationProvider !== winningProvider/);
+  assert.match(conversation, /const canPay = Boolean\(isCustomer && currentQuote && isAccepted/);
+  assert.match(conversationHelpers, /state\.conversationProvider && state\.selectedProvider && state\.conversationProvider !== state\.selectedProvider/);
   assert.doesNotMatch(conversationHelpers, /cleaner_profiles/);
 });
 

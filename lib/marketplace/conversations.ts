@@ -54,16 +54,22 @@ export async function getOrCreateMarketplaceConversation({
 }
 
 export async function isMarketplaceConversationReadOnly(admin: ReturnType<typeof createSupabaseAdminClient>, conversationId: string) {
+  const state = await getMarketplaceConversationState(admin, conversationId);
+  return Boolean(state.conversationProvider && state.selectedProvider && state.conversationProvider !== state.selectedProvider);
+}
+
+export async function getMarketplaceConversationState(admin: ReturnType<typeof createSupabaseAdminClient>, conversationId: string) {
   const { data: conversation } = await admin.from("marketplace_conversations").select("id,job_id,provider_id,bidder_user_id").eq("id", conversationId).maybeSingle();
-  if (!conversation) return false;
+  if (!conversation) return { conversationProvider: null, selectedProvider: null, selectedQuoteId: null, booking: null };
   const { data: booking } = await admin.from("marketplace_bookings").select("provider_id,quote_id,payment_status,status").eq("job_id", conversation.job_id).maybeSingle();
-  let winningProvider = booking?.provider_id || null;
+  let selectedProvider = booking?.provider_id || null;
+  const selectedQuoteId = booking?.quote_id || null;
   if (!booking) {
     const { data: accepted } = await admin.from("marketplace_quotes").select("provider_id,bidder_user_id").eq("job_id", conversation.job_id).in("status", ["accepted", "selected"]).limit(1).maybeSingle();
-    winningProvider = accepted?.provider_id || accepted?.bidder_user_id || null;
+    selectedProvider = accepted?.provider_id || accepted?.bidder_user_id || null;
   }
   const conversationProvider = conversation.provider_id || conversation.bidder_user_id;
-  return Boolean(conversationProvider && winningProvider && conversationProvider !== winningProvider);
+  return { conversationProvider, selectedProvider, selectedQuoteId, booking };
 }
 
 function queryFailure(operation: string, error: { code?: string; message?: string; details?: string; hint?: string }) {
