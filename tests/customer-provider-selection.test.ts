@@ -8,6 +8,7 @@ const payments = fs.readFileSync("app/jobs/payment-actions.ts", "utf8");
 const migration = fs.readFileSync("supabase/migrations/202609040010_marketplace_pre_payment_provider_reselection.sql", "utf8");
 const safetyMigration = fs.readFileSync("supabase/migrations/20260906080806_marketplace_pre_payment_switch_and_cancel_safety.sql", "utf8");
 const cancellationMigration = fs.readFileSync("supabase/migrations/20260906080919_marketplace_pre_payment_cancel_without_booking.sql", "utf8");
+const reselectionMigration = fs.readFileSync("supabase/migrations/20260906083148_marketplace_pre_payment_quote_reselection_eligibility.sql", "utf8");
 const webhook = fs.readFileSync("app/api/stripe/webhook/route.ts", "utf8");
 
 test("customer selection is separate from payment and keeps the selected quote visible", () => {
@@ -32,7 +33,7 @@ test("reselection uses one locked unpaid booking and clears stale checkout ident
 
 test("customer can see declined quote history without reopening paid changes", () => {
   assert.match(page, /customerVisibleQuoteStatuses = \[\.\.\.ACTIVE_MARKETPLACE_OFFER_STATUSES, "declined"\]/);
-  assert.match(page, /unavailable = \["declined", "withdrawn", "expired"\]/);
+  assert.match(page, /unavailable = \["withdrawn", "expired"\]/);
   assert.match(page, /paymentLocked/);
   assert.match(page, /Payment required/);
 });
@@ -49,4 +50,14 @@ test("pre-payment cancellation is locked, customer-authorized, and clears paymen
   assert.match(safetyMigration, /update public\.marketplace_jobs set status='cancelled'/);
   assert.match(webhook, /booking\.stripe_checkout_session_id !== session\.id/);
   assert.match(webhook, /stale_or_cancelled_session/);
+});
+
+test("unpaid declined alternatives remain selectable only through eligible reselection", () => {
+  assert.match(page, /quote\.status === "declined"/);
+  assert.match(page, /paymentLocked \|\| !selectedQuoteId/);
+  assert.match(reselectionMigration, /q\.status in \('pending','submitted','accepted','selected','declined'\)/);
+  assert.match(reselectionMigration, /p\.provider_status='approved'/);
+  assert.match(reselectionMigration, /p\.stripe_status='ready'/);
+  assert.match(reselectionMigration, /p\.marketplace_active and p\.available_now/);
+  assert.match(reselectionMigration, /if current_booking\.payment_status='paid'/);
 });

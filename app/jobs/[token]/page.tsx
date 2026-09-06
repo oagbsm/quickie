@@ -133,7 +133,7 @@ function Offers({ quotes, token, jobId, conversationByProvider, selectedQuoteId,
       const name = profile?.business_name || profile?.display_name || "Local provider";
       const conversationId = providerId ? conversationByProvider.get(providerId) : undefined;
       const selected = quote.id === selectedQuoteId;
-      const unavailable = ["declined", "withdrawn", "expired"].includes(quote.status);
+      const unavailable = ["withdrawn", "expired"].includes(quote.status) || (quote.status === "declined" && (paymentLocked || !selectedQuoteId));
       return <article key={quote.id} className="rounded-2xl border border-[#e7ebef] bg-white p-5 shadow-[0_2px_12px_rgba(6,27,63,0.03)]">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">

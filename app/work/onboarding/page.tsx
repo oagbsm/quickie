@@ -17,7 +17,6 @@ export default async function ProviderOnboardingPage({ searchParams }: { searchP
   if (!provider) redirect("/pro/login?next=/work/onboarding");
   if (provider.providerStatus === "approved" && query.edit === "1") redirect("/work/profile?edit=1");
   const providerId = provider.providerId;
-  try { await recordProviderLegalEvent(providerId, "privacy_notice", CURRENT_PROVIDER_PRIVACY_NOTICE_VERSION, "presented"); } catch (error) { console.error("[provider-legal] privacy notice presentation log failed", { providerId, message: error instanceof Error ? error.message : "unknown" }); }
   if (["return", "refresh", "checked"].includes(query.payouts || "")) {
     try {
       await refreshProviderPayoutStatus(providerId);
@@ -47,6 +46,9 @@ export default async function ProviderOnboardingPage({ searchParams }: { searchP
   const requestedStep = Math.min(3, Math.max(1, Number(query.step) || 1));
   const returningFromPayout = ["return", "refresh", "checked"].includes(query.payouts || "");
   const initialStep = returningFromPayout ? 3 : query.step ? requestedStep : persistedStep;
+  if (initialStep === 3) {
+    try { await recordProviderLegalEvent(providerId, "privacy_notice", CURRENT_PROVIDER_PRIVACY_NOTICE_VERSION, "presented"); } catch (error) { console.error("[provider-legal] privacy notice presentation log failed", { providerId, message: error instanceof Error ? error.message : "unknown" }); }
+  }
   const displayError = query.error === "save" && (servicesComplete || returningFromPayout) ? undefined : query.error;
   return <OnboardingForm services={marketplaceServices.map((service) => ({ slug: service.slug, name: service.name, jobs: service.jobs.filter((job) => job.active).map((job) => ({ slug: job.slug, name: job.name })) }))} initial={initial} initialServices={initialServices} readyToSubmit={profileComplete} basicProfileComplete={basicProfileComplete} serviceAreaComplete={Boolean(areasCount)} photoUrl={photoUrl} status={provider.providerStatus} stripeStatus={provider.stripeStatus} emailVerified={Boolean(provider.emailConfirmedAt)} actionReason={String(provider.profile.action_required_reason || "") || null} error={displayError} saved={query.saved} initialStep={initialStep} />;
 }
