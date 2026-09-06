@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { describeStripeError, getStripe, getStripeConnectWebhookSecret } from "@/lib/server/marketplace-payments";
 import { syncProviderStripeStatus } from "@/lib/server/provider-stripe";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { processDirectChargeWebhookEvent } from "@/lib/server/marketplace-direct-charge-webhooks";
 
 const HANDLED_EVENTS = new Set([
   "v2.core.account[configuration.recipient].updated",
@@ -21,7 +23,15 @@ export async function POST(request: Request) {
   let notification: ReturnType<ReturnType<typeof getStripe>["parseEventNotification"]>;
   try {
     const secret = getStripeConnectWebhookSecret();
-    notification = getStripe().parseEventNotification(body, signature, secret);
+    try {
+      const event = getStripe().webhooks.constructEvent(body, signature, secret);
+      if (["checkout.session.completed", "payment_intent.succeeded", "charge.refunded", "charge.dispute.created", "application_fee.created"].includes(event.type)) {
+        await processDirectChargeWebhookEvent(createSupabaseAdminClient(), event);
+      }
+      return NextResponse.json({ received: true });
+    } catch {
+      notification = getStripe().parseEventNotification(body, signature, secret);
+    }
   } catch (error) {
     const configurationError = error instanceof Error && error.message === "stripe_connect_webhook_not_configured";
     console.error("[provider-stripe] connect webhook rejected", {

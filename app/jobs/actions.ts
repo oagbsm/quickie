@@ -9,6 +9,7 @@ import { getOperationalMarketplaceProvider } from "@/lib/marketplace/provider-ac
 import { getOrCreateMarketplaceConversation } from "@/lib/marketplace/conversations";
 import { getCurrentAccountRole } from "@/lib/auth/account-role";
 import { transferMarketplaceProviderFunds } from "@/lib/server/marketplace-transfers";
+import { payoutDirectChargeBooking } from "@/lib/server/marketplace-direct-payouts";
 import { issueMarketplaceRefund } from "@/lib/server/marketplace-refunds";
 
 type MarketplaceCompletionStage = "input_validation" | "booking_context_lookup" | "confirm_completion_rpc" | "provider_payout_release" | "completion_notification";
@@ -182,7 +183,7 @@ export async function confirmMarketplaceCompletion(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !token || !bookingId) redirect(`/jobs/${token}`);
   const admin = createSupabaseAdminClient();
-  const { data: bookingContext, error: bookingContextError } = await admin.from("marketplace_bookings").select("id,job_id").eq("id", bookingId).maybeSingle();
+  const { data: bookingContext, error: bookingContextError } = await admin.from("marketplace_bookings").select("id,job_id,payment_flow").eq("id", bookingId).maybeSingle();
   if (bookingContextError) logMarketplaceCompletionFailure({ stage: "booking_context_lookup", token, bookingId, error: bookingContextError });
   const jobId = bookingContext?.job_id || null;
   const { error } = await supabase.rpc("confirm_marketplace_completion_with_review", { target_booking: bookingId, review_rating: rating, review_body: review || null });
@@ -192,7 +193,9 @@ export async function confirmMarketplaceCompletion(formData: FormData) {
   }
   let transferStatus: "paid" | "blocked" | "failed" | "already_processing" = "failed";
   try {
-    transferStatus = (await transferMarketplaceProviderFunds(bookingId)).status;
+    transferStatus = bookingContext?.payment_flow === "direct_charge"
+      ? (await payoutDirectChargeBooking(bookingId)).status
+      : (await transferMarketplaceProviderFunds(bookingId)).status;
   } catch (transferError) {
     logMarketplaceCompletionFailure({ stage: "provider_payout_release", token, jobId, bookingId, error: transferError });
   }

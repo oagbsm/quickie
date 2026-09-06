@@ -41,12 +41,13 @@ function logSupabaseTransferLookupFailure(bookingId: string, stage: string, erro
  */
 export async function transferMarketplaceProviderFunds(bookingId: string): Promise<MarketplaceTransferResult> {
   const admin = createSupabaseAdminClient();
-  const { data: booking, error: lookupError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,provider_id,amount_pence,currency,payment_status,status,completion_status,provider_transfer_status,provider_transfer_amount_pence,provider_transfer_attempt,stripe_transfer_id,payout_hold_status,refunded_amount_pence,provider_transfer_error").eq("id", bookingId).maybeSingle();
+  const { data: booking, error: lookupError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,provider_id,amount_pence,currency,payment_flow,payment_status,status,completion_status,provider_transfer_status,provider_transfer_amount_pence,provider_transfer_attempt,stripe_transfer_id,payout_hold_status,refunded_amount_pence,provider_transfer_error").eq("id", bookingId).maybeSingle();
   if (lookupError) {
     logSupabaseTransferLookupFailure(bookingId, "booking_lookup", lookupError);
     throw new Error("booking_transfer_lookup_failed");
   }
   if (!booking) throw new Error("booking_not_found");
+  if (booking.payment_flow === "direct_charge") return { status: "blocked" };
   if (booking.provider_transfer_status === "paid" || booking.stripe_transfer_id) return { status: "paid", transferId: booking.stripe_transfer_id || undefined };
   if (booking.provider_transfer_status === "processing") return { status: "already_processing" };
 

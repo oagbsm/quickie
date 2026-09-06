@@ -29,7 +29,7 @@ function logRefund(input: { bookingId: string; stage: string; requestedRefundAmo
 
 export async function issueMarketplaceRefund(bookingId: string, amountPence: number, reason: string, adminUserId: string): Promise<MarketplaceRefundResult> {
   const admin = createSupabaseAdminClient();
-  const bookingResult = await admin.from("marketplace_bookings").select("id,amount_pence,currency,payment_status,stripe_payment_intent_id,refunded_amount_pence,provider_transfer_status,payout_hold_status").eq("id", bookingId).maybeSingle();
+  const bookingResult = await admin.from("marketplace_bookings").select("id,amount_pence,currency,payment_flow,payment_status,stripe_connected_account_id,stripe_payment_intent_id,refunded_amount_pence,provider_transfer_status,payout_hold_status").eq("id", bookingId).maybeSingle();
   const booking = bookingResult.data;
   if (bookingResult.error) {
     logRefund({ bookingId, stage: "booking_lookup", requestedRefundAmountPence: amountPence, error: bookingResult.error });
@@ -69,7 +69,9 @@ export async function issueMarketplaceRefund(bookingId: string, amountPence: num
   if (inserted.data.status === "succeeded") return { status: "succeeded", refundId: inserted.data.stripe_refund_id || undefined };
   try {
     logRefund({ bookingId, stage: "stripe_refund_create", requestedRefundAmountPence: amountPence, alreadyRefundedAmountPence: recordedRefunded, remainingRefundableAmountPence: remaining, paymentStatus: booking.payment_status, providerTransferStatus: booking.provider_transfer_status, payoutHoldStatus: booking.payout_hold_status, reservation: "created", stripeStage: "create" });
-    const refund = await getStripe().refunds.create({ payment_intent: booking.stripe_payment_intent_id, amount: amountPence, reason: "requested_by_customer" }, { idempotencyKey: `marketplace-refund:${inserted.data.id}` });
+    const directCharge = booking.payment_flow === "direct_charge";
+    if (directCharge && !booking.stripe_connected_account_id) throw new Error("direct_charge_account_missing");
+    const refund = await getStripe().refunds.create({ payment_intent: booking.stripe_payment_intent_id, amount: amountPence, reason: "requested_by_customer", ...(directCharge ? { refund_application_fee: true } : {}) }, { idempotencyKey: `marketplace-refund:${inserted.data.id}`, ...(directCharge ? { stripeAccount: booking.stripe_connected_account_id || undefined } : {}) });
     const persistedRefund = await admin.from("marketplace_refunds").update({ stripe_refund_id: refund.id, status: refund.status === "succeeded" ? "succeeded" : "pending", confirmed_at: refund.status === "succeeded" ? new Date().toISOString() : null }).eq("id", inserted.data.id).select("id").maybeSingle();
     if (persistedRefund.error || !persistedRefund.data) {
       logRefund({ bookingId, stage: "refund_record_persist", requestedRefundAmountPence: amountPence, alreadyRefundedAmountPence: recordedRefunded, remainingRefundableAmountPence: remaining, paymentStatus: booking.payment_status, providerTransferStatus: booking.provider_transfer_status, payoutHoldStatus: booking.payout_hold_status, reservation: "created", stripeStage: "succeeded", result: "already_processing", error: persistedRefund.error || new Error("refund_record_persist_failed"), resultingRefundStatus: refund.status });

@@ -11,6 +11,10 @@ const providerActions = read("app/work/actions.ts");
 const migration = read("supabase/migrations/202608300010_marketplace_delayed_provider_transfers.sql");
 const completionReviewMigration = read("supabase/migrations/202609040004_marketplace_completion_review.sql");
 const checkoutRaceMigration = read("supabase/migrations/20260906085033_marketplace_checkout_attempt_race_safety.sql");
+const directChargeMigration = read("supabase/migrations/20260906090346_marketplace_direct_charge_mixed_mode.sql");
+const providerStripe = read("lib/server/provider-stripe.ts");
+const directWebhooks = read("lib/server/marketplace-direct-charge-webhooks.ts");
+const directPayouts = read("lib/server/marketplace-direct-payouts.ts");
 
 test("commission is fixed at 10 percent with integer-pence provider settlement", () => {
   assert.match(payments, /MARKETPLACE_PLATFORM_FEE_PERCENT = 10/);
@@ -22,8 +26,8 @@ test("commission is fixed at 10 percent with integer-pence provider settlement",
 test("checkout charges the full quote and does not create a destination charge", () => {
   assert.match(checkout, /unit_amount: amountPence/);
   assert.match(checkout, /platform_fee_pence: platformFeePence/);
-  assert.match(checkout, /payment_intent_data: \{ transfer_group:/);
-  assert.doesNotMatch(checkout, /transfer_data|application_fee_amount/);
+  assert.match(checkout, /payment_intent_data: booking\.payment_flow === "direct_charge"/);
+  assert.doesNotMatch(checkout, /transfer_data/);
   assert.match(checkout, /checkoutIdempotencyKey = `marketplace-booking:\$\{booking\.id\}`/);
   assert.match(checkout, /retry:\$\{existingSession\.id\}/);
   assert.match(checkout, /idempotencyKey: checkoutIdempotencyKey/);
@@ -62,6 +66,32 @@ test("checkout attempts are reserved before Stripe and stale attempts are invali
   assert.match(checkoutRaceMigration, /stripe_checkout_attempt_id=null/);
   assert.match(read("app/api/stripe/webhook/route.ts"), /attemptMismatch/);
   assert.match(read("lib/server/marketplace-payment-finalization.ts"), /stripe_checkout_session_id\.is\.null/);
+});
+
+test("direct charges are opt-in, account-gated, and separate from historical transfers", () => {
+  assert.match(directChargeMigration, /payment_flow text not null default 'platform_transfer'/);
+  assert.match(directChargeMigration, /stripe_connected_account_id/);
+  assert.match(directChargeMigration, /stripe_charge_id/);
+  assert.match(directChargeMigration, /stripe_application_fee_id/);
+  assert.match(directChargeMigration, /marketplace_payout_allocations/);
+  assert.match(providerStripe, /directChargeReady/);
+  assert.match(providerStripe, /merchant/);
+  assert.match(providerStripe, /fees_collector: "stripe"/);
+  assert.match(providerStripe, /losses_collector: "stripe"/);
+  assert.match(checkout, /payment_flow === "direct_charge"/);
+  assert.match(checkout, /application_fee_amount: platformFeePence/);
+  assert.match(checkout, /stripeAccount: booking\.stripe_connected_account_id/);
+  assert.match(directWebhooks, /charge\.refunded/);
+  assert.match(directWebhooks, /charge\.dispute\.created/);
+  assert.match(directWebhooks, /application_fee\.created/);
+  assert.match(directPayouts, /marketplace_payout_allocations/);
+  assert.match(directPayouts, /payouts\.create/);
+  assert.match(transfers, /payment_flow === "direct_charge"/);
+});
+
+test("direct-charge eligibility lookup errors block ready active providers", () => {
+  assert.match(checkout, /providerStripe\.stripe_status === "ready" && providerStripe\.marketplace_active/);
+  assert.match(checkout, /error=payment_setup/);
 });
 
 test("provider transfer is gated by persisted paid completion and stored provider account", () => {

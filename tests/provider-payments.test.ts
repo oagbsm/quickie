@@ -28,6 +28,6 @@ test("only verified paid completed bookings are eligible for payout totals", () 
 test("payments page is server-protected and navigation exposes it", () => {
   assert.match(page, /requireProviderWorkspaceAccess/);
   assert.match(page, /\.eq\("provider_id", provider\.providerId\)/);
-  assert.match(page, /Quickola’s 10% fee includes payment processing/i);
+  assert.match(page, /Quickola’s 10% marketplace fee is shown separately from Stripe processing fees/i);
   assert.match(navigation, /href="\/work\/payments"/);
 });

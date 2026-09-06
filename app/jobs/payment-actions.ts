@@ -5,6 +5,7 @@ import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { calculateMarketplacePlatformFeePence, describeStripeError, getStripe, getSiteUrl } from "@/lib/server/marketplace-payments";
+import { getProviderDirectChargeAssessment, type ProviderPaymentFlow } from "@/lib/server/provider-stripe";
 import { getCurrentAccountRole } from "@/lib/auth/account-role";
 
 export async function createMarketplaceCheckout(formData: FormData) {
@@ -27,7 +28,7 @@ export async function createMarketplaceCheckout(formData: FormData) {
     redirect(`/jobs/${token}?error=payment`);
   }
 
-  const { data: existingBooking, error: bookingSchemaError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id,stripe_checkout_attempt_id,status,completion_status,payout_hold_status").eq("job_id", job.id).maybeSingle();
+  const { data: existingBooking, error: bookingSchemaError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_flow,stripe_connected_account_id,payment_status,stripe_checkout_session_id,stripe_checkout_attempt_id,status,completion_status,payout_hold_status").eq("job_id", job.id).maybeSingle();
   if (bookingSchemaError) {
     console.error("[marketplace-payment] Booking lookup failed", { stage: "create-checkout", token, quoteId, userId: user.id, code: bookingSchemaError.code, reason: bookingSchemaError.message });
     redirect(`/jobs/${token}?error=payment_setup`);
@@ -41,16 +42,29 @@ export async function createMarketplaceCheckout(formData: FormData) {
   }
 
   const providerId = quote.provider_id || quote.bidder_user_id;
+  const { data: providerStripe } = providerId ? await admin.from("marketplace_providers").select("stripe_account_id,stripe_status,marketplace_active").eq("user_id", providerId).maybeSingle() : { data: null };
+  let selectedPaymentFlow: ProviderPaymentFlow = existingBooking?.payment_flow === "direct_charge" ? "direct_charge" : "platform_transfer";
+  if (!existingBooking || existingBooking.quote_id !== quote.id) {
+    if (providerStripe?.stripe_account_id) {
+      try {
+        const { assessment } = await getProviderDirectChargeAssessment(providerStripe.stripe_account_id);
+        selectedPaymentFlow = assessment.directChargeReady ? "direct_charge" : "platform_transfer";
+      } catch (error) {
+        console.error("[marketplace-payment] direct-charge eligibility lookup failed", { bookingId: existingBooking?.id, providerId, reason: error instanceof Error ? error.message : "unknown" });
+        if (providerStripe.stripe_status === "ready" && providerStripe.marketplace_active) redirect(`${returnTo}?error=payment_setup`);
+      }
+    }
+  }
   const { data: conversation } = providerId
     ? await admin.from("marketplace_conversations").select("id").eq("job_id", job.id).or(`provider_id.eq.${providerId},bidder_user_id.eq.${providerId}`).maybeSingle()
     : { data: null };
   const platformFeePence = calculateMarketplacePlatformFeePence(amountPence);
   let booking = existingBooking;
   if (!booking) {
-    const inserted = await admin.from("marketplace_bookings").insert({ job_id: job.id, quote_id: quote.id, customer_id: customer.id, provider_id: providerId, conversation_id: conversation?.id || null, amount_pence: amountPence, currency: "gbp", platform_fee_pence: platformFeePence, stripe_checkout_attempt_id: crypto.randomUUID(), payment_status: "pending_payment", status: "awaiting_booking_fee" }).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id,stripe_checkout_attempt_id,status,completion_status,payout_hold_status").single();
+    const inserted = await admin.from("marketplace_bookings").insert({ job_id: job.id, quote_id: quote.id, customer_id: customer.id, provider_id: providerId, conversation_id: conversation?.id || null, amount_pence: amountPence, currency: "gbp", platform_fee_pence: platformFeePence, payment_flow: selectedPaymentFlow, stripe_connected_account_id: selectedPaymentFlow === "direct_charge" ? providerStripe?.stripe_account_id : null, stripe_checkout_attempt_id: crypto.randomUUID(), payment_status: "pending_payment", status: "awaiting_booking_fee" }).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_flow,stripe_connected_account_id,payment_status,stripe_checkout_session_id,stripe_checkout_attempt_id,status,completion_status,payout_hold_status").single();
     if (inserted.error) {
       console.error("[marketplace-payment] Booking creation failed", { stage: "create-checkout", token, quoteId, userId: user.id, code: inserted.error.code, reason: inserted.error.message });
-      const retry = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id,stripe_checkout_attempt_id,status,completion_status,payout_hold_status").eq("quote_id", quote.id).maybeSingle();
+      const retry = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_flow,stripe_connected_account_id,payment_status,stripe_checkout_session_id,stripe_checkout_attempt_id,status,completion_status,payout_hold_status").eq("quote_id", quote.id).maybeSingle();
       if (retry.error || !retry.data) {
         console.error("[marketplace-payment] Existing booking retry failed", { stage: "create-checkout", token, quoteId, userId: user.id, code: retry.error?.code, reason: retry.error?.message || "booking_not_found" });
         redirect(`/jobs/${token}?error=payment`);
@@ -65,10 +79,21 @@ export async function createMarketplaceCheckout(formData: FormData) {
     }
     booking = changed.data as typeof booking;
   } else if (!booking.conversation_id && conversation?.id) {
-    const updated = await admin.from("marketplace_bookings").update({ conversation_id: conversation.id }).eq("id", booking.id).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id,stripe_checkout_attempt_id,status,completion_status,payout_hold_status").single();
+    const updated = await admin.from("marketplace_bookings").update({ conversation_id: conversation.id }).eq("id", booking.id).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_flow,stripe_connected_account_id,payment_status,stripe_checkout_session_id,stripe_checkout_attempt_id,status,completion_status,payout_hold_status").single();
     if (!updated.error && updated.data) booking = updated.data;
   }
-  if (!booking) redirect(`${returnTo}?error=payment`);
+  if (!booking) { redirect(`${returnTo}?error=payment`); return; }
+
+  const persistedPaymentContext = await admin.from("marketplace_bookings").update({
+    payment_flow: selectedPaymentFlow,
+    stripe_connected_account_id: selectedPaymentFlow === "direct_charge" ? providerStripe?.stripe_account_id || null : null,
+    amount_pence: amountPence,
+    currency: "gbp",
+    platform_fee_pence: platformFeePence,
+  }).eq("id", booking.id).eq("quote_id", quote.id).eq("payment_status", "pending_payment").select("id").maybeSingle();
+  if (persistedPaymentContext.error || !persistedPaymentContext.data) redirect(`${returnTo}?error=payment`);
+  if (selectedPaymentFlow === "direct_charge" && !providerStripe?.stripe_account_id) redirect(`${returnTo}?error=payment_setup`);
+  booking = { ...booking, payment_flow: selectedPaymentFlow, stripe_connected_account_id: selectedPaymentFlow === "direct_charge" ? providerStripe?.stripe_account_id || null : null };
 
   if (!booking.stripe_checkout_session_id && !booking.stripe_checkout_attempt_id) {
     const attemptId = crypto.randomUUID();
@@ -76,7 +101,7 @@ export async function createMarketplaceCheckout(formData: FormData) {
     if (reserved.error) redirect(`${returnTo}?error=payment`);
     if (reserved.data) booking = { ...booking, stripe_checkout_attempt_id: attemptId };
     else {
-      const current = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id,stripe_checkout_attempt_id,status,completion_status,payout_hold_status").eq("id", booking.id).maybeSingle();
+      const current = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_flow,stripe_connected_account_id,payment_status,stripe_checkout_session_id,stripe_checkout_attempt_id,status,completion_status,payout_hold_status").eq("id", booking.id).maybeSingle();
       if (!current.data || current.data.quote_id !== quote.id || current.data.payment_status !== "pending_payment") redirect(returnTo);
       booking = current.data;
     }
@@ -92,7 +117,7 @@ export async function createMarketplaceCheckout(formData: FormData) {
     const stripe = getStripe();
     if (booking.stripe_checkout_session_id) {
       stripeStage = "existing-session-retrieval";
-      const existingSession = await stripe.checkout.sessions.retrieve(booking.stripe_checkout_session_id);
+      const existingSession = await stripe.checkout.sessions.retrieve(booking.stripe_checkout_session_id, undefined, booking.payment_flow === "direct_charge" && booking.stripe_connected_account_id ? { stripeAccount: booking.stripe_connected_account_id } : undefined);
       if (existingSession.status === "open" && existingSession.url) checkoutUrl = existingSession.url;
       if (existingSession.status === "complete" || existingSession.payment_status === "paid") {
         completedReturnTo = `${returnTo}?payment=success`;
@@ -110,11 +135,11 @@ export async function createMarketplaceCheckout(formData: FormData) {
         mode: "payment",
         line_items: [{ price_data: { currency: "gbp", product_data: { name: "Quickola marketplace booking" }, unit_amount: amountPence }, quantity: 1 }],
         customer_email: customer.email || undefined,
-        metadata: { booking_id: booking.id, job_id: job.id, quote_id: quote.id, conversation_id: conversation?.id || booking.conversation_id || "", checkout_attempt_id: booking.stripe_checkout_attempt_id || "" },
-        payment_intent_data: { transfer_group: `marketplace_booking:${booking.id}` },
+        metadata: { booking_id: booking.id, job_id: job.id, quote_id: quote.id, conversation_id: conversation?.id || booking.conversation_id || "", checkout_attempt_id: booking.stripe_checkout_attempt_id || "", payment_flow: booking.payment_flow || "platform_transfer" },
+        payment_intent_data: booking.payment_flow === "direct_charge" ? { application_fee_amount: platformFeePence } : { transfer_group: `marketplace_booking:${booking.id}` },
         success_url: successUrl.toString(),
         cancel_url: cancelUrl.toString(),
-      }, { idempotencyKey: checkoutIdempotencyKey });
+      }, { idempotencyKey: checkoutIdempotencyKey, ...(booking.payment_flow === "direct_charge" && booking.stripe_connected_account_id ? { stripeAccount: booking.stripe_connected_account_id } : {}) });
       if (!session.url) throw new Error("stripe_checkout_url_missing");
       checkoutUrl = session.url;
       checkoutSessionId = session.id;
@@ -133,7 +158,7 @@ export async function createMarketplaceCheckout(formData: FormData) {
   if (!checkoutUrl) redirect(`${returnTo}?error=payment`);
   if (checkoutSessionId) {
     // The reselection RPC clears stripe_checkout_session_id: null and stripe_payment_intent_id: null.
-    const { data: savedBooking, error: saved } = await admin.from("marketplace_bookings").update({ stripe_checkout_session_id: checkoutSessionId, amount_pence: amountPence, platform_fee_pence: platformFeePence }).eq("id", booking.id).eq("quote_id", quote.id).eq("payment_status", "pending_payment").is("stripe_checkout_session_id", null).select("id").maybeSingle();
+    const { data: savedBooking, error: saved } = await admin.from("marketplace_bookings").update({ stripe_checkout_session_id: checkoutSessionId, amount_pence: amountPence, platform_fee_pence: platformFeePence }).eq("id", booking.id).eq("quote_id", quote.id).eq("payment_flow", booking.payment_flow).eq("payment_status", "pending_payment").is("stripe_checkout_session_id", null).select("id").maybeSingle();
     if (saved || !savedBooking) {
       const current = await admin.from("marketplace_bookings").select("payment_status,stripe_checkout_session_id").eq("id", booking.id).maybeSingle();
       if (current.data?.payment_status === "paid") redirect(`${returnTo}?payment=success`);

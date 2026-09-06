@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { describeStripeError, getStripe } from "@/lib/server/marketplace-payments";
 
 export type ProviderStripeState = "not_started" | "onboarding" | "restricted" | "verification_pending" | "ready";
+export type ProviderPaymentFlow = "platform_transfer" | "direct_charge";
 type ProviderAccount = Stripe.V2.Core.Account;
 const QUICKOLA_PROVIDER_COUNTRY = "GB";
 
@@ -19,6 +20,9 @@ export type ProviderStripeAssessment = {
   onboardingStatus: string;
   actionableRequirementsCount: number;
   pendingVerificationCount: number;
+  paymentFlow: ProviderPaymentFlow;
+  directChargeReady: boolean;
+  directChargeReasons: string[];
 };
 
 type StripeAccountReadinessSnapshot = ProviderAccount & {
@@ -36,6 +40,7 @@ export function assessProviderStripeAccount(account: ProviderAccount): ProviderS
   const snapshot = account as StripeAccountReadinessSnapshot;
   const requirements = snapshot.requirements;
   const transferCapability = recipientTransferCapability(snapshot);
+  const responsibilities = snapshot.defaults?.responsibilities;
   const entries = requirements?.entries || [];
   const actionableEntries = entries.filter((entry) =>
     entry.awaiting_action_from === "user" &&
@@ -64,6 +69,17 @@ export function assessProviderStripeAccount(account: ProviderAccount): ProviderS
         ? "verification_pending"
         : "onboarding";
 
+  const merchant = snapshot.configuration?.merchant;
+  const cardPayments = merchant?.capabilities?.card_payments;
+  const directChargeReasons = [
+    !merchant?.applied ? "merchant_configuration_not_active" : null,
+    cardPayments?.status !== "active" ? "card_payments_not_active" : null,
+    actionableRequirements.length > 0 ? "requirements_action_required" : null,
+    responsibilities?.fees_collector !== "stripe" ? "fees_responsibility_not_stripe" : null,
+    responsibilities?.losses_collector !== "stripe" ? "losses_responsibility_not_stripe" : null,
+  ].filter((reason): reason is string => Boolean(reason));
+  const directChargeReady = directChargeReasons.length === 0;
+
   return {
     status,
     payoutSetupCompleted,
@@ -71,6 +87,9 @@ export function assessProviderStripeAccount(account: ProviderAccount): ProviderS
     onboardingStatus: transferCapability?.status || (accountStarted ? "pending" : "not_started"),
     actionableRequirementsCount: actionableRequirements.length,
     pendingVerificationCount,
+    paymentFlow: directChargeReady ? "direct_charge" : "platform_transfer",
+    directChargeReady,
+    directChargeReasons,
   };
 }
 
@@ -80,8 +99,20 @@ export function providerStripeState(account: ProviderAccount): ProviderStripeSta
 
 async function retrieveProviderAccount(accountId: string) {
   return getStripe().v2.core.accounts.retrieve(accountId, {
-    include: ["configuration.recipient", "requirements", "defaults", "identity"],
+    include: ["configuration.merchant", "configuration.recipient", "requirements", "defaults", "identity"],
   });
+}
+
+export async function getProviderDirectChargeAssessment(accountId: string) {
+  const account = await retrieveProviderAccount(accountId);
+  const assessment = assessProviderStripeAccount(account);
+  const balanceSettings = await getStripe().balanceSettings.retrieve({}, { stripeAccount: accountId });
+  if (balanceSettings.payments.payouts?.schedule?.interval !== "manual") {
+    assessment.directChargeReady = false;
+    assessment.paymentFlow = "platform_transfer";
+    assessment.directChargeReasons = [...assessment.directChargeReasons, "manual_payouts_not_enabled"];
+  }
+  return { account, assessment };
 }
 
 async function resolveProviderEmail(providerId: string) {
@@ -95,51 +126,6 @@ async function resolveProviderEmail(providerId: string) {
   }
   console.info("[provider-stripe] provider contact email resolved", { providerId, verified: true });
   return email;
-}
-
-async function ensureRecipientConfiguration(accountId: string, providerId: string, providerEmail: string) {
-  const stripe = getStripe();
-  const account = await retrieveProviderAccount(accountId);
-  const transferCapability = account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers;
-  const responsibilities = account.defaults?.responsibilities;
-  const needsContactEmail = !account.contact_email;
-  const needsCountry = account.identity?.country !== QUICKOLA_PROVIDER_COUNTRY;
-  const needsRecipientConfiguration = !account.configuration?.recipient || !transferCapability || !responsibilities?.fees_collector || !responsibilities.losses_collector;
-  if (needsContactEmail || needsCountry || needsRecipientConfiguration) {
-    console.info("[provider-stripe] adding Accounts v2 recipient configuration", { providerId, accountId });
-    const updated = await stripe.v2.core.accounts.update(
-      accountId,
-      {
-        ...(needsContactEmail ? { contact_email: providerEmail } : {}),
-        ...(needsCountry ? { identity: { country: QUICKOLA_PROVIDER_COUNTRY } } : {}),
-        dashboard: "express",
-        ...(needsRecipientConfiguration ? {
-          defaults: {
-            responsibilities: {
-              fees_collector: "application",
-              losses_collector: "application",
-            },
-          },
-          configuration: {
-            recipient: {
-              capabilities: {
-                stripe_balance: {
-                  stripe_transfers: { requested: true },
-                },
-              },
-            },
-          },
-        } : {}),
-        metadata: { quickola_provider_id: providerId },
-        include: ["configuration.recipient", "requirements", "defaults", "identity"],
-      },
-      { idempotencyKey: `provider-recipient-config:${providerId}` },
-    );
-    if (needsContactEmail) console.info("[provider-stripe] existing account contact email updated", { providerId, accountId });
-    if (needsCountry) console.info("[provider-stripe] existing account country updated", { providerId, accountId, country: QUICKOLA_PROVIDER_COUNTRY });
-    return updated;
-  }
-  return account;
 }
 
 export async function syncProviderStripeStatus(accountId: string, account?: ProviderAccount) {
@@ -170,6 +156,7 @@ export async function createProviderPayoutLink(providerId: string, returnPath = 
   const stripe = getStripe();
   const providerEmail = await resolveProviderEmail(providerId);
   let accountId = profile.stripe_account_id;
+  const existingAccountId = accountId;
   if (!accountId) {
     console.info("[provider-stripe] creating Accounts v2 connected account", { providerId });
     const account = await stripe.v2.core.accounts.create(
@@ -178,14 +165,19 @@ export async function createProviderPayoutLink(providerId: string, returnPath = 
         identity: {
           country: QUICKOLA_PROVIDER_COUNTRY,
         },
-        dashboard: "express",
+        dashboard: "full",
         defaults: {
           responsibilities: {
-            fees_collector: "application",
-            losses_collector: "application",
+            fees_collector: "stripe",
+            losses_collector: "stripe",
           },
         },
         configuration: {
+          merchant: {
+            capabilities: {
+              card_payments: { requested: true },
+            },
+          },
           recipient: {
             capabilities: {
               stripe_balance: {
@@ -195,19 +187,22 @@ export async function createProviderPayoutLink(providerId: string, returnPath = 
           },
         },
         metadata: { quickola_provider_id: providerId },
-        include: ["configuration.recipient", "requirements"],
+        include: ["configuration.merchant", "configuration.recipient", "requirements", "defaults"],
       },
       { idempotencyKey: `provider-account:${providerId}` },
     );
     console.info("[provider-stripe] provider country configured", { providerId, accountId: account.id, country: QUICKOLA_PROVIDER_COUNTRY });
-    console.info("[provider-stripe] Accounts v2 responsibilities configured", { providerId, accountId: account.id, feesCollector: "application", lossesCollector: "application" });
+    console.info("[provider-stripe] Accounts v2 responsibilities configured", { providerId, accountId: account.id, feesCollector: "stripe", lossesCollector: "stripe" });
     accountId = account.id;
+    await stripe.balanceSettings.update({ payments: { debit_negative_balances: true, payouts: { schedule: { interval: "manual" } } } }, { stripeAccount: accountId });
     const update = await admin.from("marketplace_providers").update({ stripe_account_id: accountId, stripe_status: "onboarding", updated_at: new Date().toISOString() }).eq("user_id", providerId);
     if (update.error) throw new Error("provider_stripe_account_save_failed");
   } else {
     console.info("[provider-stripe] existing account reused", { providerId, accountId });
-    await ensureRecipientConfiguration(accountId, providerId, providerEmail);
-    await syncProviderStripeStatus(accountId);
+    // Existing recipient accounts are deliberately not upgraded or mutated.
+    // They remain eligible only for the historical platform-transfer flow.
+    const account = await retrieveProviderAccount(accountId);
+    await syncProviderStripeStatus(accountId, account);
   }
   const origin = getAppOrigin();
   try {
@@ -216,7 +211,7 @@ export async function createProviderPayoutLink(providerId: string, returnPath = 
       use_case: {
         type: "account_onboarding",
         account_onboarding: {
-          configurations: ["recipient"],
+          configurations: existingAccountId ? ["recipient"] : ["merchant", "recipient"],
           refresh_url: `${origin}${returnPath}?payouts=refresh`,
           return_url: `${origin}${returnPath}?payouts=return`,
           collection_options: { fields: "eventually_due", future_requirements: "include" },
