@@ -325,3 +325,9 @@ textarea {
 .quickola-price-ready-arrow {
   animation: quickolaPriceReadyArrow 1.8s ease-in-out 3;
 }
+
+@media (max-width: 639px) {
+  main:has(> nav[aria-label="Provider mobile navigation"]) {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+}

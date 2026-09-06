@@ -3,7 +3,7 @@ import { marketplaceServices } from "@/app/data/marketplace";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getOrCreateMarketplaceProvider, isProviderBasicProfileComplete, isProviderReadyToSubmit } from "@/lib/marketplace/provider-access";
 import { resolveProviderPhotoUrl } from "@/lib/marketplace/provider-photo";
-import { refreshProviderPayoutStatus } from "@/lib/server/provider-stripe";
+import { createProviderPayoutLink, refreshProviderPayoutStatus } from "@/lib/server/provider-stripe";
 import OnboardingForm from "./OnboardingForm";
 import PendingReview from "./PendingReview";
 import { destinationForAccount, getCurrentAccountContext } from "@/lib/auth/account-role";
@@ -17,7 +17,11 @@ export default async function ProviderOnboardingPage({ searchParams }: { searchP
   if (!provider) redirect("/pro/login?next=/work/onboarding");
   if (provider.providerStatus === "approved" && query.edit === "1") redirect("/work/profile?edit=1");
   const providerId = provider.providerId;
-  if (["return", "refresh", "checked"].includes(query.payouts || "")) {
+  let refreshedLink: string | null = null;
+  if (query.payouts === "refresh") {
+    try { refreshedLink = await createProviderPayoutLink(providerId, "/work/onboarding"); }
+    catch (error) { console.error("[provider-stripe] refresh link creation failed", { providerId, message: error instanceof Error ? error.message : "unknown" }); }
+  } else if (["return", "checked"].includes(query.payouts || "")) {
     try {
       await refreshProviderPayoutStatus(providerId);
       provider = await getOrCreateMarketplaceProvider();
@@ -25,6 +29,7 @@ export default async function ProviderOnboardingPage({ searchParams }: { searchP
       console.error("[provider-stripe] return status refresh failed", { providerId, message: error instanceof Error ? error.message : "unknown" });
     }
   }
+  if (refreshedLink) redirect(refreshedLink);
   if (!provider) redirect("/pro/login?next=/work/onboarding");
   const admin = createSupabaseAdminClient();
   const [{ data: services }, { count: areasCount }] = await Promise.all([

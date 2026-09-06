@@ -77,8 +77,8 @@ test("quote readiness uses one status-driven payout action and hides submission 
   assert.match(onboarding, /choose where you work/);
   assert.match(onboarding, /Confirmed email/);
   assert.doesNotMatch(onboarding, /start sending quotes/);
-  assert.match(onboarding, /Payout details received — verification in progress/);
-  assert.match(onboarding, /Payout setup needs more information/);
+  assert.match(onboarding, /Payouts — under review/);
+  assert.match(onboarding, /additional information before you can receive payouts/);
   assert.doesNotMatch(onboarding, /Payout status refreshed/);
   assert.doesNotMatch(onboarding, /Approval —/);
 });
@@ -88,6 +88,19 @@ test("Stripe return refreshes status before rendering onboarding", () => {
   assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /refreshProviderPayoutStatus\(providerId\)/);
   assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /profileComplete/);
   assert.match(readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8"), /displayError/);
+});
+
+test("payout states expose a truthful next action and refresh links reuse the account", () => {
+  const page = readFileSync(new URL("../app/work/onboarding/page.tsx", import.meta.url), "utf8");
+  assert.match(onboarding, /Payouts — setup required/);
+  assert.match(onboarding, /Payouts — setup incomplete/);
+  assert.match(onboarding, /Payouts — more information required/);
+  assert.match(onboarding, /Payouts — under review/);
+  assert.match(onboarding, /Check status/);
+  assert.match(onboarding, /Continue payout verification/);
+  assert.match(page, /query\.payouts === "refresh"/);
+  assert.match(page, /createProviderPayoutLink\(providerId, "\/work\/onboarding"\)/);
+  assert.match(page, /if \(refreshedLink\) redirect\(refreshedLink\)/);
 });
 
 test("Stripe payout readiness uses live due and verification state", () => {
@@ -123,7 +136,7 @@ test("Accounts v2 payout setup uses one configuration set and the correct link m
 test("payout setup failures are not reported as service-save failures", () => {
   assert.match(actions, /errorParam = .*provider_stripe_status_sync_failed.*stripe_status/);
   assert.match(onboarding, /error === "save"/);
-  assert.match(onboarding, /We couldn’t start payout setup/);
+  assert.match(onboarding, /We couldn’t open Stripe verification/);
   assert.match(profile, /We couldn’t start payout setup/);
 });
 
