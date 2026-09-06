@@ -7,7 +7,7 @@ const header = readFileSync(new URL("../app/components/marketplace/ProviderHeade
 const providerMessages = readFileSync(new URL("../app/messages/page.tsx", import.meta.url), "utf8");
 const onboarding = readFileSync(new URL("../app/work/onboarding/OnboardingForm.tsx", import.meta.url), "utf8");
 const pendingReview = readFileSync(new URL("../app/work/onboarding/PendingReview.tsx", import.meta.url), "utf8");
-const withdrawal = readFileSync(new URL("../supabase/migrations/20260906130000_provider_quote_withdrawal_safety.sql", import.meta.url), "utf8");
+const withdrawal = readFileSync(new URL("../supabase/migrations/20260906135000_provider_quote_withdrawal_safety.sql", import.meta.url), "utf8");
 const jobActions = readFileSync(new URL("../app/work/jobs/ProviderJobActions.tsx", import.meta.url), "utf8");
 
 test("provider mobile navigation covers the workspace and nested routes", () => {

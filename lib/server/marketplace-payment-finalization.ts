@@ -35,8 +35,29 @@ async function ensureDirectChargePayoutAllocation(admin: PaymentAdmin, booking: 
   const providerNet = grossAmount - quickolaFee - stripeFee;
   if (providerNet <= 0) throw new Error("direct_charge_payout_allocation_invalid");
   const stripeAvailableOn = balanceTransaction?.available_on == null ? null : new Date(Number(balanceTransaction.available_on) * 1000).toISOString();
+  const { data: existingAllocation, error: existingAllocationError } = await admin.from("marketplace_payout_allocations").select("id,stripe_fee_pence,stripe_balance_transaction_id,stripe_available_on").eq("booking_id", booking.id).maybeSingle();
+  if (existingAllocationError) throw new Error("direct_charge_payout_allocation_lookup_failed");
+  if (existingAllocation) {
+    const updates: Record<string, string | number> = {};
+    if (!existingAllocation.stripe_balance_transaction_id && balanceTransactionId) updates.stripe_balance_transaction_id = balanceTransactionId;
+    if (!existingAllocation.stripe_available_on && stripeAvailableOn) updates.stripe_available_on = stripeAvailableOn;
+    if (existingAllocation.stripe_fee_pence == null) updates.stripe_fee_pence = stripeFee;
+    if (Object.keys(updates).length) {
+      const { error } = await admin.from("marketplace_payout_allocations").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", existingAllocation.id);
+      if (error) throw new Error("direct_charge_payout_allocation_reconcile_failed");
+    }
+    return;
+  }
   const allocation = await admin.from("marketplace_payout_allocations").insert({ booking_id: booking.id, provider_id: booking.provider_id, stripe_connected_account_id: booking.stripe_connected_account_id, gross_amount_pence: grossAmount, quickola_fee_pence: quickolaFee, stripe_fee_pence: stripeFee, provider_net_pence: providerNet, stripe_balance_transaction_id: balanceTransactionId, stripe_available_on: stripeAvailableOn, payout_status: "pending" }).select("id").maybeSingle();
   if (allocation.error && allocation.error.code !== "23505") throw new Error("direct_charge_payout_allocation_failed");
+}
+
+/** Reconcile Stripe metadata for an already-paid direct charge without changing payment amounts or payout state. */
+export async function reconcileDirectChargePayoutAllocation(admin: PaymentAdmin, bookingId: string) {
+  const { data: booking, error } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,provider_id,amount_pence,currency,payment_status,payment_flow,stripe_connected_account_id,stripe_charge_id,refunded_amount_pence").eq("id", bookingId).maybeSingle();
+  if (error || !booking || booking.payment_flow !== "direct_charge" || booking.payment_status !== "paid") return false;
+  await ensureDirectChargePayoutAllocation(admin, booking, booking.stripe_charge_id);
+  return true;
 }
 
 export async function finalizeMarketplacePayment(admin: PaymentAdmin, booking: PaymentBooking, session: Stripe.Checkout.Session, eventAccountId?: string | null) {
@@ -90,8 +111,7 @@ export async function reconcileMarketplacePaymentOnReturn(admin: PaymentAdmin, b
   if (!quote || quote.job_id !== booking.job_id || !["accepted", "selected"].includes(quote.status)) return false;
   if (booking.payment_status === "paid") {
     if (booking.payment_flow !== "direct_charge" || !booking.stripe_connected_account_id || !booking.stripe_charge_id) return false;
-    await ensureDirectChargePayoutAllocation(admin, booking, booking.stripe_charge_id);
-    return true;
+    return reconcileDirectChargePayoutAllocation(admin, bookingId);
   }
   await finalizeMarketplacePayment(admin, booking, session, booking.payment_flow === "direct_charge" ? booking.stripe_connected_account_id : null);
   return true;

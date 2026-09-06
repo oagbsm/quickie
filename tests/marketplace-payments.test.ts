@@ -102,6 +102,8 @@ test("direct-charge payouts are scheduled, per-booking, and cron protected", () 
   assert.match(directPayouts, /payout_eligible_at/);
   assert.match(directPayouts, /stripe\.balance\.retrieve/);
   assert.match(directPayouts, /stripe_available_on/);
+  assert.match(read("lib/server/marketplace-payment-finalization.ts"), /reconcileDirectChargePayoutAllocation/);
+  assert.match(read("lib/server/marketplace-payment-finalization.ts"), /direct_charge_payout_allocation_reconcile_failed/);
   assert.match(directPayouts, /idempotencyKey: `marketplace-direct-payout:/);
   assert.match(read("app/api/cron/direct-charge-payouts/route.ts"), /CRON_SECRET/);
   assert.match(read("vercel.json"), /\/api\/cron\/direct-charge-payouts/);
