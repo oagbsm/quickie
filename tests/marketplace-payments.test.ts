@@ -10,6 +10,7 @@ const customerActions = read("app/jobs/actions.ts");
 const providerActions = read("app/work/actions.ts");
 const migration = read("supabase/migrations/202608300010_marketplace_delayed_provider_transfers.sql");
 const completionReviewMigration = read("supabase/migrations/202609040004_marketplace_completion_review.sql");
+const checkoutRaceMigration = read("supabase/migrations/20260906085033_marketplace_checkout_attempt_race_safety.sql");
 
 test("commission is fixed at 10 percent with integer-pence provider settlement", () => {
   assert.match(payments, /MARKETPLACE_PLATFORM_FEE_PERCENT = 10/);
@@ -52,6 +53,15 @@ test("paid bookings cannot restart checkout and retries reuse the persisted sess
   assert.match(checkout, /booking\.stripe_checkout_session_id/);
   assert.match(checkout, /marketplace-booking:\$\{booking\.id\}:retry:\$\{existingSession\.id\}/);
   assert.match(checkout, /idempotencyKey: checkoutIdempotencyKey/);
+});
+
+test("checkout attempts are reserved before Stripe and stale attempts are invalidated", () => {
+  assert.match(checkoutRaceMigration, /stripe_checkout_attempt_id text/);
+  assert.match(checkout, /stripe_checkout_attempt_id: crypto\.randomUUID\(\)/);
+  assert.match(checkout, /checkout_attempt_id: booking\.stripe_checkout_attempt_id/);
+  assert.match(checkoutRaceMigration, /stripe_checkout_attempt_id=null/);
+  assert.match(read("app/api/stripe/webhook/route.ts"), /attemptMismatch/);
+  assert.match(read("lib/server/marketplace-payment-finalization.ts"), /stripe_checkout_session_id\.is\.null/);
 });
 
 test("provider transfer is gated by persisted paid completion and stored provider account", () => {

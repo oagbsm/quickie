@@ -23,7 +23,7 @@ export async function finalizeMarketplacePayment(admin: PaymentAdmin, booking: P
     stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || null,
     paid_at: new Date().toISOString(),
     status: "booked",
-  }).eq("id", booking.id).eq("stripe_checkout_session_id", session.id).eq("payment_status", "pending_payment").neq("status", "cancelled").select("id").maybeSingle();
+  }).eq("id", booking.id).or(`stripe_checkout_session_id.eq.${session.id},stripe_checkout_session_id.is.null`).eq("payment_status", "pending_payment").neq("status", "cancelled").select("id").maybeSingle();
   if (updateError || !updatedBooking) throw new Error("booking_update_failed");
 
   const { error: jobError } = await admin.from("marketplace_jobs").update({ status: "booked", updated_at: new Date().toISOString() }).eq("id", booking.job_id).in("status", ["awaiting_booking", "finding_provider", "posted"]);
