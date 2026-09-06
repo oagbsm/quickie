@@ -6,21 +6,22 @@ import { sendProviderJobMessage, submitWorkOffer } from "@/app/work/actions";
 
 type Offer = { id: string; status: string; amount_pence: number | null } | null;
 
-export default function ProviderJobActions({ jobId, offer, error, canOperate = true }: { jobId: string; offer: Offer; error?: string; canOperate?: boolean }) {
+export default function ProviderJobActions({ jobId, offer, error, canOperate = true, authoritativeState }: { jobId: string; offer: Offer; error?: string; canOperate?: boolean; authoritativeState?: "CURRENT_SELECTED" | "BOOKED_PROVIDER" | "NOT_SELECTED" | "WITHDRAWN" | "EXPIRED" }) {
   const [panel, setPanel] = useState<"question" | "quote" | null>(null);
   const [amount, setAmount] = useState("");
   const [availability, setAvailability] = useState("flexible");
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageClientId] = useState(() => crypto.randomUUID());
-  const isAccepted = !!offer && ["selected", "accepted"].includes(offer.status);
-  const canQuote = !offer || ["withdrawn", "declined", "expired"].includes(offer.status);
+  const isCurrent = !authoritativeState || ["CURRENT_SELECTED", "BOOKED_PROVIDER"].includes(authoritativeState);
+  const isAccepted = !!offer && isCurrent && ["selected", "accepted"].includes(offer.status);
+  const canQuote = !offer || (!isCurrent ? false : ["withdrawn", "declined", "expired"].includes(offer.status));
   const formattedAmount = amount ? new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 2 }).format(Number(amount)) : "";
 
   return <div className="mt-7 border-t border-[#e9edf1] pt-6">
     {offer ? <div className="rounded-2xl bg-[#f5fbf6] p-5">
       <p className="text-xs font-black uppercase tracking-[.14em] text-[#167d3c]">Your quote</p>
       <p className="mt-2 text-2xl font-black">{offer.amount_pence == null ? "Quote submitted" : `£${(offer.amount_pence / 100).toFixed(2).replace(/\.00$/, "")}`}</p>
-      <p className="mt-1 font-bold capitalize text-[#526078]">{offer.status.replaceAll("_", " ")}</p>
+      <p className="mt-1 font-bold text-[#526078]">{isCurrent ? offer.status.replaceAll("_", " ") : "Not selected"}</p>
       {!isAccepted && offer.status !== "withdrawn" && <p className="mt-3 text-sm leading-6 text-[#526078]">The customer can review your quote and message you here.</p>}
     </div> : <div>
       <h2 className="text-xl font-black">Ready to help?</h2>

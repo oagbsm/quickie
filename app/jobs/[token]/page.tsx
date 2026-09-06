@@ -12,6 +12,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ACTIVE_MARKETPLACE_OFFER_STATUSES, formatMarketplaceAmount, formatMarketplaceSchedule, getCustomerJobLifecycleState, getMarketplacePaymentState, getMarketplaceQuoteProviderId, isPartialMarketplaceRefund } from "@/lib/marketplace/customer-job-state";
 import { formatMarketplaceProviderName } from "@/lib/marketplace/presentation";
 import { resolveProviderPhotoUrl } from "@/lib/marketplace/provider-photo";
+import { resolveMarketplaceJobState } from "@/lib/marketplace/booking-state";
 import { reconcileMarketplacePaymentOnReturn } from "@/lib/server/marketplace-payment-finalization";
 import CustomerJobManageMenu from "@/app/jobs/CustomerJobManageMenu";
 import ProviderAvatar from "@/app/components/marketplace/ProviderAvatar";
@@ -57,8 +58,10 @@ export default async function JobPage({ params, searchParams }: { params: Promis
   let { data: bookings } = isOwner ? await admin.from("marketplace_bookings").select("id,quote_id,conversation_id,amount_pence,payment_status,stripe_checkout_session_id,paid_at,status,completion_status,payout_hold_status,payout_hold_reason,refunded_amount_pence,scheduled_date,arrival_window_start,arrival_window_end,provider_arrived_at,provider_finished_at,customer_completed_at,provider_id,marketplace_providers(display_name,business_name,profile_photo_url)").eq("job_id", data.id) : { data: [] };
   const { data: jobPhotos } = isOwner ? await admin.from("marketplace_job_photos").select("id,storage_path").eq("job_id", data.id).order("created_at", { ascending: true }) : { data: [] };
   const photos = await Promise.all((jobPhotos || []).map(async (photo) => ({ id: photo.id, url: (await admin.storage.from("marketplace-job-photos").createSignedUrl(photo.storage_path, 3600)).data?.signedUrl || null })));
-  const acceptedQuote = quotes?.find((quote) => ["accepted", "selected"].includes(quote.status));
-  const selectedBooking = acceptedQuote ? (bookings || []).find((booking) => booking.quote_id === acceptedQuote.id) : null;
+  const liveBooking = (bookings || [])[0] || null;
+  const resolvedState = resolveMarketplaceJobState({ job: data, booking: liveBooking, quotes: quotes || [] });
+  const acceptedQuote = resolvedState.currentQuoteId ? quotes?.find((quote) => quote.id === resolvedState.currentQuoteId) : undefined;
+  const selectedBooking = liveBooking;
   if (payment === "success" && isOwner && selectedBooking?.id) {
     try {
       if (await reconcileMarketplacePaymentOnReturn(admin, selectedBooking.id)) {
@@ -67,8 +70,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
       }
     } catch (error) { console.error("[marketplace-payment] success-return reconciliation failed", { bookingId: selectedBooking.id, reason: error instanceof Error ? error.message : "unknown" }); }
   }
-  const bookingByQuote = new Map((bookings || []).map((booking) => [booking.quote_id, booking]));
-  const acceptedBooking = acceptedQuote ? bookingByQuote.get(acceptedQuote.id) : null;
+  const acceptedBooking = liveBooking;
   const { data: activeCompletionDispute } = isOwner && acceptedBooking ? await admin.from("marketplace_disputes").select("id").eq("booking_id", acceptedBooking.id).in("status", ["open", "in_review"]).maybeSingle() : { data: null };
   const lifecycle = isOwner ? getCustomerJobLifecycleState({ offerCount: quotes?.length || 0, acceptedQuote, booking: acceptedBooking, hasActiveDispute: Boolean(activeCompletionDispute) }) : null;
   if (acceptedBooking && isPartialMarketplaceRefund(acceptedBooking) && acceptedBooking.payment_status === "partially_refunded") acceptedBooking.payment_status = "paid";

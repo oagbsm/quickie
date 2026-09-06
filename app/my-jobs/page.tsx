@@ -8,11 +8,12 @@ import { getApprovedMarketplaceProvider } from "@/lib/marketplace/provider-acces
 import { ACTIVE_MARKETPLACE_OFFER_STATUSES, formatMarketplaceAmount, getCustomerJobLifecycleLabel, getCustomerJobLifecycleState, getMarketplaceQuoteProviderId, normalizeMarketplaceRelation } from "@/lib/marketplace/customer-job-state";
 import { destinationForAccount, getCurrentAccountContext } from "@/lib/auth/account-role";
 import { formatMarketplaceProviderName } from "@/lib/marketplace/presentation";
+import { resolveMarketplaceJobState } from "@/lib/marketplace/booking-state";
 import { getMarketplaceJobDisplayTitle } from "@/app/data/marketplace";
 import CancelPrePaymentJobButton from "@/app/my-jobs/CancelPrePaymentJobButton";
 
 type Quote = { id: string; amount_pence: number; status: string; provider_id?: string | null; bidder_user_id?: string | null };
-type Booking = { quote_id: string; amount_pence: number; payment_status?: string | null; stripe_checkout_session_id?: string | null; status?: string | null; completion_status?: string | null; payout_hold_status?: string | null; payout_hold_reason?: string | null };
+type Booking = { provider_id?: string | null; quote_id: string; amount_pence: number; payment_status?: string | null; stripe_checkout_session_id?: string | null; status?: string | null; completion_status?: string | null; payout_hold_status?: string | null; payout_hold_reason?: string | null };
 type Conversation = { id: string; job_id: string; provider_id?: string | null; bidder_user_id?: string | null; customer_last_read_at?: string | null };
 type Message = { conversation_id: string; sender_id: string; created_at: string };
 type PostedRow = { id: string; public_token: string | null; service: string; service_subtype: string | null; postcode: string; requested_timing?: string | null; budget_amount: number | null; status: string; marketplace_quotes?: Quote[] | Quote; marketplace_bookings?: Booking[] | Booking };
@@ -27,7 +28,7 @@ export default async function MyJobsPage() {
   if (await getApprovedMarketplaceProvider()) redirect("/work");
   const admin = createSupabaseAdminClient();
   const { data: customer, error: customerError } = await admin.from("marketplace_customers").select("id").eq("auth_user_id", user.id).maybeSingle();
-  const extendedSelect = "id,public_token,service,service_subtype,postcode,requested_timing,budget_amount,status,created_at,marketplace_quotes(id,amount_pence,status,provider_id,bidder_user_id),marketplace_bookings(id,quote_id,amount_pence,payment_status,stripe_checkout_session_id,paid_at,status,completion_status,payout_hold_status,payout_hold_reason,scheduled_date,arrival_window_start,arrival_window_end)";
+  const extendedSelect = "id,public_token,service,service_subtype,postcode,requested_timing,budget_amount,status,created_at,marketplace_quotes(id,amount_pence,status,provider_id,bidder_user_id),marketplace_bookings(id,provider_id,quote_id,amount_pence,payment_status,stripe_checkout_session_id,paid_at,status,completion_status,payout_hold_status,payout_hold_reason,scheduled_date,arrival_window_start,arrival_window_end)";
   const legacySelect = "id,public_token,service,service_subtype,postcode,requested_timing,budget_amount,status,created_at,marketplace_quotes(id,amount_pence,status,provider_id,bidder_user_id),marketplace_bookings(id,quote_id,amount_pence,payment_status,stripe_checkout_session_id,paid_at)";
   let posted: PostedRow[] | null = null;
   let postedError = customerError || (!customer ? { code: "customer_not_found", message: "No marketplace customer record for authenticated user" } : null);
@@ -69,11 +70,12 @@ export default async function MyJobsPage() {
   const jobs = (posted || []).map((job) => {
     const quotes = normalizeMarketplaceRelation(job.marketplace_quotes) as Quote[];
     const activeQuotes = quotes.filter((quote) => ACTIVE_MARKETPLACE_OFFER_STATUSES.includes(quote.status as (typeof ACTIVE_MARKETPLACE_OFFER_STATUSES)[number]));
-    const acceptedQuote = job.status !== "cancelled" ? activeQuotes.find((quote) => ["accepted", "selected"].includes(quote.status)) : undefined;
     const bookings = normalizeMarketplaceRelation(job.marketplace_bookings) as Booking[];
-    const booking = acceptedQuote ? bookings.find((item) => item.quote_id === acceptedQuote.id) : undefined;
+    const booking = bookings[0];
+    const resolved = resolveMarketplaceJobState({ job, booking, quotes: quotes as Quote[] });
+    const acceptedQuote = resolved.currentQuoteId ? quotes.find((quote) => quote.id === resolved.currentQuoteId) : undefined;
     const state = job.status === "cancelled" ? "cancelled" : getCustomerJobLifecycleState({ offerCount: activeQuotes.length, acceptedQuote, booking });
-    const providerId = acceptedQuote?.provider_id || acceptedQuote?.bidder_user_id;
+    const providerId = resolved.currentProviderId || undefined;
     const jobConversations = (conversations || []).filter((conversation) => conversation.job_id === job.id) as Conversation[];
     const isUnread = (conversation: Conversation, message: Message) => message.conversation_id === conversation.id && message.sender_id !== user.id && (!conversation.customer_last_read_at || new Date(message.created_at).getTime() > new Date(conversation.customer_last_read_at).getTime());
     const unreadConversationIds = jobConversations.filter((conversation) => messageRows.some((message) => isUnread(conversation, message))).map((conversation) => conversation.id);

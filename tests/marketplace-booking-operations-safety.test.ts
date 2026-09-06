@@ -94,7 +94,7 @@ test("partial-refund UI preserves paid booking semantics across surfaces", () =>
   assert.match(customerJobPage, /paymentLocked=\{getMarketplacePaymentState\(acceptedBooking\) === "paid"\}/);
   assert.match(customerJobPage, /isPartialMarketplaceRefund/);
   assert.match(bookingAdminPage, /getMarketplaceBookingLifecycleState/);
-  assert.match(providerJobPage, /getMarketplacePaymentState\(booking\) === "paid"/);
+  assert.match(providerJobPage, /getMarketplacePaymentState\(providerBooking\) === "paid"/);
   assert.match(providerJobPage, /Issue being reviewed/);
   assert.match(providerPaymentsPage, /Refunds have been reflected in the amounts shown above/);
   assert.match(providerPaymentsPage, /earnings\.providerEarningsPence/);

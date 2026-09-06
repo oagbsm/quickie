@@ -65,6 +65,8 @@ export async function finalizeMarketplacePayment(admin: PaymentAdmin, booking: P
 
   const { error: jobError } = await admin.from("marketplace_jobs").update({ status: "booked", updated_at: new Date().toISOString() }).eq("id", booking.job_id).in("status", ["awaiting_booking", "finding_provider", "posted"]);
   if (jobError) throw new Error("job_update_failed");
+  const { error: quoteNormalizationError } = await admin.from("marketplace_quotes").update({ status: "declined", updated_at: new Date().toISOString() }).eq("job_id", booking.job_id).neq("id", booking.quote_id).in("status", ["pending", "submitted", "selected", "accepted"]);
+  if (quoteNormalizationError) throw new Error("quote_state_normalization_failed");
 
   if (directCharge) {
     await ensureDirectChargePayoutAllocation(admin, { ...booking, stripe_charge_id: chargeId }, chargeId);

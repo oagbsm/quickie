@@ -148,7 +148,10 @@ test("provider My Work includes bidder-backed quotes and preserves offer lifecyc
   assert.match(workOffers, /\.or\(`provider_id\.eq\.\$\{provider\.providerId\},bidder_user_id\.eq\.\$\{provider\.providerId\}`\)/);
   assert.match(workOffers, /marketplace_jobs\(service,service_subtype,postcode,requested_timing\)/);
   assert.match(workOffers, /marketplace_bookings/);
-  for (const status of ["pending", "submitted", "accepted", "selected", "declined", "withdrawn", "expired"]) assert.match(workOffers, new RegExp(status));
+  for (const status of ["pending", "submitted", "selected"]) assert.match(workOffers, new RegExp(status));
+  assert.match(workOffers, /EXPIRED/);
+  assert.match(workOffers, /WITHDRAWN/);
+  assert.match(workOffers, /CURRENT_SELECTED/);
   assert.match(workOffers, /href=\{`\/work\/jobs\/\$\{offer\.job_id\}`\}/);
   assert.match(workOffers, /href=\{`\/work\/messages\/\$\{conversation\}`\}/);
   assert.match(workActions, /submit_marketplace_quote/);
