@@ -9,7 +9,7 @@ import { getOperationalMarketplaceProvider } from "@/lib/marketplace/provider-ac
 import { getOrCreateMarketplaceConversation } from "@/lib/marketplace/conversations";
 import { getCurrentAccountRole } from "@/lib/auth/account-role";
 import { transferMarketplaceProviderFunds } from "@/lib/server/marketplace-transfers";
-import { payoutDirectChargeBooking } from "@/lib/server/marketplace-direct-payouts";
+import { scheduleDirectChargePayout } from "@/lib/server/marketplace-direct-payouts";
 import { issueMarketplaceRefund } from "@/lib/server/marketplace-refunds";
 
 type MarketplaceCompletionStage = "input_validation" | "booking_context_lookup" | "confirm_completion_rpc" | "provider_payout_release" | "completion_notification";
@@ -193,9 +193,10 @@ export async function confirmMarketplaceCompletion(formData: FormData) {
   }
   let transferStatus: "paid" | "blocked" | "failed" | "already_processing" = "failed";
   try {
-    transferStatus = bookingContext?.payment_flow === "direct_charge"
-      ? (await payoutDirectChargeBooking(bookingId)).status
-      : (await transferMarketplaceProviderFunds(bookingId)).status;
+    if (bookingContext?.payment_flow === "direct_charge") {
+      await scheduleDirectChargePayout(bookingId);
+      transferStatus = "blocked";
+    } else transferStatus = (await transferMarketplaceProviderFunds(bookingId)).status;
   } catch (transferError) {
     logMarketplaceCompletionFailure({ stage: "provider_payout_release", token, jobId, bookingId, error: transferError });
   }

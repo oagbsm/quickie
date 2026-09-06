@@ -15,6 +15,7 @@ const directChargeMigration = read("supabase/migrations/20260906090346_marketpla
 const providerStripe = read("lib/server/provider-stripe.ts");
 const directWebhooks = read("lib/server/marketplace-direct-charge-webhooks.ts");
 const directPayouts = read("lib/server/marketplace-direct-payouts.ts");
+const payoutScheduleMigration = read("supabase/migrations/20260906130000_marketplace_direct_charge_payout_schedule.sql");
 
 test("commission is fixed at 10 percent with integer-pence provider settlement", () => {
   assert.match(payments, /MARKETPLACE_PLATFORM_FEE_PERCENT = 10/);
@@ -87,6 +88,17 @@ test("direct charges are opt-in, account-gated, and separate from historical tra
   assert.match(directPayouts, /marketplace_payout_allocations/);
   assert.match(directPayouts, /payouts\.create/);
   assert.match(transfers, /payment_flow === "direct_charge"/);
+});
+
+test("direct-charge payouts are scheduled, per-booking, and cron protected", () => {
+  assert.match(payoutScheduleMigration, /payout_eligible_at timestamptz/);
+  assert.match(payoutScheduleMigration, /'scheduled'/);
+  assert.match(directPayouts, /scheduleDirectChargePayout/);
+  assert.match(directPayouts, /payout_eligible_at/);
+  assert.match(directPayouts, /stripe\.balance\.retrieve/);
+  assert.match(directPayouts, /idempotencyKey: `marketplace-direct-payout:/);
+  assert.match(read("app/api/cron/direct-charge-payouts/route.ts"), /CRON_SECRET/);
+  assert.match(read("vercel.json"), /0 \* \* \* \*/);
 });
 
 test("direct-charge eligibility lookup errors block ready active providers", () => {

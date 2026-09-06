@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { bookingFinancialBreakdown, bookingFinancialStatus, financialEvents, financialSummary } from "../lib/marketplace/admin-finance.ts";
 import { resolveMarketplacePaymentState } from "../lib/marketplace/payment-state.ts";
+import { addWorkingDaysUtc } from "../lib/marketplace/working-days.ts";
 
 const booking = (overrides: Record<string, unknown> = {}) => ({
   id: "booking-1", job_id: "job-1", amount_pence: 26600, refunded_amount_pence: 5000,
@@ -63,7 +64,7 @@ test("payment state resolves a direct charge from its persisted allocation", () 
     { amount_pence: 10000, payment_status: "paid", status: "booked", payment_flow: "direct_charge" },
     { gross_amount_pence: 10000, quickola_fee_pence: 1000, stripe_fee_pence: 335, provider_net_pence: 8665, payout_status: "pending" },
   );
-  assert.deepEqual(state, { flow: "direct_charge", customerPaid: 10000, quickolaFee: 1000, stripeFee: 335, providerNet: 8665, paymentLabel: "Customer paid", payoutLabel: "Awaiting completion" });
+  assert.deepEqual(state, { flow: "direct_charge", customerPaid: 10000, quickolaFee: 1000, stripeFee: 335, providerNet: 8665, paymentLabel: "Customer paid", payoutLabel: "Awaiting completion", providerPayoutLabel: "Payout pending", payoutEligibleAt: null });
 });
 
 test("payment state does not invent a Stripe fee for platform transfers", () => {
@@ -71,4 +72,17 @@ test("payment state does not invent a Stripe fee for platform transfers", () => 
   assert.equal(state.stripeFee, null);
   assert.equal(state.providerNet, 27000);
   assert.equal(state.payoutLabel, "Paid out");
+});
+
+test("direct-charge eligibility skips weekends in UTC", () => {
+  const dates = [
+    ["2026-09-07T12:00:00Z", "2026-09-09"],
+    ["2026-09-08T12:00:00Z", "2026-09-10"],
+    ["2026-09-09T12:00:00Z", "2026-09-11"],
+    ["2026-09-10T12:00:00Z", "2026-09-14"],
+    ["2026-09-11T12:00:00Z", "2026-09-15"],
+    ["2026-09-12T12:00:00Z", "2026-09-15"],
+    ["2026-09-13T12:00:00Z", "2026-09-15"],
+  ];
+  for (const [input, expected] of dates) assert.equal(addWorkingDaysUtc(input, 2).toISOString().slice(0, 10), expected);
 });
