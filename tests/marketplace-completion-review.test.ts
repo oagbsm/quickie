@@ -22,7 +22,8 @@ test("customer confirmation is independent from the optional review", () => {
   assert.match(completionActions, /Confirm job completed/);
   assert.match(completionActions, /Report a problem/);
   assert.match(customerPage, /submitMarketplaceReview/);
-  assert.doesNotMatch(action, /Number\(formData\.get\("rating"\)/);
+  const confirmationAction = action.slice(action.indexOf("export async function confirmMarketplaceCompletion"), action.indexOf("export async function submitMarketplaceReview"));
+  assert.doesNotMatch(confirmationAction, /Number\(formData\.get\("rating"\)/);
   assert.match(action, /confirm_marketplace_completion/);
   assert.match(migration, /insert into public\.marketplace_reviews/);
   assert.match(migration, /set status = 'completed'/);

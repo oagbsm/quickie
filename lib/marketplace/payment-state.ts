@@ -17,6 +17,7 @@ export type MarketplacePaymentAllocation = {
   payout_status?: string | null;
   stripe_payout_id?: string | null;
   payout_eligible_at?: string | null;
+  stripe_available_on?: string | null;
 };
 
 export type MarketplacePaymentState = {
@@ -27,8 +28,9 @@ export type MarketplacePaymentState = {
   providerNet: number | null;
   paymentLabel: "Awaiting customer payment" | "Customer paid" | "Refunded";
   payoutLabel: "Awaiting customer payment" | "Awaiting completion" | "Pending payout" | "Paid out" | "Refunded" | "Disputed";
-  providerPayoutLabel: "Payment received" | "Payout scheduled" | "Payout pending" | "Payout processing" | "Paid out" | "Payout on hold";
+  providerPayoutLabel: "Payment received" | "Processing" | "Funds available" | "Payout pending" | "On the way to your bank" | "Paid out" | "Payout failed" | "Payout unavailable";
   payoutEligibleAt: string | null;
+  stripeAvailableOn: string | null;
 };
 
 export function resolveMarketplacePaymentState(
@@ -59,11 +61,18 @@ export function resolveMarketplacePaymentState(
   else if (booking.status === "completed") payoutLabel = "Pending payout";
   else payoutLabel = "Awaiting completion";
   const allocationStatus = allocation?.payout_status || "pending";
-  const providerPayoutLabel = refunded || hasActiveDispute || booking.payout_hold_status === "held" ? "Payout on hold"
+  const availableOn = allocation?.stripe_available_on || null;
+  const fundsAvailable = availableOn ? Date.now() >= new Date(availableOn).getTime() : false;
+  const providerPayoutLabel = refunded || hasActiveDispute || booking.payout_hold_status === "held" ? "Payout unavailable"
     : !paid ? "Payment received"
-    : flow === "direct_charge" && allocationStatus === "scheduled" ? "Payout scheduled"
-    : flow === "direct_charge" && allocationStatus === "processing" ? "Payout processing"
-    : ((flow === "direct_charge" && allocationStatus === "paid") || (flow === "platform_transfer" && booking.provider_transfer_status === "paid")) ? "Paid out"
+    : flow === "direct_charge" && allocationStatus === "paid" ? "Paid out"
+    : flow === "direct_charge" && allocationStatus === "failed" ? "Payout failed"
+    : flow === "direct_charge" && allocationStatus === "processing" ? "On the way to your bank"
+    : flow === "direct_charge" && allocationStatus === "scheduled" && !fundsAvailable ? "Processing"
+    : flow === "direct_charge" && allocationStatus === "scheduled" ? "Payout pending"
+    : flow === "direct_charge" && allocationStatus === "pending" && !fundsAvailable ? "Processing"
+    : flow === "direct_charge" && allocationStatus === "pending" ? "Funds available"
+    : ((flow === "platform_transfer" && booking.provider_transfer_status === "paid")) ? "Paid out"
     : "Payout pending";
-  return { flow, customerPaid, quickolaFee, stripeFee, providerNet, paymentLabel, payoutLabel, providerPayoutLabel, payoutEligibleAt: allocation?.payout_eligible_at || null };
+  return { flow, customerPaid, quickolaFee, stripeFee, providerNet, paymentLabel, payoutLabel, providerPayoutLabel, payoutEligibleAt: allocation?.payout_eligible_at || null, stripeAvailableOn: availableOn };
 }

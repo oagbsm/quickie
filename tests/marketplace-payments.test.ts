@@ -16,6 +16,7 @@ const providerStripe = read("lib/server/provider-stripe.ts");
 const directWebhooks = read("lib/server/marketplace-direct-charge-webhooks.ts");
 const directPayouts = read("lib/server/marketplace-direct-payouts.ts");
 const payoutScheduleMigration = read("supabase/migrations/20260906130000_marketplace_direct_charge_payout_schedule.sql");
+const payoutAvailabilityMigration = read("supabase/migrations/20260906150000_direct_charge_balance_availability.sql");
 
 test("commission is fixed at 10 percent with integer-pence provider settlement", () => {
   assert.match(payments, /MARKETPLACE_PLATFORM_FEE_PERCENT = 10/);
@@ -87,6 +88,10 @@ test("direct charges are opt-in, account-gated, and separate from historical tra
   assert.match(directWebhooks, /application_fee\.created/);
   assert.match(directPayouts, /marketplace_payout_allocations/);
   assert.match(directPayouts, /payouts\.create/);
+  assert.match(directPayouts, /stripeAccount: booking\.stripe_connected_account_id/);
+  assert.match(payoutAvailabilityMigration, /stripe_available_on timestamptz/);
+  assert.match(read("lib/server/marketplace-direct-charge-webhooks.ts"), /payout\.paid/);
+  assert.match(read("app/api/stripe/connect-webhook/route.ts"), /payout\.failed/);
   assert.match(transfers, /payment_flow === "direct_charge"/);
 });
 
@@ -96,8 +101,10 @@ test("direct-charge payouts are scheduled, per-booking, and cron protected", () 
   assert.match(directPayouts, /scheduleDirectChargePayout/);
   assert.match(directPayouts, /payout_eligible_at/);
   assert.match(directPayouts, /stripe\.balance\.retrieve/);
+  assert.match(directPayouts, /stripe_available_on/);
   assert.match(directPayouts, /idempotencyKey: `marketplace-direct-payout:/);
   assert.match(read("app/api/cron/direct-charge-payouts/route.ts"), /CRON_SECRET/);
+  assert.match(read("vercel.json"), /\/api\/cron\/direct-charge-payouts/);
   assert.match(read("vercel.json"), /0 \* \* \* \*/);
 });
 

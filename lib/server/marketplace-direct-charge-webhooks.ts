@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { finalizeMarketplacePayment } from "@/lib/server/marketplace-payment-finalization";
 
 type Admin = ReturnType<typeof createSupabaseAdminClient>;
-type DirectEventObject = { id?: string; metadata?: Record<string, string>; payment_intent?: string | { id?: string } | null; originating_transaction?: string | null; payment_status?: string; mode?: string; amount_total?: number | null; currency?: string | null };
+type DirectEventObject = { id?: string; metadata?: Record<string, string>; payment_intent?: string | { id?: string } | null; originating_transaction?: string | null; payment_status?: string; mode?: string; amount_total?: number | null; currency?: string | null; status?: string };
 
 async function claim(admin: Admin, event: Stripe.Event) {
   const { data, error } = await admin.rpc("claim_stripe_webhook_event", { target_event_id: event.id, target_event_type: event.type });
@@ -32,6 +32,36 @@ async function findBooking(admin: Admin, accountId: string, input: { bookingId?:
   return null;
 }
 
+function payoutStatusForEvent(eventType: string, stripeStatus?: string) {
+  if (eventType === "payout.paid" || stripeStatus === "paid") return "paid" as const;
+  if (eventType === "payout.failed" || eventType === "payout.canceled" || stripeStatus === "failed" || stripeStatus === "canceled") return "failed" as const;
+  if (["payout.created", "payout.updated"].includes(eventType) && ["pending", "in_transit"].includes(stripeStatus || "")) return "processing" as const;
+  return null;
+}
+
+async function reconcilePayoutEvent(admin: Admin, event: Stripe.Event, accountId: string) {
+  const object = event.data.object as unknown as DirectEventObject;
+  const payoutId = object.id;
+  if (!payoutId) throw new Error("payout_id_missing");
+  const allocationId = object.metadata?.payout_allocation_id;
+  const query = admin.from("marketplace_payout_allocations").select("id,booking_id,stripe_connected_account_id,payout_status").eq("stripe_payout_id", payoutId).maybeSingle();
+  let allocation = (await query).data;
+  if (!allocation && allocationId) {
+    allocation = (await admin.from("marketplace_payout_allocations").select("id,booking_id,stripe_connected_account_id,payout_status").eq("id", allocationId).maybeSingle()).data;
+  }
+  if (!allocation || allocation.stripe_connected_account_id !== accountId) throw new Error("payout_allocation_not_found");
+  const nextStatus = payoutStatusForEvent(event.type, object.status);
+  if (!nextStatus || allocation.payout_status === "paid" || (allocation.payout_status === "failed" && nextStatus === "processing")) return;
+  const { error } = await admin.from("marketplace_payout_allocations").update({
+    payout_status: nextStatus,
+    stripe_payout_id: payoutId,
+    paid_out_at: nextStatus === "paid" ? new Date().toISOString() : null,
+    failure_reason: nextStatus === "failed" ? `stripe_payout_${object.status || event.type.replace("payout.", "")}` : null,
+    updated_at: new Date().toISOString(),
+  }).eq("id", allocation.id).neq("payout_status", "paid");
+  if (error) throw new Error("payout_reconciliation_failed");
+}
+
 export async function processDirectChargeWebhookEvent(admin: Admin, event: Stripe.Event) {
   const accountId = event.account;
   if (!accountId && event.type !== "application_fee.created") return false;
@@ -39,6 +69,12 @@ export async function processDirectChargeWebhookEvent(admin: Admin, event: Strip
   try {
     const object = event.data.object as unknown as DirectEventObject;
     const metadata = object.metadata || {};
+    if (["payout.created", "payout.updated", "payout.paid", "payout.failed", "payout.canceled"].includes(event.type)) {
+      if (!accountId) throw new Error("payout_account_missing");
+      await reconcilePayoutEvent(admin, event, accountId);
+      await mark(admin, event, "processed");
+      return true;
+    }
     const booking = await findBooking(admin, accountId || "", {
       bookingId: metadata.booking_id,
       paymentIntentId: typeof object.payment_intent === "string" ? object.payment_intent : object.payment_intent?.id,

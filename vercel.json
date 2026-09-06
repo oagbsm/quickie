@@ -1,8 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/...",
-      "schedule": "0 3 * * *"
+      "path": "/api/cron/direct-charge-payouts",
+      "schedule": "0 * * * *"
     }
   ]
 }

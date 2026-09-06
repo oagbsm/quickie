@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
   if (event) {
     try {
-      if (["checkout.session.completed", "payment_intent.succeeded", "charge.refunded", "charge.dispute.created", "application_fee.created"].includes(event.type)) {
+      if (["checkout.session.completed", "payment_intent.succeeded", "charge.refunded", "charge.dispute.created", "application_fee.created", "payout.created", "payout.updated", "payout.paid", "payout.failed", "payout.canceled"].includes(event.type)) {
         await processDirectChargeWebhookEvent(createSupabaseAdminClient(), event);
       }
       return NextResponse.json({ received: true });

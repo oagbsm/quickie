@@ -31,12 +31,12 @@ export async function payoutDirectChargeBooking(bookingId: string): Promise<Dire
   const admin = createSupabaseAdminClient();
   const { data: booking, error } = await admin.from("marketplace_bookings").select("id,provider_id,amount_pence,currency,payment_flow,payment_status,status,completion_status,payout_hold_status,refunded_amount_pence,stripe_connected_account_id,stripe_charge_id").eq("id", bookingId).maybeSingle();
   if (error || !booking) throw new Error("direct_payout_booking_lookup_failed");
-  const { data: allocation } = await admin.from("marketplace_payout_allocations").select("id,provider_id,stripe_connected_account_id,provider_net_pence,payout_status,payout_eligible_at,stripe_payout_id").eq("booking_id", bookingId).maybeSingle();
+  const { data: allocation } = await admin.from("marketplace_payout_allocations").select("id,provider_id,stripe_connected_account_id,provider_net_pence,payout_status,payout_eligible_at,stripe_available_on,stripe_payout_id").eq("booking_id", bookingId).maybeSingle();
   if (!allocation || booking.payment_flow !== "direct_charge" || booking.payment_status !== "paid" || booking.status !== "completed" || booking.completion_status !== "completed" || booking.payout_hold_status === "held" || Number(booking.refunded_amount_pence || 0) > 0) return { status: "blocked" };
   if (!booking.stripe_connected_account_id || allocation.stripe_connected_account_id !== booking.stripe_connected_account_id || allocation.provider_id !== booking.provider_id || !booking.stripe_charge_id || !allocation.payout_eligible_at) return { status: "blocked" };
   if (allocation.payout_status === "paid") return { status: "paid", payoutId: allocation.stripe_payout_id || undefined };
   if (allocation.payout_status === "processing") return { status: "already_processing", payoutId: allocation.stripe_payout_id || undefined };
-  if (!["scheduled", "failed", "held"].includes(allocation.payout_status) || Date.now() < new Date(allocation.payout_eligible_at).getTime()) return { status: "scheduled" };
+  if (!["scheduled", "failed", "held"].includes(allocation.payout_status) || Date.now() < new Date(allocation.payout_eligible_at).getTime() || (allocation.stripe_available_on && Date.now() < new Date(allocation.stripe_available_on).getTime())) return { status: "scheduled" };
   const stripe = getStripe();
   const provider = await admin.from("marketplace_providers").select("user_id,stripe_account_id").eq("user_id", booking.provider_id).maybeSingle();
   if (!provider.data || provider.data.stripe_account_id !== booking.stripe_connected_account_id) return { status: "blocked" };

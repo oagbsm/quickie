@@ -31,5 +31,6 @@ test("payments page is server-protected and navigation exposes it", () => {
   assert.match(page, /Quickola fee/);
   assert.match(page, /Stripe fee/);
   assert.match(page, /resolveMarketplacePaymentState/);
+  assert.doesNotMatch(page, /Payout scheduled for/);
   assert.match(navigation, /href="\/work\/payments"/);
 });

@@ -34,7 +34,8 @@ async function ensureDirectChargePayoutAllocation(admin: PaymentAdmin, booking: 
   const quickolaFee = Math.floor(grossAmount * 10 / 100);
   const providerNet = grossAmount - quickolaFee - stripeFee;
   if (providerNet <= 0) throw new Error("direct_charge_payout_allocation_invalid");
-  const allocation = await admin.from("marketplace_payout_allocations").insert({ booking_id: booking.id, provider_id: booking.provider_id, stripe_connected_account_id: booking.stripe_connected_account_id, gross_amount_pence: grossAmount, quickola_fee_pence: quickolaFee, stripe_fee_pence: stripeFee, provider_net_pence: providerNet, payout_status: "pending" }).select("id").maybeSingle();
+  const stripeAvailableOn = balanceTransaction?.available_on == null ? null : new Date(Number(balanceTransaction.available_on) * 1000).toISOString();
+  const allocation = await admin.from("marketplace_payout_allocations").insert({ booking_id: booking.id, provider_id: booking.provider_id, stripe_connected_account_id: booking.stripe_connected_account_id, gross_amount_pence: grossAmount, quickola_fee_pence: quickolaFee, stripe_fee_pence: stripeFee, provider_net_pence: providerNet, stripe_balance_transaction_id: balanceTransactionId, stripe_available_on: stripeAvailableOn, payout_status: "pending" }).select("id").maybeSingle();
   if (allocation.error && allocation.error.code !== "23505") throw new Error("direct_charge_payout_allocation_failed");
 }
 

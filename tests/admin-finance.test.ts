@@ -64,7 +64,21 @@ test("payment state resolves a direct charge from its persisted allocation", () 
     { amount_pence: 10000, payment_status: "paid", status: "booked", payment_flow: "direct_charge" },
     { gross_amount_pence: 10000, quickola_fee_pence: 1000, stripe_fee_pence: 335, provider_net_pence: 8665, payout_status: "pending" },
   );
-  assert.deepEqual(state, { flow: "direct_charge", customerPaid: 10000, quickolaFee: 1000, stripeFee: 335, providerNet: 8665, paymentLabel: "Customer paid", payoutLabel: "Awaiting completion", providerPayoutLabel: "Payout pending", payoutEligibleAt: null });
+  assert.deepEqual(state, { flow: "direct_charge", customerPaid: 10000, quickolaFee: 1000, stripeFee: 335, providerNet: 8665, paymentLabel: "Customer paid", payoutLabel: "Awaiting completion", providerPayoutLabel: "Processing", payoutEligibleAt: null, stripeAvailableOn: null });
+});
+
+test("direct-charge provider status follows Stripe availability and payout state", () => {
+  const future = new Date(Date.now() + 86400000).toISOString();
+  const available = new Date(Date.now() - 86400000).toISOString();
+  const booking = { amount_pence: 5000, payment_status: "paid", status: "completed", payment_flow: "direct_charge" };
+  const allocation = { gross_amount_pence: 5000, quickola_fee_pence: 500, stripe_fee_pence: 178, provider_net_pence: 4322 };
+  assert.equal(resolveMarketplacePaymentState(booking, { ...allocation, payout_status: "pending", stripe_available_on: future }).providerPayoutLabel, "Processing");
+  assert.equal(resolveMarketplacePaymentState(booking, { ...allocation, payout_status: "pending", stripe_available_on: available }).providerPayoutLabel, "Funds available");
+  assert.equal(resolveMarketplacePaymentState(booking, { ...allocation, payout_status: "scheduled", stripe_available_on: available }).providerPayoutLabel, "Payout pending");
+  assert.equal(resolveMarketplacePaymentState(booking, { ...allocation, payout_status: "processing", stripe_available_on: available }).providerPayoutLabel, "On the way to your bank");
+  assert.equal(resolveMarketplacePaymentState(booking, { ...allocation, payout_status: "paid", stripe_available_on: available }).providerPayoutLabel, "Paid out");
+  assert.equal(resolveMarketplacePaymentState(booking, { ...allocation, payout_status: "failed", stripe_available_on: available }).providerPayoutLabel, "Payout failed");
+  assert.equal(resolveMarketplacePaymentState(booking, { ...allocation, payout_status: "pending" }).providerPayoutLabel, "Processing");
 });
 
 test("payment state does not invent a Stripe fee for platform transfers", () => {
