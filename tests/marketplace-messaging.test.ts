@@ -160,6 +160,13 @@ test("provider My Work includes bidder-backed quotes and preserves offer lifecyc
   assert.doesNotMatch(workOffers, /cleaner_profiles/);
 });
 
+test("provider booking state receives bidder-backed quote identity", () => {
+  assert.match(workOffers, /select\("id,job_id,provider_id,bidder_user_id,amount_pence,status/);
+  assert.match(jobPage, /select\("id,provider_id,bidder_user_id,status,amount_pence"\)/);
+  assert.match(jobPage, /resolveMarketplaceJobState/);
+  assert.match(jobPage, /BOOKED_PROVIDER/);
+});
+
 test("message email notifications are claimed once per unread recipient episode", () => {
   assert.match(readNotificationsMigration, /customer_last_read_at/);
   assert.match(readNotificationsMigration, /provider_last_read_at/);

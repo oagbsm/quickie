@@ -7,7 +7,7 @@ import { resolveMarketplaceJobState } from "@/lib/marketplace/booking-state";
 export default async function WorkOffersPage() {
   const provider = await requireProviderWorkspaceAccess();
   const admin = createSupabaseAdminClient();
-  const { data: offers } = await admin.from("marketplace_quotes").select("id,job_id,amount_pence,status,created_at,marketplace_jobs(service,service_subtype,postcode,requested_timing)").or(`provider_id.eq.${provider.providerId},bidder_user_id.eq.${provider.providerId}`).order("created_at", { ascending: false });
+  const { data: offers } = await admin.from("marketplace_quotes").select("id,job_id,provider_id,bidder_user_id,amount_pence,status,created_at,marketplace_jobs(service,service_subtype,postcode,requested_timing)").or(`provider_id.eq.${provider.providerId},bidder_user_id.eq.${provider.providerId}`).order("created_at", { ascending: false });
   const jobIds = (offers || []).map((offer) => offer.job_id);
   const { data: conversations } = jobIds.length ? await admin.from("marketplace_conversations").select("id,job_id,provider_id,bidder_user_id").in("job_id", jobIds).or(`provider_id.eq.${provider.providerId},bidder_user_id.eq.${provider.providerId}`) : { data: [] };
   const { data: bookings } = jobIds.length ? await admin.from("marketplace_bookings").select("job_id,quote_id,provider_id,status,payment_status,completion_status").in("job_id", [...new Set(jobIds)]) : { data: [] };

@@ -50,7 +50,7 @@ export default async function WorkJobPage({ params, searchParams }: { params: Pr
   const admin = createSupabaseAdminClient();
   const { data: job } = await admin.from("marketplace_jobs").select("id,service,service_subtype,postcode,approximate_area,pricing_answers,requested_timing,optional_note,budget_amount,status,created_at").eq("id", id).maybeSingle();
   if (!job) notFound();
-  const { data: ownOffer } = await admin.from("marketplace_quotes").select("id,status,amount_pence").eq("job_id", id).or(`provider_id.eq.${provider.providerId},bidder_user_id.eq.${provider.providerId}`).maybeSingle();
+  const { data: ownOffer } = await admin.from("marketplace_quotes").select("id,provider_id,bidder_user_id,status,amount_pence").eq("job_id", id).or(`provider_id.eq.${provider.providerId},bidder_user_id.eq.${provider.providerId}`).maybeSingle();
   const { data: booking } = await admin.from("marketplace_bookings").select("id,status,payment_status,amount_pence,refunded_amount_pence,scheduled_date,arrival_window_start,arrival_window_end,provider_id,quote_id,completion_status,payout_hold_status,payout_hold_reason,provider_transfer_status").eq("job_id", id).maybeSingle();
   if (!ownOffer) {
     const [{ data: providerServices }, { data: providerAreas }] = await Promise.all([
