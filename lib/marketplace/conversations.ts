@@ -56,10 +56,13 @@ export async function getOrCreateMarketplaceConversation({
 export async function isMarketplaceConversationReadOnly(admin: ReturnType<typeof createSupabaseAdminClient>, conversationId: string) {
   const { data: conversation } = await admin.from("marketplace_conversations").select("id,job_id,provider_id,bidder_user_id").eq("id", conversationId).maybeSingle();
   if (!conversation) return false;
-  const { data: accepted } = await admin.from("marketplace_quotes").select("provider_id,bidder_user_id").eq("job_id", conversation.job_id).in("status", ["accepted", "selected"]).limit(1).maybeSingle();
-  if (!accepted) return false;
+  const { data: booking } = await admin.from("marketplace_bookings").select("provider_id,quote_id,payment_status,status").eq("job_id", conversation.job_id).maybeSingle();
+  let winningProvider = booking?.provider_id || null;
+  if (!booking) {
+    const { data: accepted } = await admin.from("marketplace_quotes").select("provider_id,bidder_user_id").eq("job_id", conversation.job_id).in("status", ["accepted", "selected"]).limit(1).maybeSingle();
+    winningProvider = accepted?.provider_id || accepted?.bidder_user_id || null;
+  }
   const conversationProvider = conversation.provider_id || conversation.bidder_user_id;
-  const winningProvider = accepted.provider_id || accepted.bidder_user_id;
   return Boolean(conversationProvider && winningProvider && conversationProvider !== winningProvider);
 }
 

@@ -198,6 +198,9 @@ test("customer provider avatars resolve private storage paths and keep a safe fa
 
 test("selected-provider conversations remain writable while losing conversations are server-closed", () => {
   assert.match(conversationHelpers, /isMarketplaceConversationReadOnly/);
+  assert.match(conversationHelpers, /from\("marketplace_bookings"\)\.select\("provider_id,quote_id,payment_status,status"\)/);
+  assert.match(conversationHelpers, /let winningProvider = booking\?\.provider_id \|\| null/);
+  assert.match(conversationHelpers, /if \(!booking\)/);
   assert.match(conversationHelpers, /in\("status", \["accepted", "selected"\]\)/);
   assert.match(closedConversationMigration, /conversation_closed/);
   assert.match(closedConversationMigration, /coalesce\(c\.provider_id, c\.bidder_user_id\) is distinct from coalesce\(q\.provider_id, q\.bidder_user_id\)/);
@@ -209,6 +212,14 @@ test("selected-provider conversations remain writable while losing conversations
   assert.match(conversation, /readOnly=\{conversationReadOnly\}/);
   assert.match(conversation, /isMarketplaceConversationReadOnly\(admin, conversationId\)/);
   assert.match(composer, /This conversation is closed because another provider was selected for this job/);
+});
+
+test("conversation CTA and closed state use the same selected-provider relationship", () => {
+  assert.match(customerConversationPanel, /isAccepted && bookingState === "provider_selected_unpaid"/);
+  assert.match(customerConversationPanel, /readOnly=\{conversationReadOnly\}/);
+  assert.match(conversation, /isAccepted && bookingState === "provider_selected_unpaid"/);
+  assert.match(conversationHelpers, /conversationProvider !== winningProvider/);
+  assert.doesNotMatch(conversationHelpers, /cleaner_profiles/);
 });
 
 test("customer conversation content can be explicitly promoted into the job scope", () => {

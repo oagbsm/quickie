@@ -36,15 +36,20 @@ export async function processDirectChargeWebhookEvent(admin: Admin, event: Strip
   const accountId = event.account;
   if (!accountId && event.type !== "application_fee.created") return false;
   if (!await claim(admin, event)) return true;
-  const object = event.data.object as unknown as DirectEventObject;
-  const metadata = object.metadata || {};
-  const booking = await findBooking(admin, accountId || "", {
-    bookingId: metadata.booking_id,
-    paymentIntentId: typeof object.payment_intent === "string" ? object.payment_intent : object.payment_intent?.id,
-    chargeId: typeof object.id === "string" && object.id.startsWith("ch_") ? object.id : typeof object.originating_transaction === "string" ? object.originating_transaction : null,
-  });
+  try {
+    const object = event.data.object as unknown as DirectEventObject;
+    const metadata = object.metadata || {};
+    const booking = await findBooking(admin, accountId || "", {
+      bookingId: metadata.booking_id,
+      paymentIntentId: typeof object.payment_intent === "string" ? object.payment_intent : object.payment_intent?.id,
+      chargeId: typeof object.id === "string" && object.id.startsWith("ch_") ? object.id : typeof object.originating_transaction === "string" ? object.originating_transaction : null,
+    });
 
   if (event.type === "checkout.session.completed") {
+    if (booking?.payment_status === "paid" && booking.stripe_checkout_session_id === object.id) {
+      await mark(admin, event, "processed");
+      return true;
+    }
     if (!booking || booking.payment_flow !== "direct_charge" || booking.stripe_connected_account_id !== accountId || metadata.payment_flow !== "direct_charge" || metadata.job_id !== booking.job_id || metadata.quote_id !== booking.quote_id || metadata.checkout_attempt_id !== booking.stripe_checkout_attempt_id || booking.payment_status === "cancelled" || booking.status === "cancelled" || object.payment_status !== "paid" || object.mode !== "payment" || object.amount_total !== Number(booking.amount_pence) || (object.currency && object.currency !== booking.currency)) {
       await mark(admin, event, "failed", "direct_charge_validation_failed");
       return true;
@@ -102,6 +107,11 @@ export async function processDirectChargeWebhookEvent(admin: Admin, event: Strip
     return true;
   }
 
-  await mark(admin, event, "processed");
-  return true;
+    await mark(admin, event, "processed");
+    return true;
+  } catch (error) {
+    const reason = error instanceof Error && /^[a-z0-9_]+$/.test(error.message) ? error.message : "direct_charge_processing_failed";
+    await mark(admin, event, "failed", reason.slice(0, 120));
+    throw error;
+  }
 }

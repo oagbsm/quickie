@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import Stripe from "stripe";
 import { describeStripeError, getStripe, getStripeConnectWebhookSecret } from "@/lib/server/marketplace-payments";
 import { syncProviderStripeStatus } from "@/lib/server/provider-stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -20,15 +21,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "missing_signature" }, { status: 400 });
   }
 
-  let notification: ReturnType<ReturnType<typeof getStripe>["parseEventNotification"]>;
+  let notification: ReturnType<ReturnType<typeof getStripe>["parseEventNotification"]> | null = null;
+  let event: Stripe.Event | null = null;
   try {
     const secret = getStripeConnectWebhookSecret();
     try {
-      const event = getStripe().webhooks.constructEvent(body, signature, secret);
-      if (["checkout.session.completed", "payment_intent.succeeded", "charge.refunded", "charge.dispute.created", "application_fee.created"].includes(event.type)) {
-        await processDirectChargeWebhookEvent(createSupabaseAdminClient(), event);
-      }
-      return NextResponse.json({ received: true });
+      event = getStripe().webhooks.constructEvent(body, signature, secret);
     } catch {
       notification = getStripe().parseEventNotification(body, signature, secret);
     }
@@ -44,6 +42,24 @@ export async function POST(request: Request) {
     );
   }
 
+  if (event) {
+    try {
+      if (["checkout.session.completed", "payment_intent.succeeded", "charge.refunded", "charge.dispute.created", "application_fee.created"].includes(event.type)) {
+        await processDirectChargeWebhookEvent(createSupabaseAdminClient(), event);
+      }
+      return NextResponse.json({ received: true });
+    } catch (error) {
+      console.error("[provider-stripe] connect webhook processing failed", {
+        stage: "processing",
+        eventId: event.id,
+        eventType: event.type,
+        ...describeStripeError(error),
+      });
+      return NextResponse.json({ error: "connect_webhook_processing_failed" }, { status: 500 });
+    }
+  }
+
+  if (!notification) return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
   const accountId = "related_object" in notification ? notification.related_object?.id : undefined;
   console.info("[provider-stripe] connect webhook verified", {
     stage: "verified",

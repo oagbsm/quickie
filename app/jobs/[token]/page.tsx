@@ -59,7 +59,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
   const photos = await Promise.all((jobPhotos || []).map(async (photo) => ({ id: photo.id, url: (await admin.storage.from("marketplace-job-photos").createSignedUrl(photo.storage_path, 3600)).data?.signedUrl || null })));
   const acceptedQuote = quotes?.find((quote) => ["accepted", "selected"].includes(quote.status));
   const selectedBooking = acceptedQuote ? (bookings || []).find((booking) => booking.quote_id === acceptedQuote.id) : null;
-  if (payment === "success" && isOwner && selectedBooking?.id && selectedBooking.payment_status !== "paid") {
+  if (payment === "success" && isOwner && selectedBooking?.id) {
     try {
       if (await reconcileMarketplacePaymentOnReturn(admin, selectedBooking.id)) {
         const refreshed = await admin.from("marketplace_bookings").select("id,quote_id,conversation_id,amount_pence,payment_status,stripe_checkout_session_id,paid_at,status,completion_status,payout_hold_status,payout_hold_reason,refunded_amount_pence,scheduled_date,arrival_window_start,arrival_window_end,provider_arrived_at,provider_finished_at,customer_completed_at,provider_id,marketplace_providers(display_name,business_name,profile_photo_url)").eq("job_id", data.id);
