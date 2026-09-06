@@ -7,6 +7,7 @@ import { refreshProviderPayoutStatus } from "@/lib/server/provider-stripe";
 import OnboardingForm from "./OnboardingForm";
 import PendingReview from "./PendingReview";
 import { destinationForAccount, getCurrentAccountContext } from "@/lib/auth/account-role";
+import { CURRENT_PROVIDER_PRIVACY_NOTICE_VERSION, recordProviderLegalEvent } from "@/lib/server/provider-legal";
 
 export default async function ProviderOnboardingPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string; payouts?: string; step?: string; submitted?: string; edit?: string; setup?: string }> }) {
   const query = await searchParams;
@@ -16,6 +17,7 @@ export default async function ProviderOnboardingPage({ searchParams }: { searchP
   if (!provider) redirect("/pro/login?next=/work/onboarding");
   if (provider.providerStatus === "approved" && query.edit === "1") redirect("/work/profile?edit=1");
   const providerId = provider.providerId;
+  try { await recordProviderLegalEvent(providerId, "privacy_notice", CURRENT_PROVIDER_PRIVACY_NOTICE_VERSION, "presented"); } catch (error) { console.error("[provider-legal] privacy notice presentation log failed", { providerId, message: error instanceof Error ? error.message : "unknown" }); }
   if (["return", "refresh", "checked"].includes(query.payouts || "")) {
     try {
       await refreshProviderPayoutStatus(providerId);

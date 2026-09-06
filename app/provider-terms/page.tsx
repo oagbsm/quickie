@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CURRENT_PROVIDER_TERMS_EFFECTIVE_DATE, CURRENT_PROVIDER_TERMS_VERSION } from "@/lib/server/provider-legal";
 
 export const metadata: Metadata = { title: "Provider terms | Quickola" };
 
@@ -11,6 +12,7 @@ export default function ProviderTermsPage() {
         <p className="mt-8 text-xs font-black uppercase tracking-[.15em] text-[#159548]">QUICKOLA PROVIDER TERMS</p>
         <h1 className="mt-2 text-4xl font-black tracking-[-.04em]">Provider terms</h1>
         <p className="mt-3 leading-7 text-[#657089]">These terms explain the standards that apply when you offer services through Quickola.</p>
+        <p className="mt-4 text-sm font-bold text-[#657089]">Effective date: {new Date(`${CURRENT_PROVIDER_TERMS_EFFECTIVE_DATE}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })} · Version: {CURRENT_PROVIDER_TERMS_VERSION}</p>
         <div className="mt-8 space-y-7 leading-7 text-[#39465b]">
           <section><h2 className="text-xl font-black text-[#061b3f]">1. Your role</h2><p className="mt-2">You are an independent provider, not a Quickola employee. You are responsible for the services you agree to deliver and for complying with the laws that apply to your work.</p></section>
           <section><h2 className="text-xl font-black text-[#061b3f]">2. Accurate profile and suitable work</h2><p className="mt-2">Keep your identity, experience, services, service areas, availability and profile information accurate. Only accept work you are competent and properly qualified to perform. Keep any required licences, certificates and insurance current.</p></section>
@@ -19,7 +21,7 @@ export default function ProviderTermsPage() {
           <section><h2 className="text-xl font-black text-[#061b3f]">5. Cancellations and disputes</h2><p className="mt-2">Honour accepted bookings or communicate promptly if a problem arises. Cancellations, refunds and disputes may be reviewed using the job, booking and message records and handled under Quickola’s customer and payment processes.</p></section>
           <section><h2 className="text-xl font-black text-[#061b3f]">6. Prohibited conduct</h2><p className="mt-2">Do not submit false information, misuse customer data, move customers off-platform to avoid agreed fees, manipulate reviews, create duplicate accounts, or use Quickola for unlawful or unsafe activity.</p></section>
           <section><h2 className="text-xl font-black text-[#061b3f]">7. Review and account action</h2><p className="mt-2">Quickola may review provider profiles and activity, request further information, suspend access or remove a provider who does not meet these standards or creates risk for customers or the platform.</p></section>
-          <section><h2 className="text-xl font-black text-[#061b3f]">8. Privacy and updates</h2><p className="mt-2">Use customer information only to provide the agreed service and protect it appropriately. We may update these terms as the marketplace develops and will communicate material changes through the platform.</p></section>
+          <section><h2 className="text-xl font-black text-[#061b3f]">8. Privacy and updates</h2><p className="mt-2">Use customer information only to provide the agreed service and protect it appropriately. Quickola processes provider personal information to operate the marketplace. Please read the <Link href="/privacy-policy" className="font-black text-[#167d3c] underline">Privacy Notice</Link>, which explains the information Quickola collects, why it is used, who it may be shared with, retention, international transfers where applicable and your rights. We may update these terms as the marketplace develops and will communicate material changes through the platform. Accepting these Provider Terms is separate from the privacy information and does not itself amount to consent to all processing of personal information.</p></section>
         </div>
       </article>
     </main>

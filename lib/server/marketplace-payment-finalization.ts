@@ -17,14 +17,14 @@ type PaymentBooking = {
 };
 
 export async function finalizeMarketplacePayment(admin: PaymentAdmin, booking: PaymentBooking, session: Stripe.Checkout.Session) {
-  const { error: updateError } = await admin.from("marketplace_bookings").update({
+  const { data: updatedBooking, error: updateError } = await admin.from("marketplace_bookings").update({
     payment_status: "paid",
     stripe_checkout_session_id: session.id,
     stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || null,
     paid_at: new Date().toISOString(),
     status: "booked",
-  }).eq("id", booking.id).neq("payment_status", "paid");
-  if (updateError) throw new Error("booking_update_failed");
+  }).eq("id", booking.id).eq("stripe_checkout_session_id", session.id).eq("payment_status", "pending_payment").neq("status", "cancelled").select("id").maybeSingle();
+  if (updateError || !updatedBooking) throw new Error("booking_update_failed");
 
   const { error: jobError } = await admin.from("marketplace_jobs").update({ status: "booked", updated_at: new Date().toISOString() }).eq("id", booking.job_id).in("status", ["awaiting_booking", "finding_provider", "posted"]);
   if (jobError) throw new Error("job_update_failed");

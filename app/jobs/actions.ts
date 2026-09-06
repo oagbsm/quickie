@@ -137,8 +137,16 @@ async function getOwnedEditableJob(token: string) {
 
 export async function cancelCustomerMarketplaceJob(formData: FormData) {
   const token = String(formData.get("token") || "");
-  const { admin, job } = await getOwnedEditableJob(token);
-  const { error } = await admin.from("marketplace_jobs").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", job.id).in("status", CUSTOMER_EDITABLE_JOB_STATUSES);
+  const reasonText = String(formData.get("reasonText") || "").trim().slice(0, 2000);
+  if (await getCurrentAccountRole() !== "customer") redirect("/");
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const admin = createSupabaseAdminClient();
+  const { data: customer } = user ? await admin.from("marketplace_customers").select("id").eq("auth_user_id", user.id).maybeSingle() : { data: null };
+  const { data: job } = token && customer ? await admin.from("marketplace_jobs").select("id,customer_id").eq("public_token", token).maybeSingle() : { data: null };
+  if (!user) redirect(`/sign-in?next=${encodeURIComponent(`/jobs/${token}`)}`);
+  if (!customer || !job || job.customer_id !== customer.id) redirect(`/jobs/${token}?error=ownership`);
+  const { error } = await supabase.rpc("cancel_marketplace_job_before_payment", { target_job: job.id, reason_text: reasonText || null });
   if (error) redirect(`/jobs/${token}?error=cancel`);
   revalidatePath(`/jobs/${token}`);
   revalidatePath("/my-jobs");

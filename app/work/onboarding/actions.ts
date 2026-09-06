@@ -6,6 +6,7 @@ import { MAIDENHEAD_MARKET_POSTCODE_DISTRICTS, marketplaceServices } from "@/app
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getMarketplaceProvider, isProviderReadyToSubmit } from "@/lib/marketplace/provider-access";
 import { createProviderPayoutLink, refreshProviderPayoutStatus } from "@/lib/server/provider-stripe";
+import { CURRENT_PROVIDER_TERMS_VERSION, recordProviderLegalEvent } from "@/lib/server/provider-legal";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const allowedPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -52,7 +53,6 @@ export async function saveProviderOnboarding(form: FormData) {
   const displayName = value(form, "displayName") || String(provider.profile.display_name || "");
   const businessName = value(form, "businessName") || String(provider.profile.business_name || "");
   const phone = value(form, "phone") || String(provider.profile.phone || "");
-  const termsAccepted = form.get("termsAccepted") === "on";
   const services = selectedServices(form);
   const currentStep = Math.min(3, Math.max(1, Number(value(form, "currentStep")) || 1));
   if (!["individual", "business"].includes(providerType) || !phone || !/^\+?[0-9 ()-]{9,20}$/.test(phone) || (providerType === "individual" && displayName.length < 2) || (providerType === "business" && businessName.length < 2) || (currentStep === 2 && !services.length)) redirect("/work/onboarding?error=required");
@@ -65,7 +65,7 @@ export async function saveProviderOnboarding(form: FormData) {
     const upload = await admin.storage.from("marketplace-provider-photos").upload(photoPath, Buffer.from(await photo.arrayBuffer()), { contentType: photo.type, upsert: true });
     if (upload.error) redirect("/work/onboarding?error=photo");
   }
-  const update = await admin.from("marketplace_providers").update({ display_name: displayName || businessName, business_name: businessName || null, phone, provider_type: providerType, profile_photo_url: photoPath, base_town: "Maidenhead", ...(termsAccepted ? { provider_terms_accepted_at: new Date().toISOString(), terms_version: "provider-2026-08" } : {}), updated_at: new Date().toISOString() }).eq("user_id", provider.providerId);
+  const update = await admin.from("marketplace_providers").update({ display_name: displayName || businessName, business_name: businessName || null, phone, provider_type: providerType, profile_photo_url: photoPath, base_town: "Maidenhead", updated_at: new Date().toISOString() }).eq("user_id", provider.providerId);
   if (update.error) redirect("/work/onboarding?error=save");
   if (services.length || currentStep >= 2) await saveServicesAndCoverage(provider.user.id, provider.providerId, services);
   revalidatePath("/work");
@@ -80,10 +80,14 @@ export async function updateProviderTerms(accepted: boolean) {
   const admin = createSupabaseAdminClient();
   const update = await admin.from("marketplace_providers").update({
     provider_terms_accepted_at: accepted ? new Date().toISOString() : null,
-    terms_version: accepted ? "provider-2026-08" : null,
+    terms_version: accepted ? CURRENT_PROVIDER_TERMS_VERSION : null,
     updated_at: new Date().toISOString(),
   }).eq("user_id", provider.providerId);
   if (update.error) return { ok: false as const, error: "save" };
+  if (accepted) {
+    try { await recordProviderLegalEvent(provider.providerId, "provider_terms", CURRENT_PROVIDER_TERMS_VERSION, "accepted"); }
+    catch { return { ok: false as const, error: "save" }; }
+  }
   revalidatePath("/work/onboarding");
   return { ok: true as const, accepted };
 }

@@ -30,13 +30,15 @@ export async function POST(request: Request) {
   const { data: eventClaim, error: eventClaimError } = await admin.rpc("claim_stripe_webhook_event", { target_event_id: event.id, target_event_type: event.type });
   if (eventClaimError) return NextResponse.json({ error: "webhook_ledger_failed" }, { status: 500 });
   if (["duplicate_processing", "duplicate_processed"].includes(eventClaim)) return NextResponse.json({ received: true });
-  const { data: booking, error: bookingLookupError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,conversation_id,amount_pence,currency,payment_status,marketplace_jobs(public_token)").eq("id", bookingId).maybeSingle();
+  const { data: booking, error: bookingLookupError } = await admin.from("marketplace_bookings").select("id,job_id,quote_id,customer_id,conversation_id,amount_pence,currency,payment_status,stripe_checkout_session_id,status,marketplace_jobs(public_token,status)").eq("id", bookingId).maybeSingle();
   if (bookingLookupError) {
     await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "booking_lookup_failed" }).eq("stripe_event_id", event.id);
     console.error("[marketplace-payment] booking lookup failed", { eventId: event.id, bookingId, code: bookingLookupError.code, reason: bookingLookupError.message });
     return NextResponse.json({ error: "booking_lookup_failed" }, { status: 500 });
   }
   if (!booking) { await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "booking_not_found" }).eq("stripe_event_id", event.id); return NextResponse.json({ error: "booking_not_found" }, { status: 404 }); }
+  const jobRelation = Array.isArray(booking.marketplace_jobs) ? booking.marketplace_jobs[0] : booking.marketplace_jobs;
+  if (booking.stripe_checkout_session_id !== session.id || booking.payment_status === "cancelled" || booking.status === "cancelled" || jobRelation?.status === "cancelled") { await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "stale_or_cancelled_session" }).eq("stripe_event_id", event.id); return NextResponse.json({ received: true }); }
   if (session.metadata?.job_id !== booking.job_id || session.metadata?.quote_id !== booking.quote_id) { await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "metadata_mismatch" }).eq("stripe_event_id", event.id); return NextResponse.json({ error: "metadata_mismatch" }, { status: 400 }); }
   if (session.currency && session.currency !== booking.currency) { await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "currency_mismatch" }).eq("stripe_event_id", event.id); return NextResponse.json({ error: "currency_mismatch" }, { status: 400 }); }
   if (session.amount_total !== Number(booking.amount_pence)) { await admin.from("stripe_webhook_events").update({ status: "failed", error_message: "amount_mismatch" }).eq("stripe_event_id", event.id); return NextResponse.json({ error: "amount_mismatch" }, { status: 400 }); }
@@ -49,7 +51,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "booking_update_failed" }, { status: 500 });
   }
   console.info("[marketplace-payment] booking marked paid", { eventId: event.id, bookingId, quoteId: booking.quote_id, jobId: booking.job_id, amountPence: booking.amount_pence, currency: booking.currency });
-  const jobRelation = Array.isArray(booking.marketplace_jobs) ? booking.marketplace_jobs[0] : booking.marketplace_jobs;
   revalidatePath("/my-jobs");
   if (jobRelation?.public_token) revalidatePath(`/jobs/${jobRelation.public_token}`);
   if (booking.conversation_id) revalidatePath(`/messages/${booking.conversation_id}`);

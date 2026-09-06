@@ -58,13 +58,12 @@ export async function createMarketplaceCheckout(formData: FormData) {
       booking = retry.data;
     } else booking = inserted.data;
   } else if (booking.quote_id !== quote.id) {
-    if (booking.payment_status === "paid") redirect(returnTo);
-    const updated = await admin.from("marketplace_bookings").update({ quote_id: quote.id, provider_id: providerId, conversation_id: conversation?.id || booking.conversation_id, amount_pence: amountPence, platform_fee_pence: platformFeePence, stripe_checkout_session_id: null, stripe_payment_intent_id: null, paid_at: null }).eq("id", booking.id).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id,status,completion_status,payout_hold_status").single();
-    if (updated.error || !updated.data) {
-      console.error("[marketplace-payment] Booking reselection update failed", { stage: "create-checkout", token, quoteId, bookingId: booking.id, userId: user.id, code: updated.error?.code, reason: updated.error?.message || "booking_not_updated" });
+    const changed = await supabase.rpc("change_marketplace_selected_quote", { target_quote: quote.id });
+    if (changed.error || !changed.data) {
+      console.error("[marketplace-payment] Booking reselection failed", { stage: "create-checkout", token, quoteId, bookingId: booking.id, userId: user.id, code: changed.error?.code, reason: changed.error?.message || "booking_not_updated" });
       redirect(`${returnTo}?error=payment`);
     }
-    booking = updated.data;
+    booking = changed.data as typeof booking;
   } else if (!booking.conversation_id && conversation?.id) {
     const updated = await admin.from("marketplace_bookings").update({ conversation_id: conversation.id }).eq("id", booking.id).select("id,job_id,quote_id,customer_id,provider_id,conversation_id,amount_pence,currency,platform_fee_pence,payment_status,stripe_checkout_session_id,status,completion_status,payout_hold_status").single();
     if (!updated.error && updated.data) booking = updated.data;
@@ -121,9 +120,10 @@ export async function createMarketplaceCheckout(formData: FormData) {
   if (completedReturnTo) redirect(completedReturnTo);
   if (!checkoutUrl) redirect(`${returnTo}?error=payment`);
   if (checkoutSessionId) {
-    const { error: saved } = await admin.from("marketplace_bookings").update({ stripe_checkout_session_id: checkoutSessionId, amount_pence: amountPence, platform_fee_pence: platformFeePence }).eq("id", booking.id);
-    if (saved) {
-      console.error("[marketplace-payment] Booking update failed", { stage: "save-checkout-session", token, quoteId, bookingId: booking.id, userId: user.id, code: saved.code, reason: saved.message });
+    // The reselection RPC clears stripe_checkout_session_id: null and stripe_payment_intent_id: null.
+    const { data: savedBooking, error: saved } = await admin.from("marketplace_bookings").update({ stripe_checkout_session_id: checkoutSessionId, amount_pence: amountPence, platform_fee_pence: platformFeePence }).eq("id", booking.id).eq("quote_id", quote.id).eq("payment_status", "pending_payment").is("stripe_checkout_session_id", null).select("id").maybeSingle();
+    if (saved || !savedBooking) {
+      console.error("[marketplace-payment] Booking update failed", { stage: "save-checkout-session", token, quoteId, bookingId: booking.id, userId: user.id, code: saved?.code, reason: saved?.message || "booking_changed" });
       redirect(`${returnTo}?error=payment`);
     }
   }

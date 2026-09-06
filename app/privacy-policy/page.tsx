@@ -1,65 +1,32 @@
+import Link from "next/link";
 import Header from "../homepagecomponents/Header";
 import Footer from "../components/Footer";
-export const metadata = {
-  title: "Privacy Policy | Quickola",
-  description:
-    "How Quickola uses and protects customer and booking information.",
-};
-const sections = [
-  [
-    "Information we collect",
-    "Business contact details, address and postcode, property and cleaning details, access instructions, priorities, booking history, communications and payment status where applicable.",
-  ],
-  [
-    "How we use it",
-    "To assess business enquiries, operate accounts, calculate prices, arrange and deliver cleaning, communicate about services, provide support, prevent abuse and maintain business records.",
-  ],
-  [
-    "Who receives it",
-    "We share only the information needed with people and systems involved in operating Quickola and delivering an agreed service, including hosting, database, communications and security processors acting for us.",
-  ],
-  [
-    "How long we keep it",
-    "We retain information only as long as needed for bookings, support, legal obligations, safety, fraud prevention and business records.",
-  ],
-  [
-    "Your choices",
-    "You may ask to access, correct or delete information, object to or restrict some uses, or raise a concern with the UK Information Commissioner’s Office.",
-  ],
-  [
-    "Contact",
-    "Privacy questions and requests can be submitted through the Quickola contact form.",
-  ],
+import { CURRENT_PROVIDER_PRIVACY_NOTICE_VERSION } from "@/lib/server/provider-legal";
+
+export const metadata = { title: "Privacy Notice | Quickola", description: "How Quickola uses customer and provider information." };
+
+// TODO: confirm and add Quickola's legal entity name, registered address and dedicated privacy contact details.
+const rows = [
+  ["Account and authentication", "Email, authenticated account identifiers and Google account profile name where supplied.", "Create and secure accounts and confirm email access.", "Contract/steps requested before contract; legitimate interests in account security."],
+  ["Provider profile and services", "Name, business name, phone, provider type, photo, biography, experience where provided, services and service areas.", "Create provider profiles, review applications and match suitable work.", "Contract/steps requested before contract; legitimate interests in marketplace safety."],
+  ["Jobs, quotes and bookings", "Job descriptions, service/location details, quotes, booking, completion, cancellation and payment status records.", "Operate the marketplace, arrange services, support participants and resolve disputes.", "Contract; legal obligation where applicable; legitimate interests in dispute prevention."],
+  ["Messages and reviews", "Messages, message attachments, reviews, ratings and related timestamps.", "Enable communication, maintain marketplace context, display reputation information and handle complaints.", "Contract; legitimate interests in safety, quality and dispute handling."],
+  ["Payments and payouts", "Stripe account reference and payout status in Quickola; Stripe may collect identity, bank and verification information directly through its hosted onboarding.", "Process payments and payouts, verify payout readiness and meet financial obligations.", "Contract and legal obligation where applicable."],
+  ["Security and moderation", "Provider/account status, authentication state and operational activity records.", "Prevent abuse, protect the platform, review eligibility and enforce the Provider Terms.", "Legitimate interests in security and safe marketplace operation; legal obligation where applicable."],
+  ["Technical information", "Quickola does not currently evidence separate application collection of IP addresses or user-agent/device profiles. Legal-event logging may record request IP/user agent when available.", "Security and evidence of legal-document presentation or acceptance.", "Legitimate interests in security and accountability; legal obligation where applicable."],
 ];
-export default function Privacy() {
-  return (
-    <main className="min-h-screen bg-[#f7f9fb] text-[#071638]">
-      <Header />
-      <section className="mx-auto max-w-[900px] px-5 pb-16 pt-28 sm:px-8 lg:pt-40">
-        <p className="text-[11px] font-black uppercase tracking-[.14em] text-[#079448]">
-          Privacy policy
-        </p>
-        <h1 className="mt-3 text-[44px] font-black tracking-[-.05em]">
-          Your information, handled with care.
-        </h1>
-        <p className="mt-3 text-[14px] font-semibold text-[#667188]">
-          Last updated 22 July 2026
-        </p>
-        <div className="mt-8 space-y-4">
-          {sections.map(([title, text]) => (
-            <section
-              key={title}
-              className="rounded-[18px] border border-[#e1e8ef] bg-white p-6"
-            >
-              <h2 className="text-[20px] font-black">{title}</h2>
-              <p className="mt-2 text-[15px] font-semibold leading-7 text-[#536079]">
-                {text}
-              </p>
-            </section>
-          ))}
-        </div>
-      </section>
-      <Footer />
-    </main>
-  );
+
+export default function PrivacyPolicyPage() {
+  return <main className="min-h-screen bg-[#f7f9fb] text-[#071638]"><Header /><article className="mx-auto max-w-4xl px-5 pb-16 pt-28 sm:px-8 lg:pt-40">
+    <p className="text-[11px] font-black uppercase tracking-[.14em] text-[#079448]">Privacy notice</p>
+    <h1 className="mt-3 text-5xl font-black tracking-[-.05em]">Your information, handled with care.</h1>
+    <p className="mt-4 text-sm font-semibold text-[#667188]">Provider version: {CURRENT_PROVIDER_PRIVACY_NOTICE_VERSION} · Last updated 6 September 2026</p>
+    <section className="mt-8 rounded-2xl border border-[#e1e8ef] bg-white p-6"><h2 className="text-2xl font-black">About Quickola</h2><p className="mt-3 leading-7 text-[#536079]">Quickola operates a local-services marketplace connecting customers with independent providers. Quickola is the operator and data controller for information it processes through this service. The repository does not contain the verified legal entity name, registered address or dedicated privacy email; those details must be confirmed and added before this notice is treated as final. Privacy questions can currently be sent through our <Link href="/contact" className="font-black text-[#08783f] underline">contact page</Link>.</p></section>
+    <section className="mt-5 rounded-2xl border border-[#e1e8ef] bg-white p-6"><h2 className="text-2xl font-black">Information we collect</h2><div className="mt-5 grid gap-4">{rows.map(([category, data, purpose, basis]) => <section key={category} className="border-t border-[#edf0f3] pt-4"><h3 className="font-black">{category}</h3><p className="mt-1 text-sm leading-6 text-[#536079]"><b>Information:</b> {data}<br /><b>Why:</b> {purpose}<br /><b>Legal basis:</b> {basis}</p></section>)}</div><p className="mt-5 text-sm leading-6 text-[#536079]">Customers may provide names, email or phone details, postcodes, job descriptions, timing, access information, photos, payment status and booking history. Necessary customer information may be shared with the selected provider to arrange and perform a booked service.</p></section>
+    <section className="mt-5 rounded-2xl border border-[#e1e8ef] bg-white p-6"><h2 className="text-2xl font-black">Who we share information with</h2><p className="mt-3 leading-7 text-[#536079]">Information is shared only as needed to operate the marketplace: with the relevant customer or provider for a requested or booked service; with Supabase for database, authentication and storage services; with Stripe for payment and provider payout onboarding; and with Resend where transactional email is enabled. We may disclose information to professional advisers, regulators, courts or authorities where required or permitted by law. The deployment host and exact processor locations are not established in this repository and require confirmation.</p></section>
+    <section className="mt-5 rounded-2xl border border-[#e1e8ef] bg-white p-6"><h2 className="text-2xl font-black">International transfers</h2><p className="mt-3 leading-7 text-[#536079]">Supabase, Stripe and email or hosting processors may process information outside the UK depending on configured accounts and locations. Quickola must confirm the countries and applicable adequacy decisions or other safeguards before making a more specific statement. We do not claim that all information remains in the UK.</p></section>
+    <section className="mt-5 rounded-2xl border border-[#e1e8ef] bg-white p-6"><h2 className="text-2xl font-black">Retention</h2><p className="mt-3 leading-7 text-[#536079]">We keep account and provider profile information while the account is active and for as long as reasonably necessary for support, safety and legal claims. Unsuccessful applications are kept only as reasonably necessary for review, abuse prevention and legal obligations. Booking, payment, tax and accounting records are kept for the applicable legal/accounting period. Messages, reviews and attachments are retained while needed to provide the service, preserve marketplace context, resolve disputes and prevent abuse, then deleted or anonymised when no longer needed.</p></section>
+    <section className="mt-5 rounded-2xl border border-[#e1e8ef] bg-white p-6"><h2 className="text-2xl font-black">Your rights</h2><p className="mt-3 leading-7 text-[#536079]">Depending on the circumstances and legal basis, you may request access, rectification, erasure, restriction, objection or data portability. Where processing relies on consent, you may withdraw it; withdrawal does not affect earlier lawful processing. Rights are subject to legal exceptions, including records that Quickola must retain. Contact Quickola through the <Link href="/contact" className="font-black text-[#08783f] underline">contact page</Link>. You may also complain to the UK Information Commissioner&apos;s Office at <a href="https://ico.org.uk/make-a-complaint/" className="font-black text-[#08783f] underline">ico.org.uk/make-a-complaint</a>.</p></section>
+    <section className="mt-5 rounded-2xl border border-[#e1e8ef] bg-white p-6"><h2 className="text-2xl font-black">Matching, automated processing and cookies</h2><p className="mt-3 leading-7 text-[#536079]">Quickola uses service selections, service areas, job details, provider status, email verification and Stripe readiness to filter which opportunities a provider can see and whether the provider can quote. This is ordinary marketplace eligibility and matching logic; current code does not evidence a solely automated decision producing legal or similarly significant effects. Read the separate <Link href="/cookies" className="font-black text-[#08783f] underline">Cookies notice</Link> for cookie information. Quickola does not currently evidence advertising cookies.</p></section>
+  </article><Footer /></main>;
 }
